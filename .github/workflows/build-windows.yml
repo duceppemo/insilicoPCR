@@ -1,0 +1,30 @@
+name: build-windows.yml
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build with bundled JDK if available
+        shell: cmd
+        run: |
+          if exist build.bat (
+            call build.bat
+          ) else (
+            call mvnw.cmd -B clean package
+          )
+
+      - name: Upload Maven artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: insilicoPCR-windows-build
+          path: |
+            target/*.jar
+            target/*.zip

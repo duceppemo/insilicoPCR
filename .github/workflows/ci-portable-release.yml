@@ -1,0 +1,140 @@
+name: CI and portable releases
+
+on:
+  push:
+    branches: [ main, master ]
+    tags: [ 'v*' ]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version for manual release artifact names, e.g. 0.6.0-manual'
+        required: false
+        default: '0.0.0-manual'
+
+permissions:
+  contents: write
+
+jobs:
+  linux-zip:
+    name: Linux portable ZIP
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 26
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '26'
+          cache: maven
+
+      - name: Resolve release version
+        id: version
+        shell: bash
+        run: |
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            echo "value=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "value=${{ inputs.version }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=0.0.0-ci" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Fetch BBMap and BLAST for Linux
+        shell: bash
+        run: |
+          chmod +x scripts/ci/fetch-runtime-deps-linux.sh
+          scripts/ci/fetch-runtime-deps-linux.sh
+
+      - name: Build Linux portable ZIP
+        shell: bash
+        env:
+          DO_INSTALLER: 'false'
+        run: |
+          chmod +x mvnw scripts/release-linux.sh
+          scripts/release-linux.sh "${{ steps.version.outputs.value }}"
+
+      - name: Upload Linux artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: insilicoPCR-linux-x64
+          path: |
+            release/*linux-x64.zip
+            release/*linux-x64.sha256
+          if-no-files-found: error
+
+  windows-zip:
+    name: Windows portable ZIP
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 26
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '26'
+          cache: maven
+
+      - name: Resolve release version
+        id: version
+        shell: pwsh
+        run: |
+          if ($env:GITHUB_REF_TYPE -eq 'tag') {
+            "value=$($env:GITHUB_REF_NAME -replace '^v','')" >> $env:GITHUB_OUTPUT
+          } elseif ('${{ github.event_name }}' -eq 'workflow_dispatch') {
+            "value=${{ inputs.version }}" >> $env:GITHUB_OUTPUT
+          } else {
+            "value=0.0.0-ci" >> $env:GITHUB_OUTPUT
+          }
+
+      - name: Fetch BBMap and BLAST for Windows
+        shell: pwsh
+        run: |
+          .\scripts\ci\fetch-runtime-deps-windows.ps1
+
+      - name: Build Windows portable ZIP
+        shell: pwsh
+        run: |
+          .\scripts\release-windows.ps1 -Version '${{ steps.version.outputs.value }}'
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: insilicoPCR-windows-x64
+          path: |
+            release/*windows-x64.zip
+            release/*windows-x64.sha256
+          if-no-files-found: error
+
+  publish-github-release:
+    name: Publish GitHub Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [ linux-zip, windows-zip ]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download release artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Show files
+        shell: bash
+        run: find dist -type f -maxdepth 2 -print -exec ls -lh {} \;
+
+      - name: Publish portable ZIPs only
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*linux-x64.zip
+            dist/*linux-x64.sha256
+            dist/*windows-x64.zip
+            dist/*windows-x64.sha256
+          generate_release_notes: true

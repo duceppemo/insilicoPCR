@@ -1,7 +1,7 @@
 package ca.canada.inspection.insilicopcr;
 
 public class BlastResult {
-	
+
 	private final String name;
 	private final String queryID;
 	private final String subjectID;
@@ -21,35 +21,35 @@ public class BlastResult {
 		this.length = length;
 		this.seq = seq;
 	}
-	
+
 	public String getName() {
 		return this.name;
 	}
-	
+
 	public String getQueryID() {
 		return this.queryID;
 	}
-	
+
 	public String getSubjectID() {
 		return this.subjectID;
 	}
-	
+
 	public int getMismatch() {
 		return this.mismatch;
 	}
-	
+
 	public int getStart() {
 		return this.start;
 	}
-	
+
 	public int getEnd() {
 		return this.end;
 	}
-	
+
 	public int getLength() {
 		return this.length;
 	}
-	
+
 	public String getSeq() {
 		return this.seq;
 	}

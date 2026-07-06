@@ -3,11 +3,12 @@ package ca.canada.inspection.commandpcr;
 import ca.canada.inspection.insilicopcr.Find;
 import ca.canada.inspection.insilicopcr.Sample;
 import ca.canada.inspection.dispatchpcr.Dispatcher;
+import ca.canada.inspection.dispatchpcr.AppPaths;
 
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -19,33 +20,33 @@ import java.util.concurrent.TimeUnit;
 
 
 public class CommandMain {
-	
-	public static String sep = File.separator;
 
-    private File inputFile = null, outDir = null, primerFile = null;
+	public static String sep = java.io.File.separator;
+
+	private Path inputFile = null, outDir = null, primerFile = null;
 	private int threads = Runtime.getRuntime().availableProcessors();
 	private int memJava = 4;
-    private double evalue = Double.parseDouble("1e10");
-	private File detailedDir, consolidatedDir;
-	private File BBToolsLocation, BLASTLocation, JavaLocation;
+	private double evalue = Double.parseDouble("1e5");
+	private Path detailedDir, consolidatedDir;
+	private Path BBToolsLocation, BLASTLocation, JavaLocation;
 	private String javaCall;
 	private int mismatches = 0;
-    private HashMap<String, String> primerDict = new HashMap<String, String>();
+	private HashMap<String, String> primerDict = new HashMap<String, String>();
 	private HashMap<String, Sample> sampleDict = new HashMap<String, Sample>();
 	private boolean fastqPresent = false;
 
-    public CommandMain(File inputFile, File outDir, File primerFile, int threads, int mismatches, double evalue) {
+	public CommandMain(Path inputFile, Path outDir, Path primerFile, int threads, int mismatches, double evalue) {
 		this.inputFile = inputFile;
 		this.outDir = outDir;
 		this.primerFile = primerFile;
 		this.threads = threads;
 		this.mismatches = mismatches;
-        this.evalue = evalue;
+		this.evalue = evalue;
 	}
-	
+
 	public void run() {
 
-        if(System.getProperties().getProperty("os.name").contains("Windows")) {
+		if(System.getProperties().getProperty("os.name").contains("Windows")) {
 			String[] command = {"wmic", "computersystem", "get", "TotalPhysicalMemory"};
 			try {
 				String line;
@@ -78,7 +79,7 @@ public class CommandMain {
 				e.printStackTrace();
 			}
 		}
-		
+
 		RunPCRTask task = new RunPCRTask();
 		Thread t = new Thread(task);
 		t.setDaemon(true);
@@ -89,98 +90,44 @@ public class CommandMain {
 			e.printStackTrace();
 		}
 	}
-	
+
 	// Makes directories within the output directory
 	public void makeDirectories() {
-		detailedDir = new File(outDir.getAbsolutePath() + sep + "detailed_report");
-		detailedDir.mkdirs();
-		consolidatedDir = new File(outDir.getAbsolutePath() + sep + "consolidated_report");
-		consolidatedDir.mkdirs();
+		detailedDir = outDir.resolve("detailed_report");
+		consolidatedDir = outDir.resolve("consolidated_report");
+		try {
+			Files.createDirectories(detailedDir);
+			Files.createDirectories(consolidatedDir);
+		} catch (IOException e) {
+			throw new IllegalStateException("Unable to create output directories under " + outDir, e);
+		}
 	}
-	
+
 	// Find dependencies
 	public void findDependencies() {
-		File jarDir = new File(Dispatcher.class.getProtectionDomain().getCodeSource().getLocation().getPath());
-		String codeLocation = jarDir.getParent(); // to get the parent dir name
-//		String codeParent = codeLocation;
-		String codeParent = "/media/marco/marco/insilicoPCR_v0.5";  // debug
-//		System.out.println(codeParent);  // Print location
-//		try{
-//			codeParent = (new File(codeLocation)).getCanonicalPath();
-//		}catch(IOException e) {
-//			e.printStackTrace();
-//		}
-		Path dir = Paths.get(codeParent);
-		Find.Finder finder = new Find.Finder("**bbmap", dir);
-		for(Path path: finder.run()) {
-			File directory = path.toFile();
-			for(File file : Objects.requireNonNull(directory.listFiles())) {
-                if (file.getName().contains("tadpole.sh")) {
-                    BBToolsLocation = path.toFile();
-                    break;
-                }
-			}
-		}
-//		System.out.println(BBToolsLocation);  // Print location
-		
-		Find.Finder finder2;
-		if(System.getProperties().getProperty("os.name").contains("Windows")) {
-			finder2 = new Find.Finder("**makeblastdb.exe", dir);
-		}else {
-			finder2 = new Find.Finder("**makeblastdb", dir);
-		}
-		for(Path path : finder2.run()) {
-			File blastdbpath = path.toFile();
-			BLASTLocation = blastdbpath.getParentFile();
-		}
-		if(BBToolsLocation == null || BLASTLocation == null) {
-			System.out.println("BBToolsLocation or BLASTLocation is null");
-		}
-		
-		Find.Finder finder3;
-		if(System.getProperties().getProperty("os.name").contains("Windows")) {
-			finder3 = new Find.Finder("**windows/jdk-21.0.3", dir);
-		}else {
-			finder3 = new Find.Finder("**linux/jdk-21.0.3", dir);
-		}
-		for(Path path : finder3.run()) {
-			File javapath = path.toFile();
-			if(javapath.isDirectory()) {
-				for(File item : Objects.requireNonNull(javapath.listFiles())) {
-					if(item.isDirectory()) {
-						for(File item2 : Objects.requireNonNull(item.listFiles())) {
-							if(System.getProperties().getProperty("os.name").contains("Windows")) {
-								if(item2.getName().equals("java.exe")) {
-									JavaLocation = item.getAbsoluteFile();
-								}
-							}else {
-								if(item2.getName().equals("java")) {
-									JavaLocation = item.getAbsoluteFile();
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-		if(System.getProperties().getProperty("os.name").contains("Windows")) {
-			javaCall = JavaLocation.getAbsolutePath() + sep + "java.exe";
-		}else {
-			javaCall = JavaLocation.getAbsolutePath() + sep + "java";
-		}
+		AppPaths.RuntimeLayout layout = AppPaths.discover();
+		BBToolsLocation = layout.bbmapDirectory();
+		BLASTLocation = layout.blastBinDirectory();
+		JavaLocation = layout.javaExecutable().getParent();
+		javaCall = layout.javaCommand();
+
+		System.out.println("Application root: " + layout.appRoot());
+		System.out.println("BBMap: " + BBToolsLocation);
+		System.out.println("BLAST: " + BLASTLocation);
+		System.out.println("Java: " + javaCall);
 	}
-	
+
 	// Main body of the pipeline, runs the contained methods in order
 	public class RunPCRTask implements Runnable {
-		
+
 		public RunPCRTask() {
-			
+
 		}
-		
+
 		public void run() {
-			
+
 			long startTime = System.nanoTime();
-			
+
 			System.out.println("Beginning Program Run");
 			findDependencies();
 			System.out.println("Found Dependencies");
@@ -211,7 +158,7 @@ public class CommandMain {
 			if(!System.getProperty("os.name").contains("Windows")) {
 				CommandMethods.makeExecutable(BLASTLocation);
 			}
-			CommandMethods.makeBlastDB(new File(outDir.getAbsolutePath() + sep + "primer_tmp.fasta"), BLASTLocation);
+			CommandMethods.makeBlastDB(outDir.resolve("primer_tmp.fasta"), BLASTLocation);
 			System.out.println("Completed Database Creation");
 			// If files were fastq, need to use the assembly file instead of raw files
 			runBLASTTask task = new runBLASTTask();
@@ -229,14 +176,14 @@ public class CommandMain {
 			System.out.println("Parsed BLAST output");
 			CommandMethods.makeConsolidatedReport(consolidatedDir, sep, sampleDict, primerDict);
 			System.out.println("Created Consolidated Report");
-			CommandMethods.makeQALog(new File(outDir.getAbsolutePath() + sep + "QAlog.txt"), Dispatcher.version, outDir, inputFile, primerFile, BBToolsLocation, BLASTLocation);
-			
+			CommandMethods.makeQALog(outDir.resolve("QAlog.txt"), Dispatcher.version, outDir, inputFile, primerFile, BBToolsLocation, BLASTLocation);
+
 			long endTime = System.nanoTime();
-			
+
 			System.out.println("Done in " + Long.toString((endTime - startTime) / 1000000000) + " seconds");
 		}
 	}
-	
+
 	//Method to make a thread to run the FirstBaitTask to prevent UI from hanging
 	public void runBaitTask() {
 		BaitTask task = new BaitTask();
@@ -249,7 +196,7 @@ public class CommandMain {
 			e.printStackTrace();
 		}
 	}
-	
+
 	//Method to make a thread to run the SecondBaitTask to prevent UI from hanging
 	public void runSecondBaitTask() {
 		SecondBaitTask task = new SecondBaitTask();
@@ -262,7 +209,7 @@ public class CommandMain {
 			e.printStackTrace();
 		}
 	}
-	
+
 	//Method to make a thread to run the AssemblyTask to prevent UI from hanging
 	public void runAssembleTask() {
 		AssembleTask task = new AssembleTask();
@@ -275,23 +222,23 @@ public class CommandMain {
 			e.printStackTrace();
 		}
 	}
-	
+
 	public class runBLASTTask implements Runnable {
-		
+
 		public runBLASTTask() {
 		}
-		
+
 		public void run() {
-            ThreadPoolExecutor mainPool = new ThreadPoolExecutor(threads, Integer.MAX_VALUE, Long.MAX_VALUE, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>());
+			ThreadPoolExecutor mainPool = new ThreadPoolExecutor(threads, Integer.MAX_VALUE, Long.MAX_VALUE, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>());
 			for(String key : sampleDict.keySet()) {
 				if(sampleDict.get(key).getFileType().equals("fastq")) {
-					BlastTask task = new BlastTask(outDir.getAbsolutePath() + sep + "primer_tmp.fasta", sampleDict.get(key).getAssemblyFile(),
-                            detailedDir, sep, BLASTLocation, evalue);
+					BlastTask task = new BlastTask(outDir.resolve("primer_tmp.fasta"), sampleDict.get(key).getAssemblyFile(),
+							detailedDir, sep, BLASTLocation, evalue);
 					mainPool.submit(task);
 				}else {
-					for(String file : sampleDict.get(key).getFiles()) {
-						BlastTask task = new BlastTask(outDir.getAbsolutePath() + sep + "primer_tmp.fasta", file,
-                                detailedDir, sep, BLASTLocation, evalue);
+					for(Path file : sampleDict.get(key).getFiles()) {
+						BlastTask task = new BlastTask(outDir.resolve("primer_tmp.fasta"), file,
+								detailedDir, sep, BLASTLocation, evalue);
 						mainPool.submit(task);
 					}
 				}
@@ -304,15 +251,15 @@ public class CommandMain {
 			}
 		}
 	}
-	
+
 	// Bait FastQ reads from input files using BBDuk and the primer file as the target
 	public class BaitTask implements Runnable {
-		
+
 		public BaitTask() {
 		}
-		
+
 		public void run() {
-			
+
 			// Need to make sure that whatever k-value is being used is no longer than the shortest primer length
 			int klength = Integer.MAX_VALUE;
 			for(String key : primerDict.keySet()) {
@@ -320,27 +267,26 @@ public class CommandMain {
 					klength = primerDict.get(key).length();
 				}
 			}
-			
-			String ref = outDir.getAbsolutePath() + sep + "primer_tmp.fasta";
-			
+
+			String ref = outDir.resolve("primer_tmp.fasta").toString();
+
 			for(String key : sampleDict.keySet()) {
 				if(sampleDict.get(key).getFileType().equals("fastq")) {
 					Sample currentSample = sampleDict.get(key);
-					File sampleDir = new File(detailedDir.getAbsolutePath() + sep + currentSample.getName());
-					sampleDir.mkdirs();
+					Path sampleDir = detailedDir.resolve(currentSample.getName());
+					try { Files.createDirectories(sampleDir); } catch (IOException e) { throw new IllegalStateException("Unable to create sample directory: " + sampleDir, e); }
 					String[] fullProcessCall;
 					if(currentSample.getFiles().size() == 2) {
-                        fullProcessCall = new String[] {javaCall, "-ea", String.format("-Xmx%sg", memJava), "-cp", "./current", "jgi.BBDuk", "ref=" + ref, "k=" + klength,
+						fullProcessCall = new String[] {javaCall, "-ea", String.format("-Xmx%sg", memJava), "-cp", "./current", "jgi.BBDuk", "ref=" + ref, "k=" + klength,
 								"in1=" + currentSample.getFiles().getFirst(), "in2=" + currentSample.getFiles().get(1), "hdist=" + mismatches,
-								"threads=" + threads, "overwrite=t", "interleaved=t", "outm=" + sampleDir.getAbsolutePath() + sep + currentSample.getName() +
-								"_targetMatches.fastq.gz"};
+								"threads=" + threads, "overwrite=t", "interleaved=t", "outm=" + sampleDir.resolve(currentSample.getName() + "_targetMatches.fastq.gz").toString()};
 					}else {
 						fullProcessCall = new String[] {javaCall, "-ea", String.format("-Xmx%sg", memJava), "-cp", "./current", "jgi.BBDuk", "ref=" + ref, "k=" + klength,
 								"in=" + currentSample.getFiles().getFirst(), "hdist=" + mismatches, "threads=" + threads, "overwrite=t", "interleaved=t",
-								"outm=" + sampleDir.getAbsolutePath() + sep + currentSample.getName() + "_targetMatches.fastq.gz"};
+								"outm=" + sampleDir.resolve(currentSample.getName() + "_targetMatches.fastq.gz").toString()};
 					}
 					try {
-						Process p = new ProcessBuilder(fullProcessCall).directory(BBToolsLocation).start();
+						Process p = new ProcessBuilder(fullProcessCall).directory(BBToolsLocation.toFile()).start();
 						// To write stdout to terminal (Debug)
 //						ProcessBuilder pb = new ProcessBuilder(fullProcessCall);
 //						pb.directory(BBToolsLocation);
@@ -358,34 +304,33 @@ public class CommandMain {
 			}
 		}
 	}
-	
+
 	// Bait more FastQ read nearby the originally baited reads using the originally baited reads as bait themselves
-	// If USERS find issues with memory overflow, can use qhdist instead of hdist. Sacrifices speed for memory by 
-	// Conducting mutations on query instead of reference? Dramatically reduces memory usage. 
+	// If USERS find issues with memory overflow, can use qhdist instead of hdist. Sacrifices speed for memory by
+	// Conducting mutations on query instead of reference? Dramatically reduces memory usage.
 	public class SecondBaitTask implements Runnable {
-		
+
 		public SecondBaitTask() {
 		}
-		
+
 		public void run() {
 			for(String key : sampleDict.keySet()) {
 				if(sampleDict.get(key).getFileType().equals("fastq")) {
 					Sample currentSample = sampleDict.get(key);
-					File sampleDir = new File(detailedDir.getAbsolutePath() + sep + currentSample.getName());
-					String ref = sampleDir.getAbsolutePath() + sep + currentSample.getName() + "_targetMatches.fastq.gz";
+					Path sampleDir = detailedDir.resolve(currentSample.getName());
+					String ref = sampleDir.resolve(currentSample.getName() + "_targetMatches.fastq.gz").toString();
 					String[] fullProcessCall;
 					if(currentSample.getFiles().size() == 2) {
 						fullProcessCall = new String[] {javaCall, "-ea", String.format("-Xmx%sg", memJava), "-cp", "./current", "jgi.BBDuk", "ref=" + ref,
 								"in1=" + currentSample.getFiles().getFirst(), "in2=" + currentSample.getFiles().get(1), "hdist=" + mismatches,
-								"threads=" + threads, "overwrite=t", "interleaved=t", "outm=" + sampleDir.getAbsolutePath() + sep + currentSample.getName() +
-								"_doubleTargetMatches.fastq.gz"};
+								"threads=" + threads, "overwrite=t", "interleaved=t", "outm=" + sampleDir.resolve(currentSample.getName() + "_doubleTargetMatches.fastq.gz").toString()};
 					}else {
 						fullProcessCall = new String[] {javaCall, "-ea", String.format("-Xmx%sg", memJava), "-cp", "./current", "jgi.BBDuk", "ref=" + ref,
 								"in=" + currentSample.getFiles().getFirst(), "hdist=" + mismatches, "threads=" + threads, "overwrite=t", "interleaved=t",
-								"outm=" + sampleDir.getAbsolutePath() + sep + currentSample.getName() + "_doubleTargetMatches.fastq.gz"};
+								"outm=" + sampleDir.resolve(currentSample.getName() + "_doubleTargetMatches.fastq.gz").toString()};
 					}
 					try {
-						Process p = new ProcessBuilder(fullProcessCall).directory(BBToolsLocation).start();
+						Process p = new ProcessBuilder(fullProcessCall).directory(BBToolsLocation.toFile()).start();
 						try {
 							p.waitFor();
 						}catch(InterruptedException e) {
@@ -398,30 +343,30 @@ public class CommandMain {
 			}
 		}
 	}
-	
+
 	// Assemble reads from both rounds of baiting to attempt to get long enough contigs to ensure as many primer hits are contained on the same contigs as possible
 	public class AssembleTask implements Runnable {
-		
+
 		public AssembleTask() {
 		}
-		
+
 		public void run() {
 			for(String key : sampleDict.keySet()) {
 				if(sampleDict.get(key).getFileType().equals("fastq")) {
-					
+
 					Sample currentSample = sampleDict.get(key);
-					File sampleDir = new File(detailedDir.getAbsolutePath() + sep + currentSample.getName());
-					
-					String in = sampleDir.getAbsolutePath() + sep + currentSample.getName() + "_doubleTargetMatches.fastq.gz";
-					String out = sampleDir.getAbsolutePath() + sep + currentSample.getName() + "_assembly.fasta";
-					
+					Path sampleDir = detailedDir.resolve(currentSample.getName());
+
+					String in = sampleDir.resolve(currentSample.getName() + "_doubleTargetMatches.fastq.gz").toString();
+					String out = sampleDir.resolve(currentSample.getName() + "_assembly.fasta").toString();
+
 					// Make sure that the sample contains a reference to its own assembly file
-					currentSample.setAssemblyFile(out);
+					currentSample.setAssemblyFile(Path.of(out));
 					String[] fullProcessCall = {javaCall, "-ea", String.format("-Xmx%sg", memJava), "-cp", "./current", "assemble.Tadpole",
 							"in=" + in, "out=" + out, "overwrite=t", "threads=" + threads};
-				
+
 					try {
-						Process p = new ProcessBuilder(fullProcessCall).directory(BBToolsLocation).start();
+						Process p = new ProcessBuilder(fullProcessCall).directory(BBToolsLocation.toFile()).start();
 						try {
 							p.waitFor();
 						}catch(InterruptedException e) {
@@ -430,50 +375,49 @@ public class CommandMain {
 					}catch(IOException e) {
 						e.printStackTrace();
 					}
-					
+
 				}
 			}
 		}
 	}
-	
+
 	// Run Blast on the provided primers and query, calls addHeaderToTSV on the resulting .tsv file
 	public static class BlastTask implements Runnable {
-		
-		private final String primers;
-		private final String query;
-		private final File detailedDir;
+
+		private final Path primers;
+		private final Path query;
+		private final Path detailedDir;
 		private final String sep;
-		private final File BLASTLocation;
+		private final Path BLASTLocation;
 		private final double evalue;
 
 
-		public BlastTask(String primers, String query, File detailedDir, String sep, File BLASTLocation, double evalue) {
+		public BlastTask(Path primers, Path query, Path detailedDir, String sep, Path BLASTLocation, double evalue) {
 			this.primers = primers;
 			this.query = query;
 			this.detailedDir = detailedDir;
 			this.sep = sep;
 			this.BLASTLocation = BLASTLocation;
-            this.evalue = evalue;
-        }
-		
+			this.evalue = evalue;
+		}
+
 		public void run() {
-			
-			File file = new File(query);
-			String name = file.getName().split("_assembly\\.fasta")[0];
+
+			String name = query.getFileName().toString().split("_assembly\\.fasta")[0];
 			name = name.split("\\.fasta")[0];
 			name = name.split("\\.fna")[0];
 			name = name.split("\\.ffn")[0];
-			File blastOutput = new File(detailedDir.getAbsolutePath() + sep + name);
-			blastOutput.mkdirs();
-			File blastTSV = new File(blastOutput.getAbsolutePath() + sep + name + ".tsv");
-			String[] windowsFullProcessCall = {BLASTLocation.getAbsolutePath() + sep + "ca/canada/inspection/insilicopcr/blastn.exe", "-task", "blastn-short", "-query",
-					query, "-db", primers, "-evalue", Double.toString(evalue), "-num_alignments", "1000000", "-num_threads", "1", "-outfmt",
+			Path blastOutput = detailedDir.resolve(name);
+			try { Files.createDirectories(blastOutput); } catch (IOException e) { throw new IllegalStateException("Unable to create BLAST output directory: " + blastOutput, e); }
+			Path blastTSV = blastOutput.resolve(name + ".tsv");
+			String[] windowsFullProcessCall = {AppPaths.executable(BLASTLocation, "blastn").toString(), "-task", "blastn-short", "-query",
+					query.toString(), "-db", primers.toString(), "-evalue", Double.toString(evalue), "-num_alignments", "1000000", "-num_threads", "1", "-outfmt",
 					"6 qseqid sseqid positive mismatch gaps evalue bitscore slen length qstart qend qseq sstart send sseq",
-					"-out", blastTSV.getAbsolutePath()};
-			String[] linuxFullProcessCall = {BLASTLocation.getAbsolutePath() + sep + "blastn", "-task", "blastn-short", "-query",
-					query, "-db", primers, "-evalue", Double.toString(evalue), "-num_alignments", "1000000", "-num_threads", "1", "-outfmt",
+					"-out", blastTSV.toString()};
+			String[] linuxFullProcessCall = {AppPaths.executable(BLASTLocation, "blastn").toString(), "-task", "blastn-short", "-query",
+					query.toString(), "-db", primers.toString(), "-evalue", Double.toString(evalue), "-num_alignments", "1000000", "-num_threads", "1", "-outfmt",
 					"6 qseqid sseqid positive mismatch gaps evalue bitscore slen length qstart qend qseq sstart send sseq",
-					"-out", blastTSV.getAbsolutePath()};
+					"-out", blastTSV.toString()};
 			try {
 				Process p;
 				if(System.getProperty("os.name").contains("Windows")) {

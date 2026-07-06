@@ -1,81 +1,99 @@
 package ca.canada.inspection.insilicopcr;
 
+import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.List;
 
 public class Sample {
-	
-	private ArrayList<String> sampleFiles = new ArrayList<String>();
+
+	private final ArrayList<Path> sampleFiles = new ArrayList<>();
 	private String name;
 	private String fileType;
-	private final HashMap<String, ArrayList<BlastResult>> blastResults = new HashMap<String, ArrayList<BlastResult>>();
-	private String assemblyFile;
-	private final HashMap<String, String> contigDict = new HashMap<String, String>();
+	private final HashMap<String, ArrayList<BlastResult>> blastResults = new HashMap<>();
+	private Path assemblyFile;
+	private final HashMap<String, String> contigDict = new HashMap<>();
 
-	public Sample() {
-		
-	}
-	
 	public String getName() {
-		return this.name;
+		return name;
 	}
-	
+
 	public void setName(String name) {
 		this.name = name;
 	}
-	
-	public ArrayList<String> getFiles() {
-		return this.sampleFiles;
+
+	public ArrayList<Path> getFiles() {
+		return sampleFiles;
 	}
-	
-	public void setFile(String file) {
-		sampleFiles = new ArrayList<String>();
+
+	public void setFile(Path file) {
+		sampleFiles.clear();
 		sampleFiles.add(file);
 	}
-	
-	public void setFiles(ArrayList<String> files) {
-		this.sampleFiles = files;
+
+	public void setFile(String file) {
+		setFile(Path.of(file));
 	}
-	
+
+	public void setFiles(List<Path> files) {
+		sampleFiles.clear();
+		sampleFiles.addAll(files);
+		sortFiles();
+	}
+
+	public void addFile(Path file) {
+		sampleFiles.add(file);
+		sortFiles();
+	}
+
 	public void addFile(String fileName) {
-		this.sampleFiles.add(fileName);
+		addFile(Path.of(fileName));
 	}
-	
+
+	private void sortFiles() {
+		sampleFiles.sort(Comparator.comparing(Path::toString));
+	}
+
 	public String getFileType() {
-		return this.fileType;
+		return fileType;
 	}
-	
+
 	public void setFileType(String fileType) {
 		this.fileType = fileType;
 	}
-	
-	public HashMap<String, ArrayList<BlastResult>> getBlastResults(){
-		return this.blastResults;
+
+	public HashMap<String, ArrayList<BlastResult>> getBlastResults() {
+		return blastResults;
 	}
-	
+
 	public void addBlastResult(String key, BlastResult results) {
-		this.blastResults.get(key).add(results);
+		blastResults.get(key).add(results);
 	}
-	
+
 	public void addNewBlastResult(String key, BlastResult results) {
-		ArrayList<BlastResult> temp = new ArrayList<BlastResult>();
+		ArrayList<BlastResult> temp = new ArrayList<>();
 		temp.add(results);
-		this.blastResults.put(key, temp);
+		blastResults.put(key, temp);
 	}
-	
-	public String getAssemblyFile() {
-		return this.assemblyFile;
+
+	public Path getAssemblyFile() {
+		return assemblyFile;
 	}
-	
-	public void setAssemblyFile(String assemblyFile) {
+
+	public void setAssemblyFile(Path assemblyFile) {
 		this.assemblyFile = assemblyFile;
 	}
-	
-	public void addContig(String acc, String desc) {
-		this.contigDict.put(acc, desc);
+
+	public void setAssemblyFile(String assemblyFile) {
+		setAssemblyFile(Path.of(assemblyFile));
 	}
-	
-	public HashMap<String, String> getContigDict(){
-		return this.contigDict;
+
+	public void addContig(String acc, String desc) {
+		contigDict.put(acc, desc);
+	}
+
+	public HashMap<String, String> getContigDict() {
+		return contigDict;
 	}
 }

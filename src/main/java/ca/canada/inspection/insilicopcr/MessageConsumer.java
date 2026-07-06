@@ -11,12 +11,12 @@ public class MessageConsumer extends AnimationTimer{
 
 	private final BlockingQueue<String> messageQueue;
 	private final TextArea textArea;
-	
+
 	public MessageConsumer(BlockingQueue<String> messageQueue, TextArea textArea) {
 		this.messageQueue = messageQueue;
 		this.textArea = textArea;
 	}
-	
+
 	@Override
 	public void handle(long now) {
 		List<String> messages = new ArrayList<String>();

@@ -73,14 +73,14 @@ public class Find {
             this.matcher = FileSystems.getDefault().getPathMatcher("glob:" + pattern);
             this.startingDir = startingDir;
         }
-        
+
         public ArrayList<Path> run() {
-        	try{
-            	Files.walkFileTree(startingDir, this);
+            try{
+                Files.walkFileTree(startingDir, this);
             }catch(IOException e) {
-            	e.printStackTrace();
+                e.printStackTrace();
             }
-        	this.done();
+            this.done();
             return this.results;
         }
 
@@ -88,8 +88,8 @@ public class Find {
         // the file or directory name.
         void find(Path file) {
             if (file != null && matcher.matches(file)) {
-           		results.add(file);
-           	}
+                results.add(file);
+            }
         }
 
         // Prints the total number of
@@ -102,7 +102,7 @@ public class Find {
         // method on each file.
         @Override
         public FileVisitResult visitFile(Path file,
-                BasicFileAttributes attrs) {
+                                         BasicFileAttributes attrs) {
             find(file);
             return CONTINUE;
         }
@@ -111,14 +111,14 @@ public class Find {
         // method on each directory.
         @Override
         public FileVisitResult preVisitDirectory(Path dir,
-                BasicFileAttributes attrs) {
+                                                 BasicFileAttributes attrs) {
             find(dir);
             return CONTINUE;
         }
 
         @Override
         public FileVisitResult visitFileFailed(Path file,
-                IOException exc) {
+                                               IOException exc) {
             return CONTINUE;
         }
     }

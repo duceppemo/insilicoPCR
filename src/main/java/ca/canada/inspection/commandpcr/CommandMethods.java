@@ -50,7 +50,7 @@ public final class CommandMethods {
 	);
 
 	private static final Pattern VALID_PRIMER_SEQUENCE = Pattern.compile("^[ATCGRYSWKMBDHVN]+$");
-	private static final Pattern RELEASE_TAG = Pattern.compile("/chmaraj/In[_s]ilico[_P]CR/releases/tag/[^>]*>(?:v|V)?([0-9]+(?:\\.[0-9]+)*)<");
+	private static final Pattern RELEASE_TAG = Pattern.compile("/chmaraj/In[_s]ilico[_P]CR/releases/tag/[^>]*>(?:vV)?([0-9]+(?:\\.[0-9]+)*)<");
 	private static final DateTimeFormatter QA_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss");
 
 	private CommandMethods() {
@@ -413,19 +413,28 @@ public final class CommandMethods {
 	private static void runProcess(Path workingDirectory, String... command) {
 		try {
 			ProcessBuilder builder = new ProcessBuilder(command);
+
 			if (workingDirectory != null) {
 				builder.directory(workingDirectory.toFile());
 			}
-			Process process = builder.inheritIO().start();
-			int exitCode = process.waitFor();
-			if (exitCode != 0) {
-				throw new IllegalStateException("Command failed with exit code " + exitCode + ": " + String.join(" ", command));
+
+			try (Process process = builder.inheritIO().start()) {
+				int exitCode = process.waitFor();
+
+				if (exitCode != 0) {
+					throw new IllegalStateException(
+							"Command failed with exit code " + exitCode + ": "
+									+ String.join(" ", command));
+				}
 			}
+
 		} catch (IOException e) {
-			throw new IllegalStateException("Could not start command: " + String.join(" ", command), e);
+			throw new IllegalStateException(
+					"Could not start command: " + String.join(" ", command), e);
 		} catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
-			throw new IllegalStateException("Interrupted while running command: " + String.join(" ", command), e);
+			throw new IllegalStateException(
+					"Interrupted while running command: " + String.join(" ", command), e);
 		}
 	}
 

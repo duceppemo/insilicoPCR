@@ -23,16 +23,22 @@ final class BlastTsv {
 
     static void prependHeader(Path path) {
         Objects.requireNonNull(path, "path");
-        Path parent = path.getParent();
+
         try {
+            Path parent = path.getParent();
             if (parent != null) {
                 Files.createDirectories(parent);
             }
-            Path temp = Files.createTempFile(parent, path.getFileName().toString(), ".tmp");
+
+            Path temp = (parent != null)
+                    ? Files.createTempFile(parent, path.getFileName().toString(), ".tmp")
+                    : Files.createTempFile(path.getFileName().toString(), ".tmp");
+
             try {
                 try (BufferedWriter writer = Files.newBufferedWriter(temp, StandardCharsets.UTF_8)) {
                     writer.write(HEADER);
                     writer.newLine();
+
                     if (Files.exists(path)) {
                         try (BufferedReader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)) {
                             String line;
@@ -43,11 +49,18 @@ final class BlastTsv {
                         }
                     }
                 }
-                Files.move(temp, path, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+
+                Files.move(
+                        temp,
+                        path,
+                        StandardCopyOption.REPLACE_EXISTING,
+                        StandardCopyOption.ATOMIC_MOVE);
+
             } catch (IOException e) {
                 Files.deleteIfExists(temp);
                 throw e;
             }
+
         } catch (IOException e) {
             throw new PipelineException("Could not add BLAST TSV header to: " + path, e);
         }

@@ -38,9 +38,15 @@ public final class BlastPipeline {
     }
 
     public void run() {
-        pool = new ThreadPoolExecutor(config.threads(), Integer.MAX_VALUE, Long.MAX_VALUE, TimeUnit.SECONDS,
+        pool = new ThreadPoolExecutor(
+                config.threads(),
+                Integer.MAX_VALUE,
+                Long.MAX_VALUE,
+                TimeUnit.SECONDS,
                 new LinkedBlockingQueue<>());
+
         var primers = config.outDir().resolve("primer_tmp.fasta");
+
         for (var sample : sampleDict.values()) {
             if ("fastq".equals(sample.getFileType())) {
                 pool.submit(() -> runBlast(primers, sample.getAssemblyFile()));
@@ -50,18 +56,28 @@ public final class BlastPipeline {
                 }
             }
         }
+
         try {
             pool.shutdown();
-            while (!pool.getQueue().isEmpty()) {
-                updateBlastProgress(pool.getCompletedTaskCount() + config.threads(), pool.getTaskCount());
+
+            while (!pool.isTerminated()) {
+                updateBlastProgress(
+                        pool.getCompletedTaskCount(),
+                        pool.getTaskCount());
+
+                if (!pool.awaitTermination(250, TimeUnit.MILLISECONDS)) {
+                    continue;
+                }
             }
-            pool.awaitTermination(Long.MAX_VALUE, TimeUnit.SECONDS);
+
         } catch (InterruptedException e) {
+            pool.shutdownNow();
             Thread.currentThread().interrupt();
             throw new IllegalStateException("Interrupted while waiting for BLAST tasks", e);
         } finally {
             processTracker.clear();
         }
+
         updateBlastProgress(1, 1);
     }
 

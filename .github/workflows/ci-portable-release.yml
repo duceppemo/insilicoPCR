@@ -45,14 +45,11 @@ jobs:
             echo "value=0.6.0" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Validate bundled Linux runtime tools
+      - name: Validate bundled runtime tools
         shell: bash
         run: |
-          test -d runtime/common/bbmap || { echo 'Missing runtime/common/bbmap'; exit 1; }
-          test -f runtime/common/bbmap/bbduk.sh -o -f runtime/common/bbmap/current/bbduk.sh || { echo 'Missing BBMap bbduk.sh'; exit 1; }
-          test -d runtime/linux/blast/bin || { echo 'Missing runtime/linux/blast/bin'; exit 1; }
-          test -f runtime/linux/blast/bin/makeblastdb || { echo 'Missing Linux makeblastdb'; exit 1; }
-          test -f runtime/linux/blast/bin/blastn || { echo 'Missing Linux blastn'; exit 1; }
+          chmod +x scripts/dev/verify-runtime-layout.sh
+          scripts/dev/verify-runtime-layout.sh
 
       - name: Build Linux portable ZIP
         shell: bash
@@ -61,9 +58,6 @@ jobs:
         run: |
           chmod +x mvnw
           chmod +x scripts/release/package-linux-portable.sh
-          chmod +x runtime/common/bbmap/*.sh 2>/dev/null || true
-          chmod +x runtime/common/bbmap/current/*.sh 2>/dev/null || true
-          chmod +x runtime/linux/blast/bin/* 2>/dev/null || true
           scripts/release/package-linux-portable.sh "${{ steps.version.outputs.value }}"
 
       - name: Upload Linux artifact
@@ -104,14 +98,11 @@ jobs:
             "value=0.6.0" >> $env:GITHUB_OUTPUT
           }
 
-      - name: Validate bundled Windows runtime tools
-        shell: pwsh
+      - name: Validate bundled runtime tools
+        shell: bash
         run: |
-          if (-not (Test-Path 'runtime\common\bbmap')) { throw 'Missing runtime/common/bbmap' }
-          if (-not ((Test-Path 'runtime\common\bbmap\bbduk.bat') -or (Test-Path 'runtime\common\bbmap\current\bbduk.bat') -or (Test-Path 'runtime\common\bbmap\bbduk.sh') -or (Test-Path 'runtime\common\bbmap\current\bbduk.sh'))) { throw 'Missing BBMap bbduk launcher' }
-          if (-not (Test-Path 'runtime\windows\blast\bin')) { throw 'Missing runtime/windows/blast/bin' }
-          if (-not (Test-Path 'runtime\windows\blast\bin\makeblastdb.exe')) { throw 'Missing Windows makeblastdb.exe' }
-          if (-not (Test-Path 'runtime\windows\blast\bin\blastn.exe')) { throw 'Missing Windows blastn.exe' }
+          chmod +x scripts/dev/verify-runtime-layout.sh
+          scripts/dev/verify-runtime-layout.sh
 
       - name: Build Windows portable ZIP
         shell: pwsh

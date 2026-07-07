@@ -52,3 +52,9 @@ qodana.sarif.json
 *.exe
 *.app/
 *.app-image/
+
+# Do not ignore bundled BLAST executables under runtime/
+!runtime/linux/blast/bin/
+!runtime/linux/blast/bin/*
+!runtime/windows/blast/bin/
+!runtime/windows/blast/bin/*

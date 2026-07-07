@@ -22,27 +22,38 @@ public final class ProcessRunner {
         }
 
         Instant start = Instant.now();
+
         try {
             ProcessBuilder builder = new ProcessBuilder(command).inheritIO();
             if (workingDirectory != null) {
                 builder.directory(workingDirectory.toFile());
             }
 
-            Process process = builder.start();
-            int exitCode = process.waitFor();
-            Duration elapsed = Duration.between(start, Instant.now());
-            Result result = new Result(exitCode, elapsed, command);
-            if (exitCode != 0) {
-                throw new ProcessException("External command failed: " + result.commandLine()
-                        + " (exit " + exitCode + ", " + elapsed.toSeconds() + "s)", result);
+            try (Process process = builder.start()) {
+                int exitCode = process.waitFor();
+                Duration elapsed = Duration.between(start, Instant.now());
+
+                Result result = new Result(exitCode, elapsed, command);
+
+                if (exitCode != 0) {
+                    throw new ProcessException(
+                            "External command failed: " + result.commandLine()
+                                    + " (exit " + exitCode + ", " + elapsed.toSeconds() + "s)",
+                            result);
+                }
+
+                return result;
             }
-            return result;
         } catch (IOException e) {
-            throw new ProcessException("Could not start external command: " + String.join(" ", command), e,
+            throw new ProcessException(
+                    "Could not start external command: " + String.join(" ", command),
+                    e,
                     new Result(-1, Duration.between(start, Instant.now()), command));
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new ProcessException("Interrupted while running external command: " + String.join(" ", command), e,
+            throw new ProcessException(
+                    "Interrupted while running external command: " + String.join(" ", command),
+                    e,
                     new Result(-1, Duration.between(start, Instant.now()), command));
         }
     }

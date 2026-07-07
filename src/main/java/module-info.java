@@ -1,7 +1,4 @@
 module ca.canada.inspection.insilicopcr {
-    requires java.management;
-    requires jdk.management;
-
     requires javafx.controls;
     requires javafx.fxml;
     requires java.desktop;
@@ -17,5 +14,6 @@ module ca.canada.inspection.insilicopcr {
     exports ca.canada.inspection.insilicopcr;
     exports ca.canada.inspection.commandpcr;
     exports ca.canada.inspection.dispatchpcr;
+    exports ca.canada.inspection.pipeline;
     exports ca.canada.inspection.util;
 }

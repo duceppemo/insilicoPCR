@@ -1,4 +1,4 @@
-package ca.canada.inspection.insilicopcr.pipeline;
+package ca.canada.inspection.pipeline;
 
 import java.io.IOException;
 import java.nio.file.Files;

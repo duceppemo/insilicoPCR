@@ -1,4 +1,4 @@
-package ca.canada.inspection.insilicopcr.pipeline;
+package ca.canada.inspection.pipeline;
 
 import ca.canada.inspection.dispatchpcr.Dispatcher;
 import ca.canada.inspection.insilicopcr.Methods;

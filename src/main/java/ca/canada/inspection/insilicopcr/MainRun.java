@@ -1,12 +1,12 @@
 package ca.canada.inspection.insilicopcr;
 
 import ca.canada.inspection.dispatchpcr.Dispatcher;
-import ca.canada.inspection.insilicopcr.pipeline.DependencyContext;
-import ca.canada.inspection.insilicopcr.pipeline.ExternalProcessTracker;
-import ca.canada.inspection.insilicopcr.pipeline.InputValidator;
-import ca.canada.inspection.insilicopcr.pipeline.LogFiles;
-import ca.canada.inspection.insilicopcr.pipeline.PcrPipelineTask;
-import ca.canada.inspection.insilicopcr.pipeline.PcrRunConfig;
+import ca.canada.inspection.pipeline.DependencyContext;
+import ca.canada.inspection.pipeline.ExternalProcessTracker;
+import ca.canada.inspection.pipeline.InputValidator;
+import ca.canada.inspection.pipeline.LogFiles;
+import ca.canada.inspection.pipeline.PcrPipelineTask;
+import ca.canada.inspection.pipeline.PcrRunConfig;
 import ca.canada.inspection.insilicopcr.ui.PathFieldBinder;
 import javafx.application.Application;
 import javafx.application.Platform;

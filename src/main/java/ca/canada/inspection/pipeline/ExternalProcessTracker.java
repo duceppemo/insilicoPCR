@@ -1,4 +1,4 @@
-package ca.canada.inspection.insilicopcr.pipeline;
+package ca.canada.inspection.pipeline;
 
 import java.util.ArrayList;
 import java.util.List;

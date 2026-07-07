@@ -10,9 +10,6 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
-
 public final class Dispatcher {
 
 	public static final String version = "0.6.0-SNAPSHOT";
@@ -20,24 +17,23 @@ public final class Dispatcher {
 	private Dispatcher() {
 	}
 
-	static void main(String[] args) {
+	public static void main(String[] args) {
 		if (args.length == 0) {
 			MainRun.main(args);
 			return;
 		}
 
 		Options options = options();
-		CommandLineParser parser = new DefaultParser();
 		HelpFormatter formatter = new HelpFormatter();
 
 		try {
+			CommandLineParser parser = new DefaultParser();
 			CommandLine cmd = parser.parse(options, args);
 			if (cmd.hasOption("help")) {
 				printHelp(formatter, options);
 				return;
 			}
-			CliConfig config = CliConfig.from(cmd);
-			new CommandMain(config.input(), config.output(), config.primers(), config.threads(), config.mismatches(), config.evalue()).run();
+			CommandMain.from(CliConfig.from(cmd)).run();
 		} catch (ParseException | IllegalArgumentException e) {
 			System.err.println(e.getMessage());
 			printHelp(formatter, options);
@@ -68,57 +64,5 @@ public final class Dispatcher {
 
 	private static void printHelp(HelpFormatter formatter, Options options) {
 		formatter.printHelp("java -jar insilicoPCR.jar -i <input> -o <output> -p <primers> [-t n] [-m n] [-e value]", options);
-	}
-
-	private record CliConfig(Path input, Path output, Path primers, int threads, int mismatches, double evalue) {
-		static CliConfig from(CommandLine cmd) {
-			Path input = requiredPath(cmd, "input");
-			Path output = requiredPath(cmd, "output");
-			Path primers = requiredPath(cmd, "primers");
-
-			if (!Files.exists(input)) {
-				throw new IllegalArgumentException("Input does not exist: " + input);
-			}
-			if (!Files.exists(primers)) {
-				throw new IllegalArgumentException("Primer file does not exist: " + primers);
-			}
-
-			int threads = positiveInt(cmd.getOptionValue("threads"), Runtime.getRuntime().availableProcessors(), "threads");
-			int mismatches = nonNegativeInt(cmd.getOptionValue("mismatches"), 0, "mismatches");
-			double evalue = positiveDouble(cmd.getOptionValue("evalue"), 1e5, "evalue");
-			return new CliConfig(input, output, primers, threads, mismatches, evalue);
-		}
-
-		private static Path requiredPath(CommandLine cmd, String option) {
-			String value = cmd.getOptionValue(option);
-			if (value == null || value.isBlank()) {
-				throw new IllegalArgumentException("Missing required option: --" + option);
-			}
-			return Path.of(value).toAbsolutePath().normalize();
-		}
-
-		private static int positiveInt(String value, int defaultValue, String name) {
-			int parsed = value == null ? defaultValue : Integer.parseInt(value);
-			if (parsed < 1) {
-				throw new IllegalArgumentException(name + " must be >= 1");
-			}
-			return parsed;
-		}
-
-		private static int nonNegativeInt(String value, int defaultValue, String name) {
-			int parsed = value == null ? defaultValue : Integer.parseInt(value);
-			if (parsed < 0) {
-				throw new IllegalArgumentException(name + " must be >= 0");
-			}
-			return parsed;
-		}
-
-		private static double positiveDouble(String value, double defaultValue, String name) {
-			double parsed = value == null ? defaultValue : Double.parseDouble(value);
-			if (!(parsed > 0.0)) {
-				throw new IllegalArgumentException(name + " must be > 0");
-			}
-			return parsed;
-		}
 	}
 }

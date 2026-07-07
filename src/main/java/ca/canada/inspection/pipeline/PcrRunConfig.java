@@ -1,4 +1,4 @@
-package ca.canada.inspection.insilicopcr.pipeline;
+package ca.canada.inspection.pipeline;
 
 import javafx.scene.control.ProgressBar;
 import javafx.scene.control.TextArea;

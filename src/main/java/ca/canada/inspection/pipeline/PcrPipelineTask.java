@@ -1,11 +1,9 @@
-package ca.canada.inspection.insilicopcr.pipeline;
+package ca.canada.inspection.pipeline;
 
-import ca.canada.inspection.dispatchpcr.Dispatcher;
 import ca.canada.inspection.insilicopcr.Methods;
 import ca.canada.inspection.insilicopcr.Sample;
 import javafx.concurrent.Task;
 
-import java.nio.file.Files;
 import java.util.HashMap;
 
 public final class PcrPipelineTask extends Task<Void> {

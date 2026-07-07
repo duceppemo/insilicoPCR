@@ -1,11 +1,10 @@
-package ca.canada.inspection.insilicopcr.pipeline;
+package ca.canada.inspection.pipeline;
 
 import ca.canada.inspection.dispatchpcr.AppPaths;
 import ca.canada.inspection.insilicopcr.MessageConsumer;
 import ca.canada.inspection.insilicopcr.Methods;
 import ca.canada.inspection.insilicopcr.Sample;
 import javafx.application.Platform;
-import javafx.scene.control.TextArea;
 
 import java.io.BufferedReader;
 import java.io.IOException;

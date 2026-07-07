@@ -1,9 +1,16 @@
 package ca.canada.inspection.insilicopcr;
 
-/** Immutable BLAST hit used by the report parser and consolidated-report writer. */
-public record BlastResult(String name, String queryID, String subjectID, int mismatch,
-                          int start, int end, int length, String seq) {
-
+/** Immutable BLAST hit accepted by the parser. */
+public record BlastResult(
+		String name,
+		String queryID,
+		String subjectID,
+		int mismatch,
+		int start,
+		int end,
+		int length,
+		String seq
+) {
 	public String getName() { return name; }
 	public String getQueryID() { return queryID; }
 	public String getSubjectID() { return subjectID; }

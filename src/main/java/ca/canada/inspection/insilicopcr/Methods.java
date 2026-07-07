@@ -7,18 +7,24 @@ import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.charset.StandardCharsets;
-import java.io.BufferedWriter;
-import java.util.stream.Stream;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 import ca.canada.inspection.dispatchpcr.AppPaths;
 import ca.canada.inspection.util.SequenceFileUtils;
@@ -26,9 +32,10 @@ import ca.canada.inspection.util.SequenceFileUtils;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 
+@SuppressWarnings({"unused", "SameParameterValue"})
 public class Methods {
 
-	private static final HashMap<Character, Character[]> degenerates = new HashMap<Character, Character[]>();
+	private static final HashMap<Character, Character[]> degenerates = new HashMap<>();
 	private static Pattern degenRegex;
 
 	// Input directory must contain at least one fastq/fasta format file
@@ -49,7 +56,7 @@ public class Methods {
 
 	public static boolean verifyPrimerFile(Path primerFile) {
 		String line;
-		HashMap<String, ArrayList<String>> primerNames = new HashMap<String, ArrayList<String>>();
+		HashMap<String, ArrayList<String>> primerNames = new HashMap<>();
 		try(BufferedReader reader = new BufferedReader(Files.newBufferedReader(primerFile))){
 			while((line = reader.readLine()) != null) {
 				if(line.isEmpty()) {
@@ -61,7 +68,7 @@ public class Methods {
 					String primerName = String.join("", primerNameSections);
 					String primerType = primerSections[primerSections.length - 1];
 					if(!primerNames.containsKey(primerName)) {
-						ArrayList<String> list = new ArrayList<String>();
+						ArrayList<String> list = new ArrayList<>();
 						list.add(primerType);
 						primerNames.put(primerName, list);
 					}else {
@@ -70,7 +77,7 @@ public class Methods {
 				}
 			}
 		}catch(IOException e) {
-			e.printStackTrace();
+			throw new IllegalStateException("I/O operation failed", e);
 		}
 		for(String key : primerNames.keySet()) {
 			if(primerNames.get(key).contains("P")) {
@@ -97,7 +104,7 @@ public class Methods {
 
 	// Create a list of samples
 	public static HashMap<String, Sample> createSampleDict(Path inputFile) {
-		return new HashMap<String, Sample>(SequenceFileUtils.createSampleMap(inputFile));
+		return new HashMap<>(SequenceFileUtils.createSampleMap(inputFile));
 	}
 
 	public static HashMap<String, Sample> createSampleDict(File inputFile) {
@@ -107,44 +114,31 @@ public class Methods {
 	// Parse a fasta file into a dictionary, where the ID is the key value for the sequence
 	public static HashMap<String, String> parseFastaToDictionary(Path file){
 
-		HashMap<String, String> fastaDict = new HashMap<String, String>();
+		HashMap<String, String> fastaDict = new HashMap<>();
 
-		// First read in all lines
-		String line;
-		ArrayList<String> lines = new ArrayList<String>();
-		try (BufferedReader reader = new BufferedReader(Files.newBufferedReader(file))){
-			try {
-				while((line = reader.readLine()) != null) {
-					if(!line.isEmpty()) {
-						lines.add(line);
-					}
-				}
-			}catch(IOException e) {
-				e.printStackTrace();
-			}
-			reader.close();
-		}catch(IOException e) {
-			e.printStackTrace();
-		}
-		// This will recreate the file in memory
-		String joinedLines = String.join("\n", lines);
-
-		//Split into entries
-		String[] splitEntries = joinedLines.split(">");
-		for(String entry : splitEntries) {
-
-			//Get rid of first entry from the split, it will contain nothing
-			if(!entry.isEmpty()) {
-				String[] splitEntry = entry.split("\n");
-				String id = splitEntry[0].trim();
-				String seq = splitEntry[1].trim();
-				if(seq.isEmpty()) {
+		try (BufferedReader reader = Files.newBufferedReader(file, StandardCharsets.UTF_8)) {
+			String id = null;
+			StringBuilder sequence = new StringBuilder();
+			String line;
+			while ((line = reader.readLine()) != null) {
+				if (line.isEmpty()) {
 					continue;
 				}
-
-				// Put the entry into the dictionary
-				fastaDict.put(id, seq);
+				if (line.startsWith(">")) {
+					if (id != null && !sequence.isEmpty()) {
+						fastaDict.put(id, sequence.toString());
+					}
+					id = line.substring(1).trim();
+					sequence.setLength(0);
+				} else {
+					sequence.append(line.trim());
+				}
 			}
+			if (id != null && !sequence.isEmpty()) {
+				fastaDict.put(id, sequence.toString());
+			}
+		} catch (IOException e) {
+			throw new IllegalStateException("Unable to parse FASTA file: " + file, e);
 		}
 
 		// Return the filled dictionary
@@ -175,7 +169,7 @@ public class Methods {
 		Character[] degenCharArray = degenerates.keySet().toArray(new Character[0]);
 		char[] charDegen = new char[degenCharArray.length];
 		for(int i = 0; i < charDegen.length; i++) {
-			charDegen[i] = (char)degenCharArray[i];
+			charDegen[i] = degenCharArray[i];
 		}
 		String degenRegexString = String.join("", new String(charDegen));
 		degenRegex = Pattern.compile("[" + degenRegexString + "]");
@@ -184,11 +178,7 @@ public class Methods {
 		Pattern regex = Pattern.compile("[^ATCGRYSWKMBDHVN]");
 
 		// Have to make a deep copy of the primerDict keys, otherwise we get a reference that changes when we change the primerDict
-		ArrayList<String> keySet = new ArrayList<String>();
-//		for(String key : primerDict.keySet()) {
-//			keySet.add(key);
-//		}
-		keySet.addAll(primerDict.keySet());
+		List<String> keySet = new ArrayList<>(primerDict.keySet());
 		for(String key : keySet) {
 			String seq = primerDict.get(key);
 
@@ -202,12 +192,12 @@ public class Methods {
 			// If the sequence contains degenerated bases, create sequences for all possible iterations
 			Matcher degenMatcher = degenRegex.matcher(seq);
 			if(degenMatcher.find()) {
-				ArrayList<String> expandedSeq = expandDegenerated(seq, 0, new ArrayList<String>());
+				ArrayList<String> expandedSeq = expandDegenerated(seq, 0, new ArrayList<>());
 
 				// Remove the original entry which contained degenerate bases, replace with all the possible sequences
 				primerDict.remove(key);
 				for(int i = 0; i < expandedSeq.size(); i++) {
-					String newID = key + "_" + Integer.toString(i);
+					String newID = key + "_" + i;
 					String newSeq = expandedSeq.get(i);
 					primerDict.put(newID, newSeq);
 				}
@@ -251,7 +241,7 @@ public class Methods {
 					// If more degenerate bases are found, do the same as above, but starting from the base following the one just replaced.
 					if(matcher.find()) {
 						int j = i + 1;
-						ArrayList<String> expanded = expandDegenerated(newSeq, j, primerContainer);
+						expandDegenerated(newSeq, j, primerContainer);
 
 						// If no more degenerate bases are found, we have reached the end, and can add the sequence to the list to be returned.
 					}else {
@@ -264,17 +254,25 @@ public class Methods {
 	}
 
 	// Make BLAST binaries executable
+	@SuppressWarnings("resource")
 	public static void makeExecutable(Path BLASTLocation) {
 		String[] processCall = {"chmod", "+x", "makeblastdb", "blastn"};
+		Process process = null;
 		try {
-			Process p = new ProcessBuilder(processCall).directory(BLASTLocation.toFile()).start();
-			try {
-				p.waitFor();
-			}catch(InterruptedException e) {
-				e.printStackTrace();
+			process = new ProcessBuilder(processCall).directory(BLASTLocation.toFile()).start();
+			int exitCode = process.waitFor();
+			if (exitCode != 0) {
+				throw new IllegalStateException("Unable to mark BLAST binaries executable. Exit code: " + exitCode);
 			}
-		}catch(IOException e) {
-			e.printStackTrace();
+		} catch (IOException e) {
+			throw new IllegalStateException("Unable to run chmod in: " + BLASTLocation, e);
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			throw new IllegalStateException("Interrupted while marking BLAST binaries executable", e);
+		} finally {
+			if (process != null) {
+				process.destroy();
+			}
 		}
 	}
 
@@ -283,26 +281,28 @@ public class Methods {
 	}
 
 	// Make a BLAST database from the primers
+	@SuppressWarnings("resource")
 	public static void makeBlastDB(Path reference, Path BLASTLocation, TextArea outputField) {
-		String in = reference.toString();
-		String[] windowsFullProcessCall = {AppPaths.executable(BLASTLocation, "makeblastdb").toString(),
-				"-dbtype", "nucl", "-hash_index", "-in", in};
-		String[] linuxFullProcessCall = {AppPaths.executable(BLASTLocation, "makeblastdb").toString(),
-				"-dbtype", "nucl", "-hash_index", "-in", in};
-		try{
-			Process p;
-			if(System.getProperty("os.name").contains("Windows")) {
-				p = new ProcessBuilder(windowsFullProcessCall).start();
-			}else {
-				p = new ProcessBuilder(linuxFullProcessCall).start();
+		String[] processCall = {
+				AppPaths.executable(BLASTLocation, "makeblastdb").toString(),
+				"-dbtype", "nucl", "-hash_index", "-in", reference.toString()
+		};
+		Process process = null;
+		try {
+			process = new ProcessBuilder(processCall).start();
+			int exitCode = process.waitFor();
+			if (exitCode != 0) {
+				throw new IllegalStateException("makeblastdb failed with exit code: " + exitCode);
 			}
-			try {
-				p.waitFor();
-			}catch(InterruptedException e) {
-				e.printStackTrace();
+		} catch (IOException e) {
+			throw new IllegalStateException("Unable to run makeblastdb for reference: " + reference, e);
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			throw new IllegalStateException("Interrupted while running makeblastdb", e);
+		} finally {
+			if (process != null) {
+				process.destroy();
 			}
-		}catch(IOException e) {
-			e.printStackTrace();
 		}
 	}
 
@@ -313,7 +313,7 @@ public class Methods {
 	// Add the correct result headers to the Blast tsv output file
 	public static void addHeaderToTSV(Path tsvFile) {
 		String tab = "\t";
-		String[] headerFileIDs = new String[] {"qseqid", "sseqid", "positive", "mismatch", "gaps", "evalue",
+		String[] headerFileIDs = {"qseqid", "sseqid", "positive", "mismatch", "gaps", "evalue",
 				"bitscore", "slen", "length", "qstart", "qend", "qseq", "sstart", "send", "sseq"};
 		String header = String.join(tab, headerFileIDs);
 		try {
@@ -400,9 +400,11 @@ public class Methods {
 
 	public static void addContigDict(HashMap<String, Sample> sampleDict) {
 		String line;
-		for(String key : sampleDict.keySet()) {
-			if(sampleDict.get(key).getFileType().equals("fastq")) {
-				try(BufferedReader reader = new BufferedReader(Files.newBufferedReader(sampleDict.get(key).getAssemblyFile()))){
+		for(Map.Entry<String, Sample> entry : sampleDict.entrySet()) {
+			String key = entry.getKey();
+			Sample sample = entry.getValue();
+			if(sample.getFileType().equals("fastq")) {
+				try(BufferedReader reader = new BufferedReader(Files.newBufferedReader(sample.getAssemblyFile()))){
 					while((line = reader.readLine()) != null) {
 						if(line.startsWith(">")) {
 							String fullLine = line.split(">")[1];
@@ -411,18 +413,18 @@ public class Methods {
 							if(items.length > 1) {
 								String[] contigDescItems = Arrays.copyOfRange(items, 1, items.length);
 								String description = String.join(" ", contigDescItems);
-								sampleDict.get(key).addContig(contigID, description);
+								sample.addContig(contigID, description);
 							}
 							else {
-								sampleDict.get(key).addContig(contigID, "");
+								sample.addContig(contigID, "");
 							}
 						}
 					}
 				}catch(IOException e) {
-					e.printStackTrace();
-				};
+					throw new IllegalStateException("Unable to read assembly file for sample: " + key, e);
+				}
 			}else {
-				for(Path file : sampleDict.get(key).getFiles()) {
+				for(Path file : sample.getFiles()) {
 					try(BufferedReader reader = new BufferedReader(Files.newBufferedReader(file))){
 						while((line = reader.readLine()) != null) {
 							if(line.startsWith(">")) {
@@ -432,14 +434,14 @@ public class Methods {
 								if(items.length > 1) {
 									String[] contigDescItems = Arrays.copyOfRange(items, 1, items.length);
 									String description = String.join(" ", contigDescItems);
-									sampleDict.get(key).addContig(contigID, description);
+									sample.addContig(contigID, description);
 								}else {
-									sampleDict.get(key).addContig(contigID, "");
+									sample.addContig(contigID, "");
 								}
 							}
 						}
 					}catch(IOException e) {
-						e.printStackTrace();
+						throw new IllegalStateException("Unable to read sequence file for sample: " + key + ": " + file, e);
 					}
 				}
 			}
@@ -460,15 +462,15 @@ public class Methods {
 		}
 
 		// The header for the consolidated report
-		String header = "";
+		String header;
 		if(qPCR) {
-			header = String.join("\t", new String[] {"Sample", "Gene", "GenomeLocation", "AmpliconSize", "Contig", "Contig Description",
+			header = String.join("\t", "Sample", "Gene", "GenomeLocation", "AmpliconSize", "Contig", "Contig Description",
 					"ForwardPrimers", "ReversePrimers", "ForwardMismatches", "ReverseMismatches",
-					"ForwardEndMismatch", "ReverseEndMismatch", "Probe", "ProbeLocation", "ProbeSize", "ProbeMismatches"});
+					"ForwardEndMismatch", "ReverseEndMismatch", "Probe", "ProbeLocation", "ProbeSize", "ProbeMismatches");
 		}else {
-			header = String.join("\t", new String[] {"Sample", "Gene", "GenomeLocation", "AmpliconSize", "Contig", "Contig Description",
+			header = String.join("\t", "Sample", "Gene", "GenomeLocation", "AmpliconSize", "Contig", "Contig Description",
 					"ForwardPrimers", "ReversePrimers", "ForwardMismatches", "ReverseMismatches",
-					"ForwardEndMismatch", "ReverseEndMismatch"});
+					"ForwardEndMismatch", "ReverseEndMismatch");
 		}
 
 		// Generate the file to be filled in
@@ -492,7 +494,7 @@ public class Methods {
 				if(!blastResults.isEmpty()) {
 //					String[] primerHits = blastResults.keySet().toArray(new String[blastResults.keySet().size()]); // Similar to what we did with the degenRegex issue
 					String[] primerHits = blastResults.keySet().toArray(new String[0]); // Similar to what we did with the degenRegex issue
-					HashMap<String, HashMap<String, ArrayList<String>>> primers = new HashMap<String, HashMap<String, ArrayList<String>>>();
+					HashMap<String, HashMap<String, ArrayList<String>>> primers = new HashMap<>();
 
 					/* What this is actually doing is placing the primers into a hashmap based on their base name, alongside
 					 *A list of directions. Therefore, a primer set of NAME-F and NAME-R would be listed under NAME with
@@ -504,10 +506,10 @@ public class Methods {
 						String direction = splitPrimer[splitPrimer.length - 1];
 						String primerName = String.join("-", Arrays.copyOfRange(splitPrimer, 0, splitPrimer.length - 1));
 						if(!primers.containsKey(primerName)) {
-							HashMap<String, ArrayList<String>> list = new HashMap<String, ArrayList<String>>();
-							ArrayList<String> fList = new ArrayList<String>();
-							ArrayList<String> rList = new ArrayList<String>();
-							ArrayList<String> pList = new ArrayList<String>();
+							HashMap<String, ArrayList<String>> list = new HashMap<>();
+							ArrayList<String> fList = new ArrayList<>();
+							ArrayList<String> rList = new ArrayList<>();
+							ArrayList<String> pList = new ArrayList<>();
 							if(direction.startsWith("F")) {
 								fList.add(direction);
 							}else if(direction.startsWith("R")) {
@@ -553,14 +555,14 @@ public class Methods {
 											Integer[] positions = {startF, endF, startR, endR};
 											int start = Collections.min(Arrays.asList(positions));
 											int end = Collections.max(Arrays.asList(positions));
-											String location = Integer.toString(start) + "-" + Integer.toString(end);
-											String size = Integer.toString(end - start + 1);
+											String location = start + "-" + end;
+											String size = String.valueOf(end - start + 1);
 											String contig = fResult.getQueryID();
 											String contigDescription = getContigDescription(sampleDict, key, contig);
-											String fwdMismatch = Integer.toString(fResult.getMismatch());
-											String revMismatch = Integer.toString(rResult.getMismatch());
-											String fwdEndMismatch = Integer.toString(fResult.getLength() - primerDict.get(fResult.getSubjectID()).length());
-											String revEndMismatch = Integer.toString(rResult.getLength() - primerDict.get(rResult.getSubjectID()).length());
+											String fwdMismatch = String.valueOf(fResult.getMismatch());
+											String revMismatch = String.valueOf(rResult.getMismatch());
+											String fwdEndMismatch = String.valueOf(fResult.getLength() - primerDict.get(fResult.getSubjectID()).length());
+											String revEndMismatch = String.valueOf(rResult.getLength() - primerDict.get(rResult.getSubjectID()).length());
 
 											// If a qPCR probe exists
 											if(qPCR) {
@@ -573,23 +575,24 @@ public class Methods {
 															}
 															int startP = pResult.getStart();
 															int endP = pResult.getEnd();
-															String locationP = Integer.toString(startP) + "-" + Integer.toString(endP);
-															String sizeP = Integer.toString(endP - startP + 1);
-															String pMismatch = Integer.toString(pResult.getMismatch());
+															String locationP = startP + "-" + endP;
+															String sizeP = String.valueOf(endP - startP + 1);
+															String pMismatch = String.valueOf(pResult.getMismatch());
 
 															// Probe only valid if it is contained within the surrounding amplicon
 															if(startP >= start && endP <= end) {
-																writer.write(String.join("\t", new String[] {key, primerKey, location, size, contig,
+																writer.write(String.join("\t", key, primerKey, location, size, contig,
 																		contigDescription, fwdPrimer, revPrimer, fwdMismatch, revMismatch,
-																		fwdEndMismatch, revEndMismatch, probePrimer, locationP, sizeP, pMismatch}));
+																		fwdEndMismatch, revEndMismatch, probePrimer, locationP, sizeP, pMismatch));
 																writer.write(System.lineSeparator());
 															}
+
 														}
 													}
 												}
 											}else {
-												writer.write(String.join("\t", new String[] {key, primerKey, location, size, contig, contigDescription,
-														fwdPrimer, revPrimer, fwdMismatch, revMismatch, fwdEndMismatch, revEndMismatch}));
+												writer.write(String.join("\t", key, primerKey, location, size, contig, contigDescription,
+														fwdPrimer, revPrimer, fwdMismatch, revMismatch, fwdEndMismatch, revEndMismatch));
 												writer.write(System.lineSeparator());
 											}
 										}
@@ -675,10 +678,10 @@ public class Methods {
 
 	public static void makeSyntheticGel(Scene scene, HashMap<String, Sample> sampleDict, Path consolidatedReport) {
 		Canvas canvas = new Canvas();
-		if(sampleDict.keySet().size() < 20) {
+		if(sampleDict.size() < 20) {
 			canvas.setWidth(scene.getWidth());
 		}else {
-			canvas.setWidth((scene.getWidth() / 22) * sampleDict.keySet().size());
+			canvas.setWidth((scene.getWidth() / 22) * sampleDict.size());
 		}
 		canvas.setHeight(scene.getHeight());
 		GraphicsContext gc = canvas.getGraphicsContext2D();
@@ -769,8 +772,8 @@ public class Methods {
 	public static void drawSamples(GraphicsContext gc, Path consolidatedReport, HashMap<String, Sample> sampleDict, double horizontalInset,
 	                               double verticalInset, double laneWidth, double bandWidth) {
 		String line;
-		ArrayList<String> lines = new ArrayList<String>();
-		ArrayList<String> targets = new ArrayList<String>();
+		ArrayList<String> lines = new ArrayList<>();
+		ArrayList<String> targets = new ArrayList<>();
 		try(BufferedReader reader = Files.newBufferedReader(consolidatedReport, StandardCharsets.UTF_8)){
 			while((line = reader.readLine()) != null) {
 				lines.add(line);
@@ -790,6 +793,8 @@ public class Methods {
 				if(fields[1].equals(target)) {
 					int size = Integer.parseInt(fields[3]);
 					double band = (Math.log10(size) - 2) / 2.3;
+					double y = verticalInset + (laneWidth * targets.indexOf(target)) + band;
+					gc.fillRect(horizontalInset, y, laneWidth, bandWidth);
 				}
 			}
 		}

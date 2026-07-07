@@ -1,58 +1,48 @@
 package ca.canada.inspection.dispatchpcr;
 
 import java.io.File;
-import java.io.IOException;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Comparator;
 import java.util.Locale;
 import java.util.Optional;
-import java.util.function.Predicate;
-import java.util.stream.Stream;
 
 /**
  * Centralized runtime path discovery for portable insilicoPCR releases.
  *
- * Supported layouts:
+ * <p>The supported release layout is intentionally deterministic:</p>
  *
- * Historical v0.5:
+ * <pre>
+ * insilicoPCR.jar
+ * lib/
+ * runtime/
+ *   common/
+ *     bbmap/
+ *   linux|windows/
+ *     blast/bin/
+ *     jdk/bin/java[.exe]
+ * </pre>
  *
- *   insilicoPCR.jar
- *   linux/bin/bbmap
- *   linux/bin/ncbi-blast-.../bin
- *   linux/jdk-21.0.3/bin/java
- *   linux/javafx-sdk-21.0.3/lib
- *
- * Modernized shared-runtime layout:
- *
- *   runtime/common/bbmap
- *   runtime/linux/jdk-...
- *   runtime/linux/javafx-sdk-...
- *   runtime/linux/blast/bin
- *   runtime/windows/jdk-...
- *   runtime/windows/javafx-sdk-...
- *   runtime/windows/blast/bin
+ * <p>Development runs from the Maven project root use the same checked-in
+ * runtime/common and runtime/&lt;platform&gt; bioinformatics tools. The bundled JDK
+ * is only required in packaged releases; while developing, the current JVM is
+ * accepted when runtime/&lt;platform&gt;/jdk is absent.</p>
  */
 public final class AppPaths {
     private AppPaths() {}
 
     public static RuntimeLayout discover() {
         Path appRoot = applicationRoot();
-        Path runtimeRoot = runtimeRoot(appRoot);
-        Path platformRoot = platformRoot(appRoot, runtimeRoot);
+        Path runtimeRoot = appRoot.resolve("runtime").toAbsolutePath().normalize();
+        String platform = platformName();
+        Path platformRoot = runtimeRoot.resolve(platform).toAbsolutePath().normalize();
 
-        Path bbmap = findBbmap(appRoot, runtimeRoot, platformRoot)
-                .orElseThrow(() -> missing("BBMap", appRoot));
-
-        Path blastBin = findBlastBin(appRoot, runtimeRoot, platformRoot)
-                .orElseThrow(() -> missing("NCBI BLAST bin directory", appRoot));
-
-        Path javaExecutable = findJavaExecutable(appRoot, runtimeRoot, platformRoot)
-                .orElseThrow(() -> missing("bundled Java runtime", appRoot));
-
-        Optional<Path> javafxLib = findJavaFxLib(appRoot, runtimeRoot, platformRoot);
+        Path bbmap = requireBbmap(runtimeRoot.resolve("common").resolve("bbmap"));
+        Path blastBin = requireBlastBin(platformRoot.resolve("blast").resolve("bin"));
+        Path javaExecutable = findJavaExecutable(platformRoot, appRoot)
+                .orElseThrow(() -> missing("bundled Java runtime", platformRoot.resolve("jdk")));
+        Path javafxLib = findJavaFxLib(platformRoot).orElse(null);
 
         return new RuntimeLayout(
                 appRoot,
@@ -61,7 +51,7 @@ public final class AppPaths {
                 bbmap,
                 blastBin,
                 javaExecutable,
-                javafxLib.orElse(null)
+                javafxLib
         );
     }
 
@@ -81,10 +71,7 @@ public final class AppPaths {
             Path current = location;
             while (current != null) {
                 if (Files.exists(current.resolve("pom.xml"))
-                        || Files.exists(current.resolve("insilicoPCR.jar"))
-                        || Files.isDirectory(current.resolve("runtime"))
-                        || Files.isDirectory(current.resolve("linux"))
-                        || Files.isDirectory(current.resolve("windows"))) {
+                        || Files.exists(current.resolve("insilicoPCR.jar"))) {
                     return current;
                 }
                 current = current.getParent();
@@ -114,196 +101,65 @@ public final class AppPaths {
         return directory.resolve(executableName(baseName));
     }
 
-    private static Path runtimeRoot(Path appRoot) {
-        Path runtime = appRoot.resolve("runtime");
-        if (Files.isDirectory(runtime)) {
-            return runtime.toAbsolutePath().normalize();
+    private static Path requireBbmap(Path directory) {
+        Path normalized = directory.toAbsolutePath().normalize();
+        if (!Files.isDirectory(normalized)) {
+            throw missing("BBMap directory", normalized);
         }
 
-        return appRoot.toAbsolutePath().normalize();
+        if (Files.isRegularFile(normalized.resolve(isWindows() ? "bbduk.bat" : "bbduk.sh"))
+                || Files.isRegularFile(normalized.resolve("current").resolve(isWindows() ? "bbduk.bat" : "bbduk.sh"))
+                || Files.isRegularFile(normalized.resolve("bbduk.sh"))
+                || Files.isRegularFile(normalized.resolve("current").resolve("bbduk.sh"))) {
+            return normalized;
+        }
+
+        throw missing("BBMap launcher", normalized);
     }
 
-    private static Path platformRoot(Path appRoot, Path runtimeRoot) {
-        String platform = platformName();
+    private static Path requireBlastBin(Path directory) {
+        Path normalized = directory.toAbsolutePath().normalize();
+        Path blastn = normalized.resolve(executableName("blastn"));
+        Path makeblastdb = normalized.resolve(executableName("makeblastdb"));
 
-        Path[] candidates = new Path[] {
-                runtimeRoot.resolve(platform),
-                appRoot.resolve(platform),
-                appRoot.resolve("dependencies").resolve(platform),
-                appRoot.resolve("src").resolve("other_resources").resolve(platform),
-                appRoot.resolve("src").resolve("main").resolve("resources").resolve(platform)
-        };
+        if (Files.isRegularFile(blastn) && Files.isRegularFile(makeblastdb)) {
+            return normalized;
+        }
 
-        for (Path candidate : candidates) {
-            if (Files.isDirectory(candidate)) {
-                return candidate.toAbsolutePath().normalize();
+        throw missing("NCBI BLAST executables", normalized);
+    }
+
+    private static Optional<Path> findJavaExecutable(Path platformRoot, Path appRoot) {
+        Path bundled = platformRoot.resolve("jdk").resolve("bin").resolve(executableName("java"));
+        if (Files.isRegularFile(bundled)) {
+            return Optional.of(bundled.toAbsolutePath().normalize());
+        }
+
+        // Development mode: no JDK is committed under runtime/. Use the current JVM.
+        if (Files.exists(appRoot.resolve("pom.xml"))) {
+            Path currentJvm = Paths.get(System.getProperty("java.home"))
+                    .resolve("bin")
+                    .resolve(executableName("java"));
+            if (Files.isRegularFile(currentJvm)) {
+                return Optional.of(currentJvm.toAbsolutePath().normalize());
             }
         }
 
-        return appRoot.toAbsolutePath().normalize();
+        return Optional.empty();
     }
 
-    private static Optional<Path> findBbmap(Path appRoot, Path runtimeRoot, Path platformRoot) {
-        Path[] direct = new Path[] {
-                runtimeRoot.resolve("common").resolve("bbmap"),
-                appRoot.resolve("runtime").resolve("common").resolve("bbmap"),
-
-                // Historical v0.5 layout
-                platformRoot.resolve("bin").resolve("bbmap"),
-                appRoot.resolve(platformName()).resolve("bin").resolve("bbmap"),
-
-                // Other fallback layouts
-                platformRoot.resolve("bbmap"),
-                appRoot.resolve("bbmap"),
-                appRoot.resolve("dependencies").resolve("bbmap"),
-                appRoot.resolve("src").resolve("other_resources").resolve("common").resolve("bbmap")
-        };
-
-        for (Path candidate : direct) {
-            if (isBbmapDirectory(candidate)) {
-                return Optional.of(candidate.toAbsolutePath().normalize());
-            }
+    private static Optional<Path> findJavaFxLib(Path platformRoot) {
+        Path javafx = platformRoot.resolve("javafx-sdk").resolve("lib");
+        if (Files.isDirectory(javafx)) {
+            return Optional.of(javafx.toAbsolutePath().normalize());
         }
-
-        return findDirectory(appRoot, AppPaths::isBbmapDirectory);
+        return Optional.empty();
     }
 
-    private static boolean isBbmapDirectory(Path directory) {
-        if (!Files.isDirectory(directory)) {
-            return false;
-        }
-
-        return Files.exists(directory.resolve("current"))
-                || Files.exists(directory.resolve("bbmap.sh"))
-                || Files.exists(directory.resolve("bbduk.sh"))
-                || Files.exists(directory.resolve("tadpole.sh"));
-    }
-
-    private static Optional<Path> findBlastBin(Path appRoot, Path runtimeRoot, Path platformRoot) {
-        String makeblastdb = executableName("makeblastdb");
-
-        Path[] direct = new Path[] {
-                platformRoot.resolve("blast").resolve("bin"),
-                platformRoot.resolve("ncbi-blast").resolve("bin"),
-
-                // Historical v0.5 layout
-                platformRoot.resolve("bin").resolve("ncbi-blast").resolve("bin"),
-                appRoot.resolve(platformName()).resolve("bin").resolve("ncbi-blast").resolve("bin"),
-
-                // Versioned NCBI BLAST folders
-                platformRoot.resolve("bin"),
-                appRoot.resolve("blast").resolve("bin"),
-                appRoot.resolve("dependencies").resolve("blast").resolve("bin"),
-                runtimeRoot.resolve(platformName()).resolve("blast").resolve("bin")
-        };
-
-        for (Path candidate : direct) {
-            if (Files.isRegularFile(candidate.resolve(makeblastdb))) {
-                return Optional.of(candidate.toAbsolutePath().normalize());
-            }
-        }
-
-        return findFile(appRoot, makeblastdb)
-                .map(Path::getParent)
-                .map(Path::toAbsolutePath)
-                .map(Path::normalize);
-    }
-
-    private static Optional<Path> findJavaExecutable(Path appRoot, Path runtimeRoot, Path platformRoot) {
-        String java = executableName("java");
-
-        Path[] direct = new Path[] {
-                platformRoot.resolve("jdk-21.0.3").resolve("bin").resolve(java),
-                platformRoot.resolve("jdk").resolve("bin").resolve(java),
-                platformRoot.resolve("jre").resolve("bin").resolve(java),
-
-                runtimeRoot.resolve(platformName()).resolve("jdk").resolve("bin").resolve(java),
-                runtimeRoot.resolve(platformName()).resolve("jre").resolve("bin").resolve(java),
-
-                appRoot.resolve("runtime").resolve("bin").resolve(java),
-                appRoot.resolve("jdk").resolve("bin").resolve(java),
-                appRoot.resolve("jre").resolve("bin").resolve(java)
-        };
-
-        for (Path candidate : direct) {
-            if (Files.isRegularFile(candidate)) {
-                return Optional.of(candidate.toAbsolutePath().normalize());
-            }
-        }
-
-        return findFile(appRoot, java, p -> {
-            String path = p.toString().toLowerCase(Locale.ROOT);
-            return path.contains("jdk") || path.contains("jre") || path.contains("runtime");
-        });
-    }
-
-    private static Optional<Path> findJavaFxLib(Path appRoot, Path runtimeRoot, Path platformRoot) {
-        Path[] direct = new Path[] {
-                platformRoot.resolve("javafx-sdk-21.0.3").resolve("lib"),
-                platformRoot.resolve("javafx-sdk").resolve("lib"),
-
-                runtimeRoot.resolve(platformName()).resolve("javafx-sdk-21.0.3").resolve("lib"),
-                runtimeRoot.resolve(platformName()).resolve("javafx-sdk").resolve("lib"),
-
-                appRoot.resolve("javafx-sdk").resolve("lib"),
-                appRoot.resolve("runtime").resolve("javafx-sdk").resolve("lib")
-        };
-
-        for (Path candidate : direct) {
-            if (Files.isDirectory(candidate)) {
-                return Optional.of(candidate.toAbsolutePath().normalize());
-            }
-        }
-
-        return findDirectory(appRoot, p -> {
-            String name = p.getFileName().toString().toLowerCase(Locale.ROOT);
-            return name.startsWith("javafx-sdk");
-        }).map(p -> p.resolve("lib"))
-                .filter(Files::isDirectory)
-                .map(Path::toAbsolutePath)
-                .map(Path::normalize);
-    }
-
-    private static Optional<Path> findFile(Path root, String fileName) {
-        return findFile(root, fileName, p -> true);
-    }
-
-    private static Optional<Path> findFile(Path root, String fileName, Predicate<Path> predicate) {
-        if (!Files.isDirectory(root)) {
-            return Optional.empty();
-        }
-
-        try (Stream<Path> stream = Files.walk(root)) {
-            return stream
-                    .filter(Files::isRegularFile)
-                    .filter(p -> p.getFileName().toString().equals(fileName))
-                    .filter(predicate)
-                    .min(Comparator.comparingInt(Path::getNameCount));
-        } catch (IOException e) {
-            return Optional.empty();
-        }
-    }
-
-    private static Optional<Path> findDirectory(Path root, Predicate<Path> predicate) {
-        if (!Files.isDirectory(root)) {
-            return Optional.empty();
-        }
-
-        try (Stream<Path> stream = Files.walk(root)) {
-            return stream
-                    .filter(Files::isDirectory)
-                    .filter(predicate)
-                    .min(Comparator.comparingInt(Path::getNameCount));
-        } catch (IOException e) {
-            return Optional.empty();
-        }
-    }
-
-    private static IllegalStateException missing(String dependency, Path appRoot) {
+    private static IllegalStateException missing(String dependency, Path expectedPath) {
         return new IllegalStateException(
-                "Unable to find " + dependency + " under " + appRoot
-                        + ". Expected either historical layout with linux/ or windows/, "
-                        + "or modern layout with runtime/common and runtime/" + platformName() + "."
+                "Unable to find " + dependency + ". Expected deterministic portable layout at: "
+                        + expectedPath.toAbsolutePath().normalize()
         );
     }
 
@@ -341,15 +197,51 @@ public final class AppPaths {
         }
 
         public Path bbdukScript() {
-            return bbmapDirectory.resolve(AppPaths.isWindows() ? "bbduk.bat" : "bbduk.sh");
+            Path platformScript = bbmapDirectory.resolve(AppPaths.isWindows() ? "bbduk.bat" : "bbduk.sh");
+            if (Files.isRegularFile(platformScript)) {
+                return platformScript;
+            }
+            Path currentPlatformScript = bbmapDirectory.resolve("current").resolve(AppPaths.isWindows() ? "bbduk.bat" : "bbduk.sh");
+            if (Files.isRegularFile(currentPlatformScript)) {
+                return currentPlatformScript;
+            }
+            Path portableScript = bbmapDirectory.resolve("bbduk.sh");
+            if (Files.isRegularFile(portableScript)) {
+                return portableScript;
+            }
+            return bbmapDirectory.resolve("current").resolve("bbduk.sh");
         }
 
         public Path bbmapScript() {
-            return bbmapDirectory.resolve(AppPaths.isWindows() ? "bbmap.bat" : "bbmap.sh");
+            Path platformScript = bbmapDirectory.resolve(AppPaths.isWindows() ? "bbmap.bat" : "bbmap.sh");
+            if (Files.isRegularFile(platformScript)) {
+                return platformScript;
+            }
+            Path currentPlatformScript = bbmapDirectory.resolve("current").resolve(AppPaths.isWindows() ? "bbmap.bat" : "bbmap.sh");
+            if (Files.isRegularFile(currentPlatformScript)) {
+                return currentPlatformScript;
+            }
+            Path portableScript = bbmapDirectory.resolve("bbmap.sh");
+            if (Files.isRegularFile(portableScript)) {
+                return portableScript;
+            }
+            return bbmapDirectory.resolve("current").resolve("bbmap.sh");
         }
 
         public Path tadpoleScript() {
-            return bbmapDirectory.resolve(AppPaths.isWindows() ? "tadpole.bat" : "tadpole.sh");
+            Path platformScript = bbmapDirectory.resolve(AppPaths.isWindows() ? "tadpole.bat" : "tadpole.sh");
+            if (Files.isRegularFile(platformScript)) {
+                return platformScript;
+            }
+            Path currentPlatformScript = bbmapDirectory.resolve("current").resolve(AppPaths.isWindows() ? "tadpole.bat" : "tadpole.sh");
+            if (Files.isRegularFile(currentPlatformScript)) {
+                return currentPlatformScript;
+            }
+            Path portableScript = bbmapDirectory.resolve("tadpole.sh");
+            if (Files.isRegularFile(portableScript)) {
+                return portableScript;
+            }
+            return bbmapDirectory.resolve("current").resolve("tadpole.sh");
         }
 
         public boolean hasJavaFx() {

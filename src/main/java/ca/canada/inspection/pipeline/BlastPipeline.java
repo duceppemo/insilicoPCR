@@ -60,16 +60,9 @@ public final class BlastPipeline {
         try {
             pool.shutdown();
 
-            while (!pool.isTerminated()) {
-                updateBlastProgress(
-                        pool.getCompletedTaskCount(),
-                        pool.getTaskCount());
-
-                while (!pool.awaitTermination(250, TimeUnit.MILLISECONDS)) {
-                    updateBlastProgress(pool.getCompletedTaskCount(), pool.getTaskCount());
-                }
+            while (!pool.awaitTermination(250, TimeUnit.MILLISECONDS)) {
+                updateBlastProgress(pool.getCompletedTaskCount(), pool.getTaskCount());
             }
-
         } catch (InterruptedException e) {
             pool.shutdownNow();
             Thread.currentThread().interrupt();
@@ -113,14 +106,15 @@ public final class BlastPipeline {
                     "-outfmt", "6 qseqid sseqid positive mismatch gaps evalue bitscore slen length qstart qend qseq sstart send sseq",
                     "-out", blastTsv.toString()};
 
-            var process = new ProcessBuilder(command).start();
-            processTracker.add(process);
-            Platform.runLater(consumer::start);
-            streamProcessOutput(process, messageQueue);
-            consumer.stop();
-            var exitCode = process.waitFor();
-            if (exitCode != 0) {
-                throw new IllegalStateException("BLAST failed with exit code " + exitCode + " for query " + query);
+            try (var process = new ProcessBuilder(command).start()) {
+                processTracker.add(process);
+                Platform.runLater(consumer::start);
+                streamProcessOutput(process, messageQueue);
+                consumer.stop();
+                var exitCode = process.waitFor();
+                if (exitCode != 0) {
+                    throw new IllegalStateException("BLAST failed with exit code " + exitCode + " for query " + query);
+                }
             }
             Methods.addHeaderToTSV(blastTsv);
         } catch (IOException e) {

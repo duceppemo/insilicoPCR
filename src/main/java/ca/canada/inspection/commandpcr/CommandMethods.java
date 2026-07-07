@@ -31,10 +31,6 @@ import java.nio.file.Path;
 
 public final class CommandMethods {
 
-	private static final String[] FASTA_EXTENSIONS = SequenceFileUtils.FASTA_EXTENSIONS;
-	private static final String[] FASTQ_EXTENSIONS = SequenceFileUtils.FASTQ_EXTENSIONS;
-	private static final String[] ACCEPTED_EXTENSIONS = SequenceFileUtils.ACCEPTED_EXTENSIONS;
-
 	private static final Map<Character, char[]> DEGENERATE_BASES = Map.ofEntries(
 			Map.entry('R', new char[]{'A', 'G'}),
 			Map.entry('Y', new char[]{'T', 'C'}),
@@ -55,10 +51,6 @@ public final class CommandMethods {
 
 	private CommandMethods() {
 		// Utility class.
-	}
-
-	public static boolean checkIfFileHasExtension(String fileName, String[] extensions) {
-		return SequenceFileUtils.hasExtension(fileName, extensions);
 	}
 
 	public static boolean noFastaFile(Path inputFile) {
@@ -155,7 +147,7 @@ public final class CommandMethods {
 		return parseFastaToDictionary(file.toPath());
 	}
 
-	public static void processPrimers(HashMap<String, String> primerDict, Path outDir, String sep) {
+	public static void processPrimers(HashMap<String, String> primerDict, Path outDir) {
 		Objects.requireNonNull(primerDict, "primerDict");
 		Objects.requireNonNull(outDir, "outDir");
 
@@ -179,8 +171,8 @@ public final class CommandMethods {
 		writePrimerTmpFile(outDir.resolve("primer_tmp.fasta"), processed);
 	}
 
-	public static void processPrimers(HashMap<String, String> primerDict, File outDir, String sep) {
-		processPrimers(primerDict, outDir.toPath(), sep);
+	public static void processPrimers(HashMap<String, String> primerDict, File outDir) {
+		processPrimers(primerDict, outDir.toPath());
 	}
 
 	public static ArrayList<String> expandDegenerated(String sequence, int index, ArrayList<String> primerContainer) {

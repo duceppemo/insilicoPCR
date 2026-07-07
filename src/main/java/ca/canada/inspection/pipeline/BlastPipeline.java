@@ -65,8 +65,8 @@ public final class BlastPipeline {
                         pool.getCompletedTaskCount(),
                         pool.getTaskCount());
 
-                if (!pool.awaitTermination(250, TimeUnit.MILLISECONDS)) {
-                    continue;
+                while (!pool.awaitTermination(250, TimeUnit.MILLISECONDS)) {
+                    updateBlastProgress(pool.getCompletedTaskCount(), pool.getTaskCount());
                 }
             }
 
@@ -83,7 +83,7 @@ public final class BlastPipeline {
 
     private void updateBlastProgress(long workDone, long totalWork) {
         if (config.blastProgress() != null && totalWork > 0) {
-            var progress = Math.max(0.0, Math.min(1.0, (double) workDone / (double) totalWork));
+            var progress = Math.clamp((double) workDone / totalWork, 0.0, 1.0);
             Platform.runLater(() -> config.blastProgress().setProgress(progress));
         }
     }

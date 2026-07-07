@@ -23,6 +23,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          lfs: true
 
       - name: Set up JDK 26
         uses: actions/setup-java@v4
@@ -43,13 +45,14 @@ jobs:
             echo "value=0.6.0" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Fetch BBMap and BLAST for Linux
+      - name: Validate bundled Linux runtime tools
         shell: bash
-        env:
-          BBMAP_URL: "https://sourceforge.net/projects/bbmap/files/latest/download"
         run: |
-          chmod +x scripts/ci/fetch-runtime-deps-linux.sh
-          scripts/ci/fetch-runtime-deps-linux.sh
+          test -d runtime/common/bbmap || { echo 'Missing runtime/common/bbmap'; exit 1; }
+          test -f runtime/common/bbmap/bbduk.sh -o -f runtime/common/bbmap/current/bbduk.sh || { echo 'Missing BBMap bbduk.sh'; exit 1; }
+          test -d runtime/linux/blast/bin || { echo 'Missing runtime/linux/blast/bin'; exit 1; }
+          test -f runtime/linux/blast/bin/makeblastdb || { echo 'Missing Linux makeblastdb'; exit 1; }
+          test -f runtime/linux/blast/bin/blastn || { echo 'Missing Linux blastn'; exit 1; }
 
       - name: Build Linux portable ZIP
         shell: bash
@@ -57,8 +60,10 @@ jobs:
           DO_INSTALLER: 'false'
         run: |
           chmod +x mvnw
-          find scripts/ci -name '*.sh' -exec chmod +x {} \;
           chmod +x scripts/release/package-linux-portable.sh
+          chmod +x runtime/common/bbmap/*.sh 2>/dev/null || true
+          chmod +x runtime/common/bbmap/current/*.sh 2>/dev/null || true
+          chmod +x runtime/linux/blast/bin/* 2>/dev/null || true
           scripts/release/package-linux-portable.sh "${{ steps.version.outputs.value }}"
 
       - name: Upload Linux artifact
@@ -77,6 +82,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          lfs: true
 
       - name: Set up JDK 26
         uses: actions/setup-java@v4
@@ -97,10 +104,14 @@ jobs:
             "value=0.6.0" >> $env:GITHUB_OUTPUT
           }
 
-      - name: Fetch BBMap and BLAST for Windows
+      - name: Validate bundled Windows runtime tools
         shell: pwsh
         run: |
-          .\scripts\ci\fetch-runtime-deps-windows.ps1
+          if (-not (Test-Path 'runtime\common\bbmap')) { throw 'Missing runtime/common/bbmap' }
+          if (-not ((Test-Path 'runtime\common\bbmap\bbduk.bat') -or (Test-Path 'runtime\common\bbmap\current\bbduk.bat') -or (Test-Path 'runtime\common\bbmap\bbduk.sh') -or (Test-Path 'runtime\common\bbmap\current\bbduk.sh'))) { throw 'Missing BBMap bbduk launcher' }
+          if (-not (Test-Path 'runtime\windows\blast\bin')) { throw 'Missing runtime/windows/blast/bin' }
+          if (-not (Test-Path 'runtime\windows\blast\bin\makeblastdb.exe')) { throw 'Missing Windows makeblastdb.exe' }
+          if (-not (Test-Path 'runtime\windows\blast\bin\blastn.exe')) { throw 'Missing Windows blastn.exe' }
 
       - name: Build Windows portable ZIP
         shell: pwsh
@@ -131,7 +142,7 @@ jobs:
 
       - name: Show files
         shell: bash
-        run: find dist -type f -maxdepth 2 -print -exec ls -lh {} \;
+        run: find dist -maxdepth 2 -type f -print -exec ls -lh {} \;
 
       - name: Publish portable ZIPs only
         uses: softprops/action-gh-release@v2

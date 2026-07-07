@@ -34,6 +34,12 @@ See:
 ./mvnw clean package
 ```
 
+## Verify runtime assets
+
+```bash
+scripts/dev/verify-runtime-layout.sh
+```
+
 ## Linux portable ZIP
 
 ```bash
@@ -43,7 +49,4 @@ scripts/release/package-linux-portable.sh 0.6.0
 
 ## Windows portable ZIP
 
-```powershell
-$env:JAVA_HOME = 'C:\path\to\jdk-26'
-.\scripts\release-windows.ps1 -Version 0.6.0
-```
+Run `scripts/release-windows.ps1` from PowerShell with `JAVA_HOME` pointing to JDK 26.

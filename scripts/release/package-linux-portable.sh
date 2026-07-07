@@ -6,39 +6,72 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 RELEASE_DIR="$ROOT/release"
 STAGE_DIR="$ROOT/build/insilicoPCR-linux-x64"
 
+fail() {
+  echo "ERROR: $*" >&2
+  exit 1
+}
+
+require_file() {
+  local path="$1"
+  [[ -f "$path" ]] || fail "Missing required file: $path"
+}
+
+require_dir() {
+  local path="$1"
+  [[ -d "$path" ]] || fail "Missing required directory: $path"
+}
+
+require_executable() {
+  local path="$1"
+  require_file "$path"
+  chmod +x "$path" 2>/dev/null || true
+}
+
+validate_bundled_tools() {
+  require_dir "$ROOT/runtime/common/bbmap"
+
+  if [[ -f "$ROOT/runtime/common/bbmap/bbduk.sh" ]]; then
+    require_executable "$ROOT/runtime/common/bbmap/bbduk.sh"
+  elif [[ -f "$ROOT/runtime/common/bbmap/current/bbduk.sh" ]]; then
+    require_executable "$ROOT/runtime/common/bbmap/current/bbduk.sh"
+  else
+    fail "Missing BBMap launcher: runtime/common/bbmap/bbduk.sh or runtime/common/bbmap/current/bbduk.sh"
+  fi
+
+  require_dir "$ROOT/runtime/linux/blast/bin"
+  require_executable "$ROOT/runtime/linux/blast/bin/blastn"
+  require_executable "$ROOT/runtime/linux/blast/bin/makeblastdb"
+}
+
 cd "$ROOT"
+
+validate_bundled_tools
 
 ./mvnw -B clean package -DskipTests
 
 rm -rf "$STAGE_DIR"
 mkdir -p "$STAGE_DIR" "$RELEASE_DIR" "$STAGE_DIR/runtime/linux"
 
-test -f "$ROOT/target/insilicoPCR.jar" || {
-  echo "Missing JAR: $ROOT/target/insilicoPCR.jar"
-  find "$ROOT/target" -maxdepth 2 -type f -print
-  exit 1
-}
-
-test -d "$ROOT/target/lib" || {
-  echo "Missing runtime dependencies: $ROOT/target/lib"
-  exit 1
-}
+require_file "$ROOT/target/insilicoPCR.jar"
+require_dir "$ROOT/target/lib"
 
 if [[ -z "${JAVA_HOME:-}" || ! -x "$JAVA_HOME/bin/java" ]]; then
-  echo "JAVA_HOME must point to the JDK that should be bundled in the portable release." >&2
-  exit 1
+  fail "JAVA_HOME must point to the JDK that should be bundled in the portable release."
 fi
 
 cp "$ROOT/target/insilicoPCR.jar" "$STAGE_DIR/insilicoPCR.jar"
-cp -r "$ROOT/target/lib" "$STAGE_DIR/lib"
+cp -R "$ROOT/target/lib" "$STAGE_DIR/lib"
 cp -R "$JAVA_HOME" "$STAGE_DIR/runtime/linux/jdk"
 
-cp -r "$ROOT/runtime/common" "$STAGE_DIR/runtime/" 2>/dev/null || true
-cp -r "$ROOT/runtime/linux/blast" "$STAGE_DIR/runtime/linux/" 2>/dev/null || true
+mkdir -p "$STAGE_DIR/runtime/common" "$STAGE_DIR/runtime/linux"
+cp -R "$ROOT/runtime/common/bbmap" "$STAGE_DIR/runtime/common/bbmap"
+cp -R "$ROOT/runtime/linux/blast" "$STAGE_DIR/runtime/linux/blast"
+
 cp "$ROOT/README.md" "$STAGE_DIR/" 2>/dev/null || true
 cp "$ROOT/CHANGELOG.md" "$STAGE_DIR/" 2>/dev/null || true
 cp "$ROOT/LICENSE" "$STAGE_DIR/" 2>/dev/null || true
 cp "$ROOT/LICENSE.txt" "$STAGE_DIR/" 2>/dev/null || true
+cp "$ROOT/docs/runtime-layout.md" "$STAGE_DIR/" 2>/dev/null || true
 
 cat > "$STAGE_DIR/run-insilicoPCR.sh" <<'EOF'
 #!/usr/bin/env bash
@@ -56,6 +89,8 @@ EOF
 
 chmod +x "$STAGE_DIR/run-insilicoPCR.sh"
 find "$STAGE_DIR/runtime/linux/jdk/bin" -type f -exec chmod +x {} \; 2>/dev/null || true
+find "$STAGE_DIR/runtime/common/bbmap" -name '*.sh' -exec chmod +x {} \; 2>/dev/null || true
+find "$STAGE_DIR/runtime/linux/blast/bin" -type f -exec chmod +x {} \; 2>/dev/null || true
 
 ARCHIVE="$RELEASE_DIR/insilicoPCR-${VERSION}-linux-x64.zip"
 rm -f "$ARCHIVE" "$ARCHIVE.sha256"

@@ -54,8 +54,9 @@ jobs:
         env:
           DO_INSTALLER: 'false'
         run: |
-          chmod +x mvnw scripts/ci/*.sh scripts/release/*.sh
-          scripts/ci/fetch-runtime-deps-linux.sh
+          chmod +x mvnw
+          find scripts/ci -name '*.sh' -exec chmod +x {} \;
+          chmod +x scripts/release/package-linux-portable.sh
           scripts/release/package-linux-portable.sh "${{ steps.version.outputs.value }}"
 
       - name: Upload Linux artifact

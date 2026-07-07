@@ -3,12 +3,6 @@ $ErrorActionPreference = 'Stop'
 $Root = Resolve-Path (Join-Path $PSScriptRoot '..\..')
 $Work = Join-Path $Root 'target\ci-runtime-downloads\windows'
 
-$BbmapUrl = if ($env:BBMAP_URL) {
-    $env:BBMAP_URL
-} else {
-    'https://archive.org/download/bbmap_39.01/BBMap_39.01.tar.gz'
-}
-
 $BlastBaseUrl = if ($env:BLAST_BASE_URL) {
     $env:BLAST_BASE_URL
 } else {
@@ -29,18 +23,49 @@ New-Item -ItemType Directory -Force `
 
 Push-Location $Work
 try {
-    Write-Host "Downloading BBMap from: $BbmapUrl"
+    $BbmapUrls = @()
 
-    curl.exe -L -f `
-        --retry 5 `
+    if ($env:BBMAP_URL) {
+        $BbmapUrls += $env:BBMAP_URL
+    }
+
+    $BbmapUrls += @(
+        'https://sourceforge.net/projects/bbmap/files/BBMap_39.94.tar.gz/download',
+        'https://downloads.sourceforge.net/project/bbmap/BBMap_39.94.tar.gz',
+        'https://archive.org/download/bbmap_39.01/BBMap_39.01.tar.gz'
+    )
+
+    $DownloadedBbmap = $false
+
+    foreach ($Url in $BbmapUrls) {
+        Write-Host "Trying BBMap URL: $Url"
+
+        Remove-Item 'bbmap.tar.gz' -Force -ErrorAction SilentlyContinue
+
+        curl.exe -L -f `
+        --retry 3 `
         --retry-delay 5 `
         --user-agent "Mozilla/5.0" `
         --output 'bbmap.tar.gz' `
-        $BbmapUrl
+        $Url
 
-    $size = (Get-Item 'bbmap.tar.gz').Length
-    if ($size -lt 10MB) {
-        throw "BBMap download is too small ($size bytes); likely received an HTML/error page."
+        if ($LASTEXITCODE -ne 0 -or -not (Test-Path 'bbmap.tar.gz')) {
+            Write-Warning "Failed to download BBMap from: $Url"
+            continue
+        }
+
+        $size = (Get-Item 'bbmap.tar.gz').Length
+        if ($size -lt 10MB) {
+            Write-Warning "BBMap download from $Url is too small ($size bytes)."
+            continue
+        }
+
+        $DownloadedBbmap = $true
+        break
+    }
+
+    if (-not $DownloadedBbmap) {
+        throw "Unable to download BBMap from any configured URL. Set BBMAP_URL to a stable mirror or release asset."
     }
 
     tar -xzf 'bbmap.tar.gz'

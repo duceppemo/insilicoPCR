@@ -2,7 +2,31 @@ $ErrorActionPreference = 'Stop'
 
 $Root = Resolve-Path (Join-Path $PSScriptRoot '..\..')
 $Work = Join-Path $Root 'target\ci-runtime-downloads\windows'
-$BbmapUrl = if ($env:BBMAP_URL) { $env:BBMAP_URL } else { 'https://sourceforge.net/projects/bbmap/files/BBMap_39.94.tar.gz/download' }
+
+$BbmapUrl = "https://downloads.sourceforge.net/project/bbmap/BBMap_39.94.tar.gz"
+$BbmapArchive = Join-Path $env:RUNNER_TEMP "BBMap_39.94.tar.gz"
+$BbmapExtract = Join-Path $env:RUNNER_TEMP "bbmap-extract"
+
+Write-Host "Downloading BBMap from: $BbmapUrl"
+Invoke-WebRequest -Uri $BbmapUrl -OutFile $BbmapArchive -MaximumRedirection 10
+
+if ((Get-Item $BbmapArchive).Length -lt 1MB) {
+    throw "BBMap download is too small; likely received an HTML redirect/error page."
+}
+
+Remove-Item $BbmapExtract -Recurse -Force -ErrorAction SilentlyContinue
+New-Item -ItemType Directory -Force -Path $BbmapExtract | Out-Null
+
+tar -xzf $BbmapArchive -C $BbmapExtract
+
+$BbmapDir = Get-ChildItem $BbmapExtract -Directory -Recurse |
+        Where-Object { Test-Path (Join-Path $_.FullName "current") } |
+        Select-Object -First 1
+
+if (-not $BbmapDir) {
+    throw "Unable to locate extracted BBMap directory."
+}
+
 $BlastBaseUrl = if ($env:BLAST_BASE_URL) { $env:BLAST_BASE_URL } else { 'https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/' }
 $BlastUrl = $env:BLAST_WINDOWS_URL
 

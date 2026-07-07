@@ -27,6 +27,7 @@ This bundle is a coherent source replacement for the command-line pipeline archi
 - `ProcessRunner` now supports a typed `ExternalCommand` while retaining the existing varargs API.
 - `BlastResult` is now an immutable record with legacy getter methods for compatibility.
 - `Sample` exposes safer immutable views while preserving legacy mutable getters for GUI/helper compatibility.
+- The obsolete `CommandMethods` transition utility has been removed now that the CLI path delegates to the modern pipeline.
 
 ## How to apply
 
@@ -40,8 +41,6 @@ mvn clean test
 mvn clean package
 ```
 
-## Important compatibility note
+## Compatibility note
 
-`CommandMethods` is intentionally left in place for the GUI and older helper code. The CLI pipeline no longer owns orchestration there, but report parsing/writing is still delegated to existing methods to reduce risk during this architecture pass.
-
-A future follow-up can safely move `CommandMethods` internals into `PrimerService`, `BlastParser`, `ReportWriter`, and `ContigReader` once the current pipeline passes tests.
+`CommandMain` remains as the backwards-compatible command entry point, but it now delegates directly to `InSilicoPcrPipeline`. The older monolithic `CommandMethods` helper was removed after its functionality was migrated into focused pipeline services such as `PrimerService`, `SampleRepository`, `BlastRunner`, and `ReportGenerator`.

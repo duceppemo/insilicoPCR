@@ -1,6 +1,5 @@
 package ca.canada.inspection.pipeline;
 
-import ca.canada.inspection.commandpcr.CommandMethods;
 import ca.canada.inspection.insilicopcr.Sample;
 import ca.canada.inspection.util.ProcessRunner;
 
@@ -11,8 +10,6 @@ import java.util.Comparator;
 import java.util.List;
 
 public final class BlastRunner {
-    private static final String BLAST_OUTFMT = "6 qseqid sseqid positive mismatch gaps evalue bitscore slen length qstart qend qseq sstart send sseq";
-
     public void run(PipelineContext context) {
         List<Path> queries = blastQueries(context);
         ParallelStageRunner.run("BLAST", queries, context.config().threads(), query -> blast(context, query));
@@ -28,7 +25,7 @@ public final class BlastRunner {
                 }
                 queries.add(assemblyFile);
             } else {
-                queries.addAll(sample.getFiles());
+                queries.addAll(sample.files());
             }
         }
         return queries.stream()
@@ -53,8 +50,8 @@ public final class BlastRunner {
                 "-evalue", Double.toString(context.config().evalue()),
                 "-num_alignments", "1000000",
                 "-num_threads", "1",
-                "-outfmt", BLAST_OUTFMT,
+                "-outfmt", BlastTsv.OUTFMT,
                 "-out", blastTsv.toString());
-        CommandMethods.addHeaderToTSV(blastTsv);
+        BlastTsv.prependHeader(blastTsv);
     }
 }

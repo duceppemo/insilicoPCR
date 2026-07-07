@@ -26,11 +26,15 @@ import javafx.scene.layout.RowConstraints;
 import javafx.scene.text.Text;
 import javafx.scene.text.TextAlignment;
 import javafx.stage.Stage;
+import javafx.scene.layout.Pane;
 
 import javax.swing.JOptionPane;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.concurrent.atomic.AtomicBoolean;
+
+import java.io.PrintWriter;
+import java.io.StringWriter;
 
 public class MainRun extends Application {
 
@@ -227,6 +231,13 @@ public class MainRun extends Application {
 		outputField.clear();
 		currentlyRunning.set(true);
 
+		if (mainProgress != null && mainProgress.getParent() != null) {
+			((Pane) mainProgress.getParent()).getChildren().remove(mainProgress);
+		}
+
+		if (blastProgress != null && blastProgress.getParent() != null) {
+			((Pane) blastProgress.getParent()).getChildren().remove(blastProgress);
+		}
 		mainProgress = new ProgressBar();
 		mainProgress.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
 		pane.add(mainProgress, 2, 43, 46, 2);
@@ -251,12 +262,25 @@ public class MainRun extends Application {
 		runningTask.setOnSucceeded(event -> {
 			currentlyRunning.set(false);
 			dependencies = runningTask.dependencies();
+			if (gelButton.getParent() != null) {
+				((Pane) gelButton.getParent()).getChildren().remove(gelButton);
+			}
 			pane.add(gelButton, 30, 45, 7, 3);
 		});
 		runningTask.setOnFailed(event -> {
 			currentlyRunning.set(false);
-			var error = runningTask.getException();
-			Methods.logMessage(outputField, error == null ? "Run failed" : "Run failed: " + error.getMessage());
+
+			Throwable error = runningTask.getException();
+			if (error == null) {
+				Methods.logMessage(outputField, "Run failed");
+				return;
+			}
+
+			error.printStackTrace();
+
+			StringWriter sw = new StringWriter();
+			error.printStackTrace(new PrintWriter(sw));
+			Methods.logMessage(outputField, "Run failed:\n" + sw);
 		});
 
 		var thread = new Thread(runningTask, "insilico-pcr-run");

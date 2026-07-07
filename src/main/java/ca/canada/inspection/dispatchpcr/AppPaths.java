@@ -107,10 +107,10 @@ public final class AppPaths {
             throw missing("BBMap directory", normalized);
         }
 
-        if (Files.isRegularFile(normalized.resolve(isWindows() ? "bbduk.bat" : "bbduk.sh"))
-                || Files.isRegularFile(normalized.resolve("current").resolve(isWindows() ? "bbduk.bat" : "bbduk.sh"))
-                || Files.isRegularFile(normalized.resolve("bbduk.sh"))
-                || Files.isRegularFile(normalized.resolve("current").resolve("bbduk.sh"))) {
+        if (Files.isRegularFile(normalized.resolve("bbtools.jar"))
+                || Files.isDirectory(normalized.resolve("current"))
+                || Files.isRegularFile(normalized.resolve(isWindows() ? "bbduk.bat" : "bbduk.sh"))
+                || Files.isRegularFile(normalized.resolve("bbduk.sh"))) {
             return normalized;
         }
 
@@ -194,6 +194,23 @@ public final class AppPaths {
 
         public Path makeblastdbExecutable() {
             return AppPaths.executable(blastBinDirectory, "makeblastdb");
+        }
+
+        public Path bbmapClasspath() {
+            Path jar = bbmapDirectory.resolve("bbtools.jar");
+            if (Files.isRegularFile(jar)) {
+                return jar;
+            }
+
+            Path current = bbmapDirectory.resolve("current");
+            if (Files.isDirectory(current)) {
+                return current;
+            }
+
+            throw new IllegalStateException(
+                    "Unable to find BBMap classpath. Expected bbtools.jar or current/ under "
+                            + bbmapDirectory
+            );
         }
 
         public Path bbdukScript() {

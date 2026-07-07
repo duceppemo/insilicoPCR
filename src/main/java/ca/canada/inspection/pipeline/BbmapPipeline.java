@@ -48,13 +48,13 @@ public final class BbmapPipeline {
             var files = sample.getFiles();
             String[] command;
             if (files.size() == 2) {
-                command = new String[]{dependencies.javaCommand(), "-ea", "-Xmx7g", "-cp", "./current", "jgi.BBDuk",
+                command = new String[]{dependencies.javaCommand(), "-ea", "-Xmx7g", "-cp", dependencies.bbmapClasspath().toString(), "jgi.BBDuk",
                         "ref=" + ref, "k=" + kLength,
                         "in1=" + files.get(0), "in2=" + files.get(1), "hdist=" + config.mismatches(),
                         "threads=" + config.threads(), "interleaved=t",
                         "outm=" + sampleDir.resolve(sample.getName() + "_targetMatches.fastq.gz")};
             } else {
-                command = new String[]{dependencies.javaCommand(), "-ea", "-Xmx7g", "-cp", "./current", "jgi.BBDuk",
+                command = new String[]{dependencies.javaCommand(), "-ea", "-Xmx7g", "-cp", dependencies.bbmapClasspath().toString(), "jgi.BBDuk",
                         "ref=" + ref, "k=" + kLength,
                         "in=" + files.getFirst(), "hdist=" + config.mismatches(), "threads=" + config.threads(),
                         "interleaved=t", "outm=" + sampleDir.resolve(sample.getName() + "_targetMatches.fastq.gz")};
@@ -74,12 +74,12 @@ public final class BbmapPipeline {
             var files = sample.getFiles();
             String[] command;
             if (files.size() == 2) {
-                command = new String[]{dependencies.javaCommand(), "-ea", "-Xmx7g", "-cp", "./current", "jgi.BBDuk",
+                command = new String[]{dependencies.javaCommand(), "-ea", "-Xmx7g", "-cp", dependencies.bbmapClasspath().toString(), "jgi.BBDuk",
                         "ref=" + ref, "in1=" + files.get(0), "in2=" + files.get(1),
                         "hdist=" + config.mismatches(), "threads=" + config.threads(), "interleaved=t",
                         "outm=" + sampleDir.resolve(sample.getName() + "_doubleTargetMatches.fastq.gz")};
             } else {
-                command = new String[]{dependencies.javaCommand(), "-ea", "-Xmx7g", "-cp", "./current", "jgi.BBDuk",
+                command = new String[]{dependencies.javaCommand(), "-ea", "-Xmx7g", "-cp", dependencies.bbmapClasspath().toString(), "jgi.BBDuk",
                         "ref=" + ref, "in=" + files.getFirst(), "hdist=" + config.mismatches(),
                         "threads=" + config.threads(), "interleaved=t",
                         "outm=" + sampleDir.resolve(sample.getName() + "_doubleTargetMatches.fastq.gz")};
@@ -98,7 +98,7 @@ public final class BbmapPipeline {
             var in = sampleDir.resolve(sample.getName() + "_doubleTargetMatches.fastq.gz");
             var out = sampleDir.resolve(sample.getName() + "_assembly.fasta");
             sample.setAssemblyFile(out);
-            var command = new String[]{dependencies.javaCommand(), "-ea", "-Xmx7g", "-cp", "./current", "assemble.Tadpole",
+            var command = new String[]{dependencies.javaCommand(), "-ea", "-Xmx7g", "-cp", dependencies.bbmapClasspath().toString(), "assemble.Tadpole",
                     "in=" + in, "out=" + out, "threads=" + config.threads()};
             runProcess(command, dependencies.bbtoolsLocation(), owner);
         }

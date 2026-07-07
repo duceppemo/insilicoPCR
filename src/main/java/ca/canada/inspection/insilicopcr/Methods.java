@@ -333,44 +333,61 @@ public class Methods {
 	public static void parseBlastOutput(Path consolidatedDir, Path detailedReport, HashMap<String, String> primerDict,
 	                                    int mismatches, HashMap<String, Sample> sampleDict) {
 
-		// List of blast report files
 		ArrayList<Path> reportList = new ArrayList<>();
 		try (Stream<Path> paths = Files.walk(detailedReport, 2)) {
 			paths.filter(Files::isRegularFile)
 					.filter(path -> path.getFileName().toString().endsWith(".tsv"))
 					.forEach(reportList::add);
-		}catch(IOException e) {
+		} catch (IOException e) {
 			throw new IllegalStateException("Unable to list BLAST reports in: " + detailedReport, e);
 		}
 
-		for(Path sampleReport : reportList) {
-			String sampleName = sampleReport.getFileName().toString().split("\\.tsv")[0];
-			String line;
+		for (Path sampleReport : reportList) {
+			String sampleName = sampleReport.getFileName().toString().replaceFirst("\\.tsv$", "");
+			Sample sample = sampleDict.get(sampleName);
+			if (sample == null) {
+				continue;
+			}
+
 			try (BufferedReader reader = Files.newBufferedReader(sampleReport, StandardCharsets.UTF_8)) {
-				while((line = reader.readLine()) != null) {
-					if(line.isEmpty() || line.startsWith("qseqid")) {
+				String line;
+				while ((line = reader.readLine()) != null) {
+					if (line.isEmpty() || line.startsWith("qseqid")) {
 						continue;
 					}
-					String[] fields = line.split("\t");
+
+					String[] fields = line.split("\t", -1);
+					if (fields.length < 15) {
+						continue;
+					}
+
 					String qseqid = fields[0];
 					String sseqid = fields[1];
+
+					String primer = primerDict.get(sseqid);
+					if (primer == null) {
+						continue;
+					}
+
 					int length = Integer.parseInt(fields[8]);
-					int weightedLength = primerDict.get(sseqid).length();
 					int actualMismatches = Integer.parseInt(fields[3]);
 
-					if(length <= weightedLength && length >= (weightedLength - 2) && actualMismatches <= mismatches) {
+					if (length <= primer.length()
+							&& length >= primer.length() - 2
+							&& actualMismatches <= mismatches) {
 
 						int qstart = Integer.parseInt(fields[9]);
 						int qend = Integer.parseInt(fields[10]);
 						String sseq = fields[14];
-						if(sampleDict.get(sampleName).getBlastResults().containsKey(sseqid)) {
-							sampleDict.get(sampleName).addBlastResult(sseqid, new BlastResult(sampleName, qseqid, sseqid, actualMismatches, qstart, qend, length, sseq));
-						}else {
-							sampleDict.get(sampleName).addNewBlastResult(sseqid, new BlastResult(sampleName, qseqid, sseqid, actualMismatches, qstart, qend, length, sseq));
-						}
+
+						BlastResult result = new BlastResult(
+								sampleName, qseqid, sseqid, actualMismatches, qstart, qend, length, sseq
+						);
+
+						sample.addBlastResult(sseqid, result);
 					}
 				}
-			}catch(IOException e) {
+			} catch (IOException e) {
 				throw new IllegalStateException("Unable to parse BLAST report: " + sampleReport, e);
 			}
 		}

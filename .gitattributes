@@ -1,0 +1,14 @@
+# Large bundled runtime assets can be stored in Git LFS when needed.
+# Keep scripts and documentation as normal text.
+
+runtime/common/bbmap/** filter=lfs diff=lfs merge=lfs -text
+runtime/linux/blast/** filter=lfs diff=lfs merge=lfs -text
+runtime/windows/blast/** filter=lfs diff=lfs merge=lfs -text
+
+*.sh text eol=lf
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+*.md text eol=lf
+*.java text eol=lf
+*.xml text eol=lf
+*.yml text eol=lf

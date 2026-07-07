@@ -3,7 +3,7 @@ $ErrorActionPreference = 'Stop'
 $Root = Resolve-Path (Join-Path $PSScriptRoot '..\..')
 $Work = Join-Path $Root 'target\ci-runtime-downloads\windows'
 
-$BbmapUrl = "https://sourceforge.net/projects/bbmap/files/BBMap_39.94.tar.gz/download"
+$BbmapUrl = "https://archive.org/download/bbmap_39.01/BBMap_39.01.tar.gz"
 $BbmapArchive = Join-Path $env:RUNNER_TEMP "BBMap_39.94.tar.gz"
 $BbmapExtract = Join-Path $env:RUNNER_TEMP "bbmap-extract"
 
@@ -17,8 +17,8 @@ curl.exe -L `
   $BbmapUrl
 
 $size = (Get-Item $BbmapArchive).Length
-if ($size -lt 100MB) {
-    throw "BBMap download is too small ($size bytes); likely received an HTML redirect/error page."
+if ($size -lt 10MB) {
+    throw "BBMap download is too small ($size bytes); likely received an HTML/error page."
 }
 
 Remove-Item $BbmapExtract -Recurse -Force -ErrorAction SilentlyContinue

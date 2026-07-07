@@ -1,44 +1,82 @@
 package ca.canada.inspection.util;
 
-import java.io.BufferedReader;
-import java.io.File;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.nio.file.Path;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.Objects;
 
-/** Small wrapper around ProcessBuilder with consistent output capture and exit-code checks. */
+/**
+ * Small, explicit wrapper around ProcessBuilder that gives every external-tool
+ * invocation the same error handling, interruption behavior, and logging shape.
+ */
 public final class ProcessRunner {
-    private ProcessRunner() {}
 
-    public static Result run(File workingDirectory, String... command) throws IOException, InterruptedException {
-        ProcessBuilder builder = new ProcessBuilder(command);
-        if (workingDirectory != null) {
-            builder.directory(workingDirectory);
+    private ProcessRunner() {
+    }
+
+    public static Result run(Path workingDirectory, String... command) {
+        Objects.requireNonNull(command, "command");
+        if (command.length == 0) {
+            throw new IllegalArgumentException("Command must not be empty");
         }
-        builder.redirectErrorStream(true);
-        Process process = builder.start();
-        List<String> output = new ArrayList<>();
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                output.add(line);
+
+        Instant start = Instant.now();
+        try {
+            ProcessBuilder builder = new ProcessBuilder(command).inheritIO();
+            if (workingDirectory != null) {
+                builder.directory(workingDirectory.toFile());
             }
+            
+            Process process = builder.start();
+            int exitCode = process.waitFor();
+            Duration elapsed = Duration.between(start, Instant.now());
+            Result result = new Result(exitCode, elapsed, command);
+            if (exitCode != 0) {
+                throw new ProcessException("External command failed: " + result.commandLine()
+                        + " (exit " + exitCode + ", " + elapsed.toSeconds() + "s)", result);
+            }
+            return result;
+        } catch (IOException e) {
+            throw new ProcessException("Could not start external command: " + String.join(" ", command), e,
+                    new Result(-1, Duration.between(start, Instant.now()), command));
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new ProcessException("Interrupted while running external command: " + String.join(" ", command), e,
+                    new Result(-1, Duration.between(start, Instant.now()), command));
         }
-        int exitCode = process.waitFor();
-        return new Result(Arrays.asList(command), workingDirectory, exitCode, output);
     }
 
-    public static Result runOrThrow(File workingDirectory, String... command) throws IOException, InterruptedException {
-        Result result = run(workingDirectory, command);
-        if (result.exitCode() != 0) {
-            throw new IOException("Command failed with exit code " + result.exitCode() + ": "
-                    + String.join(" ", result.command()) + System.lineSeparator()
-                    + String.join(System.lineSeparator(), result.output()));
+    public record Result(int exitCode, Duration elapsed, String[] command) {
+        public Result {
+            command = command.clone();
         }
-        return result;
+
+        @Override
+        public String[] command() {
+            return command.clone();
+        }
+
+        public String commandLine() {
+            return String.join(" ", command);
+        }
     }
 
-    public record Result(List<String> command, File workingDirectory, int exitCode, List<String> output) {}
+    public static final class ProcessException extends RuntimeException {
+        private final Result result;
+
+        public ProcessException(String message, Result result) {
+            super(message);
+            this.result = Objects.requireNonNull(result, "result");
+        }
+
+        public ProcessException(String message, Throwable cause, Result result) {
+            super(message, cause);
+            this.result = Objects.requireNonNull(result, "result");
+        }
+
+        public Result result() {
+            return result;
+        }
+    }
 }

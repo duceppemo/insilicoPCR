@@ -6,35 +6,27 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 
+/** Mutable per-sample state collected during one PCR run. */
 public class Sample {
 
 	private final ArrayList<Path> sampleFiles = new ArrayList<>();
+	private final HashMap<String, ArrayList<BlastResult>> blastResults = new HashMap<>();
+	private final HashMap<String, String> contigDict = new HashMap<>();
 	private String name;
 	private String fileType;
-	private final HashMap<String, ArrayList<BlastResult>> blastResults = new HashMap<>();
 	private Path assemblyFile;
-	private final HashMap<String, String> contigDict = new HashMap<>();
 
-	public String getName() {
-		return name;
-	}
+	public String getName() { return name; }
+	public void setName(String name) { this.name = name; }
 
-	public void setName(String name) {
-		this.name = name;
-	}
-
-	public ArrayList<Path> getFiles() {
-		return sampleFiles;
-	}
+	public ArrayList<Path> getFiles() { return sampleFiles; }
 
 	public void setFile(Path file) {
 		sampleFiles.clear();
 		sampleFiles.add(file);
 	}
 
-	public void setFile(String file) {
-		setFile(Path.of(file));
-	}
+	public void setFile(String file) { setFile(Path.of(file)); }
 
 	public void setFiles(List<Path> files) {
 		sampleFiles.clear();
@@ -47,53 +39,24 @@ public class Sample {
 		sortFiles();
 	}
 
-	public void addFile(String fileName) {
-		addFile(Path.of(fileName));
+	private void sortFiles() { sampleFiles.sort(Comparator.comparing(Path::toString)); }
+
+	public String getFileType() { return fileType; }
+	public void setFileType(String fileType) { this.fileType = fileType; }
+
+	public HashMap<String, ArrayList<BlastResult>> getBlastResults() { return blastResults; }
+
+	public void addBlastResult(String key, BlastResult result) {
+		blastResults.computeIfAbsent(key, ignored -> new ArrayList<>()).add(result);
 	}
 
-	private void sortFiles() {
-		sampleFiles.sort(Comparator.comparing(Path::toString));
-	}
+	public void addNewBlastResult(String key, BlastResult result) { addBlastResult(key, result); }
 
-	public String getFileType() {
-		return fileType;
-	}
+	public Path getAssemblyFile() { return assemblyFile; }
+	public void setAssemblyFile(Path assemblyFile) { this.assemblyFile = assemblyFile; }
 
-	public void setFileType(String fileType) {
-		this.fileType = fileType;
-	}
+	public void addContig(String acc, String desc) { contigDict.put(acc, desc); }
+	public HashMap<String, String> getContigDict() { return contigDict; }
 
-	public HashMap<String, ArrayList<BlastResult>> getBlastResults() {
-		return blastResults;
-	}
-
-	public void addBlastResult(String key, BlastResult results) {
-		blastResults.get(key).add(results);
-	}
-
-	public void addNewBlastResult(String key, BlastResult results) {
-		ArrayList<BlastResult> temp = new ArrayList<>();
-		temp.add(results);
-		blastResults.put(key, temp);
-	}
-
-	public Path getAssemblyFile() {
-		return assemblyFile;
-	}
-
-	public void setAssemblyFile(Path assemblyFile) {
-		this.assemblyFile = assemblyFile;
-	}
-
-	public void setAssemblyFile(String assemblyFile) {
-		setAssemblyFile(Path.of(assemblyFile));
-	}
-
-	public void addContig(String acc, String desc) {
-		contigDict.put(acc, desc);
-	}
-
-	public HashMap<String, String> getContigDict() {
-		return contigDict;
-	}
+	public boolean isFastq() { return "fastq".equals(fileType); }
 }

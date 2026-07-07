@@ -1,96 +1,124 @@
 package ca.canada.inspection.dispatchpcr;
 
-import java.nio.file.Path;
-
-import org.apache.commons.cli.*;
-
 import ca.canada.inspection.commandpcr.CommandMain;
 import ca.canada.inspection.insilicopcr.MainRun;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
 
-public class Dispatcher {
+import java.nio.file.Files;
+import java.nio.file.Path;
 
-	public static final String version = "0.5";
+public final class Dispatcher {
 
-	public static void main(String[] args) {
+	public static final String version = "0.6.0-SNAPSHOT";
 
-		Options options = new Options();
+	private Dispatcher() {
+	}
 
-		Option input = new Option("i", "input", true, "The input file/directory containing the .fasta or .fastq sequence(s)");
-		input.setRequired(false);
-		options.addOption(input);
+	static void main(String[] args) {
+		if (args.length == 0) {
+			MainRun.main(args);
+			return;
+		}
 
-		Option output = new Option("o", "output", true, "The directory to contain the output");
-		output.setRequired(false);
-		options.addOption(output);
-
-		Option primerInput = new Option("p", "primers", true, "The custom primer file containing the putative PCR primers");
-		primerInput.setRequired(false);
-		options.addOption(primerInput);
-
-		Option numThreads = new Option("t", "threads", true, "The number of threads to use. Default is maximum number of processors available.");
-		numThreads.setRequired(false);
-		options.addOption(numThreads);
-
-		Option numMismatches = new Option("m", "mismatches", true, "The number of mismatches permitted. Default is 0.");
-		numMismatches.setRequired(false);
-		options.addOption(numMismatches);
-
-		Option numEvalue = new Option("e", "evalue", true, "Evalue for blastn. Default is 1e5.");
-		numMismatches.setRequired(false);
-		options.addOption(numEvalue);
-
-		Option help = new Option("h", "help", true, "Print help message and usage");
-		help.setRequired(false);
-		options.addOption(help);
-
+		Options options = options();
 		CommandLineParser parser = new DefaultParser();
 		HelpFormatter formatter = new HelpFormatter();
-		CommandLine cmd = null;
 
 		try {
-			cmd = parser.parse(options, args);
-		}catch(ParseException e) {
-			System.out.println(e.getMessage());
-			formatter.printHelp("java commandpcr/CommandMain -i () -o () -p () [-t ()] [-m ()]\n"
-					+ "\tCan be used either in GUI or commandline formats"
-					+ "\t- GUI can be obtained by running without arguments"
-					+ "\t- commandline is used by providing at least -i -o and -p arguments", options);
-
-			System.exit(-1);
-		}
-
-		if(args.length > 0) {
-			try{
-				Path inputFile = Path.of(cmd.getOptionValue("input"));
-				Path outDir = Path.of(cmd.getOptionValue("output"));
-				Path primerFile = Path.of(cmd.getOptionValue("primers"));
-				int threads = Runtime.getRuntime().availableProcessors();
-				int mismatches = 0;
-				double evalue = Double.parseDouble("1e5");
-				if(cmd.getOptionValue("threads") != null) {
-					threads = Integer.parseInt(cmd.getOptionValue("threads"));
-				}
-				if(cmd.getOptionValue("mismatches") != null) {
-					mismatches = Integer.parseInt(cmd.getOptionValue("mismatches"));
-				}
-				if(cmd.getOptionValue("evalue") != null) {
-					evalue = Double.parseDouble(cmd.getOptionValue("evalue"));
-				}
-
-				CommandMain main = new CommandMain(inputFile, outDir, primerFile, threads, mismatches, evalue);
-				main.run();
-			}catch(NullPointerException e) {
-				e.printStackTrace();
-				System.out.println("If using the program with arguments from commandline or terminal, you must provide at least i, o, and p arguments");
-				formatter.printHelp("java commandpcr/CommandMain -i () -o () -p () [-t ()] [-m ()] [-e ()]\n"
-						+ "\tCan be used either in GUI or commandline formats"
-						+ "\t- GUI can be obtained by running without arguments"
-						+ "\t- commandline is used by providing at least -i -o and -p arguments", options);
-				System.exit(-1);
+			CommandLine cmd = parser.parse(options, args);
+			if (cmd.hasOption("help")) {
+				printHelp(formatter, options);
+				return;
 			}
+			CliConfig config = CliConfig.from(cmd);
+			new CommandMain(config.input(), config.output(), config.primers(), config.threads(), config.mismatches(), config.evalue()).run();
+		} catch (ParseException | IllegalArgumentException e) {
+			System.err.println(e.getMessage());
+			printHelp(formatter, options);
+			System.exit(2);
+		} catch (RuntimeException e) {
+			e.printStackTrace(System.err);
+			System.exit(1);
 		}
-		else {
-			MainRun.main(args);
+	}
+
+	private static Options options() {
+		Options options = new Options();
+		options.addOption(Option.builder("i").longOpt("input").hasArg().argName("path")
+				.desc("Input file/directory containing .fasta/.fastq sequence(s)").build());
+		options.addOption(Option.builder("o").longOpt("output").hasArg().argName("dir")
+				.desc("Directory for output files").build());
+		options.addOption(Option.builder("p").longOpt("primers").hasArg().argName("file")
+				.desc("Primer FASTA file").build());
+		options.addOption(Option.builder("t").longOpt("threads").hasArg().argName("n")
+				.desc("Number of worker threads; default: available processors").build());
+		options.addOption(Option.builder("m").longOpt("mismatches").hasArg().argName("n")
+				.desc("Allowed primer mismatches; default: 0").build());
+		options.addOption(Option.builder("e").longOpt("evalue").hasArg().argName("value")
+				.desc("blastn e-value; default: 1e5").build());
+		options.addOption(Option.builder("h").longOpt("help").desc("Print help and usage").build());
+		return options;
+	}
+
+	private static void printHelp(HelpFormatter formatter, Options options) {
+		formatter.printHelp("java -jar insilicoPCR.jar -i <input> -o <output> -p <primers> [-t n] [-m n] [-e value]", options);
+	}
+
+	private record CliConfig(Path input, Path output, Path primers, int threads, int mismatches, double evalue) {
+		static CliConfig from(CommandLine cmd) {
+			Path input = requiredPath(cmd, "input");
+			Path output = requiredPath(cmd, "output");
+			Path primers = requiredPath(cmd, "primers");
+
+			if (!Files.exists(input)) {
+				throw new IllegalArgumentException("Input does not exist: " + input);
+			}
+			if (!Files.exists(primers)) {
+				throw new IllegalArgumentException("Primer file does not exist: " + primers);
+			}
+
+			int threads = positiveInt(cmd.getOptionValue("threads"), Runtime.getRuntime().availableProcessors(), "threads");
+			int mismatches = nonNegativeInt(cmd.getOptionValue("mismatches"), 0, "mismatches");
+			double evalue = positiveDouble(cmd.getOptionValue("evalue"), 1e5, "evalue");
+			return new CliConfig(input, output, primers, threads, mismatches, evalue);
+		}
+
+		private static Path requiredPath(CommandLine cmd, String option) {
+			String value = cmd.getOptionValue(option);
+			if (value == null || value.isBlank()) {
+				throw new IllegalArgumentException("Missing required option: --" + option);
+			}
+			return Path.of(value).toAbsolutePath().normalize();
+		}
+
+		private static int positiveInt(String value, int defaultValue, String name) {
+			int parsed = value == null ? defaultValue : Integer.parseInt(value);
+			if (parsed < 1) {
+				throw new IllegalArgumentException(name + " must be >= 1");
+			}
+			return parsed;
+		}
+
+		private static int nonNegativeInt(String value, int defaultValue, String name) {
+			int parsed = value == null ? defaultValue : Integer.parseInt(value);
+			if (parsed < 0) {
+				throw new IllegalArgumentException(name + " must be >= 0");
+			}
+			return parsed;
+		}
+
+		private static double positiveDouble(String value, double defaultValue, String name) {
+			double parsed = value == null ? defaultValue : Double.parseDouble(value);
+			if (!(parsed > 0.0)) {
+				throw new IllegalArgumentException(name + " must be > 0");
+			}
+			return parsed;
 		}
 	}
 }

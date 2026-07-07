@@ -3,13 +3,14 @@ $ErrorActionPreference = 'Stop'
 $Root = Resolve-Path (Join-Path $PSScriptRoot '..\..')
 $Work = Join-Path $Root 'target\ci-runtime-downloads\windows'
 
-$BbmapUrl = "https://archive.org/download/bbmap_39.01/BBMap_39.01.tar.gz"
-$BbmapArchive = Join-Path $env:RUNNER_TEMP "BBMap_39.94.tar.gz"
+$BbmapUrl = "https://sourceforge.net"
+$BbmapArchive = Join-Path $env:RUNNER_TEMP "bbmap_latest.tar.gz"
 $BbmapExtract = Join-Path $env:RUNNER_TEMP "bbmap-extract"
 
 Write-Host "Downloading BBMap from: $BbmapUrl"
 
-curl.exe -L `
+# Added -f to fail silently on server errors instead of downloading HTML error pages
+curl.exe -L -f `
   --retry 5 `
   --retry-delay 5 `
   --user-agent "Mozilla/5.0" `

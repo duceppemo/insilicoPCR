@@ -1,15 +1,32 @@
+# Maven / build outputs
 target/
+build/
 out/
 release/
-runtime/
+
+# Runtime layout: keep source-controlled bioinformatics tools, ignore generated/bundled JDK and JavaFX SDKs
+runtime/**/jdk*/
+runtime/**/jre*/
+runtime/**/javafx-sdk*/
+!runtime/
+!runtime/common/
+!runtime/common/bbmap/
+!runtime/linux/
+!runtime/linux/blast/
+!runtime/windows/
+!runtime/windows/blast/
+
+# Legacy/local dependency folders
 src/other_resources/
 linux/
 windows/
 dependencies/
 
+# IDE
 .idea/
 *.iml
 
+# Java / logs / temp
 *.class
 *.jar
 *.log
@@ -17,13 +34,16 @@ dependencies/
 *.bak
 *.orig
 
+# OS files
 .DS_Store
 Thumbs.db
 desktop.ini
 
+# Qodana
 .qodana/
 qodana.sarif.json
 
+# Installer/package outputs
 *.dmg
 *.pkg
 *.deb
@@ -32,7 +52,3 @@ qodana.sarif.json
 *.exe
 *.app/
 *.app-image/
-runtime/linux/jdk-26.0.1/
-runtime/windows/jdk-26.0.1/
-runtime/linux/javafx-sdk-26.0.1/
-runtime/windows/javafx-sdk-26.0.1/

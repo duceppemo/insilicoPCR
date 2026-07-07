@@ -28,25 +28,15 @@ out/
 
 1. Check out the repository with Git LFS enabled.
 2. Install JDK 26 with `actions/setup-java`.
-3. Validate that bundled BBMap and BLAST are present.
+3. Validate that bundled BBMap and BLAST are present with `scripts/dev/verify-runtime-layout.sh`.
 4. Build with Maven.
 5. Copy the current CI JDK into the staged portable runtime.
 6. Create platform ZIP and SHA256 files.
 7. Upload artifacts, and publish them only for `v*` tags.
 
-## Local Linux release
+## Local runtime validation
 
-```bash
-export JAVA_HOME=/path/to/jdk-26
-scripts/release/package-linux-portable.sh 0.6.0
-```
-
-## Local Windows release
-
-```powershell
-$env:JAVA_HOME = 'C:\path\to\jdk-26'
-.\scripts\release-windows.ps1 -Version 0.6.0
-```
+Run `scripts/dev/verify-runtime-layout.sh`.
 
 ## Runtime validation
 

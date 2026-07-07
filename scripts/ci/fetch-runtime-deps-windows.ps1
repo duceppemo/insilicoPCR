@@ -3,6 +3,12 @@ $ErrorActionPreference = 'Stop'
 $Root = Resolve-Path (Join-Path $PSScriptRoot '..\..')
 $Work = Join-Path $Root 'target\ci-runtime-downloads\windows'
 
+$BbmapUrl = if ($env:BBMAP_URL) {
+    $env:BBMAP_URL
+} else {
+    'https://sourceforge.net/projects/bbmap/files/latest/download'
+}
+
 $BlastBaseUrl = if ($env:BLAST_BASE_URL) {
     $env:BLAST_BASE_URL
 } else {
@@ -23,49 +29,18 @@ New-Item -ItemType Directory -Force `
 
 Push-Location $Work
 try {
-    $BbmapUrls = @()
+    Write-Host "Downloading BBMap from: $BbmapUrl"
 
-    if ($env:BBMAP_URL) {
-        $BbmapUrls += $env:BBMAP_URL
-    }
-
-    $BbmapUrls += @(
-        'https://sourceforge.net/projects/bbmap/files/BBMap_39.94.tar.gz/download',
-        'https://downloads.sourceforge.net/project/bbmap/BBMap_39.94.tar.gz',
-        'https://archive.org/download/bbmap_39.01/BBMap_39.01.tar.gz'
-    )
-
-    $DownloadedBbmap = $false
-
-    foreach ($Url in $BbmapUrls) {
-        Write-Host "Trying BBMap URL: $Url"
-
-        Remove-Item 'bbmap.tar.gz' -Force -ErrorAction SilentlyContinue
-
-        curl.exe -L -f `
-        --retry 3 `
+    curl.exe -L -f `
+        --retry 5 `
         --retry-delay 5 `
         --user-agent "Mozilla/5.0" `
         --output 'bbmap.tar.gz' `
-        $Url
+        $BbmapUrl
 
-        if ($LASTEXITCODE -ne 0 -or -not (Test-Path 'bbmap.tar.gz')) {
-            Write-Warning "Failed to download BBMap from: $Url"
-            continue
-        }
-
-        $size = (Get-Item 'bbmap.tar.gz').Length
-        if ($size -lt 10MB) {
-            Write-Warning "BBMap download from $Url is too small ($size bytes)."
-            continue
-        }
-
-        $DownloadedBbmap = $true
-        break
-    }
-
-    if (-not $DownloadedBbmap) {
-        throw "Unable to download BBMap from any configured URL. Set BBMAP_URL to a stable mirror or release asset."
+    $size = (Get-Item 'bbmap.tar.gz').Length
+    if ($size -lt 10MB) {
+        throw "BBMap download is too small ($size bytes); likely received an HTML/error page."
     }
 
     tar -xzf 'bbmap.tar.gz'
@@ -87,11 +62,15 @@ try {
     if ([string]::IsNullOrWhiteSpace($BlastUrl)) {
         Write-Host "Resolving latest Windows BLAST+ package from: $BlastBaseUrl"
         $Index = (Invoke-WebRequest -Uri $BlastBaseUrl).Content
-        $Matches = [regex]::Matches($Index, 'ncbi-blast-[^"<> ]+-x64-win64\.tar\.gz') |
+        $AvailableBlastPackages = [regex]::Matches(
+                $Index,
+                'ncbi-blast-[^"<> ]+-x64-win64\.tar\.gz'
+        ) |
                 ForEach-Object { $_.Value } |
                 Sort-Object -Unique
 
-        $BlastFile = $Matches | Select-Object -Last 1
+        $BlastFile = $AvailableBlastPackages | Select-Object -Last 1
+
         if ([string]::IsNullOrWhiteSpace($BlastFile)) {
             throw 'Could not resolve latest Windows BLAST+ package. Set BLAST_WINDOWS_URL explicitly.'
         }

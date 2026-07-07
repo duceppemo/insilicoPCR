@@ -40,7 +40,7 @@ jobs:
           elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             echo "value=${{ inputs.version }}" >> "$GITHUB_OUTPUT"
           else
-            echo "value=0.0.0-ci" >> "$GITHUB_OUTPUT"
+            echo "value=0.6.0" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Fetch BBMap and BLAST for Linux
@@ -92,7 +92,7 @@ jobs:
           } elseif ('${{ github.event_name }}' -eq 'workflow_dispatch') {
             "value=${{ inputs.version }}" >> $env:GITHUB_OUTPUT
           } else {
-            "value=0.0.0-ci" >> $env:GITHUB_OUTPUT
+            "value=0.6.0" >> $env:GITHUB_OUTPUT
           }
 
       - name: Fetch BBMap and BLAST for Windows

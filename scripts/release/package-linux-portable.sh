@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-VERSION="${1:-0.0.0-ci}"
+VERSION="${1:-0.6.0}"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 RELEASE_DIR="$ROOT/release"
 STAGE_DIR="$ROOT/build/insilicoPCR-linux-x64"
@@ -22,7 +22,8 @@ test -f "$ROOT/target/insilicoPCR.jar" || {
 cp "$ROOT/target/insilicoPCR.jar" "$STAGE_DIR/insilicoPCR.jar"
 cp -r "$ROOT/target/lib" "$STAGE_DIR/lib"
 
-cp -r "$ROOT/runtime" "$STAGE_DIR/" 2>/dev/null || true
+cp -r "$ROOT/runtime/common" "$STAGE_DIR/runtime/" 2>/dev/null || true
+cp -r "$ROOT/runtime/linux" "$STAGE_DIR/runtime/" 2>/dev/null || true
 cp "$ROOT/README.md" "$STAGE_DIR/" 2>/dev/null || true
 cp "$ROOT/CHANGELOG.md" "$STAGE_DIR/" 2>/dev/null || true
 cp "$ROOT/LICENSE" "$STAGE_DIR/" 2>/dev/null || true
@@ -33,12 +34,11 @@ cat > "$STAGE_DIR/run-insilicoPCR.sh" <<'EOF'
 set -euo pipefail
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-if [[ -x "$DIR/runtime/linux/jdk/bin/java" ]]; then
-  JAVA="$DIR/runtime/linux/jdk/bin/java"
-elif [[ -x "$DIR/runtime/linux/jre/bin/java" ]]; then
-  JAVA="$DIR/runtime/linux/jre/bin/java"
+if [[ -x "$DIR/runtime/linux/jdk-26.0.1/bin/java" ]]; then
+  JAVA="$DIR/runtime/linux/jdk-26.0.1/bin/java"
 else
-  JAVA="java"
+  echo "Could not find java binaries" >&2
+  exit 1
 fi
 
 exec "$JAVA" -p "$DIR/lib" -m ca.canada.inspection.insilicopcr/ca.canada.inspection.dispatchpcr.Dispatcher "$@"

@@ -1,5 +1,5 @@
 param(
-    [string]$Version = "0.0.0-ci"
+    [string]$Version = "0.6.0"
 )
 
 $ErrorActionPreference = "Stop"
@@ -20,7 +20,10 @@ Remove-Item $StageDir -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force -Path $StageDir, $ReleaseDir | Out-Null
 
 Copy-Item "target\insilicoPCR.jar" $StageDir
-if (Test-Path "runtime") { Copy-Item "runtime" (Join-Path $StageDir "runtime") -Recurse -Force }
+
+New-Item -ItemType Directory -Force -Path (Join-Path $StageDir "runtime") | Out-Null
+if (Test-Path "runtime\common") { Copy-Item "runtime\common" (Join-Path $StageDir "runtime\common") -Recurse -Force }
+if (Test-Path "runtime\windows") { Copy-Item "runtime\windows" (Join-Path $StageDir "runtime\windows") -Recurse -Force }
 if (Test-Path "README.md") { Copy-Item "README.md" (Join-Path $StageDir "README.md") -Force }
 if (Test-Path "CHANGELOG.md") { Copy-Item "CHANGELOG.md" (Join-Path $StageDir "CHANGELOG.md") -Force }
 if (Test-Path "LICENSE") { Copy-Item "LICENSE" (Join-Path $StageDir "LICENSE") -Force }
@@ -30,12 +33,11 @@ if (Test-Path "LICENSE.txt") { Copy-Item "LICENSE.txt" (Join-Path $StageDir "LIC
 @echo off
 set DIR=%~dp0
 
-if exist "%DIR%runtime\windows\jdk\bin\java.exe" (
-  set JAVA=%DIR%runtime\windows\jdk\bin\java.exe
-) else if exist "%DIR%runtime\windows\jre\bin\java.exe" (
-  set JAVA=%DIR%runtime\windows\jre\bin\java.exe
+if exist "%DIR%runtime\windows\jdk-26.0.1\bin\java.exe" (
+  set JAVA=%DIR%runtime\windows\jdk-26.0.1\bin\java.exe
 ) else (
-  set JAVA=java
+  echo Could not find java binaries
+  exit /b
 )
 
 "%JAVA%" -jar "%DIR%insilicoPCR.jar" %*

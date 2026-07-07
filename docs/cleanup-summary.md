@@ -1,6 +1,6 @@
 # Professional cleanup summary
 
-This cleanup removes the most fragile parts of the portable release system and makes the runtime structure deterministic.
+This cleanup removes the fragile parts of the portable release system and makes the runtime structure deterministic.
 
 ## What changed
 
@@ -14,6 +14,8 @@ This cleanup removes the most fragile parts of the portable release system and m
 - Legacy recursive filesystem scanning was removed from runtime discovery.
 - Documentation was added for the runtime layout and release process.
 - Obsolete CI download scripts now fail with clear messages if invoked accidentally.
+- Maven plugin versions were refreshed.
+- A shared runtime verification script was added and wired into CI.
 
 ## Supported runtime layout
 

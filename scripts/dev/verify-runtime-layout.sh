@@ -4,7 +4,6 @@ set -euo pipefail
 REQUIRE_BINARIES="${REQUIRE_BINARIES:-false}"
 
 required_dirs=(
-  "runtime"
   "runtime/linux"
   "runtime/windows"
   "runtime/common"

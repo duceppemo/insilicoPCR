@@ -31,11 +31,7 @@ runtime/
       bin/
 ```
 
-Generated release ZIPs add:
-
-```text
-runtime/<platform>/jdk
-```
+Generated release ZIPs add `runtime/<platform>/jdk`.
 
 The JDK is copied from `JAVA_HOME` at packaging time and is not committed.
 

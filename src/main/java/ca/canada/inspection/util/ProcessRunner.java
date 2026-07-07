@@ -27,7 +27,7 @@ public final class ProcessRunner {
             if (workingDirectory != null) {
                 builder.directory(workingDirectory.toFile());
             }
-            
+
             Process process = builder.start();
             int exitCode = process.waitFor();
             Duration elapsed = Duration.between(start, Instant.now());

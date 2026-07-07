@@ -175,23 +175,24 @@ public final class CommandMain {
 
 	private void runBlast(Path primerDatabase) {
 		List<Path> queries = blastQueries();
-		try (ExecutorService executor = Executors.newFixedThreadPool(Math.clamp(threads, 1, samples.size()))) {
-			for (Callable<Void> task : tasks) {
-				executor.submit(task);
-			}
+		if (queries.isEmpty()) {
+			return;
 		}
-		try {
-			List<Future<?>> futures = new ArrayList<>();
+
+		int poolSize = Math.clamp(threads, 1, queries.size());
+
+		try (ExecutorService executor = Executors.newFixedThreadPool(poolSize)) {
+			List<Future<?>> futures = new ArrayList<>(queries.size());
+
 			for (Path query : queries) {
 				futures.add(executor.submit(() -> runBlastForQuery(primerDatabase, query)));
 			}
+
 			for (Future<?> future : futures) {
 				future.get();
 			}
 		} catch (Exception e) {
 			throw new IllegalStateException("BLAST execution failed", e);
-		} finally {
-			executor.shutdownNow();
 		}
 	}
 

@@ -45,6 +45,9 @@ jobs:
 
       - name: Fetch BBMap and BLAST for Linux
         shell: bash
+        env:
+          # FIXED: Pass the direct download mirror link to bypass bot filters and routing issues entirely
+          BBMAP_URL: "https://sourceforge.net"
         run: |
           chmod +x scripts/ci/fetch-runtime-deps-linux.sh
           scripts/ci/fetch-runtime-deps-linux.sh

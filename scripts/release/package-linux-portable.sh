@@ -13,7 +13,7 @@ cd "$ROOT"
 
 ./mvnw -B clean package -DskipTests
 
-cp target/insilicoPCR.jar "$STAGE_DIR/"
+cp target/insilicoPCR.jar "$STAGE_DIR/insilicoPCR.jar"
 cp -r runtime "$STAGE_DIR/" 2>/dev/null || true
 cp README.md "$STAGE_DIR/" 2>/dev/null || true
 cp CHANGELOG.md "$STAGE_DIR/" 2>/dev/null || true

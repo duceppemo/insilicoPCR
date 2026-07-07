@@ -4,25 +4,9 @@ The release pipeline is deterministic and does not download BBMap or BLAST durin
 
 ## Source-controlled runtime assets
 
-The following runtime tools are committed as application assets:
+The runtime tools are committed as application assets under `runtime/common/bbmap`, `runtime/linux/blast`, and `runtime/windows/blast`.
 
-```text
-runtime/common/bbmap
-runtime/linux/blast
-runtime/windows/blast
-```
-
-The following runtime assets are generated or copied during packaging and must not be committed:
-
-```text
-runtime/linux/jdk
-runtime/windows/jdk
-runtime/**/javafx-sdk*
-build/
-target/
-release/
-out/
-```
+Generated release output, Maven output, JavaFX SDK folders, and JDK/JRE folders must not be committed.
 
 ## CI flow
 

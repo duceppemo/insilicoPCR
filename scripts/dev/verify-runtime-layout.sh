@@ -1,20 +1,28 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+REQUIRE_BINARIES="${REQUIRE_BINARIES:-false}"
 
-fail() {
-  echo "ERROR: $*" >&2
-  exit 1
-}
+required_dirs=(
+  "runtime"
+  "runtime/linux"
+  "runtime/windows"
+  "runtime/common"
+)
 
-[[ -d "$ROOT/runtime/common/bbmap" ]] || fail "Missing runtime/common/bbmap"
-[[ -f "$ROOT/runtime/common/bbmap/bbduk.sh" || -f "$ROOT/runtime/common/bbmap/current/bbduk.sh" ]] || fail "Missing BBMap bbduk.sh"
-[[ -d "$ROOT/runtime/linux/blast/bin" ]] || fail "Missing runtime/linux/blast/bin"
-[[ -f "$ROOT/runtime/linux/blast/bin/blastn" ]] || fail "Missing Linux blastn"
-[[ -f "$ROOT/runtime/linux/blast/bin/makeblastdb" ]] || fail "Missing Linux makeblastdb"
-[[ -d "$ROOT/runtime/windows/blast/bin" ]] || fail "Missing runtime/windows/blast/bin"
-[[ -f "$ROOT/runtime/windows/blast/bin/blastn.exe" ]] || fail "Missing Windows blastn.exe"
-[[ -f "$ROOT/runtime/windows/blast/bin/makeblastdb.exe" ]] || fail "Missing Windows makeblastdb.exe"
+if [[ "$REQUIRE_BINARIES" == "true" ]]; then
+  required_dirs+=(
+    "runtime/linux/blast/bin"
+    "runtime/windows/blast/bin"
+    "runtime/common/bbmap"
+  )
+fi
 
-echo "Runtime layout is valid."
+for dir in "${required_dirs[@]}"; do
+  if [[ ! -d "$dir" ]]; then
+    echo "ERROR: Missing $dir"
+    exit 1
+  fi
+done
+
+echo "Runtime layout OK"

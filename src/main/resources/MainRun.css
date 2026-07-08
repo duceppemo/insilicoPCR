@@ -1,15 +1,7 @@
 .combo-box .list-cell {
-	-fx-alignment: center;
-}
-
-.prompt {
-	-fx-font-family: Ariel;
+    -fx-alignment: center;
 }
 
 .text {
-	-fx-font-family: Ariel;
-}
-
-.root {
-
+    -fx-font-family: Arial;
 }

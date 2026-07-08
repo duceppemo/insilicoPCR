@@ -1,5 +1,5 @@
 param(
-    [string]$Version = "0.6.0"
+    [string]$Version = "0.6.1"
 )
 
 $ErrorActionPreference = "Stop"
@@ -22,6 +22,14 @@ function Require-Directory([string]$Path) {
 
 function Validate-BundledTools {
     Require-Directory (Join-Path $Root "runtime\common\bbmap")
+    Require-File (Join-Path $Root "runtime\common\bbmap\bbtools.jar")
+    Require-File (Join-Path $Root "runtime\common\bbmap\bbmap.sh")
+    Require-File (Join-Path $Root "runtime\common\bbmap\bbduk.sh")
+    Require-File (Join-Path $Root "runtime\common\bbmap\tadpole.sh")
+    Require-File (Join-Path $Root "runtime\common\bbmap\calcmem.sh")
+    Require-File (Join-Path $Root "runtime\common\bbmap\javasetup.sh")
+    Require-Directory (Join-Path $Root "runtime\common\bbmap\config")
+    Require-Directory (Join-Path $Root "runtime\common\bbmap\resources")
 
     $bbdukCandidates = @(
         (Join-Path $Root "runtime\common\bbmap\bbduk.bat"),

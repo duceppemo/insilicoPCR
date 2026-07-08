@@ -29,14 +29,14 @@ require_executable() {
 
 validate_bundled_tools() {
   require_dir "$ROOT/runtime/common/bbmap"
-
-  if [[ -f "$ROOT/runtime/common/bbmap/bbduk.sh" ]]; then
-    require_executable "$ROOT/runtime/common/bbmap/bbduk.sh"
-  elif [[ -f "$ROOT/runtime/common/bbmap/current/bbduk.sh" ]]; then
-    require_executable "$ROOT/runtime/common/bbmap/current/bbduk.sh"
-  else
-    fail "Missing BBMap launcher: runtime/common/bbmap/bbduk.sh or runtime/common/bbmap/current/bbduk.sh"
-  fi
+  require_executable "$ROOT/runtime/common/bbmap/bbduk.sh"
+  require_file "$ROOT/runtime/common/bbmap/bbtools.jar"
+  require_file "$ROOT/runtime/common/bbmap/bbmap.sh"
+  require_file "$ROOT/runtime/common/bbmap/tadpole.sh"
+  require_file "$ROOT/runtime/common/bbmap/calcmem.sh"
+  require_file "$ROOT/runtime/common/bbmap/javasetup.sh"
+  require_dir  "$ROOT/runtime/common/bbmap/config"
+  require_dir  "$ROOT/runtime/common/bbmap/resources"
 
   require_dir "$ROOT/runtime/linux/blast/bin"
   require_executable "$ROOT/runtime/linux/blast/bin/blastn"

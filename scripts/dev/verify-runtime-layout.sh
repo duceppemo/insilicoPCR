@@ -13,7 +13,14 @@ if [[ "$REQUIRE_BINARIES" == "true" ]]; then
   required_dirs+=(
     "runtime/linux/blast/bin"
     "runtime/windows/blast/bin"
-    "runtime/common/bbmap"
+    "runtime/common/bbmap/bbtools.jar"
+    "runtime/common/bbmap/bbduk.sh"
+    "runtime/common/bbmap/bbmap.sh"
+    "runtime/common/bbmap/tadpole.sh"
+    "runtime/common/bbmap/calcmem.sh"
+    "runtime/common/bbmap/javasetup.sh"
+    "runtime/common/bbmap/config"
+    "runtime/common/bbmap/resources"
   )
 fi
 

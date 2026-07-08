@@ -35,11 +35,6 @@ public record DependencyContext(
             return jar;
         }
 
-        Path current = bbtoolsLocation().resolve("current");
-        if (Files.isDirectory(current)) {
-            return current;
-        }
-
         throw new IllegalStateException(
                 "Unable to find BBMap classpath. Expected bbtools.jar or current/ under "
                         + bbtoolsLocation()

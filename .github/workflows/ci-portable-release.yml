@@ -8,9 +8,9 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version for manual release artifact names, e.g. 0.6.0-manual'
+        description: 'Version for manual release artifact names, e.g. 0.0.1-manual'
         required: false
-        default: '0.0.0-manual'
+        default: '0.0.1-manual'
 
 permissions:
   contents: write

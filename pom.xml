@@ -7,7 +7,7 @@
 
     <groupId>ca.canada.inspection</groupId>
     <artifactId>insilicoPCR</artifactId>
-    <version>0.6.0-SNAPSHOT</version>
+    <version>0.6.1</version>
     <name>insilicoPCR</name>
     <description>Portable JavaFX application for in silico PCR analysis.</description>
 

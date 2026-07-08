@@ -12,6 +12,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.LinkedBlockingQueue;
 
 public final class BbmapPipeline {
@@ -148,13 +149,14 @@ public final class BbmapPipeline {
             if (exitCode != 0) {
                 throw new IllegalStateException("Command failed with exit code " + exitCode + ": " + String.join(" ", command));
             }
+        } catch (CancellationException e) {
+            destroy(process);
+            throw e;
         } catch (IOException e) {
             throw new IllegalStateException("Unable to start command: " + String.join(" ", command), e);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            if (process != null) {
-                process.destroyForcibly();
-            }
+            destroy(process);
             throw new IllegalStateException("Interrupted while running command: " + String.join(" ", command), e);
         }
     }
@@ -173,7 +175,13 @@ public final class BbmapPipeline {
 
     private static void stopIfCancelled(Task<?> owner) {
         if (owner != null && owner.isCancelled()) {
-            throw new IllegalStateException("BBMap pipeline was cancelled.");
+            throw new CancellationException("BBMap pipeline was cancelled.");
+        }
+    }
+
+    private static void destroy(Process process) {
+        if (process != null && process.isAlive()) {
+            process.destroyForcibly();
         }
     }
 }

@@ -12,6 +12,6 @@ public final class ReportGenerator {
         contigs.load(context);
         blastReports.parse(context);
         consolidatedReport.write(context);
-        qaLog.write(context, Dispatcher.version);
+        qaLog.write(context, Dispatcher.VERSION);
     }
 }

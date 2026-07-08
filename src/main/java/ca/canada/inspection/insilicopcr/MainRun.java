@@ -37,7 +37,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class MainRun extends Application {
 
-    private static final String PROMPT_STYLE_CLASS = "prompt";
+    private static final String PROMPT_STYLE = "-fx-font-family: Arial;";
 
     private Path inputFile;
     private Path outDir;
@@ -72,7 +72,6 @@ public class MainRun extends Application {
         addRunButton(pane, alertText, threadField, mismatchField, evalueField);
 
         var scene = new Scene(pane, 800, 500);
-        scene.getStylesheets().add("MainRun.css");
         primaryStage.setScene(scene);
         primaryStage.setTitle("InSilico PCR " + Dispatcher.VERSION);
         primaryStage.setOnCloseRequest(event -> {
@@ -149,7 +148,8 @@ public class MainRun extends Application {
 
         var field = new ComboBox<Integer>();
         field.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
-        for (var i = 1; i < Runtime.getRuntime().availableProcessors(); i++) {
+        int maxThreads = Math.max(1, Runtime.getRuntime().availableProcessors() - 1);
+        for (var i = 1; i <= maxThreads; i++) {
             field.getItems().add(i);
         }
         field.getSelectionModel().selectLast();
@@ -328,7 +328,7 @@ public class MainRun extends Application {
 
     private static Text promptText(String text) {
         var prompt = new Text(text);
-        prompt.getStyleClass().add(PROMPT_STYLE_CLASS);
+        prompt.setStyle(PROMPT_STYLE);
         return prompt;
     }
 

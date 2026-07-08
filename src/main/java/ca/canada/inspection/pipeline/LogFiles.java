@@ -16,7 +16,7 @@ public final class LogFiles {
     public static void ensureQaLog(Path outDir, Path inputFile, Path primerFile, DependencyContext dependencies) {
         var qaFile = outDir.resolve("QAlog.txt");
         if (!Files.exists(qaFile)) {
-            Methods.makeQALog(qaFile, Dispatcher.version, outDir, inputFile, primerFile,
+            Methods.makeQALog(qaFile, Dispatcher.VERSION, outDir, inputFile, primerFile,
                     dependencies.bbtoolsLocation(), dependencies.blastLocation());
         }
     }

@@ -14,6 +14,13 @@ public final class Dispatcher {
 
     public static final String VERSION = "0.6.1";
 
+    /**
+     * Compatibility alias for older code paths and release branches.
+     * Prefer {@link #VERSION} in new code.
+     */
+    @Deprecated(since = "0.6.1", forRemoval = false)
+    public static final String version = VERSION;
+
     private Dispatcher() {
     }
 

@@ -1,13 +1,13 @@
 package ca.canada.inspection.insilicopcr;
 
 import ca.canada.inspection.dispatchpcr.Dispatcher;
+import ca.canada.inspection.insilicopcr.ui.PathFieldBinder;
 import ca.canada.inspection.pipeline.DependencyContext;
 import ca.canada.inspection.pipeline.ExternalProcessTracker;
 import ca.canada.inspection.pipeline.InputValidator;
 import ca.canada.inspection.pipeline.LogFiles;
 import ca.canada.inspection.pipeline.PcrPipelineTask;
 import ca.canada.inspection.pipeline.PcrRunConfig;
-import ca.canada.inspection.insilicopcr.ui.PathFieldBinder;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.geometry.Pos;
@@ -22,319 +22,321 @@ import javafx.scene.control.Tooltip;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Pane;
 import javafx.scene.layout.RowConstraints;
 import javafx.scene.text.Text;
 import javafx.scene.text.TextAlignment;
 import javafx.stage.Stage;
-import javafx.scene.layout.Pane;
 
 import javax.swing.JOptionPane;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import java.io.PrintWriter;
-import java.io.StringWriter;
-
 public class MainRun extends Application {
 
-	private Path inputFile;
-	private Path outDir;
-	private Path primerFile;
-	private TextArea outputField;
-	private ProgressBar mainProgress;
-	private ProgressBar blastProgress;
-	private Button gelButton;
+    private static final String PROMPT_STYLE_CLASS = "prompt";
 
-	private final ExternalProcessTracker processTracker = new ExternalProcessTracker();
-	private final AtomicBoolean currentlyRunning = new AtomicBoolean(false);
-	private PcrPipelineTask runningTask;
-	private DependencyContext dependencies;
+    private Path inputFile;
+    private Path outDir;
+    private Path primerFile;
+    private TextArea outputField;
+    private ProgressBar mainProgress;
+    private ProgressBar blastProgress;
+    private Button gelButton;
 
-	@Override
-	public void start(Stage primaryStage) {
-		var pane = buildGrid();
+    private final ExternalProcessTracker processTracker = new ExternalProcessTracker();
+    private final AtomicBoolean currentlyRunning = new AtomicBoolean(false);
+    private PcrPipelineTask runningTask;
+    private DependencyContext dependencies;
 
-		var inputField = new TextField();
-		var primerField = new TextField();
-		var outputDirField = new TextField();
-		outputField = new TextArea();
-		var alertText = new Text();
+    @Override
+    public void start(Stage primaryStage) {
+        var pane = buildGrid();
 
-		addInputControls(primaryStage, pane, inputField);
-		addPrimerControls(primaryStage, pane, primerField);
-		addOutputControls(primaryStage, pane, outputDirField);
-		var threadField = addThreadControls(pane);
-		var mismatchField = addMismatchControls(pane);
-		var evalueField = addEvalueControls(pane);
-		addOutputLog(pane, alertText);
-		addRunButton(pane, alertText, threadField, mismatchField, evalueField);
+        var inputField = new TextField();
+        var primerField = new TextField();
+        var outputDirField = new TextField();
+        outputField = new TextArea();
+        var alertText = new Text();
 
-		var scene = new Scene(pane, 800, 500);
-		scene.getStylesheets().add("MainRun.css");
-		primaryStage.setScene(scene);
-		primaryStage.setTitle("InSilico PCR " + Dispatcher.version);
-		primaryStage.setOnCloseRequest(event -> {
-			if (!confirmClose()) {
-				event.consume();
-			}
-		});
-		primaryStage.show();
-	}
+        addInputControls(primaryStage, pane, inputField);
+        addPrimerControls(primaryStage, pane, primerField);
+        addOutputControls(primaryStage, pane, outputDirField);
+        var threadField = addThreadControls(pane);
+        var mismatchField = addMismatchControls(pane);
+        var evalueField = addEvalueControls(pane);
+        addOutputLog(pane, alertText);
+        addRunButton(pane, alertText, threadField, mismatchField, evalueField);
 
-	private GridPane buildGrid() {
-		var pane = new GridPane();
-		var column = new ColumnConstraints();
-		column.setPercentWidth(2);
-		pane.getColumnConstraints().addAll(Collections.nCopies(50, column));
+        var scene = new Scene(pane, 800, 500);
+        scene.getStylesheets().add("MainRun.css");
+        primaryStage.setScene(scene);
+        primaryStage.setTitle("InSilico PCR " + Dispatcher.VERSION);
+        primaryStage.setOnCloseRequest(event -> {
+            if (!confirmClose()) {
+                event.consume();
+            }
+        });
+        primaryStage.show();
+    }
 
-		var row = new RowConstraints();
-		row.setPercentHeight(2);
-		pane.getRowConstraints().addAll(Collections.nCopies(50, row));
-		return pane;
-	}
+    private GridPane buildGrid() {
+        var pane = new GridPane();
+        var column = new ColumnConstraints();
+        column.setPercentWidth(2);
+        pane.getColumnConstraints().addAll(Collections.nCopies(50, column));
 
-	private void addInputControls(Stage stage, GridPane pane, TextField inputField) {
-		addPrompt(pane, "Input fasta/fastq file or directory containing fasta/fastq files", 2, 2, 20, 2);
-		inputField.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
-		inputField.setEditable(true);
-		pane.add(inputField, 2, 4, 28, 2);
-		PathFieldBinder.bindDropTarget(inputField, path -> inputFile = path);
+        var row = new RowConstraints();
+        row.setPercentHeight(2);
+        pane.getRowConstraints().addAll(Collections.nCopies(50, row));
+        return pane;
+    }
 
-		var isDirectory = new RadioButton("Input is a directory");
-		isDirectory.setSelected(false);
-		isDirectory.setAlignment(Pos.CENTER);
-		pane.add(isDirectory, 3, 7, 10, 2);
+    private void addInputControls(Stage stage, GridPane pane, TextField inputField) {
+        addPrompt(pane, "Input fasta/fastq file or directory containing fasta/fastq files", 2, 2, 20, 2);
+        inputField.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
+        inputField.setEditable(true);
+        pane.add(inputField, 2, 4, 28, 2);
+        PathFieldBinder.bindDropTarget(inputField, path -> inputFile = path);
 
-		var browse = new Button("Select");
-		browse.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
-		browse.setOnAction(event -> PathFieldBinder.chooseFileOrDirectory(stage, inputField, isDirectory::isSelected, path -> inputFile = path));
-		pane.add(browse, 31, 4, 4, 2);
-	}
+        var isDirectory = new RadioButton("Input is a directory");
+        isDirectory.setSelected(false);
+        isDirectory.setAlignment(Pos.CENTER);
+        pane.add(isDirectory, 3, 7, 10, 2);
 
-	private void addPrimerControls(Stage stage, GridPane pane, TextField primerField) {
-		addPrompt(pane, "Input a primer reference file in fasta format", 2, 10, 20, 2);
-		primerField.setTooltip(new Tooltip("Please refer to the custom_primer_guide.txt for instructions on how to create a valid primer file"));
-		primerField.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
-		primerField.setEditable(true);
-		pane.add(primerField, 2, 12, 28, 2);
-		PathFieldBinder.bindDropTarget(primerField, path -> primerFile = path);
+        var browse = new Button("Select");
+        browse.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
+        browse.setOnAction(event -> PathFieldBinder.chooseFileOrDirectory(stage, inputField, isDirectory::isSelected, path -> inputFile = path));
+        pane.add(browse, 31, 4, 4, 2);
+    }
 
-		var browse = new Button("Select");
-		browse.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
-		browse.setOnAction(event -> PathFieldBinder.chooseFile(stage, primerField, path -> primerFile = path));
-		pane.add(browse, 31, 12, 4, 2);
-	}
+    private void addPrimerControls(Stage stage, GridPane pane, TextField primerField) {
+        addPrompt(pane, "Input a primer reference file in fasta format", 2, 10, 20, 2);
+        primerField.setTooltip(new Tooltip("Please refer to the custom_primer_guide.txt for instructions on how to create a valid primer file"));
+        primerField.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
+        primerField.setEditable(true);
+        pane.add(primerField, 2, 12, 28, 2);
+        PathFieldBinder.bindDropTarget(primerField, path -> primerFile = path);
 
-	private void addOutputControls(Stage stage, GridPane pane, TextField outputDirField) {
-		addPrompt(pane, "Output directory. Path MUST NOT contain spaces", 2, 15, 20, 2);
-		outputDirField.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
-		outputDirField.setEditable(false);
-		pane.add(outputDirField, 2, 17, 28, 2);
-		PathFieldBinder.bindDropTarget(outputDirField, path -> outDir = path);
+        var browse = new Button("Select");
+        browse.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
+        browse.setOnAction(event -> PathFieldBinder.chooseFile(stage, primerField, path -> primerFile = path));
+        pane.add(browse, 31, 12, 4, 2);
+    }
 
-		var browse = new Button("Select");
-		browse.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
-		browse.setOnAction(event -> PathFieldBinder.chooseDirectory(stage, outputDirField, path -> outDir = path));
-		pane.add(browse, 31, 17, 4, 2);
-	}
+    private void addOutputControls(Stage stage, GridPane pane, TextField outputDirField) {
+        addPrompt(pane, "Output directory. Path MUST NOT contain spaces", 2, 15, 20, 2);
+        outputDirField.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
+        outputDirField.setEditable(false);
+        pane.add(outputDirField, 2, 17, 28, 2);
+        PathFieldBinder.bindDropTarget(outputDirField, path -> outDir = path);
 
-	private ComboBox<Integer> addThreadControls(GridPane pane) {
-		var prompt = new Text("Threads");
-		prompt.getStyleClass().add("prompt");
-		prompt.setTextAlignment(TextAlignment.LEFT);
-		var box = new HBox(10, prompt);
-		box.setAlignment(Pos.TOP_LEFT);
-		pane.add(box, 38, 5, 5, 1);
+        var browse = new Button("Select");
+        browse.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
+        browse.setOnAction(event -> PathFieldBinder.chooseDirectory(stage, outputDirField, path -> outDir = path));
+        pane.add(browse, 31, 17, 4, 2);
+    }
 
-		var field = new ComboBox<Integer>();
-		field.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
-		for (var i = 1; i < Runtime.getRuntime().availableProcessors(); i++) {
-			field.getItems().add(i);
-		}
-		field.getSelectionModel().selectLast();
-		field.setVisibleRowCount(3);
-		pane.add(field, 44, 4, 4, 3);
-		return field;
-	}
+    private ComboBox<Integer> addThreadControls(GridPane pane) {
+        var prompt = promptText("Threads");
+        prompt.setTextAlignment(TextAlignment.LEFT);
+        var box = new HBox(10, prompt);
+        box.setAlignment(Pos.TOP_LEFT);
+        pane.add(box, 38, 5, 5, 1);
 
-	private ComboBox<Integer> addMismatchControls(GridPane pane) {
-		var prompt = new Text("Mismatches");
-		prompt.getStyleClass().add("prompt");
-		prompt.setTextAlignment(TextAlignment.LEFT);
-		var box = new HBox(10, prompt);
-		box.setAlignment(Pos.TOP_LEFT);
-		pane.add(box, 38, 10, 5, 1);
+        var field = new ComboBox<Integer>();
+        field.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
+        for (var i = 1; i < Runtime.getRuntime().availableProcessors(); i++) {
+            field.getItems().add(i);
+        }
+        field.getSelectionModel().selectLast();
+        field.setVisibleRowCount(3);
+        pane.add(field, 44, 4, 4, 3);
+        return field;
+    }
 
-		var field = new ComboBox<Integer>();
-		field.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
-		field.getItems().addAll(0, 1, 2, 3);
-		field.getSelectionModel().selectFirst();
-		pane.add(field, 44, 9, 4, 3);
-		return field;
-	}
+    private ComboBox<Integer> addMismatchControls(GridPane pane) {
+        var prompt = promptText("Mismatches");
+        prompt.setTextAlignment(TextAlignment.LEFT);
+        var box = new HBox(10, prompt);
+        box.setAlignment(Pos.TOP_LEFT);
+        pane.add(box, 38, 10, 5, 1);
 
-	private TextField addEvalueControls(GridPane pane) {
-		var prompt = new Text("Evalue");
-		prompt.getStyleClass().add("prompt");
-		prompt.setTextAlignment(TextAlignment.LEFT);
-		var box = new HBox(10, prompt);
-		box.setAlignment(Pos.TOP_LEFT);
-		pane.add(box, 38, 15, 5, 1);
+        var field = new ComboBox<Integer>();
+        field.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
+        field.getItems().addAll(0, 1, 2, 3);
+        field.getSelectionModel().selectFirst();
+        pane.add(field, 44, 9, 4, 3);
+        return field;
+    }
 
-		var field = new TextField("1e5");
-		field.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
-		field.setEditable(true);
-		pane.add(field, 44, 14, 4, 3);
-		return field;
-	}
+    private TextField addEvalueControls(GridPane pane) {
+        var prompt = promptText("Evalue");
+        prompt.setTextAlignment(TextAlignment.LEFT);
+        var box = new HBox(10, prompt);
+        box.setAlignment(Pos.TOP_LEFT);
+        pane.add(box, 38, 15, 5, 1);
 
-	private void addOutputLog(GridPane pane, Text alertText) {
-		outputField.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
-		outputField.setEditable(false);
-		pane.add(outputField, 2, 21, 46, 22);
+        var field = new TextField("1e5");
+        field.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
+        field.setEditable(true);
+        pane.add(field, 44, 14, 4, 3);
+        return field;
+    }
 
-		alertText.setStyle("-fx-fill: red;");
-		var alertBox = new HBox(10, alertText);
-		alertBox.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
-		alertBox.setAlignment(Pos.CENTER);
-		pane.add(alertBox, 1, 43, 48, 2);
-	}
+    private void addOutputLog(GridPane pane, Text alertText) {
+        outputField.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
+        outputField.setEditable(false);
+        pane.add(outputField, 2, 21, 46, 22);
 
-	private void addRunButton(GridPane pane,
-	                          Text alertText,
-	                          ComboBox<Integer> threadField,
-	                          ComboBox<Integer> mismatchField,
-	                          TextField evalueField) {
-		gelButton = new Button("View Gel Image");
-		gelButton.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
-		gelButton.setOnAction(event -> displayGelImage());
+        alertText.setStyle("-fx-fill: red;");
+        var alertBox = new HBox(10, alertText);
+        alertBox.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
+        alertBox.setAlignment(Pos.CENTER);
+        pane.add(alertBox, 1, 43, 48, 2);
+    }
 
-		var runButton = new Button("Run");
-		runButton.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
-		runButton.setOnAction(event -> startRun(pane, alertText, threadField, mismatchField, evalueField));
-		pane.add(runButton, 22, 45, 5, 3);
-	}
+    private void addRunButton(GridPane pane,
+                              Text alertText,
+                              ComboBox<Integer> threadField,
+                              ComboBox<Integer> mismatchField,
+                              TextField evalueField) {
+        gelButton = new Button("View Gel Image");
+        gelButton.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
+        gelButton.setOnAction(event -> displayGelImage());
 
-	private void startRun(GridPane pane,
-	                      Text alertText,
-	                      ComboBox<Integer> threadField,
-	                      ComboBox<Integer> mismatchField,
-	                      TextField evalueField) {
-		var validationMessage = InputValidator.validate(inputFile, outDir, primerFile);
-		if (!validationMessage.isBlank()) {
-			alertText.setText(validationMessage);
-			return;
-		}
+        var runButton = new Button("Run");
+        runButton.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
+        runButton.setOnAction(event -> startRun(pane, alertText, threadField, mismatchField, evalueField));
+        pane.add(runButton, 22, 45, 5, 3);
+    }
 
-		alertText.setText("");
-		outputField.clear();
-		currentlyRunning.set(true);
+    private void startRun(GridPane pane,
+                          Text alertText,
+                          ComboBox<Integer> threadField,
+                          ComboBox<Integer> mismatchField,
+                          TextField evalueField) {
+        var validationMessage = InputValidator.validate(inputFile, outDir, primerFile);
+        if (!validationMessage.isBlank()) {
+            alertText.setText(validationMessage);
+            return;
+        }
 
-		if (mainProgress != null && mainProgress.getParent() != null) {
-			((Pane) mainProgress.getParent()).getChildren().remove(mainProgress);
-		}
+        alertText.setText("");
+        outputField.clear();
+        currentlyRunning.set(true);
 
-		if (blastProgress != null && blastProgress.getParent() != null) {
-			((Pane) blastProgress.getParent()).getChildren().remove(blastProgress);
-		}
-		mainProgress = new ProgressBar();
-		mainProgress.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
-		pane.add(mainProgress, 2, 43, 46, 2);
+        if (mainProgress != null && mainProgress.getParent() != null) {
+            ((Pane) mainProgress.getParent()).getChildren().remove(mainProgress);
+        }
 
-		blastProgress = new ProgressBar();
-		blastProgress.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
-		pane.add(blastProgress, 30, 46, 18, 2);
+        if (blastProgress != null && blastProgress.getParent() != null) {
+            ((Pane) blastProgress.getParent()).getChildren().remove(blastProgress);
+        }
+        mainProgress = new ProgressBar();
+        mainProgress.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
+        pane.add(mainProgress, 2, 43, 46, 2);
 
-		var config = new PcrRunConfig(
-				inputFile,
-				outDir,
-				primerFile,
-				threadField.getSelectionModel().getSelectedItem(),
-				mismatchField.getSelectionModel().getSelectedItem(),
-				Double.parseDouble(evalueField.getText()),
-				outputField,
-				blastProgress
-		);
+        blastProgress = new ProgressBar();
+        blastProgress.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
+        pane.add(blastProgress, 30, 46, 18, 2);
 
-		runningTask = new PcrPipelineTask(config, processTracker);
-		mainProgress.progressProperty().bind(runningTask.progressProperty());
-		runningTask.setOnSucceeded(event -> {
-			currentlyRunning.set(false);
-			dependencies = runningTask.dependencies();
-			if (gelButton.getParent() != null) {
-				((Pane) gelButton.getParent()).getChildren().remove(gelButton);
-			}
-			pane.add(gelButton, 30, 45, 7, 3);
-		});
-		runningTask.setOnFailed(event -> {
-			currentlyRunning.set(false);
+        var config = new PcrRunConfig(
+                inputFile,
+                outDir,
+                primerFile,
+                threadField.getSelectionModel().getSelectedItem(),
+                mismatchField.getSelectionModel().getSelectedItem(),
+                Double.parseDouble(evalueField.getText()),
+                outputField,
+                blastProgress
+        );
 
-			Throwable error = runningTask.getException();
-			if (error == null) {
-				Methods.logMessage(outputField, "Run failed");
-				return;
-			}
+        runningTask = new PcrPipelineTask(config, processTracker);
+        mainProgress.progressProperty().bind(runningTask.progressProperty());
+        runningTask.setOnSucceeded(event -> {
+            currentlyRunning.set(false);
+            dependencies = runningTask.dependencies();
+            if (gelButton.getParent() != null) {
+                ((Pane) gelButton.getParent()).getChildren().remove(gelButton);
+            }
+            pane.add(gelButton, 30, 45, 7, 3);
+        });
+        runningTask.setOnFailed(event -> {
+            currentlyRunning.set(false);
 
-			error.printStackTrace();
+            Throwable error = runningTask.getException();
+            if (error == null) {
+                Methods.logMessage(outputField, "Run failed");
+                return;
+            }
 
-			StringWriter sw = new StringWriter();
-			error.printStackTrace(new PrintWriter(sw));
-			Methods.logMessage(outputField, "Run failed:\n" + sw);
-		});
+            error.printStackTrace();
 
-		var thread = new Thread(runningTask, "insilico-pcr-run");
-		thread.setDaemon(true);
-		thread.start();
-	}
+            StringWriter sw = new StringWriter();
+            error.printStackTrace(new PrintWriter(sw));
+            Methods.logMessage(outputField, "Run failed:\n" + sw);
+        });
 
-	private boolean confirmClose() {
-		if (inputFile == null || outDir == null || primerFile == null) {
-			Platform.exit();
-			return true;
-		}
+        var thread = new Thread(runningTask, "insilico-pcr-run");
+        thread.setDaemon(true);
+        thread.start();
+    }
 
-		if (currentlyRunning.get()) {
-			var choice = JOptionPane.showConfirmDialog(null,
-					"Are you sure you want to exit? If the program is running, output may become corrupted",
-					"Exit InSilico PCR",
-					JOptionPane.OK_CANCEL_OPTION);
-			if (choice != JOptionPane.OK_OPTION) {
-				return false;
-			}
-			if (runningTask != null) {
-				runningTask.shutdownNow();
-				runningTask.cancel(true);
-			}
-		}
+    private boolean confirmClose() {
+        if (inputFile == null || outDir == null || primerFile == null) {
+            Platform.exit();
+            return true;
+        }
 
-		try {
-			if (dependencies == null) {
-				dependencies = DependencyContext.discover(outputField);
-			}
-			LogFiles.ensureQaLog(outDir, inputFile, primerFile, dependencies);
-			LogFiles.appendRunLog(outDir, outputField);
-		} catch (RuntimeException e) {
-			Methods.logMessage(outputField, "Unable to write shutdown logs: " + e.getMessage());
-		}
+        if (currentlyRunning.get()) {
+            var choice = JOptionPane.showConfirmDialog(null,
+                    "Are you sure you want to exit? If the program is running, output may become corrupted",
+                    "Exit InSilico PCR",
+                    JOptionPane.OK_CANCEL_OPTION);
+            if (choice != JOptionPane.OK_OPTION) {
+                return false;
+            }
+            if (runningTask != null) {
+                runningTask.shutdownNow();
+                runningTask.cancel(true);
+            }
+        }
 
-		Platform.exit();
-		return true;
-	}
+        try {
+            if (dependencies == null) {
+                dependencies = DependencyContext.discover(outputField);
+            }
+            LogFiles.ensureQaLog(outDir, inputFile, primerFile, dependencies);
+            LogFiles.appendRunLog(outDir, outputField);
+        } catch (RuntimeException e) {
+            Methods.logMessage(outputField, "Unable to write shutdown logs: " + e.getMessage());
+        }
 
-	private void addPrompt(GridPane pane, String text, int column, int row, int colspan, int rowspan) {
-		var prompt = new Text(text);
-		prompt.getStyleClass().add("prompt");
-		var box = new HBox(10, prompt);
-		box.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
-		pane.add(box, column, row, colspan, rowspan);
-	}
+        Platform.exit();
+        return true;
+    }
 
-	public static void displayGelImage() {
-		// Placeholder retained from the original application.
-	}
+    private void addPrompt(GridPane pane, String text, int column, int row, int colspan, int rowspan) {
+        var box = new HBox(10, promptText(text));
+        box.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
+        pane.add(box, column, row, colspan, rowspan);
+    }
 
-	public static void main(String[] args) {
-		Application.launch(MainRun.class);
-	}
+    private static Text promptText(String text) {
+        var prompt = new Text(text);
+        prompt.getStyleClass().add(PROMPT_STYLE_CLASS);
+        return prompt;
+    }
+
+    public static void displayGelImage() {
+        // Placeholder retained from the original application.
+    }
+
+    public static void main(String[] args) {
+        Application.launch(MainRun.class);
+    }
 }

@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="420" viewBox="0 0 1280 420" role="img" aria-labelledby="title desc">
+  <title id="title">insilicoPCR project banner</title>
+  <desc id="desc">Modern cross-platform in silico PCR analysis for genome assemblies.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0B1020"/>
+      <stop offset="52%" stop-color="#12324A"/>
+      <stop offset="100%" stop-color="#0F766E"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="78%" cy="24%" r="55%">
+      <stop offset="0%" stop-color="#7DD3FC" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#7DD3FC" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="14" stdDeviation="18" flood-color="#020617" flood-opacity="0.35"/>
+    </filter>
+    <pattern id="grid" width="44" height="44" patternUnits="userSpaceOnUse">
+      <path d="M44 0H0V44" fill="none" stroke="#FFFFFF" stroke-opacity="0.055" stroke-width="1"/>
+    </pattern>
+  </defs>
+
+  <rect width="1280" height="420" rx="32" fill="url(#bg)"/>
+  <rect width="1280" height="420" rx="32" fill="url(#glow)"/>
+  <rect width="1280" height="420" rx="32" fill="url(#grid)"/>
+
+  <g opacity="0.22" stroke="#A7F3D0" stroke-width="5" fill="none">
+    <path d="M818 84 C895 42 978 42 1055 84 C1132 126 1132 182 1055 224 C978 266 895 266 818 224"/>
+    <path d="M818 224 C895 182 978 182 1055 224 C1132 266 1132 322 1055 364 C978 406 895 406 818 364"/>
+    <path d="M860 65 L1020 384"/>
+    <path d="M1016 65 L856 384"/>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="70" y="68" width="700" height="284" rx="26" fill="#FFFFFF" fill-opacity="0.09" stroke="#FFFFFF" stroke-opacity="0.18"/>
+    <text x="112" y="150" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="72" font-weight="800" fill="#FFFFFF">insilicoPCR</text>
+    <text x="116" y="202" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="29" font-weight="500" fill="#D1FAE5">Modern in silico PCR analysis for genome assemblies</text>
+    <text x="116" y="257" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="21" fill="#BAE6FD">Java 26 • JavaFX 26 • BBMap • BLAST+ • Windows • Linux</text>
+    <g font-family="Inter, Segoe UI, Arial, sans-serif" font-size="18" font-weight="700">
+      <rect x="116" y="294" width="122" height="38" rx="19" fill="#14B8A6"/>
+      <text x="144" y="319" fill="#062F2B">Portable</text>
+      <rect x="252" y="294" width="154" height="38" rx="19" fill="#38BDF8"/>
+      <text x="281" y="319" fill="#082F49">Cross-platform</text>
+      <rect x="420" y="294" width="142" height="38" rx="19" fill="#A7F3D0"/>
+      <text x="448" y="319" fill="#064E3B">Open source</text>
+    </g>
+  </g>
+
+  <g transform="translate(907 128)" filter="url(#shadow)">
+    <rect x="0" y="0" width="250" height="158" rx="22" fill="#F8FAFC" fill-opacity="0.93"/>
+    <rect x="24" y="28" width="202" height="14" rx="7" fill="#0F766E" opacity="0.9"/>
+    <rect x="24" y="62" width="160" height="12" rx="6" fill="#0284C7" opacity="0.75"/>
+    <rect x="24" y="92" width="196" height="12" rx="6" fill="#475569" opacity="0.45"/>
+    <rect x="24" y="120" width="118" height="12" rx="6" fill="#475569" opacity="0.35"/>
+    <circle cx="212" cy="120" r="22" fill="#14B8A6" opacity="0.9"/>
+    <path d="M201 120 l8 8 l16 -20" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  </g>
+</svg>

@@ -66,23 +66,39 @@ public final class AppPaths {
                     .toAbsolutePath()
                     .normalize();
 
-            if (Files.isRegularFile(location)) {
-                return location.getParent();
-            }
-
-            Path current = location;
-            while (current != null) {
-                if (Files.exists(current.resolve("pom.xml"))
-                        || Files.exists(current.resolve("insilicoPCR.jar"))) {
-                    return current;
-                }
-                current = current.getParent();
-            }
-
-            return location;
+            Path start = Files.isRegularFile(location) ? location.getParent() : location;
+            return findApplicationRoot(start).orElse(start);
         } catch (URISyntaxException e) {
             throw new IllegalStateException("Unable to determine application location", e);
         }
+    }
+
+    private static Optional<Path> findApplicationRoot(Path start) {
+        Path current = start;
+        while (current != null) {
+            if (isCompleteRuntimeRoot(current)) {
+                return Optional.of(current);
+            }
+            current = current.getParent();
+        }
+
+        current = start;
+        while (current != null) {
+            if (Files.exists(current.resolve("pom.xml"))
+                    || Files.exists(current.resolve("insilicoPCR.jar"))) {
+                return Optional.of(current);
+            }
+            current = current.getParent();
+        }
+
+        return Optional.empty();
+    }
+
+    private static boolean isCompleteRuntimeRoot(Path directory) {
+        Path runtime = directory.resolve("runtime");
+        Path platformRuntime = runtime.resolve(platformName());
+        return Files.isRegularFile(runtime.resolve("common").resolve("bbmap").resolve(BBTOOLS_JAR))
+                && Files.isDirectory(platformRuntime.resolve("blast").resolve("bin"));
     }
 
     public static boolean isWindows() {

@@ -1,7 +1,4 @@
-.combo-box .list-cell {
-    -fx-alignment: center;
-}
-
+.prompt,
 .text {
     -fx-font-family: Arial;
 }

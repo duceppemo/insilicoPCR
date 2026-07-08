@@ -1,6 +1,5 @@
 package ca.canada.inspection.dispatchpcr;
 
-import java.io.File;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -19,6 +18,7 @@ import java.util.Optional;
  * runtime/
  *   common/
  *     bbmap/
+ *       bbtools.jar
  *   linux|windows/
  *     blast/bin/
  *     jdk/bin/java[.exe]
@@ -30,6 +30,8 @@ import java.util.Optional;
  * accepted when runtime/&lt;platform&gt;/jdk is absent.</p>
  */
 public final class AppPaths {
+    private static final String BBTOOLS_JAR = "bbtools.jar";
+
     private AppPaths() {}
 
     public static RuntimeLayout discover() {
@@ -107,14 +109,12 @@ public final class AppPaths {
             throw missing("BBMap directory", normalized);
         }
 
-        if (Files.isRegularFile(normalized.resolve("bbtools.jar"))
-                || Files.isDirectory(normalized.resolve("current"))
-                || Files.isRegularFile(normalized.resolve(isWindows() ? "bbduk.bat" : "bbduk.sh"))
-                || Files.isRegularFile(normalized.resolve("bbduk.sh"))) {
+        Path jar = normalized.resolve(BBTOOLS_JAR);
+        if (Files.isRegularFile(jar)) {
             return normalized;
         }
 
-        throw missing("BBMap launcher", normalized);
+        throw missing("BBMap runtime jar", jar);
     }
 
     private static Path requireBlastBin(Path directory) {
@@ -172,18 +172,6 @@ public final class AppPaths {
             Path javaExecutable,
             Path javafxLibDirectory
     ) {
-        public File bbmapDirectoryFile() {
-            return bbmapDirectory.toFile();
-        }
-
-        public File blastBinDirectoryFile() {
-            return blastBinDirectory.toFile();
-        }
-
-        public File javaBinDirectoryFile() {
-            return javaExecutable.getParent().toFile();
-        }
-
         public String javaCommand() {
             return javaExecutable.toString();
         }
@@ -194,70 +182,6 @@ public final class AppPaths {
 
         public Path makeblastdbExecutable() {
             return AppPaths.executable(blastBinDirectory, "makeblastdb");
-        }
-
-        public Path bbmapClasspath() {
-            Path jar = bbmapDirectory.resolve("bbtools.jar");
-            if (Files.isRegularFile(jar)) {
-                return jar;
-            }
-
-            throw new IllegalStateException(
-                    "Unable to find BBMap classpath. Expected bbtools.jar under "
-                            + bbmapDirectory
-            );
-        }
-
-        public Path bbdukScript() {
-            Path platformScript = bbmapDirectory.resolve(AppPaths.isWindows() ? "bbduk.bat" : "bbduk.sh");
-            if (Files.isRegularFile(platformScript)) {
-                return platformScript;
-            }
-            Path currentPlatformScript = bbmapDirectory.resolve("current").resolve(AppPaths.isWindows() ? "bbduk.bat" : "bbduk.sh");
-            if (Files.isRegularFile(currentPlatformScript)) {
-                return currentPlatformScript;
-            }
-            Path portableScript = bbmapDirectory.resolve("bbduk.sh");
-            if (Files.isRegularFile(portableScript)) {
-                return portableScript;
-            }
-            return bbmapDirectory.resolve("current").resolve("bbduk.sh");
-        }
-
-        public Path bbmapScript() {
-            Path platformScript = bbmapDirectory.resolve(AppPaths.isWindows() ? "bbmap.bat" : "bbmap.sh");
-            if (Files.isRegularFile(platformScript)) {
-                return platformScript;
-            }
-            Path currentPlatformScript = bbmapDirectory.resolve("current").resolve(AppPaths.isWindows() ? "bbmap.bat" : "bbmap.sh");
-            if (Files.isRegularFile(currentPlatformScript)) {
-                return currentPlatformScript;
-            }
-            Path portableScript = bbmapDirectory.resolve("bbmap.sh");
-            if (Files.isRegularFile(portableScript)) {
-                return portableScript;
-            }
-            return bbmapDirectory.resolve("current").resolve("bbmap.sh");
-        }
-
-        public Path tadpoleScript() {
-            Path platformScript = bbmapDirectory.resolve(AppPaths.isWindows() ? "tadpole.bat" : "tadpole.sh");
-            if (Files.isRegularFile(platformScript)) {
-                return platformScript;
-            }
-            Path currentPlatformScript = bbmapDirectory.resolve("current").resolve(AppPaths.isWindows() ? "tadpole.bat" : "tadpole.sh");
-            if (Files.isRegularFile(currentPlatformScript)) {
-                return currentPlatformScript;
-            }
-            Path portableScript = bbmapDirectory.resolve("tadpole.sh");
-            if (Files.isRegularFile(portableScript)) {
-                return portableScript;
-            }
-            return bbmapDirectory.resolve("current").resolve("tadpole.sh");
-        }
-
-        public boolean hasJavaFx() {
-            return javafxLibDirectory != null && Files.isDirectory(javafxLibDirectory);
         }
     }
 }

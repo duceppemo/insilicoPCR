@@ -2,9 +2,11 @@ package ca.canada.inspection.pipeline;
 
 import ca.canada.inspection.dispatchpcr.AppPaths;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 
 public record RuntimeDependencies(AppPaths.RuntimeLayout layout) {
+
     public static RuntimeDependencies discover() {
         try {
             return new RuntimeDependencies(AppPaths.discover());
@@ -35,5 +37,17 @@ public record RuntimeDependencies(AppPaths.RuntimeLayout layout) {
 
     public Path makeblastdb() {
         return layout.makeblastdbExecutable();
+    }
+
+    public Path bbtoolsJar() {
+        Path jar = bbmapDirectory().resolve("bbtools.jar");
+
+        if (!Files.isRegularFile(jar)) {
+            throw new IllegalStateException(
+                    "Missing BBMap runtime: " + jar.toAbsolutePath()
+            );
+        }
+
+        return jar;
     }
 }

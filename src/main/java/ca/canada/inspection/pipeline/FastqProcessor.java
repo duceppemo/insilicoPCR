@@ -66,14 +66,14 @@ public final class FastqProcessor {
         sample.setAssemblyFile(output);
         ProcessRunner.run(context.dependencies().bbmapDirectory(),
                 context.dependencies().javaCommand(), "-ea", "-Xmx" + context.childJavaMemoryGiB() + "g",
-                "-cp", "./current", "assemble.Tadpole",
+                "-cp", context.dependencies().bbtoolsJar().toString(), "assemble.Tadpole",
                 "in=" + input, "out=" + output, "overwrite=t", "threads=" + context.config().threads());
     }
 
     private static List<String> bbdukCommand(PipelineContext context, Sample sample, Path ref, Path output, Integer kLength) {
         ArrayList<String> command = new ArrayList<>(List.of(
                 context.dependencies().javaCommand(), "-ea", "-Xmx" + context.childJavaMemoryGiB() + "g",
-                "-cp", "./current", "jgi.BBDuk",
+                "-cp", context.dependencies().bbtoolsJar().toString(), "jgi.BBDuk",
                 "ref=" + ref,
                 "hdist=" + context.config().mismatches(),
                 "threads=" + context.config().threads(),

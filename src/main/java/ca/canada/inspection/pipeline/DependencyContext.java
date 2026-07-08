@@ -40,4 +40,16 @@ public record DependencyContext(
                         + bbtoolsLocation()
         );
     }
+
+    public Path bbtoolsJar() {
+        Path jar = bbtoolsLocation().resolve("bbtools.jar");
+
+        if (!Files.isRegularFile(jar)) {
+            throw new IllegalStateException(
+                    "Missing BBMap runtime: " + jar.toAbsolutePath()
+            );
+        }
+
+        return jar;
+    }
 }

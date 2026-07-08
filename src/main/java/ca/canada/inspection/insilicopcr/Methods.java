@@ -399,53 +399,39 @@ public class Methods {
 	}
 
 	public static void addContigDict(HashMap<String, Sample> sampleDict) {
-		String line;
-		for(Map.Entry<String, Sample> entry : sampleDict.entrySet()) {
-			String key = entry.getKey();
+		for (Map.Entry<String, Sample> entry : sampleDict.entrySet()) {
+			String sampleName = entry.getKey();
 			Sample sample = entry.getValue();
-			if(sample.getFileType().equals("fastq")) {
-				try(BufferedReader reader = new BufferedReader(Files.newBufferedReader(sample.getAssemblyFile()))){
-					while((line = reader.readLine()) != null) {
-						if(line.startsWith(">")) {
-							String fullLine = line.split(">")[1];
-							String[] items = fullLine.split(" ");
-							String contigID = items[0];
-							if(items.length > 1) {
-								String[] contigDescItems = Arrays.copyOfRange(items, 1, items.length);
-								String description = String.join(" ", contigDescItems);
-								sample.addContig(contigID, description);
-							}
-							else {
-								sample.addContig(contigID, "");
-							}
-						}
-					}
-				}catch(IOException e) {
-					throw new IllegalStateException("Unable to read assembly file for sample: " + key, e);
-				}
-			}else {
-				for(Path file : sample.getFiles()) {
-					try(BufferedReader reader = new BufferedReader(Files.newBufferedReader(file))){
-						while((line = reader.readLine()) != null) {
-							if(line.startsWith(">")) {
-								String fullLine = line.split(">")[1];
-								String[] items = fullLine.split(" ");
-								String contigID = items[0];
-								if(items.length > 1) {
-									String[] contigDescItems = Arrays.copyOfRange(items, 1, items.length);
-									String description = String.join(" ", contigDescItems);
-									sample.addContig(contigID, description);
-								}else {
-									sample.addContig(contigID, "");
-								}
-							}
-						}
-					}catch(IOException e) {
-						throw new IllegalStateException("Unable to read sequence file for sample: " + key + ": " + file, e);
-					}
+
+			if (sample.getFileType().equals("fastq")) {
+				addContigsFromFasta(sample.getAssemblyFile(), sample, "assembly file for sample: " + sampleName);
+			} else {
+				for (Path file : sample.getFiles()) {
+					addContigsFromFasta(file, sample, "sequence file for sample: " + sampleName + ": " + file);
 				}
 			}
 		}
+	}
+
+	private static void addContigsFromFasta(Path fastaFile, Sample sample, String description) {
+		try (BufferedReader reader = Files.newBufferedReader(fastaFile, StandardCharsets.UTF_8)) {
+			String line;
+			while ((line = reader.readLine()) != null) {
+				if (line.startsWith(">")) {
+					addContigHeader(line, sample);
+				}
+			}
+		} catch (IOException e) {
+			throw new IllegalStateException("Unable to read " + description, e);
+		}
+	}
+
+	private static void addContigHeader(String headerLine, Sample sample) {
+		String fullLine = headerLine.substring(1).trim();
+		String[] items = fullLine.split("\\s+", 2);
+		String contigID = items[0];
+		String description = items.length > 1 ? items[1] : "";
+		sample.addContig(contigID, description);
 	}
 
 	// Makes the final consolidated report from the multiple blast reports
@@ -711,57 +697,35 @@ public class Methods {
 	}
 
 	public static void drawLadder(GraphicsContext gc, double horizontalInset, double controlInset, double controlHeight, double laneWidth, double bandWidth) {
-		// Set out the max and min band heights, corresponding to 20kb and 100bp, respectively.
+		int[] ladderSizes = {10000, 7000, 5000, 4000, 3000, 2000, 1500, 1000, 700, 500, 400, 300, 200};
+		String[] ladderLabels = {"10kb", "7kb", "5kb", "4kb", "3kb", "2kb", "1.5kb", "1kb", "700", "500", "400", "300", "200"};
+
 		gc.setFill(Color.WHITE);
-		gc.fillRect(horizontalInset, controlInset, laneWidth, bandWidth);
-		gc.fillRect(horizontalInset, controlInset + controlHeight, laneWidth, bandWidth);
+		drawLadderBand(gc, horizontalInset, controlInset, laneWidth, bandWidth);
+		drawLadderBand(gc, horizontalInset, controlInset + controlHeight, laneWidth, bandWidth);
 
-
-		// Normalize control band values so they make sense
-		double band10kb = (Math.log10(10000) - 2) / 2.3;
-		double band7kb = (Math.log10(7000) - 2) / 2.3;
-		double band5kb = (Math.log10(5000) - 2) / 2.3;
-		double band4kb = (Math.log10(4000) - 2) / 2.3;
-		double band3kb = (Math.log10(3000) - 2) / 2.3;
-		double band2kb = (Math.log10(2000) - 2) / 2.3;
-		double band1_5kb = (Math.log10(1500) - 2) / 2.3;
-		double band1kb = (Math.log10(1000) - 2) / 2.3;
-		double band700 = (Math.log10(700) - 2) / 2.3;
-		double band500 = (Math.log10(500) - 2) / 2.3;
-		double band400 = (Math.log10(400) - 2) / 2.3;
-		double band300 = (Math.log10(300) - 2) / 2.3;
-		double band200 = (Math.log10(200) - 2) / 2.3;
-
-		gc.fillRect(horizontalInset, controlInset + (controlHeight - (controlHeight * band10kb)), laneWidth, bandWidth);
-		gc.fillRect(horizontalInset, controlInset + (controlHeight - (controlHeight * band7kb)), laneWidth, bandWidth);
-		gc.fillRect(horizontalInset, controlInset + (controlHeight - (controlHeight * band5kb)), laneWidth, bandWidth);
-		gc.fillRect(horizontalInset, controlInset + (controlHeight - (controlHeight * band4kb)), laneWidth, bandWidth);
-		gc.fillRect(horizontalInset, controlInset + (controlHeight - (controlHeight * band3kb)), laneWidth, bandWidth);
-		gc.fillRect(horizontalInset, controlInset + (controlHeight - (controlHeight * band2kb)), laneWidth, bandWidth);
-		gc.fillRect(horizontalInset, controlInset + (controlHeight - (controlHeight * band1_5kb)), laneWidth, bandWidth);
-		gc.fillRect(horizontalInset, controlInset + (controlHeight - (controlHeight * band1kb)), laneWidth, bandWidth);
-		gc.fillRect(horizontalInset, controlInset + (controlHeight - (controlHeight * band700)), laneWidth, bandWidth);
-		gc.fillRect(horizontalInset, controlInset + (controlHeight - (controlHeight * band500)), laneWidth, bandWidth);
-		gc.fillRect(horizontalInset, controlInset + (controlHeight - (controlHeight * band400)), laneWidth, bandWidth);
-		gc.fillRect(horizontalInset, controlInset + (controlHeight - (controlHeight * band300)), laneWidth, bandWidth);
-		gc.fillRect(horizontalInset, controlInset + (controlHeight - (controlHeight * band200)), laneWidth, bandWidth);
+		for (int size : ladderSizes) {
+			drawLadderBand(gc, horizontalInset, ladderY(controlInset, controlHeight, size), laneWidth, bandWidth);
+		}
 
 		gc.setStroke(Color.BLACK);
 		gc.strokeText("20kb", 5, controlInset + 5);
-		gc.strokeText("10kb", 5, controlInset + (controlHeight - (controlHeight * band10kb)) + 5);
-		gc.strokeText("7kb", 5, controlInset + (controlHeight - (controlHeight * band7kb)) + 5);
-		gc.strokeText("5kb", 5, controlInset + (controlHeight - (controlHeight * band5kb)) + 5);
-		gc.strokeText("4kb", 5, controlInset + (controlHeight - (controlHeight * band4kb)) + 5);
-		gc.strokeText("3kb", 5, controlInset + (controlHeight - (controlHeight * band3kb)) + 5);
-		gc.strokeText("2kb", 5, controlInset + (controlHeight - (controlHeight * band2kb)) + 5);
-		gc.strokeText("1.5kb", 5, controlInset + (controlHeight - (controlHeight * band1_5kb)) + 5);
-		gc.strokeText("1kb", 5, controlInset + (controlHeight - (controlHeight * band1kb)) + 5);
-		gc.strokeText("700", 5, controlInset + (controlHeight - (controlHeight * band700)) + 5);
-		gc.strokeText("500", 5, controlInset + (controlHeight - (controlHeight * band500)) + 5);
-		gc.strokeText("400", 5, controlInset + (controlHeight - (controlHeight * band400)) + 5);
-		gc.strokeText("300", 5, controlInset + (controlHeight - (controlHeight * band300)) + 5);
-		gc.strokeText("200", 5, controlInset + (controlHeight - (controlHeight * band200)) + 5);
+		for (int i = 0; i < ladderSizes.length; i++) {
+			gc.strokeText(ladderLabels[i], 5, ladderY(controlInset, controlHeight, ladderSizes[i]) + 5);
+		}
 		gc.strokeText("100", 5, controlInset + controlHeight + 5);
+	}
+
+	private static void drawLadderBand(GraphicsContext gc, double x, double y, double width, double height) {
+		gc.fillRect(x, y, width, height);
+	}
+
+	private static double ladderY(double controlInset, double controlHeight, int basePairs) {
+		return controlInset + controlHeight - (controlHeight * normalizedLadderPosition(basePairs));
+	}
+
+	private static double normalizedLadderPosition(int basePairs) {
+		return (Math.log10(basePairs) - 2) / 2.3;
 	}
 
 	public static void drawSamples(GraphicsContext gc, String consolidatedReport, HashMap<String, Sample> sampleDict, double horizontalInset,

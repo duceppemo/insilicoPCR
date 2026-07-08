@@ -28,6 +28,8 @@ import javafx.scene.text.Text;
 import javafx.scene.text.TextAlignment;
 import javafx.stage.Stage;
 
+import javafx.scene.image.Image;
+
 import javax.swing.JOptionPane;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -74,6 +76,11 @@ public class MainRun extends Application {
         var scene = new Scene(pane, 800, 500);
         primaryStage.setScene(scene);
         primaryStage.setTitle("InSilico PCR " + Dispatcher.VERSION);
+
+        primaryStage.getIcons().add(
+                new Image(MainRun.class.getResourceAsStream("/icons/insilicoPCR-icon.png"))
+        );
+
         primaryStage.setOnCloseRequest(event -> {
             if (!confirmClose()) {
                 event.consume();

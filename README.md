@@ -5,16 +5,16 @@
 </p>
 
 <p style="text-align: center;">
-  <strong>Modern cross-platform in silico PCR analysis for genome assemblies</strong>
+  <strong>Modern cross-platform in silico PCR analysis for genome assemblies and raw reads</strong>
 </p>
 
 <p style="text-align: center;">
-  <a href="../../actions"><img alt="Build" src="https://img.shields.io/github/actions/workflow/status/duceppemo/insilicoPCR/release.yml?branch=main&label=build"></a>
+  <a href="../../actions"><img alt="Build" src="https://img.shields.io/github/actions/workflow/status/duceppemo/insilicoPCR/ci-portable-release.yml?branch=master&label=build"></a>
   <a href="../../releases"><img alt="Latest release" src="https://img.shields.io/github/v/release/duceppemo/insilicoPCR?display_name=tag"></a>
   <img alt="Java" src="https://img.shields.io/badge/Java-26-blue">
   <img alt="JavaFX" src="https://img.shields.io/badge/JavaFX-26.0.1-0ea5e9">
   <img alt="Platform" src="https://img.shields.io/badge/platform-Windows%20%7C%20Linux-14b8a6">
-  <img alt="License" src="https://img.shields.io/badge/license-TBD-lightgrey">
+  <a href="LICENSE"><img alt="License" src="https://img.shields.io/github/license/duceppemo/insilicoPCR"></a>
 </p>
 
 ---
@@ -362,13 +362,10 @@ If you use insilicoPCR in published work, please cite this repository and the un
 
 ## License
 
-Add the project license here.
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
 Recommended format:
 
-```text
-SPDX-License-Identifier: <LICENSE-ID>
-```
 
 ---
 

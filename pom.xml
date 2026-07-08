@@ -21,6 +21,20 @@
         <skip.release.docs>false</skip.release.docs>
     </properties>
 
+    <licenses>
+        <license>
+            <name>MIT License</name>
+            <url>https://opensource.org/licenses/MIT</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <name>Marc-Olivier Duceppe</name>
+        </developer>
+    </developers>
+
     <dependencies>
         <dependency>
             <groupId>org.openjfx</groupId>

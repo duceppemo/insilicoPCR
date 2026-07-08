@@ -41,9 +41,11 @@ public final class BbmapPipeline {
         var ref = config.outDir().resolve("primer_tmp.fasta").toString();
 
         for (var sample : sampleDict.values()) {
+            stopIfCancelled(owner);
             if (!"fastq".equals(sample.getFileType())) {
                 continue;
             }
+
             var sampleDir = sampleDirectory(sample);
             var files = sample.getFiles();
             String[] command;
@@ -66,9 +68,11 @@ public final class BbmapPipeline {
 
     public void runSecondBait(Task<?> owner) {
         for (var sample : sampleDict.values()) {
+            stopIfCancelled(owner);
             if (!"fastq".equals(sample.getFileType())) {
                 continue;
             }
+
             var sampleDir = sampleDirectory(sample);
             var ref = sampleDir.resolve(sample.getName() + "_targetMatches.fastq.gz").toString();
             var files = sample.getFiles();
@@ -91,9 +95,11 @@ public final class BbmapPipeline {
 
     public void runAssembly(Task<?> owner) {
         for (var sample : sampleDict.values()) {
+            stopIfCancelled(owner);
             if (!"fastq".equals(sample.getFileType())) {
                 continue;
             }
+
             var sampleDir = sampleDirectory(sample);
             var in = sampleDir.resolve(sample.getName() + "_doubleTargetMatches.fastq.gz");
             var out = sampleDir.resolve(sample.getName() + "_assembly.fasta");
@@ -120,15 +126,25 @@ public final class BbmapPipeline {
     }
 
     private void runProcess(String[] command, Path workingDirectory, Task<?> owner) {
+        stopIfCancelled(owner);
+
         var messageQueue = new LinkedBlockingQueue<String>();
         var consumer = new MessageConsumer(messageQueue, config.outputField());
+        Process process = null;
+
         try {
-            var process = new ProcessBuilder(command).directory(workingDirectory.toFile()).start();
+            process = new ProcessBuilder(command)
+                    .directory(workingDirectory.toFile())
+                    .redirectErrorStream(true)
+                    .start();
+
             processTracker.add(process);
             Platform.runLater(consumer::start);
-            streamProcessOutput(process, messageQueue);
+            streamProcessOutput(process, messageQueue, owner);
             consumer.stop();
+
             var exitCode = process.waitFor();
+            stopIfCancelled(owner);
             if (exitCode != 0) {
                 throw new IllegalStateException("Command failed with exit code " + exitCode + ": " + String.join(" ", command));
             }
@@ -136,16 +152,28 @@ public final class BbmapPipeline {
             throw new IllegalStateException("Unable to start command: " + String.join(" ", command), e);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+            if (process != null) {
+                process.destroyForcibly();
+            }
             throw new IllegalStateException("Interrupted while running command: " + String.join(" ", command), e);
         }
     }
 
-    private static void streamProcessOutput(Process process, BlockingQueue<String> messageQueue) throws IOException, InterruptedException {
-        try (var reader = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
+    private static void streamProcessOutput(Process process,
+                                            BlockingQueue<String> messageQueue,
+                                            Task<?> owner) throws IOException, InterruptedException {
+        try (var reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
             String line;
             while ((line = reader.readLine()) != null) {
+                stopIfCancelled(owner);
                 messageQueue.put(line);
             }
+        }
+    }
+
+    private static void stopIfCancelled(Task<?> owner) {
+        if (owner != null && owner.isCancelled()) {
+            throw new IllegalStateException("BBMap pipeline was cancelled.");
         }
     }
 }

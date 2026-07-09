@@ -1,13 +1,16 @@
 package ca.canada.inspection.insilicopcr.gel;
 
 import ca.canada.inspection.insilicopcr.Sample;
+import javafx.geometry.Bounds;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.print.PrinterJob;
 import javafx.scene.Cursor;
 import javafx.scene.Group;
 import javafx.scene.Scene;
 import javafx.scene.SnapshotParameters;
 import javafx.scene.control.Button;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
 import javafx.scene.control.MenuItem;
@@ -17,8 +20,11 @@ import javafx.scene.control.TextField;
 import javafx.scene.image.WritableImage;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
+import javafx.scene.input.ScrollEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
@@ -38,6 +44,7 @@ import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -64,6 +71,12 @@ public final class InteractiveGelViewer {
     private static final double BAND_HOVER_TARGET_HEIGHT = 14.0;
     private static final double MIN_ZOOM = 0.45;
     private static final double MAX_ZOOM = 3.0;
+    private static final Color[] GENE_PALETTE = {
+            Color.rgb(31, 119, 180), Color.rgb(214, 39, 40), Color.rgb(44, 160, 44),
+            Color.rgb(255, 127, 14), Color.rgb(148, 103, 189), Color.rgb(23, 190, 207),
+            Color.rgb(140, 86, 75), Color.rgb(227, 119, 194), Color.rgb(188, 189, 34),
+            Color.rgb(127, 127, 127)
+    };
     private static final int[] LADDER_SIZES = {20_000, 10_000, 7_000, 5_000, 4_000, 3_000, 2_000, 1_500, 1_000, 700, 500, 400, 300, 200, 100};
     private static final String[] LADDER_LABELS = {"20kb", "10kb", "7kb", "5kb", "4kb", "3kb", "2kb", "1.5kb", "1kb", "700", "500", "400", "300", "200", "100"};
 
@@ -86,18 +99,27 @@ public final class InteractiveGelViewer {
         Path automaticOutput = defaultSyntheticGelOutput(consolidatedReport);
         savePaneAsPng(gelPane, automaticOutput);
 
-        Button saveButton = new Button("Save Image As...");
+        Button saveButton = new Button("Save PNG...");
         saveButton.setOnAction(event -> chooseAndSave(gelPane, automaticOutput));
+
+        Button svgButton = new Button("Save SVG...");
+        svgButton.setOnAction(event -> chooseAndSaveSvg(gelView, automaticOutput));
+
+        Button printButton = new Button("Print/PDF...");
+        printButton.setOnAction(event -> printGel(gelPane));
 
         Button zoomOutButton = new Button("−");
         Button zoomResetButton = new Button("100%");
         Button zoomInButton = new Button("+");
         Label selectedLabel = new Label("No band selected");
+        Label matchLabel = new Label("");
         TextField searchField = new TextField();
         searchField.setPromptText("Search sample, gene, or size");
         Button clearSearchButton = new Button("Clear");
+        CheckBox colorByGene = new CheckBox("Color by gene");
 
-        HBox toolbar = new HBox(8, saveButton, new Label("Search:"), searchField, clearSearchButton,
+        HBox toolbar = new HBox(8, saveButton, svgButton, printButton, colorByGene,
+                new Label("Search:"), searchField, clearSearchButton, matchLabel,
                 new Label("Zoom:"), zoomOutButton, zoomResetButton, zoomInButton, selectedLabel);
         toolbar.setAlignment(Pos.CENTER_LEFT);
         toolbar.setPadding(new Insets(8));
@@ -108,6 +130,10 @@ public final class InteractiveGelViewer {
         scrollPane.setFitToWidth(false);
         scrollPane.setPannable(true);
 
+        VBox legend = buildLegend(gelView.geneColors());
+        legend.setVisible(false);
+        legend.setManaged(false);
+
         ZoomState zoomState = new ZoomState();
         Runnable refreshZoomButton = () -> zoomResetButton.setText(Math.round(zoomState.zoom * 100) + "%");
         Runnable zoomIn = () -> setZoom(gelPane, zoomState, zoomState.zoom * 1.15, refreshZoomButton);
@@ -117,7 +143,7 @@ public final class InteractiveGelViewer {
         zoomInButton.setOnAction(event -> zoomIn.run());
         zoomOutButton.setOnAction(event -> zoomOut.run());
         zoomResetButton.setOnAction(event -> zoomReset.run());
-        scrollPane.addEventFilter(javafx.scene.input.ScrollEvent.SCROLL, event -> {
+        scrollPane.addEventFilter(ScrollEvent.SCROLL, event -> {
             if (event.isControlDown()) {
                 if (event.getDeltaY() > 0) {
                     zoomIn.run();
@@ -133,11 +159,26 @@ public final class InteractiveGelViewer {
             bandNode.installSelectionHandler(selectedBands, selectedLabel);
         }
 
-        searchField.textProperty().addListener((observable, oldValue, newValue) -> applySearch(gelView.bands(), newValue));
+        searchField.textProperty().addListener((observable, oldValue, newValue) -> {
+            SearchResult result = applySearch(gelView.bands(), newValue);
+            matchLabel.setText(result.searching() ? result.matchCount() + " match" + (result.matchCount() == 1 ? "" : "es") : "");
+            if (result.firstMatch() != null) {
+                scrollToBand(scrollPane, zoomGroup, result.firstMatch());
+            }
+        });
         clearSearchButton.setOnAction(event -> searchField.clear());
+        colorByGene.selectedProperty().addListener((observable, oldValue, selected) -> {
+            legend.setVisible(selected);
+            legend.setManaged(selected);
+            for (BandNode bandNode : gelView.bands()) {
+                bandNode.colorByGene = selected;
+                bandNode.updateVisual();
+            }
+        });
 
         BorderPane root = new BorderPane(scrollPane);
         root.setTop(toolbar);
+        root.setRight(legend);
 
         var screenBounds = Screen.getPrimary().getVisualBounds();
         double toolbarHeight = 56;
@@ -151,7 +192,9 @@ public final class InteractiveGelViewer {
 
         Stage stage = new Stage();
         stage.setTitle("Synthetic Gel - " + consolidatedReport.getFileName() + " - saved to " + automaticOutput.getFileName());
-        stage.setScene(new Scene(root, windowWidth, windowHeight));
+        Scene scene = new Scene(root, windowWidth, windowHeight);
+        installKeyboardShortcuts(scene, searchField, selectedBands, selectedLabel, gelView.bands(), zoomIn, zoomOut, zoomReset);
+        stage.setScene(scene);
         stage.setMinWidth(Math.min(900, windowWidth));
         stage.setMinHeight(Math.min(650, windowHeight));
         stage.show();
@@ -185,11 +228,12 @@ public final class InteractiveGelViewer {
         Map<String, Rectangle> laneHighlights = drawGelBackground(pane, lanes, gelLeft, topInset, gelWidth, gelHeight, laneCount, laneWidth);
         drawLadder(pane, gelLeft, topInset, gelHeight, laneWidth, bandHeight);
         drawLadderLabels(pane, topInset, gelHeight, gelLeft - 8);
-        List<BandNode> bandNodes = drawSampleBands(pane, lanes, laneHighlights, gelLeft, topInset, gelHeight, laneWidth, bandHeight);
+        Map<String, Color> geneColors = assignGeneColors(lanes);
+        List<BandNode> bandNodes = drawSampleBands(pane, lanes, laneHighlights, geneColors, gelLeft, topInset, gelHeight, laneWidth, bandHeight);
         drawGelBorder(pane, gelLeft, topInset, gelWidth, gelHeight);
         drawLaneLabels(pane, lanes, gelLeft, gelBottom + 34, laneWidth);
 
-        return new GelView(pane, bandNodes);
+        return new GelView(pane, bandNodes, geneColors, gelLeft, topInset, gelWidth, gelHeight, laneWidth);
     }
 
     private static double longestLaneLabelWidth(LinkedHashMap<String, List<GelBand>> lanes) {
@@ -283,7 +327,7 @@ public final class InteractiveGelViewer {
     private static void drawLadder(Pane pane, double gelLeft, double gelTop, double gelHeight,
                                    double laneWidth, double bandHeight) {
         for (int size : LADDER_SIZES) {
-            addGelBandShape(pane, null, null, gelLeft, ladderY(gelTop, gelHeight, size), laneWidth, bandHeight, 0.45, null);
+            addGelBandShape(pane, null, null, Color.BLACK, gelLeft, ladderY(gelTop, gelHeight, size), laneWidth, bandHeight, 0.45, null);
         }
     }
 
@@ -306,6 +350,7 @@ public final class InteractiveGelViewer {
     private static List<BandNode> drawSampleBands(Pane pane,
                                                   LinkedHashMap<String, List<GelBand>> lanes,
                                                   Map<String, Rectangle> laneHighlights,
+                                                  Map<String, Color> geneColors,
                                                   double gelLeft,
                                                   double gelTop,
                                                   double gelHeight,
@@ -327,11 +372,13 @@ public final class InteractiveGelViewer {
                 double verticalJitter = deterministicRange(sampleName + ':' + roundedSize, -0.45, 0.45);
                 double intensity = Math.min(1.0, bandIntensity(roundedSize, count) * laneVariation);
                 double adjustedBandHeight = baseBandHeight + (intensity * 1.2);
+                Color geneColor = geneColors.getOrDefault(primaryGene(bands), Color.BLACK);
 
                 BandNode bandNode = addGelBandShape(
                         pane,
                         bands,
                         laneHighlight,
+                        geneColor,
                         x,
                         ladderY(gelTop, gelHeight, roundedSize) + verticalJitter,
                         laneWidth,
@@ -349,6 +396,7 @@ public final class InteractiveGelViewer {
     private static BandNode addGelBandShape(Pane pane,
                                             List<GelBand> bands,
                                             Rectangle laneHighlight,
+                                            Color geneColor,
                                             double x,
                                             double centerY,
                                             double laneWidth,
@@ -387,7 +435,8 @@ public final class InteractiveGelViewer {
 
         Group group = new Group(halo, band, highlight, shadow, hitBox);
         group.setPickOnBounds(false);
-        BandNode bandNode = new BandNode(group, hitBox, band, halo, laneHighlight, bands == null ? List.of() : bands, intensity, popupText);
+        BandNode bandNode = new BandNode(group, hitBox, band, halo, laneHighlight, bands == null ? List.of() : bands,
+                geneColor, bandX, bandY, bandWidth, bandHeight, intensity, popupText);
 
         if (popupText != null && !popupText.isBlank()) {
             Popup popup = createMetadataPopup(popupText);
@@ -491,14 +540,23 @@ public final class InteractiveGelViewer {
         Clipboard.getSystemClipboard().setContent(content);
     }
 
-    private static void applySearch(List<BandNode> bands, String query) {
+    private static SearchResult applySearch(List<BandNode> bands, String query) {
         String normalized = query == null ? "" : query.strip().toLowerCase();
         boolean searching = !normalized.isBlank();
+        BandNode firstMatch = null;
+        int matchCount = 0;
         for (BandNode bandNode : bands) {
             bandNode.searchMatch = !searching || bandNode.searchText.contains(normalized);
             bandNode.searching = searching;
             bandNode.updateVisual();
+            if (searching && bandNode.searchMatch) {
+                matchCount++;
+                if (firstMatch == null) {
+                    firstMatch = bandNode;
+                }
+            }
         }
+        return new SearchResult(searching, matchCount, firstMatch);
     }
 
     private static void setZoom(Pane gelPane, ZoomState zoomState, double requestedZoom, Runnable afterChange) {
@@ -508,6 +566,98 @@ public final class InteractiveGelViewer {
         if (afterChange != null) {
             afterChange.run();
         }
+    }
+
+    private static void scrollToBand(ScrollPane scrollPane, Group zoomGroup, BandNode bandNode) {
+        Bounds contentBounds = zoomGroup.getLayoutBounds();
+        Bounds bandBounds = bandNode.hitBox.localToScene(bandNode.hitBox.getBoundsInLocal());
+        Bounds scrollBounds = scrollPane.localToScene(scrollPane.getBoundsInLocal());
+        if (contentBounds.getWidth() <= 0 || contentBounds.getHeight() <= 0) {
+            return;
+        }
+        double centerX = bandBounds.getCenterX() - scrollBounds.getMinX();
+        double centerY = bandBounds.getCenterY() - scrollBounds.getMinY();
+        double hTarget = scrollPane.getHvalue() + ((centerX - scrollBounds.getWidth() / 2.0) / contentBounds.getWidth());
+        double vTarget = scrollPane.getVvalue() + ((centerY - scrollBounds.getHeight() / 2.0) / contentBounds.getHeight());
+        scrollPane.setHvalue(Math.clamp(hTarget, 0.0, 1.0));
+        scrollPane.setVvalue(Math.clamp(vTarget, 0.0, 1.0));
+    }
+
+    private static void installKeyboardShortcuts(Scene scene,
+                                                 TextField searchField,
+                                                 Set<BandNode> selectedBands,
+                                                 Label selectedLabel,
+                                                 List<BandNode> bands,
+                                                 Runnable zoomIn,
+                                                 Runnable zoomOut,
+                                                 Runnable zoomReset) {
+        scene.addEventFilter(KeyEvent.KEY_PRESSED, event -> {
+            if (event.isControlDown() && event.getCode() == KeyCode.F) {
+                searchField.requestFocus();
+                searchField.selectAll();
+                event.consume();
+            } else if (event.isControlDown() && event.getCode() == KeyCode.DIGIT0) {
+                zoomReset.run();
+                event.consume();
+            } else if (event.isControlDown() && (event.getCode() == KeyCode.EQUALS || event.getCode() == KeyCode.ADD)) {
+                zoomIn.run();
+                event.consume();
+            } else if (event.isControlDown() && (event.getCode() == KeyCode.MINUS || event.getCode() == KeyCode.SUBTRACT)) {
+                zoomOut.run();
+                event.consume();
+            } else if (event.isControlDown() && event.getCode() == KeyCode.A) {
+                selectedBands.clear();
+                for (BandNode band : bands) {
+                    if (band.searchMatch) {
+                        band.selected = true;
+                        band.updateVisual();
+                        selectedBands.add(band);
+                    }
+                }
+                updateSelectedLabel(selectedBands, selectedLabel);
+                event.consume();
+            } else if (event.getCode() == KeyCode.ESCAPE) {
+                searchField.clear();
+                for (BandNode selectedBand : List.copyOf(selectedBands)) {
+                    selectedBand.selected = false;
+                    selectedBand.updateVisual();
+                }
+                selectedBands.clear();
+                updateSelectedLabel(selectedBands, selectedLabel);
+                event.consume();
+            }
+        });
+    }
+
+    private static VBox buildLegend(Map<String, Color> geneColors) {
+        VBox legend = new VBox(5);
+        legend.setPadding(new Insets(10));
+        legend.setStyle("-fx-background-color: rgba(255,255,255,0.94); -fx-border-color: #bbbbbb;");
+        Label title = new Label("Gene legend");
+        title.setStyle("-fx-font-weight: bold;");
+        legend.getChildren().add(title);
+        for (Map.Entry<String, Color> entry : geneColors.entrySet()) {
+            Rectangle swatch = new Rectangle(12, 12, entry.getValue());
+            Label label = new Label(entry.getKey());
+            HBox row = new HBox(6, swatch, label);
+            row.setAlignment(Pos.CENTER_LEFT);
+            legend.getChildren().add(row);
+        }
+        return legend;
+    }
+
+    private static Map<String, Color> assignGeneColors(LinkedHashMap<String, List<GelBand>> lanes) {
+        Map<String, Color> colors = new LinkedHashMap<>();
+        for (List<GelBand> bands : lanes.values()) {
+            for (GelBand band : bands) {
+                colors.computeIfAbsent(band.geneName(), gene -> GENE_PALETTE[colors.size() % GENE_PALETTE.length]);
+            }
+        }
+        return colors;
+    }
+
+    private static String primaryGene(List<GelBand> bands) {
+        return bands == null || bands.isEmpty() ? "" : bands.getFirst().geneName();
     }
 
     private static String tooltipText(List<GelBand> bands) {
@@ -580,6 +730,21 @@ public final class InteractiveGelViewer {
         }
     }
 
+    private static void chooseAndSaveSvg(GelView gelView, Path automaticOutput) {
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("Save Synthetic Gel SVG");
+        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("SVG image", "*.svg"));
+        chooser.setInitialFileName(automaticOutput.getFileName().toString().replaceFirst("\\.png$", ".svg"));
+        Path parent = automaticOutput.getParent();
+        if (parent != null && Files.isDirectory(parent)) {
+            chooser.setInitialDirectory(parent.toFile());
+        }
+        File selectedFile = chooser.showSaveDialog(null);
+        if (selectedFile != null) {
+            saveSvg(gelView, selectedFile.toPath());
+        }
+    }
+
     private static void savePaneAsPng(Pane pane, Path outputFile) {
         try {
             Path parent = outputFile.getParent();
@@ -591,6 +756,44 @@ public final class InteractiveGelViewer {
             ImageIO.write(toBufferedImage(image), "png", outputFile.toFile());
         } catch (IOException e) {
             throw new IllegalStateException("Unable to save synthetic gel image: " + outputFile, e);
+        }
+    }
+
+    private static void saveSvg(GelView gelView, Path outputFile) {
+        try {
+            Path parent = outputFile.getParent();
+            if (parent != null) {
+                Files.createDirectories(parent);
+            }
+            StringBuilder svg = new StringBuilder();
+            double width = gelView.pane().getPrefWidth();
+            double height = gelView.pane().getPrefHeight();
+            svg.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
+            svg.append("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"").append(format(width)).append("\" height=\"").append(format(height)).append("\" viewBox=\"0 0 ")
+                    .append(format(width)).append(' ').append(format(height)).append("\">\n");
+            svg.append("<rect width=\"100%\" height=\"100%\" fill=\"white\"/>\n");
+            svg.append("<rect x=\"").append(format(gelView.gelLeft())).append("\" y=\"").append(format(gelView.gelTop())).append("\" width=\"")
+                    .append(format(gelView.gelWidth())).append("\" height=\"").append(format(gelView.gelHeight())).append("\" fill=\"#eeeeee\" stroke=\"black\" stroke-width=\"3\"/>\n");
+            for (BandNode band : gelView.bands()) {
+                svg.append("<rect x=\"").append(format(band.bandX)).append("\" y=\"").append(format(band.bandY)).append("\" width=\"")
+                        .append(format(band.bandWidth)).append("\" height=\"").append(format(Math.max(1.2, band.bandHeight))).append("\" fill=\"")
+                        .append(toHex(band.colorByGene ? band.geneColor : Color.BLACK)).append("\" opacity=\"").append(format(Math.max(0.35, band.intensity))).append("\"/>");
+                svg.append("<title>").append(escapeXml(band.popupText)).append("</title></rect>\n");
+            }
+            svg.append("</svg>\n");
+            Files.writeString(outputFile, svg.toString(), StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            throw new IllegalStateException("Unable to save synthetic gel SVG: " + outputFile, e);
+        }
+    }
+
+    private static void printGel(Pane gelPane) {
+        PrinterJob job = PrinterJob.createPrinterJob();
+        if (job != null && job.showPrintDialog(gelPane.getScene().getWindow())) {
+            boolean success = job.printPage(gelPane);
+            if (success) {
+                job.endJob();
+            }
         }
     }
 
@@ -607,7 +810,35 @@ public final class InteractiveGelViewer {
         return buffered;
     }
 
-    private record GelView(Pane pane, List<BandNode> bands) {
+    private static String format(double value) {
+        return String.format(java.util.Locale.ROOT, "%.2f", value);
+    }
+
+    private static String toHex(Color color) {
+        int r = (int) Math.round(color.getRed() * 255);
+        int g = (int) Math.round(color.getGreen() * 255);
+        int b = (int) Math.round(color.getBlue() * 255);
+        return String.format("#%02x%02x%02x", r, g, b);
+    }
+
+    private static String escapeXml(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;").replace("'", "&apos;");
+    }
+
+    private record GelView(Pane pane,
+                           List<BandNode> bands,
+                           Map<String, Color> geneColors,
+                           double gelLeft,
+                           double gelTop,
+                           double gelWidth,
+                           double gelHeight,
+                           double laneWidth) {
+    }
+
+    private record SearchResult(boolean searching, int matchCount, BandNode firstMatch) {
     }
 
     private static final class ZoomState {
@@ -621,6 +852,11 @@ public final class InteractiveGelViewer {
         private final Rectangle halo;
         private final Rectangle laneHighlight;
         private final List<GelBand> bands;
+        private final Color geneColor;
+        private final double bandX;
+        private final double bandY;
+        private final double bandWidth;
+        private final double bandHeight;
         private final double intensity;
         private final String popupText;
         private final String searchText;
@@ -628,6 +864,7 @@ public final class InteractiveGelViewer {
         private boolean selected;
         private boolean searchMatch = true;
         private boolean searching;
+        private boolean colorByGene;
 
         private BandNode(Group group,
                          Rectangle hitBox,
@@ -635,6 +872,11 @@ public final class InteractiveGelViewer {
                          Rectangle halo,
                          Rectangle laneHighlight,
                          List<GelBand> bands,
+                         Color geneColor,
+                         double bandX,
+                         double bandY,
+                         double bandWidth,
+                         double bandHeight,
                          double intensity,
                          String popupText) {
             this.group = group;
@@ -643,6 +885,11 @@ public final class InteractiveGelViewer {
             this.halo = halo;
             this.laneHighlight = laneHighlight;
             this.bands = bands;
+            this.geneColor = geneColor;
+            this.bandX = bandX;
+            this.bandY = bandY;
+            this.bandWidth = bandWidth;
+            this.bandHeight = bandHeight;
             this.intensity = intensity;
             this.popupText = popupText;
             this.searchText = bands.stream()
@@ -678,6 +925,7 @@ public final class InteractiveGelViewer {
 
         private void updateVisual() {
             group.setOpacity(searchMatch ? 1.0 : 0.18);
+            band.setFill(colorByGene ? withOpacity(geneColor, intensity) : Color.rgb(8, 8, 8, intensity));
             if (laneHighlight != null) {
                 laneHighlight.setFill(hovered || selected ? Color.rgb(30, 144, 255, selected ? 0.18 : 0.10) : Color.TRANSPARENT);
             }
@@ -698,6 +946,10 @@ public final class InteractiveGelViewer {
                 band.setStroke(null);
                 halo.setFill(Color.rgb(25, 25, 25, intensity * 0.20));
             }
+        }
+
+        private static Color withOpacity(Color color, double opacity) {
+            return new Color(color.getRed(), color.getGreen(), color.getBlue(), opacity);
         }
 
         private String sampleName() {

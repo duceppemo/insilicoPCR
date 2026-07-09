@@ -57,9 +57,10 @@ public final class PaginatedGelViewer {
     private static final int GEL_MIN_BP = 0;
     private static final int GEL_MAX_BP = 25_000;
     private static final double GEL_LOG_OFFSET_BP = 50.0;
-    private static final double LABEL_FONT_SIZE = 12.0;
+    private static final double SAMPLE_LABEL_FONT_SIZE = 14.0;
     private static final double LADDER_FONT_SIZE = 10.0;
-    private static final double ROTATED_LABEL_MARGIN = 36.0;
+    private static final double LABEL_START_OFFSET = 48.0;
+    private static final double LABEL_MARGIN = 56.0;
     private static final int[] LADDER_SIZES = {20_000, 10_000, 7_000, 5_000, 4_000, 3_000, 2_000, 1_500, 1_000, 700, 500, 400, 300, 200, 100};
     private static final String[] LADDER_LABELS = {"20kb", "10kb", "7kb", "5kb", "4kb", "3kb", "2kb", "1.5kb", "1kb", "700", "500", "400", "300", "200", "100"};
     private static final Color[] GENE_PALETTE = {
@@ -72,17 +73,14 @@ public final class PaginatedGelViewer {
     private PaginatedGelViewer() {
     }
 
-    public static void show(Scene ownerScene,
-                            Path consolidatedReport,
-                            HashMap<String, Sample> sampleDict) {
+    public static void show(Scene ownerScene, Path consolidatedReport, HashMap<String, Sample> sampleDict) {
         LinkedHashMap<String, List<GelBand>> lanes = GelReportReader.read(consolidatedReport, sampleDict);
         if (lanes.size() <= DEFAULT_SAMPLES_PER_GEL) {
             InteractiveGelViewer.show(ownerScene, consolidatedReport, sampleDict);
             return;
         }
 
-        PageModel model = new PageModel(ownerScene, lanes, DEFAULT_SAMPLES_PER_GEL);
-        showPagedGel(model);
+        showPagedGel(new PageModel(ownerScene, lanes, DEFAULT_SAMPLES_PER_GEL));
     }
 
     private static void showPagedGel(PageModel model) {
@@ -130,9 +128,7 @@ public final class PaginatedGelViewer {
         HBox pageToolbar = new HBox(8, previous, new Label("Page"), pageSpinner, pageLabel, next, rangeLabel);
         pageToolbar.setAlignment(Pos.CENTER_LEFT);
         pageToolbar.setPadding(new Insets(4, 8, 8, 8));
-
-        VBox toolbarRows = new VBox(searchToolbar, exportToolbar, pageToolbar);
-        root.setTop(toolbarRows);
+        root.setTop(new VBox(searchToolbar, exportToolbar, pageToolbar));
 
         VBox legend = buildLegend(model.geneColors);
         legend.setVisible(false);
@@ -304,76 +300,58 @@ public final class PaginatedGelViewer {
 
     private static Pane drawPage(PageModel model, boolean colorByGene) {
         List<String> samples = model.currentSamples();
-        int laneCount = samples.size() + 1;
-        double leftLabelWidth = 82;
-        double topInset = 18;
-        double longestLabelWidth = longestLabelWidth(samples);
-        double rotatedLabelFootprint = rotatedLabelFootprint(longestLabelWidth);
-        double rightInset = Math.max(48, rotatedLabelFootprint + ROTATED_LABEL_MARGIN);
-        double labelAreaHeight = Math.max(190, Math.min(460, rotatedLabelFootprint + ROTATED_LABEL_MARGIN));
-        double laneWidth = Math.max(74, (Math.max(model.ownerScene.getWidth(), 800) - leftLabelWidth - rightInset) / Math.max(laneCount, 11));
-        double gelHeight = Math.max(540, Math.max(model.ownerScene.getHeight(), 500) * 1.10);
-        double gelLeft = leftLabelWidth;
-        double gelWidth = laneWidth * laneCount;
-        double gelBottom = topInset + gelHeight;
-        double paneWidth = Math.max(900, gelLeft + gelWidth + rightInset);
-        double paneHeight = gelBottom + labelAreaHeight;
-        double labelY = gelBottom + 42;
+        GelLayout layout = GelLayout.of(model.ownerScene, samples);
 
         Pane pane = new Pane();
-        pane.setPrefSize(paneWidth, paneHeight);
-        pane.setMinSize(paneWidth, paneHeight);
+        pane.setPrefSize(layout.paneWidth(), layout.paneHeight());
+        pane.setMinSize(layout.paneWidth(), layout.paneHeight());
         pane.setStyle("-fx-background-color: white;");
 
-        Rectangle background = new Rectangle(gelLeft, topInset, gelWidth, gelHeight);
-        background.setFill(Color.rgb(238, 238, 238));
-        pane.getChildren().add(background);
-
-        for (int i = 0; i < laneCount; i++) {
-            double x = gelLeft + i * laneWidth;
-            Rectangle lane = new Rectangle(x, topInset, laneWidth, gelHeight);
-            lane.setFill(i % 2 == 0 ? Color.rgb(244, 244, 244) : Color.rgb(232, 232, 232));
-            pane.getChildren().add(lane);
-            Rectangle separator = new Rectangle(x, topInset, 3, gelHeight);
-            separator.setFill(Color.WHITE);
-            pane.getChildren().add(separator);
-        }
-
-        drawLadder(pane, gelLeft, topInset, gelHeight, laneWidth);
-        drawLadderLabels(pane, gelLeft - 8, topInset, gelHeight);
+        drawBackground(pane, layout, samples.size() + 1);
+        drawLadder(pane, layout.gelLeft(), layout.gelTop(), layout.gelHeight(), layout.laneWidth());
+        drawLadderLabels(pane, layout.gelLeft() - 8, layout.gelTop(), layout.gelHeight());
 
         int laneIndex = 1;
         for (String sampleName : samples) {
-            double x = gelLeft + laneIndex * laneWidth;
+            double laneX = layout.gelLeft() + laneIndex * layout.laneWidth();
             Map<Integer, List<GelBand>> bySize = new TreeMap<>(GelReportReader.groupByRoundedSize(model.lanes.getOrDefault(sampleName, List.of())));
             for (Map.Entry<Integer, List<GelBand>> entry : bySize.entrySet()) {
-                int roundedSize = entry.getKey();
                 List<GelBand> bands = entry.getValue();
-                double y = ladderY(topInset, gelHeight, roundedSize);
+                double y = ladderY(layout.gelTop(), layout.gelHeight(), entry.getKey());
                 double intensity = Math.min(1.0, 0.45 + Math.max(0, bands.size() - 1) * 0.12);
                 Color color = colorByGene ? model.geneColors.getOrDefault(bands.getFirst().geneName(), Color.BLACK) : Color.BLACK;
-                addBand(pane, x, y, laneWidth, 2.0 + intensity, intensity, color, tooltipText(bands));
+                addBand(pane, laneX, y, layout.laneWidth(), 2.0 + intensity, intensity, color, tooltipText(bands));
             }
-            addRotatedLabel(pane, sampleName, gelLeft + laneIndex * laneWidth + laneWidth / 2, labelY);
+            addRotatedLabel(pane, sampleName, layout.gelLeft() + laneIndex * layout.laneWidth() + layout.laneWidth() / 2, layout.labelY());
             laneIndex++;
         }
-        addRotatedLabel(pane, "Ladder", gelLeft + laneWidth / 2, labelY);
+        addRotatedLabel(pane, "Ladder", layout.gelLeft() + layout.laneWidth() / 2, layout.labelY());
+        drawBorder(pane, layout);
+        return pane;
+    }
 
-        Rectangle border = new Rectangle(gelLeft, topInset, gelWidth, gelHeight);
+    private static void drawBackground(Pane pane, GelLayout layout, int laneCount) {
+        Rectangle background = new Rectangle(layout.gelLeft(), layout.gelTop(), layout.gelWidth(), layout.gelHeight());
+        background.setFill(Color.rgb(238, 238, 238));
+        pane.getChildren().add(background);
+        for (int i = 0; i < laneCount; i++) {
+            double x = layout.gelLeft() + i * layout.laneWidth();
+            Rectangle lane = new Rectangle(x, layout.gelTop(), layout.laneWidth(), layout.gelHeight());
+            lane.setFill(i % 2 == 0 ? Color.rgb(244, 244, 244) : Color.rgb(232, 232, 232));
+            pane.getChildren().add(lane);
+            Rectangle separator = new Rectangle(x, layout.gelTop(), 3, layout.gelHeight());
+            separator.setFill(Color.WHITE);
+            pane.getChildren().add(separator);
+        }
+    }
+
+    private static void drawBorder(Pane pane, GelLayout layout) {
+        Rectangle border = new Rectangle(layout.gelLeft(), layout.gelTop(), layout.gelWidth(), layout.gelHeight());
         border.setFill(Color.TRANSPARENT);
         border.setStroke(Color.BLACK);
         border.setStrokeWidth(3);
         border.setMouseTransparent(true);
         pane.getChildren().add(border);
-        return pane;
-    }
-
-    private static double longestLabelWidth(List<String> samples) {
-        return Math.max("Ladder".length(), samples.stream().mapToInt(String::length).max().orElse(10)) * LABEL_FONT_SIZE * 0.62;
-    }
-
-    private static double rotatedLabelFootprint(double labelWidth) {
-        return (labelWidth + LABEL_FONT_SIZE) / Math.sqrt(2.0);
     }
 
     private static void drawLadder(Pane pane, double gelLeft, double gelTop, double gelHeight, double laneWidth) {
@@ -442,7 +420,7 @@ public final class PaginatedGelViewer {
 
     private static void addRotatedLabel(Pane pane, String label, double centerX, double y) {
         Text text = new Text(label);
-        text.setFont(Font.font("Verdana", LABEL_FONT_SIZE));
+        text.setFont(Font.font("Verdana", SAMPLE_LABEL_FONT_SIZE));
         text.setFill(Color.BLACK);
         text.setX(centerX);
         text.setY(y);
@@ -520,55 +498,50 @@ public final class PaginatedGelViewer {
         try {
             StringBuilder svg = new StringBuilder();
             List<String> samples = model.currentSamples();
+            GelLayout layout = GelLayout.of(model.ownerScene, samples);
             int laneCount = samples.size() + 1;
-            double leftLabelWidth = 82;
-            double topInset = 18;
-            double longestLabelWidth = longestLabelWidth(samples);
-            double rotatedLabelFootprint = rotatedLabelFootprint(longestLabelWidth);
-            double rightInset = Math.max(48, rotatedLabelFootprint + ROTATED_LABEL_MARGIN);
-            double labelAreaHeight = Math.max(190, Math.min(460, rotatedLabelFootprint + ROTATED_LABEL_MARGIN));
-            double laneWidth = Math.max(74, (Math.max(model.ownerScene.getWidth(), 800) - leftLabelWidth - rightInset) / Math.max(laneCount, 11));
-            double gelHeight = Math.max(540, Math.max(model.ownerScene.getHeight(), 500) * 1.10);
-            double gelLeft = leftLabelWidth;
-            double gelWidth = laneWidth * laneCount;
-            double gelBottom = topInset + gelHeight;
-            double width = Math.max(900, gelLeft + gelWidth + rightInset);
-            double height = gelBottom + labelAreaHeight;
-            double labelY = gelBottom + 42;
 
             svg.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
-            svg.append("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"").append(format(width)).append("\" height=\"").append(format(height)).append("\" viewBox=\"0 0 ")
-                    .append(format(width)).append(' ').append(format(height)).append("\">\n");
+            svg.append("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"").append(format(layout.paneWidth())).append("\" height=\"")
+                    .append(format(layout.paneHeight())).append("\" viewBox=\"0 0 ").append(format(layout.paneWidth())).append(' ')
+                    .append(format(layout.paneHeight())).append("\">\n");
             svg.append("  <rect width=\"100%\" height=\"100%\" fill=\"white\"/>\n");
             for (int i = 0; i < laneCount; i++) {
-                double x = gelLeft + i * laneWidth;
-                svg.append("  <rect x=\"").append(format(x)).append("\" y=\"").append(format(topInset)).append("\" width=\"").append(format(laneWidth)).append("\" height=\"").append(format(gelHeight)).append("\" fill=\"").append(i % 2 == 0 ? "#f4f4f4" : "#e8e8e8").append("\"/>\n");
-                svg.append("  <rect x=\"").append(format(x)).append("\" y=\"").append(format(topInset)).append("\" width=\"3\" height=\"").append(format(gelHeight)).append("\" fill=\"white\"/>\n");
+                double x = layout.gelLeft() + i * layout.laneWidth();
+                svg.append("  <rect x=\"").append(format(x)).append("\" y=\"").append(format(layout.gelTop())).append("\" width=\"")
+                        .append(format(layout.laneWidth())).append("\" height=\"").append(format(layout.gelHeight())).append("\" fill=\"")
+                        .append(i % 2 == 0 ? "#f4f4f4" : "#e8e8e8").append("\"/>\n");
+                svg.append("  <rect x=\"").append(format(x)).append("\" y=\"").append(format(layout.gelTop())).append("\" width=\"3\" height=\"")
+                        .append(format(layout.gelHeight())).append("\" fill=\"white\"/>\n");
             }
             for (int i = 0; i < LADDER_SIZES.length; i++) {
-                double y = ladderY(topInset, gelHeight, LADDER_SIZES[i]);
-                svgBand(svg, gelLeft + laneWidth * 0.17, y - 1.0, laneWidth * 0.66, 2.0, Color.BLACK, 0.45, "Ladder " + LADDER_LABELS[i]);
-                svgText(svg, LADDER_LABELS[i], gelLeft - 8 - LADDER_LABELS[i].length() * 6.1, y + 4, LADDER_FONT_SIZE, null);
+                double y = ladderY(layout.gelTop(), layout.gelHeight(), LADDER_SIZES[i]);
+                svgBand(svg, layout.gelLeft() + layout.laneWidth() * 0.17, y - 1.0, layout.laneWidth() * 0.66, 2.0,
+                        Color.BLACK, 0.45, "Ladder " + LADDER_LABELS[i]);
+                svgText(svg, LADDER_LABELS[i], layout.gelLeft() - 8 - LADDER_LABELS[i].length() * 6.1, y + 4, LADDER_FONT_SIZE, null);
             }
             int laneIndex = 1;
             for (String sampleName : samples) {
-                double laneX = gelLeft + laneIndex * laneWidth;
+                double laneX = layout.gelLeft() + laneIndex * layout.laneWidth();
                 for (Map.Entry<Integer, List<GelBand>> entry : new TreeMap<>(GelReportReader.groupByRoundedSize(model.lanes.getOrDefault(sampleName, List.of()))).entrySet()) {
                     List<GelBand> bands = entry.getValue();
-                    double y = ladderY(topInset, gelHeight, entry.getKey());
+                    double y = ladderY(layout.gelTop(), layout.gelHeight(), entry.getKey());
                     double intensity = Math.min(1.0, 0.45 + Math.max(0, bands.size() - 1) * 0.12);
                     Color color = colorByGene ? model.geneColors.getOrDefault(bands.getFirst().geneName(), Color.BLACK) : Color.BLACK;
-                    svgBand(svg, laneX + laneWidth * 0.17, y - 1.0, laneWidth * 0.66, 2.0 + intensity, color, intensity, tooltipText(bands));
+                    svgBand(svg, laneX + layout.laneWidth() * 0.17, y - 1.0, layout.laneWidth() * 0.66, 2.0 + intensity,
+                            color, intensity, tooltipText(bands));
                 }
-                double cx = gelLeft + laneIndex * laneWidth + laneWidth / 2;
-                svgText(svg, sampleName, cx, labelY, LABEL_FONT_SIZE,
-                        "rotate(45 " + format(cx) + " " + format(labelY) + ")");
+                double cx = layout.gelLeft() + laneIndex * layout.laneWidth() + layout.laneWidth() / 2;
+                svgText(svg, sampleName, cx, layout.labelY(), SAMPLE_LABEL_FONT_SIZE,
+                        "rotate(45 " + format(cx) + " " + format(layout.labelY()) + ")");
                 laneIndex++;
             }
-            double ladderCx = gelLeft + laneWidth / 2;
-            svgText(svg, "Ladder", ladderCx, labelY, LABEL_FONT_SIZE,
-                    "rotate(45 " + format(ladderCx) + " " + format(labelY) + ")");
-            svg.append("  <rect x=\"").append(format(gelLeft)).append("\" y=\"").append(format(topInset)).append("\" width=\"").append(format(gelWidth)).append("\" height=\"").append(format(gelHeight)).append("\" fill=\"none\" stroke=\"black\" stroke-width=\"3\"/>\n");
+            double ladderCx = layout.gelLeft() + layout.laneWidth() / 2;
+            svgText(svg, "Ladder", ladderCx, layout.labelY(), SAMPLE_LABEL_FONT_SIZE,
+                    "rotate(45 " + format(ladderCx) + " " + format(layout.labelY()) + ")");
+            svg.append("  <rect x=\"").append(format(layout.gelLeft())).append("\" y=\"").append(format(layout.gelTop()))
+                    .append("\" width=\"").append(format(layout.gelWidth())).append("\" height=\"").append(format(layout.gelHeight()))
+                    .append("\" fill=\"none\" stroke=\"black\" stroke-width=\"3\"/>\n");
             svg.append("</svg>\n");
             Files.writeString(outputFile, svg.toString(), StandardCharsets.UTF_8);
         } catch (IOException e) {
@@ -577,7 +550,9 @@ public final class PaginatedGelViewer {
     }
 
     private static void svgBand(StringBuilder svg, double x, double y, double width, double height, Color color, double opacity, String title) {
-        svg.append("  <rect x=\"").append(format(x)).append("\" y=\"").append(format(y)).append("\" width=\"").append(format(width)).append("\" height=\"").append(format(height)).append("\" fill=\"").append(toHex(color)).append("\" opacity=\"").append(format(opacity)).append("\">");
+        svg.append("  <rect x=\"").append(format(x)).append("\" y=\"").append(format(y)).append("\" width=\"")
+                .append(format(width)).append("\" height=\"").append(format(height)).append("\" fill=\"").append(toHex(color))
+                .append("\" opacity=\"").append(format(opacity)).append("\">");
         if (title != null && !title.isBlank()) {
             svg.append("<title>").append(escapeXml(title)).append("</title>");
         }
@@ -585,7 +560,8 @@ public final class PaginatedGelViewer {
     }
 
     private static void svgText(StringBuilder svg, String text, double x, double y, double fontSize, String transform) {
-        svg.append("  <text x=\"").append(format(x)).append("\" y=\"").append(format(y)).append("\" font-family=\"Verdana\" font-size=\"").append(format(fontSize)).append("\" fill=\"black\"");
+        svg.append("  <text x=\"").append(format(x)).append("\" y=\"").append(format(y)).append("\" font-family=\"Verdana\" font-size=\"")
+                .append(format(fontSize)).append("\" fill=\"black\"");
         if (transform != null) {
             svg.append(" transform=\"").append(transform).append("\"");
         }
@@ -704,6 +680,42 @@ public final class PaginatedGelViewer {
                 .replace("'", "&apos;");
     }
 
+    private static double longestLabelWidth(List<String> samples) {
+        return Math.max("Ladder".length(), samples.stream().mapToInt(String::length).max().orElse(10)) * SAMPLE_LABEL_FONT_SIZE * 0.62;
+    }
+
+    private static double rotatedLabelFootprint(double labelWidth) {
+        return (labelWidth + SAMPLE_LABEL_FONT_SIZE) / Math.sqrt(2.0);
+    }
+
+    private record GelLayout(double gelLeft,
+                             double gelTop,
+                             double gelWidth,
+                             double gelHeight,
+                             double laneWidth,
+                             double paneWidth,
+                             double paneHeight,
+                             double labelY) {
+        private static GelLayout of(Scene ownerScene, List<String> samples) {
+            int laneCount = samples.size() + 1;
+            double leftLabelWidth = 82;
+            double topInset = 18;
+            double longestLabelWidth = longestLabelWidth(samples);
+            double labelFootprint = rotatedLabelFootprint(longestLabelWidth);
+            double rightInset = Math.max(64, labelFootprint + LABEL_MARGIN);
+            double labelAreaHeight = LABEL_START_OFFSET + labelFootprint + LABEL_MARGIN;
+            double laneWidth = Math.max(74, (Math.max(ownerScene.getWidth(), 800) - leftLabelWidth - rightInset) / Math.max(laneCount, 11));
+            double gelHeight = Math.max(540, Math.max(ownerScene.getHeight(), 500) * 1.10);
+            double gelLeft = leftLabelWidth;
+            double gelWidth = laneWidth * laneCount;
+            double gelBottom = topInset + gelHeight;
+            double paneWidth = Math.max(900, gelLeft + gelWidth + rightInset);
+            double paneHeight = gelBottom + labelAreaHeight;
+            double labelY = gelBottom + LABEL_START_OFFSET;
+            return new GelLayout(gelLeft, topInset, gelWidth, gelHeight, laneWidth, paneWidth, paneHeight, labelY);
+        }
+    }
+
     private static final class PageModel {
         private final Scene ownerScene;
         private final LinkedHashMap<String, List<GelBand>> lanes;
@@ -713,9 +725,7 @@ public final class PaginatedGelViewer {
         private int pageIndex;
         private double zoom = 1.0;
 
-        private PageModel(Scene ownerScene,
-                          LinkedHashMap<String, List<GelBand>> lanes,
-                          int samplesPerGel) {
+        private PageModel(Scene ownerScene, LinkedHashMap<String, List<GelBand>> lanes, int samplesPerGel) {
             this.ownerScene = ownerScene;
             this.lanes = lanes;
             this.sampleNames = new ArrayList<>(lanes.keySet());

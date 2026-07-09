@@ -1,7 +1,7 @@
 package ca.canada.inspection.insilicopcr;
 
 import ca.canada.inspection.dispatchpcr.Dispatcher;
-import ca.canada.inspection.insilicopcr.gel.InteractiveGelViewer;
+import ca.canada.inspection.insilicopcr.gel.PaginatedGelViewer;
 import ca.canada.inspection.insilicopcr.ui.PathFieldBinder;
 import ca.canada.inspection.pipeline.DependencyContext;
 import ca.canada.inspection.pipeline.ExternalProcessTracker;
@@ -346,7 +346,7 @@ public class MainRun extends Application {
 
     private void displayGelImage() {
         try {
-            InteractiveGelViewer.show(scene, latestConsolidatedReport(), new HashMap<>());
+            PaginatedGelViewer.show(scene, latestConsolidatedReport(), new HashMap<>());
         } catch (Exception e) {
             JOptionPane.showMessageDialog(null, "Unable to create gel image:\n" + e.getMessage());
         }

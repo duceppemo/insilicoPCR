@@ -9,6 +9,7 @@ import ca.canada.inspection.pipeline.InputValidator;
 import ca.canada.inspection.pipeline.LogFiles;
 import ca.canada.inspection.pipeline.PcrPipelineTask;
 import ca.canada.inspection.pipeline.PcrRunConfig;
+import ca.canada.inspection.util.SequenceFileUtils;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.geometry.Pos;
@@ -28,18 +29,23 @@ import javafx.scene.layout.Pane;
 import javafx.scene.layout.RowConstraints;
 import javafx.scene.text.Text;
 import javafx.scene.text.TextAlignment;
+import javafx.stage.DirectoryChooser;
+import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
 import javax.swing.JOptionPane;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Stream;
 
 public class MainRun extends Application {
 
@@ -53,6 +59,7 @@ public class MainRun extends Application {
     private ProgressBar blastProgress;
     private Button gelButton;
     private Scene scene;
+    private Stage primaryStage;
 
     private final ExternalProcessTracker processTracker = new ExternalProcessTracker();
     private final AtomicBoolean currentlyRunning = new AtomicBoolean(false);
@@ -61,6 +68,7 @@ public class MainRun extends Application {
 
     @Override
     public void start(Stage primaryStage) {
+        this.primaryStage = primaryStage;
         var pane = buildGrid();
 
         var inputField = new TextField();
@@ -220,7 +228,17 @@ public class MainRun extends Application {
         gelButton.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
         gelButton.setDisable(true);
         gelButton.setOnAction(event -> displayGelImage());
-        pane.add(gelButton, 2, 45, 14, 3);
+        pane.add(gelButton, 2, 45, 10, 3);
+
+        var previousRunButton = new Button("Open Previous Run");
+        previousRunButton.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
+        previousRunButton.setOnAction(event -> openPreviousRun());
+        pane.add(previousRunButton, 12, 45, 9, 3);
+
+        var reportButton = new Button("Open Report TSV");
+        reportButton.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
+        reportButton.setOnAction(event -> openReportOnly());
+        pane.add(reportButton, 29, 45, 9, 3);
 
         var runButton = new Button("Run");
         runButton.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
@@ -353,8 +371,55 @@ public class MainRun extends Application {
         }
     }
 
+    private void openPreviousRun() {
+        DirectoryChooser chooser = new DirectoryChooser();
+        chooser.setTitle("Open Previous insilicoPCR Run Folder");
+        if (outDir != null && Files.isDirectory(outDir)) {
+            chooser.setInitialDirectory(outDir.toFile());
+        }
+        var selected = chooser.showDialog(primaryStage);
+        if (selected == null) {
+            return;
+        }
+
+        try {
+            Path runDir = selected.toPath();
+            Path report = latestConsolidatedReport(runDir);
+            HashMap<String, Sample> samples = samplesFromQaLog(runDir.resolve("QAlog.txt"));
+            PaginatedGelViewer.show(scene, report, samples);
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(null, "Unable to open previous run:\n" + e.getMessage());
+        }
+    }
+
+    private void openReportOnly() {
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("Open Consolidated Report TSV");
+        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("TSV report", "*.tsv"));
+        if (outDir != null && Files.isDirectory(outDir)) {
+            chooser.setInitialDirectory(outDir.toFile());
+        }
+        var selected = chooser.showOpenDialog(primaryStage);
+        if (selected == null) {
+            return;
+        }
+
+        try {
+            PaginatedGelViewer.show(scene, selected.toPath(), new HashMap<>());
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(null, "Unable to open report TSV:\n" + e.getMessage());
+        }
+    }
+
     private Path latestConsolidatedReport() {
-        Path reportDir = outDir.resolve("consolidated_report");
+        if (outDir == null) {
+            throw new IllegalStateException("No current output directory is selected.");
+        }
+        return latestConsolidatedReport(outDir);
+    }
+
+    private Path latestConsolidatedReport(Path runDir) {
+        Path reportDir = runDir.resolve("consolidated_report");
         if (!Files.isDirectory(reportDir)) {
             throw new IllegalStateException("Consolidated report directory not found: " + reportDir);
         }
@@ -368,6 +433,52 @@ public class MainRun extends Application {
         } catch (IOException e) {
             throw new IllegalStateException("Unable to list consolidated reports in: " + reportDir, e);
         }
+    }
+
+    private HashMap<String, Sample> samplesFromQaLog(Path qaLog) {
+        if (!Files.isRegularFile(qaLog)) {
+            throw new IllegalStateException("QAlog.txt not found: " + qaLog);
+        }
+        HashMap<String, Sample> samples = new HashMap<>();
+        boolean readingInputs = false;
+        try {
+            for (String line : Files.readAllLines(qaLog, StandardCharsets.UTF_8)) {
+                String trimmed = line.strip();
+                if (trimmed.equals("Input File(s) :")) {
+                    readingInputs = true;
+                    continue;
+                }
+                if (!readingInputs || trimmed.isBlank()) {
+                    continue;
+                }
+                Path inputPath = Path.of(trimmed);
+                if (Files.isDirectory(inputPath)) {
+                    try (Stream<Path> files = Files.list(inputPath)) {
+                        files.filter(SequenceFileUtils::looksLikeSequenceFile)
+                                .map(MainRun::sampleNameFromPath)
+                                .forEach(sampleName -> samples.put(sampleName, null));
+                    }
+                } else {
+                    samples.put(sampleNameFromPath(inputPath), null);
+                }
+            }
+        } catch (IOException e) {
+            throw new IllegalStateException("Unable to read QAlog sample list: " + qaLog, e);
+        }
+        if (samples.isEmpty()) {
+            throw new IllegalStateException("No input samples were found in QAlog.txt: " + qaLog);
+        }
+        return samples;
+    }
+
+    private static String sampleNameFromPath(Path path) {
+        String fileName = path.getFileName() == null ? path.toString() : path.getFileName().toString();
+        for (String suffix : List.of(".fastq.gz", ".fq.gz", ".fasta.gz", ".fa.gz", ".fna.gz", ".fastq", ".fq", ".fasta", ".fa", ".fna")) {
+            if (fileName.toLowerCase().endsWith(suffix)) {
+                return fileName.substring(0, fileName.length() - suffix.length());
+            }
+        }
+        return fileName;
     }
 
     private long lastModifiedMillis(Path path) {

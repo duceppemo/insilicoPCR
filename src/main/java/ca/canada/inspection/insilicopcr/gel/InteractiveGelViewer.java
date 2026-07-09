@@ -4,11 +4,13 @@ import ca.canada.inspection.insilicopcr.Sample;
 import javafx.geometry.Bounds;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.print.PageLayout;
 import javafx.print.PrinterJob;
 import javafx.scene.Cursor;
 import javafx.scene.Group;
 import javafx.scene.Scene;
 import javafx.scene.SnapshotParameters;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ContextMenu;
@@ -39,6 +41,7 @@ import javafx.stage.FileChooser;
 import javafx.stage.Popup;
 import javafx.stage.Screen;
 import javafx.stage.Stage;
+import javafx.stage.Window;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
@@ -57,13 +60,7 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
 
-/**
- * JavaFX scene-graph implementation of the synthetic gel.
- *
- * <p>Every visible sample band is a real JavaFX node, so hover popups,
- * highlighting, selection, future click actions, zooming, and PNG export can be
- * implemented without image-coordinate hit testing.</p>
- */
+/** Interactive synthetic gel viewer backed by JavaFX scene-graph nodes. */
 public final class InteractiveGelViewer {
     private static final int GEL_MIN_BP = 0;
     private static final int GEL_MAX_BP = 25_000;
@@ -99,11 +96,11 @@ public final class InteractiveGelViewer {
         Path automaticOutput = defaultSyntheticGelOutput(consolidatedReport);
         savePaneAsPng(gelPane, automaticOutput);
 
-        Button saveButton = new Button("Save PNG...");
-        saveButton.setOnAction(event -> chooseAndSave(gelPane, automaticOutput));
+        Button savePngButton = new Button("Save PNG...");
+        savePngButton.setOnAction(event -> chooseAndSavePng(gelPane, automaticOutput));
 
-        Button svgButton = new Button("Save SVG...");
-        svgButton.setOnAction(event -> chooseAndSaveSvg(gelView, automaticOutput));
+        Button saveSvgButton = new Button("Save SVG...");
+        saveSvgButton.setOnAction(event -> chooseAndSaveSvg(gelView, automaticOutput));
 
         Button printButton = new Button("Print/PDF...");
         printButton.setOnAction(event -> printGel(gelPane));
@@ -112,13 +109,13 @@ public final class InteractiveGelViewer {
         Button zoomResetButton = new Button("100%");
         Button zoomInButton = new Button("+");
         Label selectedLabel = new Label("No band selected");
-        Label matchLabel = new Label("");
+        Label matchLabel = new Label();
         TextField searchField = new TextField();
         searchField.setPromptText("Search sample, gene, or size");
         Button clearSearchButton = new Button("Clear");
         CheckBox colorByGene = new CheckBox("Color by gene");
 
-        HBox toolbar = new HBox(8, saveButton, svgButton, printButton, colorByGene,
+        HBox toolbar = new HBox(8, savePngButton, saveSvgButton, printButton, colorByGene,
                 new Label("Search:"), searchField, clearSearchButton, matchLabel,
                 new Label("Zoom:"), zoomOutButton, zoomResetButton, zoomInButton, selectedLabel);
         toolbar.setAlignment(Pos.CENTER_LEFT);
@@ -181,14 +178,10 @@ public final class InteractiveGelViewer {
         root.setRight(legend);
 
         var screenBounds = Screen.getPrimary().getVisualBounds();
-        double toolbarHeight = 56;
-        double windowMargin = 80;
         double preferredWidth = gelPane.getPrefWidth() + 32;
-        double preferredHeight = gelPane.getPrefHeight() + toolbarHeight + 32;
-        double maxWindowWidth = Math.max(900, screenBounds.getWidth() - windowMargin);
-        double maxWindowHeight = Math.max(700, screenBounds.getHeight() - windowMargin);
-        double windowWidth = Math.min(preferredWidth, maxWindowWidth);
-        double windowHeight = Math.min(preferredHeight, maxWindowHeight);
+        double preferredHeight = gelPane.getPrefHeight() + 88;
+        double windowWidth = Math.min(preferredWidth, Math.max(900, screenBounds.getWidth() - 80));
+        double windowHeight = Math.min(preferredHeight, Math.max(700, screenBounds.getHeight() - 80));
 
         Stage stage = new Stage();
         stage.setTitle("Synthetic Gel - " + consolidatedReport.getFileName() + " - saved to " + automaticOutput.getFileName());
@@ -204,13 +197,11 @@ public final class InteractiveGelViewer {
         int laneCount = lanes.size() + 1;
         double visibleWidth = Math.max(ownerScene.getWidth(), 800);
         double visibleHeight = Math.max(ownerScene.getHeight(), 500);
-
         double leftLabelWidth = 82;
         double rightInset = 18;
         double topInset = 18;
         double gelHeight = Math.max(540, visibleHeight * 1.10);
-        double longestLabelWidth = longestLaneLabelWidth(lanes);
-        double labelAreaHeight = Math.max(150, Math.min(360, longestLabelWidth * 0.72 + 36));
+        double labelAreaHeight = Math.max(150, Math.min(360, longestLaneLabelWidth(lanes) * 0.72 + 36));
         double laneWidth = Math.max(74, (visibleWidth - leftLabelWidth - rightInset) / Math.max(laneCount, 11));
         double gelLeft = leftLabelWidth;
         double gelWidth = laneWidth * laneCount;
@@ -237,11 +228,7 @@ public final class InteractiveGelViewer {
     }
 
     private static double longestLaneLabelWidth(LinkedHashMap<String, List<GelBand>> lanes) {
-        double longest = "Ladder".length();
-        for (String sampleName : lanes.keySet()) {
-            longest = Math.max(longest, sampleName.length());
-        }
-        return longest * 6.2;
+        return lanes.keySet().stream().mapToDouble(sample -> Math.max("Ladder".length(), sample.length()) * 6.2).max().orElse(60);
     }
 
     private static Map<String, Rectangle> drawGelBackground(Pane pane,
@@ -262,12 +249,10 @@ public final class InteractiveGelViewer {
             Rectangle lane = new Rectangle(laneX, y, laneWidth, height);
             lane.setFill(i % 2 == 0 ? Color.rgb(244, 244, 244) : Color.rgb(232, 232, 232));
             lane.setMouseTransparent(true);
-            pane.getChildren().add(lane);
-
             Rectangle separator = new Rectangle(laneX, y, 3.0, height);
             separator.setFill(Color.WHITE);
             separator.setMouseTransparent(true);
-            pane.getChildren().add(separator);
+            pane.getChildren().addAll(lane, separator);
         }
 
         int laneIndex = 1;
@@ -301,14 +286,11 @@ public final class InteractiveGelViewer {
         pane.getChildren().add(border);
     }
 
-    private static void drawLaneLabels(Pane pane, LinkedHashMap<String, List<GelBand>> lanes,
-                                       double gelLeft, double labelY, double laneWidth) {
+    private static void drawLaneLabels(Pane pane, LinkedHashMap<String, List<GelBand>> lanes, double gelLeft, double labelY, double laneWidth) {
         addRotatedLaneLabel(pane, "Ladder", gelLeft + (laneWidth / 2), labelY);
-
         int laneIndex = 1;
         for (String sampleName : lanes.keySet()) {
-            double x = gelLeft + (laneIndex * laneWidth) + (laneWidth / 2);
-            addRotatedLaneLabel(pane, sampleName, x, labelY);
+            addRotatedLaneLabel(pane, sampleName, gelLeft + (laneIndex * laneWidth) + (laneWidth / 2), labelY);
             laneIndex++;
         }
     }
@@ -324,10 +306,9 @@ public final class InteractiveGelViewer {
         pane.getChildren().add(text);
     }
 
-    private static void drawLadder(Pane pane, double gelLeft, double gelTop, double gelHeight,
-                                   double laneWidth, double bandHeight) {
+    private static void drawLadder(Pane pane, double gelLeft, double gelTop, double gelHeight, double laneWidth, double bandHeight) {
         for (int size : LADDER_SIZES) {
-            addGelBandShape(pane, null, null, Color.BLACK, gelLeft, ladderY(gelTop, gelHeight, size), laneWidth, bandHeight, 0.45, null);
+            addGelBandShape(pane, List.of(), null, Map.of(), gelLeft, ladderY(gelTop, gelHeight, size), laneWidth, bandHeight, 0.45, null);
         }
     }
 
@@ -371,18 +352,15 @@ public final class InteractiveGelViewer {
                 double laneVariation = deterministicRange(sampleName, 0.90, 1.10);
                 double verticalJitter = deterministicRange(sampleName + ':' + roundedSize, -0.45, 0.45);
                 double intensity = Math.min(1.0, bandIntensity(roundedSize, count) * laneVariation);
-                double adjustedBandHeight = baseBandHeight + (intensity * 1.2);
-                Color geneColor = geneColors.getOrDefault(primaryGene(bands), Color.BLACK);
-
                 BandNode bandNode = addGelBandShape(
                         pane,
                         bands,
                         laneHighlight,
-                        geneColor,
+                        geneColors,
                         x,
                         ladderY(gelTop, gelHeight, roundedSize) + verticalJitter,
                         laneWidth,
-                        adjustedBandHeight,
+                        baseBandHeight + (intensity * 1.2),
                         intensity,
                         tooltipText(bands)
                 );
@@ -396,7 +374,7 @@ public final class InteractiveGelViewer {
     private static BandNode addGelBandShape(Pane pane,
                                             List<GelBand> bands,
                                             Rectangle laneHighlight,
-                                            Color geneColor,
+                                            Map<String, Color> geneColors,
                                             double x,
                                             double centerY,
                                             double laneWidth,
@@ -406,6 +384,7 @@ public final class InteractiveGelViewer {
         double bandWidth = Math.max(4, laneWidth * 0.66);
         double bandX = x + ((laneWidth - bandWidth) / 2.0);
         double bandY = centerY - (bandHeight / 2.0);
+        Color geneColor = geneColors.getOrDefault(primaryGene(bands), Color.BLACK);
 
         Rectangle halo = new Rectangle(bandX - 1.5, bandY - 2.0, bandWidth + 3.0, bandHeight + 4.0);
         halo.setFill(Color.rgb(25, 25, 25, intensity * 0.20));
@@ -423,20 +402,15 @@ public final class InteractiveGelViewer {
         shadow.setFill(Color.rgb(0, 0, 0, Math.min(0.32, intensity * 0.24)));
         shadow.setMouseTransparent(true);
 
-        Rectangle hitBox = new Rectangle(
-                bandX - 5.0,
-                centerY - (BAND_HOVER_TARGET_HEIGHT / 2.0),
-                bandWidth + 10.0,
-                BAND_HOVER_TARGET_HEIGHT
-        );
+        Rectangle hitBox = new Rectangle(bandX - 5.0, centerY - (BAND_HOVER_TARGET_HEIGHT / 2.0), bandWidth + 10.0, BAND_HOVER_TARGET_HEIGHT);
         hitBox.setFill(Color.rgb(255, 255, 255, 0.01));
         hitBox.setStroke(Color.TRANSPARENT);
         hitBox.setCursor(Cursor.HAND);
 
         Group group = new Group(halo, band, highlight, shadow, hitBox);
         group.setPickOnBounds(false);
-        BandNode bandNode = new BandNode(group, hitBox, band, halo, laneHighlight, bands == null ? List.of() : bands,
-                geneColor, bandX, bandY, bandWidth, bandHeight, intensity, popupText);
+        BandNode bandNode = new BandNode(group, hitBox, band, halo, laneHighlight,
+                bands == null ? List.of() : bands, intensity, popupText, bandX, bandY, bandWidth, bandHeight, geneColor);
 
         if (popupText != null && !popupText.isBlank()) {
             Popup popup = createMetadataPopup(popupText);
@@ -468,6 +442,8 @@ public final class InteractiveGelViewer {
     }
 
     private static ContextMenu createContextMenu(BandNode bandNode) {
+        MenuItem showDetails = new MenuItem("Show band details");
+        showDetails.setOnAction(event -> showBandDetails(bandNode));
         MenuItem copySample = new MenuItem("Copy sample name");
         copySample.setOnAction(event -> copyToClipboard(bandNode.sampleName()));
         MenuItem copyGenes = new MenuItem("Copy gene name(s)");
@@ -476,8 +452,6 @@ public final class InteractiveGelViewer {
         copySizes.setOnAction(event -> copyToClipboard(bandNode.ampliconSizes()));
         MenuItem copyAll = new MenuItem("Copy band details");
         copyAll.setOnAction(event -> copyToClipboard(bandNode.detailText()));
-        MenuItem showDetails = new MenuItem("Show band details");
-        showDetails.setOnAction(event -> showBandDetails(bandNode));
         return new ContextMenu(showDetails, copySample, copyGenes, copySizes, copyAll);
     }
 
@@ -493,7 +467,6 @@ public final class InteractiveGelViewer {
                 -fx-font-size: 11px;
                 -fx-text-fill: #111111;
                 """);
-
         Popup popup = new Popup();
         popup.setAutoHide(false);
         popup.setHideOnEscape(true);
@@ -505,7 +478,6 @@ public final class InteractiveGelViewer {
         if (owner.getScene() == null || owner.getScene().getWindow() == null) {
             return;
         }
-
         double x = event.getScreenX() + 14;
         double y = event.getScreenY() + 12;
         if (!popup.isShowing()) {
@@ -522,12 +494,10 @@ public final class InteractiveGelViewer {
         details.setWrapText(false);
         details.setPrefColumnCount(70);
         details.setPrefRowCount(Math.max(8, Math.min(24, bandNode.bands.size() + 4)));
-
         Button copyButton = new Button("Copy details");
         copyButton.setOnAction(event -> copyToClipboard(details.getText()));
         VBox root = new VBox(8, details, copyButton);
         root.setPadding(new Insets(10));
-
         Stage stage = new Stage();
         stage.setTitle("Band details - " + bandNode.sampleName());
         stage.setScene(new Scene(root));
@@ -667,7 +637,6 @@ public final class InteractiveGelViewer {
                     + "Gene: " + band.geneName() + '\n'
                     + "Amplicon size: " + band.ampliconSize() + " bp";
         }
-
         String sampleName = bands.getFirst().sampleName();
         String details = bands.stream()
                 .map(gelBand -> gelBand.geneName() + " — " + gelBand.ampliconSize() + " bp")
@@ -707,23 +676,18 @@ public final class InteractiveGelViewer {
         if (outputDir == null) {
             outputDir = Path.of(".");
         }
-
         String baseName = consolidatedReport.getFileName().toString()
                 .replaceFirst("\\.tsv$", "")
                 .replaceAll("[^A-Za-z0-9._-]+", "_");
         return outputDir.resolve("synthetic_gel_" + baseName + ".png");
     }
 
-    private static void chooseAndSave(Pane gelPane, Path automaticOutput) {
+    private static void chooseAndSavePng(Pane gelPane, Path automaticOutput) {
         FileChooser chooser = new FileChooser();
         chooser.setTitle("Save Synthetic Gel Image");
         chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("PNG image", "*.png"));
         chooser.setInitialFileName(automaticOutput.getFileName().toString());
-        Path parent = automaticOutput.getParent();
-        if (parent != null && Files.isDirectory(parent)) {
-            chooser.setInitialDirectory(parent.toFile());
-        }
-
+        setInitialDirectory(chooser, automaticOutput);
         File selectedFile = chooser.showSaveDialog(null);
         if (selectedFile != null) {
             savePaneAsPng(gelPane, selectedFile.toPath());
@@ -735,13 +699,17 @@ public final class InteractiveGelViewer {
         chooser.setTitle("Save Synthetic Gel SVG");
         chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("SVG image", "*.svg"));
         chooser.setInitialFileName(automaticOutput.getFileName().toString().replaceFirst("\\.png$", ".svg"));
-        Path parent = automaticOutput.getParent();
-        if (parent != null && Files.isDirectory(parent)) {
-            chooser.setInitialDirectory(parent.toFile());
-        }
+        setInitialDirectory(chooser, automaticOutput);
         File selectedFile = chooser.showSaveDialog(null);
         if (selectedFile != null) {
             saveSvg(gelView, selectedFile.toPath());
+        }
+    }
+
+    private static void setInitialDirectory(FileChooser chooser, Path output) {
+        Path parent = output.getParent();
+        if (parent != null && Files.isDirectory(parent)) {
+            chooser.setInitialDirectory(parent.toFile());
         }
     }
 
@@ -771,14 +739,15 @@ public final class InteractiveGelViewer {
             svg.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
             svg.append("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"").append(format(width)).append("\" height=\"").append(format(height)).append("\" viewBox=\"0 0 ")
                     .append(format(width)).append(' ').append(format(height)).append("\">\n");
-            svg.append("<rect width=\"100%\" height=\"100%\" fill=\"white\"/>\n");
-            svg.append("<rect x=\"").append(format(gelView.gelLeft())).append("\" y=\"").append(format(gelView.gelTop())).append("\" width=\"")
+            svg.append("  <rect width=\"100%\" height=\"100%\" fill=\"white\"/>\n");
+            svg.append("  <rect x=\"").append(format(gelView.gelLeft())).append("\" y=\"").append(format(gelView.gelTop())).append("\" width=\"")
                     .append(format(gelView.gelWidth())).append("\" height=\"").append(format(gelView.gelHeight())).append("\" fill=\"#eeeeee\" stroke=\"black\" stroke-width=\"3\"/>\n");
             for (BandNode band : gelView.bands()) {
-                svg.append("<rect x=\"").append(format(band.bandX)).append("\" y=\"").append(format(band.bandY)).append("\" width=\"")
+                svg.append("  <rect x=\"").append(format(band.bandX)).append("\" y=\"").append(format(band.bandY)).append("\" width=\"")
                         .append(format(band.bandWidth)).append("\" height=\"").append(format(Math.max(1.2, band.bandHeight))).append("\" fill=\"")
-                        .append(toHex(band.colorByGene ? band.geneColor : Color.BLACK)).append("\" opacity=\"").append(format(Math.max(0.35, band.intensity))).append("\"/>");
-                svg.append("<title>").append(escapeXml(band.popupText)).append("</title></rect>\n");
+                        .append(toHex(band.colorByGene ? band.geneColor : Color.BLACK)).append("\" opacity=\"").append(format(Math.max(0.35, band.intensity))).append("\">\n")
+                        .append("    <title>").append(escapeXml(band.popupText)).append("</title>\n")
+                        .append("  </rect>\n");
             }
             svg.append("</svg>\n");
             Files.writeString(outputFile, svg.toString(), StandardCharsets.UTF_8);
@@ -788,13 +757,43 @@ public final class InteractiveGelViewer {
     }
 
     private static void printGel(Pane gelPane) {
+        Window owner = gelPane.getScene() == null ? null : gelPane.getScene().getWindow();
         PrinterJob job = PrinterJob.createPrinterJob();
-        if (job != null && job.showPrintDialog(gelPane.getScene().getWindow())) {
-            boolean success = job.printPage(gelPane);
+        if (job == null) {
+            showInfo("Print/PDF unavailable", "No printer or PDF print service is available to JavaFX on this system.");
+            return;
+        }
+        boolean proceed = job.showPrintDialog(owner);
+        if (!proceed) {
+            return;
+        }
+        PageLayout layout = job.getJobSettings().getPageLayout();
+        double oldScaleX = gelPane.getScaleX();
+        double oldScaleY = gelPane.getScaleY();
+        double scale = Math.min(layout.getPrintableWidth() / gelPane.getPrefWidth(), layout.getPrintableHeight() / gelPane.getPrefHeight());
+        scale = Math.min(1.0, Math.max(0.05, scale));
+        try {
+            gelPane.setScaleX(scale);
+            gelPane.setScaleY(scale);
+            boolean success = job.printPage(layout, gelPane);
             if (success) {
                 job.endJob();
+                showInfo("Print/PDF", "The gel was sent to the selected printer/PDF target.");
+            } else {
+                showInfo("Print/PDF failed", "JavaFX could not print the gel to the selected target.");
             }
+        } finally {
+            gelPane.setScaleX(oldScaleX);
+            gelPane.setScaleY(oldScaleY);
         }
+    }
+
+    private static void showInfo(String title, String message) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle(title);
+        alert.setHeaderText(title);
+        alert.setContentText(message);
+        alert.showAndWait();
     }
 
     private static BufferedImage toBufferedImage(WritableImage image) {
@@ -811,13 +810,13 @@ public final class InteractiveGelViewer {
     }
 
     private static String format(double value) {
-        return String.format(java.util.Locale.ROOT, "%.2f", value);
+        return String.format(java.util.Locale.ROOT, "%.3f", value);
     }
 
     private static String toHex(Color color) {
-        int r = (int) Math.round(color.getRed() * 255);
-        int g = (int) Math.round(color.getGreen() * 255);
-        int b = (int) Math.round(color.getBlue() * 255);
+        int r = (int) Math.round(color.getRed() * 255.0);
+        int g = (int) Math.round(color.getGreen() * 255.0);
+        int b = (int) Math.round(color.getBlue() * 255.0);
         return String.format("#%02x%02x%02x", r, g, b);
     }
 
@@ -825,7 +824,11 @@ public final class InteractiveGelViewer {
         if (value == null) {
             return "";
         }
-        return value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;").replace("'", "&apos;");
+        return value.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;")
+                .replace("'", "&apos;");
     }
 
     private record GelView(Pane pane,
@@ -852,14 +855,14 @@ public final class InteractiveGelViewer {
         private final Rectangle halo;
         private final Rectangle laneHighlight;
         private final List<GelBand> bands;
-        private final Color geneColor;
+        private final double intensity;
+        private final String popupText;
+        private final String searchText;
         private final double bandX;
         private final double bandY;
         private final double bandWidth;
         private final double bandHeight;
-        private final double intensity;
-        private final String popupText;
-        private final String searchText;
+        private final Color geneColor;
         private boolean hovered;
         private boolean selected;
         private boolean searchMatch = true;
@@ -872,30 +875,31 @@ public final class InteractiveGelViewer {
                          Rectangle halo,
                          Rectangle laneHighlight,
                          List<GelBand> bands,
-                         Color geneColor,
+                         double intensity,
+                         String popupText,
                          double bandX,
                          double bandY,
                          double bandWidth,
                          double bandHeight,
-                         double intensity,
-                         String popupText) {
+                         Color geneColor) {
             this.group = group;
             this.hitBox = hitBox;
             this.band = band;
             this.halo = halo;
             this.laneHighlight = laneHighlight;
             this.bands = bands;
-            this.geneColor = geneColor;
+            this.intensity = intensity;
+            this.popupText = popupText;
             this.bandX = bandX;
             this.bandY = bandY;
             this.bandWidth = bandWidth;
             this.bandHeight = bandHeight;
-            this.intensity = intensity;
-            this.popupText = popupText;
+            this.geneColor = geneColor;
             this.searchText = bands.stream()
                     .map(gelBand -> gelBand.sampleName() + " " + gelBand.geneName() + " " + gelBand.ampliconSize())
                     .collect(Collectors.joining(" "))
                     .toLowerCase();
+            updateVisual();
         }
 
         private void installSelectionHandler(Set<BandNode> selectedBands, Label selectedLabel) {
@@ -910,7 +914,6 @@ public final class InteractiveGelViewer {
                     }
                     selectedBands.clear();
                 }
-
                 selected = !selected;
                 if (selected) {
                     selectedBands.add(this);
@@ -925,10 +928,11 @@ public final class InteractiveGelViewer {
 
         private void updateVisual() {
             group.setOpacity(searchMatch ? 1.0 : 0.18);
-            band.setFill(colorByGene ? withOpacity(geneColor, intensity) : Color.rgb(8, 8, 8, intensity));
             if (laneHighlight != null) {
                 laneHighlight.setFill(hovered || selected ? Color.rgb(30, 144, 255, selected ? 0.18 : 0.10) : Color.TRANSPARENT);
             }
+            Color baseColor = colorByGene ? geneColor : Color.rgb(8, 8, 8);
+            band.setFill(Color.color(baseColor.getRed(), baseColor.getGreen(), baseColor.getBlue(), intensity));
 
             if (selected) {
                 band.setStroke(Color.rgb(255, 140, 0));
@@ -946,10 +950,6 @@ public final class InteractiveGelViewer {
                 band.setStroke(null);
                 halo.setFill(Color.rgb(25, 25, 25, intensity * 0.20));
             }
-        }
-
-        private static Color withOpacity(Color color, double opacity) {
-            return new Color(color.getRed(), color.getGreen(), color.getBlue(), opacity);
         }
 
         private String sampleName() {

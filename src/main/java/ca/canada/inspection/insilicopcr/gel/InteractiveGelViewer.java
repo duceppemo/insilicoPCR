@@ -8,9 +8,10 @@ import javafx.scene.Group;
 import javafx.scene.Scene;
 import javafx.scene.SnapshotParameters;
 import javafx.scene.control.Button;
+import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
-import javafx.scene.control.Tooltip;
 import javafx.scene.image.WritableImage;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
@@ -20,6 +21,7 @@ import javafx.scene.text.Font;
 import javafx.scene.text.Text;
 import javafx.scene.transform.Rotate;
 import javafx.stage.FileChooser;
+import javafx.stage.Popup;
 import javafx.stage.Screen;
 import javafx.stage.Stage;
 
@@ -39,7 +41,7 @@ import java.util.stream.Collectors;
 /**
  * JavaFX scene-graph implementation of the synthetic gel.
  *
- * <p>Every visible sample band is a real JavaFX node, so hover tooltips,
+ * <p>Every visible sample band is a real JavaFX node, so hover popups,
  * highlighting, selection, future click actions, zooming, and PNG export can be
  * implemented without image-coordinate hit testing.</p>
  */
@@ -47,7 +49,7 @@ public final class InteractiveGelViewer {
     private static final int GEL_MIN_BP = 0;
     private static final int GEL_MAX_BP = 25_000;
     private static final double GEL_LOG_OFFSET_BP = 50.0;
-    private static final double BAND_HOVER_TARGET_HEIGHT = 12.0;
+    private static final double BAND_HOVER_TARGET_HEIGHT = 14.0;
     private static final int[] LADDER_SIZES = {20_000, 10_000, 7_000, 5_000, 4_000, 3_000, 2_000, 1_500, 1_000, 700, 500, 400, 300, 200, 100};
     private static final String[] LADDER_LABELS = {"20kb", "10kb", "7kb", "5kb", "4kb", "3kb", "2kb", "1.5kb", "1kb", "700", "500", "400", "300", "200", "100"};
 
@@ -239,7 +241,6 @@ public final class InteractiveGelViewer {
                 double verticalJitter = deterministicRange(sampleName + ':' + roundedSize, -0.45, 0.45);
                 double intensity = Math.min(1.0, bandIntensity(roundedSize, count) * laneVariation);
                 double adjustedBandHeight = baseBandHeight + (intensity * 1.2);
-                Tooltip tooltip = new Tooltip(tooltipText(bands));
 
                 addGelBandShape(
                         pane,
@@ -248,7 +249,7 @@ public final class InteractiveGelViewer {
                         laneWidth,
                         adjustedBandHeight,
                         intensity,
-                        tooltip
+                        tooltipText(bands)
                 );
             }
             laneIndex++;
@@ -261,7 +262,7 @@ public final class InteractiveGelViewer {
                                          double laneWidth,
                                          double bandHeight,
                                          double intensity,
-                                         Tooltip tooltip) {
+                                         String popupText) {
         double bandWidth = Math.max(4, laneWidth * 0.66);
         double bandX = x + ((laneWidth - bandWidth) / 2.0);
         double bandY = centerY - (bandHeight / 2.0);
@@ -279,32 +280,71 @@ public final class InteractiveGelViewer {
         shadow.setFill(Color.rgb(0, 0, 0, Math.min(0.32, intensity * 0.24)));
 
         Rectangle hitBox = new Rectangle(
-                bandX - 4.0,
+                bandX - 5.0,
                 centerY - (BAND_HOVER_TARGET_HEIGHT / 2.0),
-                bandWidth + 8.0,
+                bandWidth + 10.0,
                 BAND_HOVER_TARGET_HEIGHT
         );
-        hitBox.setFill(Color.TRANSPARENT);
+        hitBox.setFill(Color.rgb(255, 255, 255, 0.01));
         hitBox.setStroke(Color.TRANSPARENT);
 
         Group group = new Group(hitBox, halo, band, highlight, shadow);
         group.setPickOnBounds(true);
-        if (tooltip != null) {
-            Tooltip.install(group, tooltip);
-            Tooltip.install(hitBox, tooltip);
+
+        if (popupText != null && !popupText.isBlank()) {
+            Popup popup = createMetadataPopup(popupText);
             group.setCursor(Cursor.HAND);
-            group.setOnMouseEntered(event -> {
+            group.addEventHandler(MouseEvent.MOUSE_ENTERED, event -> {
+                showPopup(popup, group, event);
                 band.setStroke(Color.rgb(30, 144, 255));
                 band.setStrokeWidth(1.25);
                 halo.setFill(Color.rgb(30, 144, 255, 0.25));
             });
-            group.setOnMouseExited(event -> {
+            group.addEventHandler(MouseEvent.MOUSE_MOVED, event -> showPopup(popup, group, event));
+            group.addEventHandler(MouseEvent.MOUSE_EXITED, event -> {
+                popup.hide();
                 band.setStroke(null);
                 halo.setFill(Color.rgb(25, 25, 25, intensity * 0.20));
             });
         }
+
         pane.getChildren().add(group);
         return group;
+    }
+
+    private static Popup createMetadataPopup(String text) {
+        Label label = new Label(text);
+        label.setStyle("""
+                -fx-background-color: rgba(255,255,255,0.96);
+                -fx-background-radius: 5;
+                -fx-border-color: #444444;
+                -fx-border-radius: 5;
+                -fx-padding: 7 9 7 9;
+                -fx-font-family: Verdana;
+                -fx-font-size: 11px;
+                -fx-text-fill: #111111;
+                """);
+
+        Popup popup = new Popup();
+        popup.setAutoHide(false);
+        popup.setHideOnEscape(true);
+        popup.getContent().add(label);
+        return popup;
+    }
+
+    private static void showPopup(Popup popup, Group owner, MouseEvent event) {
+        if (owner.getScene() == null || owner.getScene().getWindow() == null) {
+            return;
+        }
+
+        double x = event.getScreenX() + 14;
+        double y = event.getScreenY() + 12;
+        if (!popup.isShowing()) {
+            popup.show(owner.getScene().getWindow(), x, y);
+        } else {
+            popup.setX(x);
+            popup.setY(y);
+        }
     }
 
     private static String tooltipText(List<GelBand> bands) {

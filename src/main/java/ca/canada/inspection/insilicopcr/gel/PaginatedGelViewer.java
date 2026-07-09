@@ -12,7 +12,6 @@ import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Spinner;
-import javafx.scene.control.SpinnerValueFactory;
 import javafx.scene.control.TextField;
 import javafx.scene.image.WritableImage;
 import javafx.scene.input.KeyCode;
@@ -58,6 +57,9 @@ public final class PaginatedGelViewer {
     private static final int GEL_MIN_BP = 0;
     private static final int GEL_MAX_BP = 25_000;
     private static final double GEL_LOG_OFFSET_BP = 50.0;
+    private static final double LABEL_FONT_SIZE = 12.0;
+    private static final double LADDER_FONT_SIZE = 10.0;
+    private static final double ROTATED_LABEL_MARGIN = 36.0;
     private static final int[] LADDER_SIZES = {20_000, 10_000, 7_000, 5_000, 4_000, 3_000, 2_000, 1_500, 1_000, 700, 500, 400, 300, 200, 100};
     private static final String[] LADDER_LABELS = {"20kb", "10kb", "7kb", "5kb", "4kb", "3kb", "2kb", "1.5kb", "1kb", "700", "500", "400", "300", "200", "100"};
     private static final Color[] GENE_PALETTE = {
@@ -304,16 +306,19 @@ public final class PaginatedGelViewer {
         List<String> samples = model.currentSamples();
         int laneCount = samples.size() + 1;
         double leftLabelWidth = 82;
-        double rightInset = 18;
         double topInset = 18;
+        double longestLabelWidth = longestLabelWidth(samples);
+        double rotatedLabelFootprint = rotatedLabelFootprint(longestLabelWidth);
+        double rightInset = Math.max(48, rotatedLabelFootprint + ROTATED_LABEL_MARGIN);
+        double labelAreaHeight = Math.max(190, Math.min(460, rotatedLabelFootprint + ROTATED_LABEL_MARGIN));
         double laneWidth = Math.max(74, (Math.max(model.ownerScene.getWidth(), 800) - leftLabelWidth - rightInset) / Math.max(laneCount, 11));
         double gelHeight = Math.max(540, Math.max(model.ownerScene.getHeight(), 500) * 1.10);
         double gelLeft = leftLabelWidth;
         double gelWidth = laneWidth * laneCount;
         double gelBottom = topInset + gelHeight;
-        double labelAreaHeight = Math.max(150, Math.min(360, samples.stream().mapToInt(String::length).max().orElse(10) * 6.2 * 0.72 + 36));
         double paneWidth = Math.max(900, gelLeft + gelWidth + rightInset);
         double paneHeight = gelBottom + labelAreaHeight;
+        double labelY = gelBottom + 42;
 
         Pane pane = new Pane();
         pane.setPrefSize(paneWidth, paneHeight);
@@ -349,10 +354,10 @@ public final class PaginatedGelViewer {
                 Color color = colorByGene ? model.geneColors.getOrDefault(bands.getFirst().geneName(), Color.BLACK) : Color.BLACK;
                 addBand(pane, x, y, laneWidth, 2.0 + intensity, intensity, color, tooltipText(bands));
             }
-            addRotatedLabel(pane, sampleName, gelLeft + laneIndex * laneWidth + laneWidth / 2, gelBottom + 34);
+            addRotatedLabel(pane, sampleName, gelLeft + laneIndex * laneWidth + laneWidth / 2, labelY);
             laneIndex++;
         }
-        addRotatedLabel(pane, "Ladder", gelLeft + laneWidth / 2, gelBottom + 34);
+        addRotatedLabel(pane, "Ladder", gelLeft + laneWidth / 2, labelY);
 
         Rectangle border = new Rectangle(gelLeft, topInset, gelWidth, gelHeight);
         border.setFill(Color.TRANSPARENT);
@@ -361,6 +366,14 @@ public final class PaginatedGelViewer {
         border.setMouseTransparent(true);
         pane.getChildren().add(border);
         return pane;
+    }
+
+    private static double longestLabelWidth(List<String> samples) {
+        return Math.max("Ladder".length(), samples.stream().mapToInt(String::length).max().orElse(10)) * LABEL_FONT_SIZE * 0.62;
+    }
+
+    private static double rotatedLabelFootprint(double labelWidth) {
+        return (labelWidth + LABEL_FONT_SIZE) / Math.sqrt(2.0);
     }
 
     private static void drawLadder(Pane pane, double gelLeft, double gelTop, double gelHeight, double laneWidth) {
@@ -372,7 +385,7 @@ public final class PaginatedGelViewer {
     private static void drawLadderLabels(Pane pane, double labelRightX, double gelTop, double gelHeight) {
         for (int i = 0; i < LADDER_SIZES.length; i++) {
             Text text = new Text(LADDER_LABELS[i]);
-            text.setFont(Font.font("Verdana", 10));
+            text.setFont(Font.font("Verdana", LADDER_FONT_SIZE));
             text.setFill(Color.BLACK);
             text.setX(labelRightX - text.getText().length() * 6.1);
             text.setY(ladderY(gelTop, gelHeight, LADDER_SIZES[i]) + 4);
@@ -429,7 +442,7 @@ public final class PaginatedGelViewer {
 
     private static void addRotatedLabel(Pane pane, String label, double centerX, double y) {
         Text text = new Text(label);
-        text.setFont(Font.font("Verdana", 10));
+        text.setFont(Font.font("Verdana", LABEL_FONT_SIZE));
         text.setFill(Color.BLACK);
         text.setX(centerX);
         text.setY(y);
@@ -510,13 +523,18 @@ public final class PaginatedGelViewer {
             int laneCount = samples.size() + 1;
             double leftLabelWidth = 82;
             double topInset = 18;
-            double laneWidth = Math.max(74, (Math.max(model.ownerScene.getWidth(), 800) - leftLabelWidth - 18) / Math.max(laneCount, 11));
+            double longestLabelWidth = longestLabelWidth(samples);
+            double rotatedLabelFootprint = rotatedLabelFootprint(longestLabelWidth);
+            double rightInset = Math.max(48, rotatedLabelFootprint + ROTATED_LABEL_MARGIN);
+            double labelAreaHeight = Math.max(190, Math.min(460, rotatedLabelFootprint + ROTATED_LABEL_MARGIN));
+            double laneWidth = Math.max(74, (Math.max(model.ownerScene.getWidth(), 800) - leftLabelWidth - rightInset) / Math.max(laneCount, 11));
             double gelHeight = Math.max(540, Math.max(model.ownerScene.getHeight(), 500) * 1.10);
             double gelLeft = leftLabelWidth;
             double gelWidth = laneWidth * laneCount;
             double gelBottom = topInset + gelHeight;
-            double width = Math.max(900, gelLeft + gelWidth + 18);
-            double height = gelBottom + Math.max(150, Math.min(360, samples.stream().mapToInt(String::length).max().orElse(10) * 6.2 * 0.72 + 36));
+            double width = Math.max(900, gelLeft + gelWidth + rightInset);
+            double height = gelBottom + labelAreaHeight;
+            double labelY = gelBottom + 42;
 
             svg.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
             svg.append("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"").append(format(width)).append("\" height=\"").append(format(height)).append("\" viewBox=\"0 0 ")
@@ -530,7 +548,7 @@ public final class PaginatedGelViewer {
             for (int i = 0; i < LADDER_SIZES.length; i++) {
                 double y = ladderY(topInset, gelHeight, LADDER_SIZES[i]);
                 svgBand(svg, gelLeft + laneWidth * 0.17, y - 1.0, laneWidth * 0.66, 2.0, Color.BLACK, 0.45, "Ladder " + LADDER_LABELS[i]);
-                svgText(svg, LADDER_LABELS[i], gelLeft - 8 - LADDER_LABELS[i].length() * 6.1, y + 4, null);
+                svgText(svg, LADDER_LABELS[i], gelLeft - 8 - LADDER_LABELS[i].length() * 6.1, y + 4, LADDER_FONT_SIZE, null);
             }
             int laneIndex = 1;
             for (String sampleName : samples) {
@@ -542,12 +560,14 @@ public final class PaginatedGelViewer {
                     Color color = colorByGene ? model.geneColors.getOrDefault(bands.getFirst().geneName(), Color.BLACK) : Color.BLACK;
                     svgBand(svg, laneX + laneWidth * 0.17, y - 1.0, laneWidth * 0.66, 2.0 + intensity, color, intensity, tooltipText(bands));
                 }
-                svgText(svg, sampleName, gelLeft + laneIndex * laneWidth + laneWidth / 2, gelBottom + 34,
-                        "rotate(45 " + format(gelLeft + laneIndex * laneWidth + laneWidth / 2) + " " + format(gelBottom + 34) + ")");
+                double cx = gelLeft + laneIndex * laneWidth + laneWidth / 2;
+                svgText(svg, sampleName, cx, labelY, LABEL_FONT_SIZE,
+                        "rotate(45 " + format(cx) + " " + format(labelY) + ")");
                 laneIndex++;
             }
-            svgText(svg, "Ladder", gelLeft + laneWidth / 2, gelBottom + 34,
-                    "rotate(45 " + format(gelLeft + laneWidth / 2) + " " + format(gelBottom + 34) + ")");
+            double ladderCx = gelLeft + laneWidth / 2;
+            svgText(svg, "Ladder", ladderCx, labelY, LABEL_FONT_SIZE,
+                    "rotate(45 " + format(ladderCx) + " " + format(labelY) + ")");
             svg.append("  <rect x=\"").append(format(gelLeft)).append("\" y=\"").append(format(topInset)).append("\" width=\"").append(format(gelWidth)).append("\" height=\"").append(format(gelHeight)).append("\" fill=\"none\" stroke=\"black\" stroke-width=\"3\"/>\n");
             svg.append("</svg>\n");
             Files.writeString(outputFile, svg.toString(), StandardCharsets.UTF_8);
@@ -564,8 +584,8 @@ public final class PaginatedGelViewer {
         svg.append("</rect>\n");
     }
 
-    private static void svgText(StringBuilder svg, String text, double x, double y, String transform) {
-        svg.append("  <text x=\"").append(format(x)).append("\" y=\"").append(format(y)).append("\" font-family=\"Verdana\" font-size=\"10\" fill=\"black\"");
+    private static void svgText(StringBuilder svg, String text, double x, double y, double fontSize, String transform) {
+        svg.append("  <text x=\"").append(format(x)).append("\" y=\"").append(format(y)).append("\" font-family=\"Verdana\" font-size=\"").append(format(fontSize)).append("\" fill=\"black\"");
         if (transform != null) {
             svg.append(" transform=\"").append(transform).append("\"");
         }

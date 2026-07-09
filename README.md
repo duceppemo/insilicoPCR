@@ -28,7 +28,7 @@
 - [Scientific Workflow](#scientific-workflow)
 - [Architecture](#architecture)
 - [Performance and Modernization](#performance-and-modernization)
-- [Installation](#installation)
+- [Quick Start: Portable App](#quick-start-portable-app)
 - [Building From Source](#building-from-source)
 - [Portable Releases](#portable-releases)
 - [Runtime Layout](#runtime-layout)
@@ -153,29 +153,81 @@ Scientific behavior is intended to remain compatible with previous versions whil
 
 ---
 
-## Installation
+## Quick Start: Portable App
 
-### End Users
+The recommended way to run insilicoPCR is to use the portable release for your operating system.
+
+Portable releases include:
+
+- the insilicoPCR application;
+- a bundled Java runtime;
+- the JavaFX runtime;
+- BBMap;
+- NCBI BLAST+;
+- platform-specific launchers.
+
+You do **not** need to install Java, JavaFX, BBMap, or BLAST+ separately.
+
+### 1. Download a release
 
 Download the latest portable ZIP from the [Releases](https://github.com/duceppemo/insilicoPCR/releases) page.
 
-Extract the archive and run the platform launcher.
+Choose the archive that matches your operating system:
 
-#### Windows
+| Operating system | Release archive |
+|---|---|
+| Linux | `insilicoPCR-linux.zip` |
+| Windows | `insilicoPCR-windows.zip` |
 
-```powershell
-insilicoPCR.exe
-```
+### 2. Unzip the archive
+
+Extract the ZIP file to a writable folder, for example:
+
+| Operating system | Example location |
+|---|---|
+| Linux | `~/Applications/insilicoPCR/` |
+| Windows | `C:\Users\<your-user-name>\Applications\insilicoPCR\` |
+
+Keep the extracted folder intact. Do not move files out of the release folder, because the launchers expect the bundled runtime tools to stay beside the application.
+
+### 3. Start the application
 
 #### Linux
+
+Open a terminal in the extracted release folder and run:
 
 ```bash
 ./insilicoPCR
 ```
 
-Portable releases include the application, Java runtime, JavaFX runtime, BBMap, and BLAST+.
+If the launcher is not executable after unzipping, run this once:
 
-No separate Java installation is required.
+```bash
+chmod +x insilicoPCR
+./insilicoPCR
+```
+
+#### Windows
+
+Open the extracted release folder and double-click:
+
+```text
+insilicoPCR.exe
+```
+
+You can also start it from PowerShell:
+
+```powershell
+.\insilicoPCR.exe
+```
+
+### Troubleshooting startup
+
+- Make sure you downloaded the ZIP for the correct operating system.
+- Extract the ZIP before running the launcher. Do not run the application directly from inside the compressed archive.
+- Keep the bundled `runtime/` folder next to the launcher.
+- On Linux, make sure the launcher has executable permission.
+- On Windows, if SmartScreen warns about an unsigned application, choose **More info** and then **Run anyway** only if you downloaded the release from this repository.
 
 ---
 
@@ -205,24 +257,13 @@ cd insilicoPCR
 java -jar target/insilicoPCR.jar
 ```
 
+Building from source requires the development dependencies and runtime assets expected by the project. End users should normally use the portable releases instead.
+
 ---
 
 ## Portable Releases
 
-### Linux
-
-```bash
-export JAVA_HOME=/path/to/jdk-26
-scripts/release/package-linux-portable.sh 0.6.0
-```
-
-### Windows
-
-Run from PowerShell with `JAVA_HOME` pointing to JDK 26:
-
-```powershell
-scripts/release-windows.ps1
-```
+Portable release archives are built for distribution and are intended for users who do not want to install Java or configure external command-line tools manually.
 
 Each portable release contains:
 
@@ -232,6 +273,33 @@ Each portable release contains:
 - BBMap;
 - NCBI BLAST+;
 - platform-specific launchers.
+
+### Building a Linux portable ZIP
+
+```bash
+export JAVA_HOME=/path/to/jdk-26
+scripts/release/package-linux-portable.sh 0.6.0
+```
+
+The expected output is:
+
+```text
+insilicoPCR-linux.zip
+```
+
+### Building a Windows portable ZIP
+
+Run from PowerShell with `JAVA_HOME` pointing to JDK 26:
+
+```powershell
+scripts/release-windows.ps1
+```
+
+The expected output is:
+
+```text
+insilicoPCR-windows.zip
+```
 
 ---
 
@@ -363,9 +431,6 @@ If you use insilicoPCR in published work, please cite this repository and the un
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-
-Recommended format:
-
 
 ---
 

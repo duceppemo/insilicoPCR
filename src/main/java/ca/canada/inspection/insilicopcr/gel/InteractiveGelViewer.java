@@ -3,6 +3,7 @@ package ca.canada.inspection.insilicopcr.gel;
 import ca.canada.inspection.insilicopcr.Sample;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Cursor;
 import javafx.scene.Group;
 import javafx.scene.Scene;
 import javafx.scene.SnapshotParameters;
@@ -46,6 +47,7 @@ public final class InteractiveGelViewer {
     private static final int GEL_MIN_BP = 0;
     private static final int GEL_MAX_BP = 25_000;
     private static final double GEL_LOG_OFFSET_BP = 50.0;
+    private static final double BAND_HOVER_TARGET_HEIGHT = 12.0;
     private static final int[] LADDER_SIZES = {20_000, 10_000, 7_000, 5_000, 4_000, 3_000, 2_000, 1_500, 1_000, 700, 500, 400, 300, 200, 100};
     private static final String[] LADDER_LABELS = {"20kb", "10kb", "7kb", "5kb", "4kb", "3kb", "2kb", "1.5kb", "1kb", "700", "500", "400", "300", "200", "100"};
 
@@ -276,9 +278,21 @@ public final class InteractiveGelViewer {
         Rectangle shadow = new Rectangle(bandX, bandY + bandHeight - 0.75, bandWidth, 0.75);
         shadow.setFill(Color.rgb(0, 0, 0, Math.min(0.32, intensity * 0.24)));
 
-        Group group = new Group(halo, band, highlight, shadow);
+        Rectangle hitBox = new Rectangle(
+                bandX - 4.0,
+                centerY - (BAND_HOVER_TARGET_HEIGHT / 2.0),
+                bandWidth + 8.0,
+                BAND_HOVER_TARGET_HEIGHT
+        );
+        hitBox.setFill(Color.TRANSPARENT);
+        hitBox.setStroke(Color.TRANSPARENT);
+
+        Group group = new Group(hitBox, halo, band, highlight, shadow);
+        group.setPickOnBounds(true);
         if (tooltip != null) {
             Tooltip.install(group, tooltip);
+            Tooltip.install(hitBox, tooltip);
+            group.setCursor(Cursor.HAND);
             group.setOnMouseEntered(event -> {
                 band.setStroke(Color.rgb(30, 144, 255));
                 band.setStrokeWidth(1.25);

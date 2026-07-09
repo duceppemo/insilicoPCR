@@ -29,6 +29,8 @@
 - [Architecture](#architecture)
 - [Performance and Modernization](#performance-and-modernization)
 - [Quick Start: Portable App](#quick-start-portable-app)
+- [Command-line Interface](#command-line-interface)
+- [Primer FASTA Format](#primer-fasta-format)
 - [Building From Source](#building-from-source)
 - [Portable Releases](#portable-releases)
 - [Runtime Layout](#runtime-layout)
@@ -44,9 +46,9 @@
 
 ## Overview
 
-**insilicoPCR** is a modern JavaFX desktop application for performing **in silico PCR** against **genome assemblies (FASTA)** and **high-throughput sequencing reads (FASTQ)** using **BBMap** and **NCBI BLAST+**.
+**insilicoPCR** is a modern JavaFX desktop and command-line application for performing **in silico PCR** against **genome assemblies (FASTA)** and **high-throughput sequencing reads (FASTQ)** using **BBMap** and **NCBI BLAST+**.
 
-It is designed for researchers, diagnostic laboratories, surveillance programs, and microbial genomics workflows that need a reproducible way to validate primers, evaluate multiplex PCR assays, detect expected amplicons, and generate reviewable reports.
+It is designed for researchers, diagnostic laboratories, surveillance programs, and microbial genomics workflows that need a reproducible way to validate primers, evaluate multiplex PCR assays, detect expected amplicons, visualize synthetic gels, and generate reviewable reports.
 
 insilicoPCR supports both assembled genomes and sequencing reads, allowing the same primer sets to be evaluated against finished assemblies or directly against raw sequencing datasets.
 
@@ -56,14 +58,15 @@ Unlike ad hoc command-line workflows, insilicoPCR provides an integrated desktop
 
 ## Why insilicoPCR?
 
-insilicoPCR combines BBMap and BLAST+ into a reproducible desktop workflow, eliminating manual command-line processing while producing structured, reviewable reports.
+insilicoPCR combines BBMap and BLAST+ into a reproducible desktop and CLI workflow, eliminating manual command-line processing while producing structured, reviewable reports.
 
 It is especially useful when users need to:
 
 - screen genome assemblies against one or more primer sets;
 - analyze sequencing reads directly when an assembly is not available;
 - validate predicted amplicons;
-- support multiplex PCR workflows;
+- support standard PCR and qPCR-style probe workflows;
+- inspect results using reports and the synthetic gel visualizer;
 - generate Excel reports for downstream review;
 - run the same workflow on Windows and Linux without installing Java, BBMap, or BLAST+ separately.
 
@@ -78,6 +81,8 @@ It is especially useful when users need to:
 | Single-end FASTQ workflows | ✅ |
 | Paired-end FASTQ workflows | ✅ |
 | Primer pair analysis | ✅ |
+| Standard PCR mode | ✅ |
+| qPCR/probe mode | ✅ |
 | Multiplex PCR workflows | ✅ |
 | Degenerate primer support | ✅ |
 | BBMap candidate search | ✅ |
@@ -85,8 +90,11 @@ It is especially useful when users need to:
 | Amplicon detection | ✅ |
 | Product size validation | ✅ |
 | Primer quality assessment | ✅ |
+| Synthetic gel visualizer | ✅ |
 | Excel report generation | ✅ |
 | Consolidated reports | ✅ |
+| Graphical desktop interface | ✅ |
+| Command-line interface | ✅ |
 | Windows portable ZIP | ✅ |
 | Linux portable ZIP | ✅ |
 | Bundled OpenJDK 26 | ✅ |
@@ -103,9 +111,9 @@ It is especially useful when users need to:
 |---|---|
 | `docs/screenshots/main-window.png` | `docs/screenshots/results.png` |
 
-| Excel Report | Consolidated Report |
+| Synthetic Gel | Consolidated Report |
 |---|---|
-| `docs/screenshots/report.png` | `docs/screenshots/consolidated.png` |
+| `docs/screenshots/synthetic-gel.png` | `docs/screenshots/consolidated.png` |
 
 ---
 
@@ -123,7 +131,7 @@ The workflow follows a practical analysis path:
 4. Detect candidate amplicons and validate product sizes.
 5. Confirm sequence-level results using BLAST+ where applicable.
 6. Perform quality assessment and summarize hits.
-7. Generate detailed and consolidated Excel reports.
+7. Generate detailed reports, consolidated reports, and synthetic gel visualizations.
 
 ---
 
@@ -133,7 +141,7 @@ The workflow follows a practical analysis path:
   <img src="docs/assets/architecture.svg" alt="insilicoPCR application architecture" width="100%">
 </p>
 
-The application separates the JavaFX user interface from the core analysis workflow, external tool runners, parsers, domain model, and report writers.
+The application separates the JavaFX user interface from the core analysis workflow, external tool runners, parsers, domain model, gel viewer, and report writers.
 
 This keeps the codebase easier to test, optimize, and maintain while preserving compatibility with existing scientific outputs.
 
@@ -199,7 +207,7 @@ Keep the extracted folder intact. Do not move files out of the release folder, b
 
 Do **not** run the application directly from inside the compressed ZIP archive. Extract it first.
 
-### 3. Start the application
+### 3. Start the graphical application
 
 #### Linux
 
@@ -243,6 +251,126 @@ The launcher scripts automatically configure the bundled Java runtime, JavaFX ru
 - On Linux, start the application from a terminal so startup messages are visible.
 - On Linux, make sure the shell launcher has executable permission.
 - On Windows, if SmartScreen warns about an unsigned application, choose **More info** and then **Run anyway** only if you downloaded the release from this repository.
+
+---
+
+## Command-line Interface
+
+insilicoPCR can also be run entirely from the terminal without launching the graphical interface.
+
+This is useful for batch processing, automation, remote Linux systems, HPC environments, and workflow managers such as Nextflow or Snakemake.
+
+Use the bundled Java runtime from the portable release so the command does not depend on a system Java installation.
+
+### Show CLI help
+
+From inside the extracted Linux portable release folder:
+
+```bash
+cd insilicoPCR-linux-x64
+./runtime/linux/jdk/bin/java -jar insilicoPCR.jar -h
+```
+
+This prints:
+
+```text
+usage: java -jar insilicoPCR.jar -i <input> -o <output> -p <primers> [-t
+            n] [-m n] [-e value]
+ -e,--evalue <value>   blastn e-value; default: 1e5
+ -h,--help             Print help and usage
+ -i,--input <path>     Input file/directory containing .fasta/.fastq
+                       sequence(s)
+ -m,--mismatches <n>   Allowed primer mismatches; default: 0
+ -o,--output <dir>     Directory for output files
+ -p,--primers <file>   Primer FASTA file
+ -t,--threads <n>      Number of worker threads; default: available
+                       processors
+ -v,--version          Print version
+```
+
+### Example CLI runs
+
+Run against a folder of genome assemblies:
+
+```bash
+./runtime/linux/jdk/bin/java \
+  -jar insilicoPCR.jar \
+  -i assemblies/ \
+  -p primers.fasta \
+  -o results/
+```
+
+Run against a folder of sequencing reads:
+
+```bash
+./runtime/linux/jdk/bin/java \
+  -jar insilicoPCR.jar \
+  -i reads/ \
+  -p primers.fasta \
+  -o results/ \
+  -t 8 \
+  -m 1
+```
+
+The `--input` path can be a single FASTA/FASTQ file or a directory containing FASTA/FASTQ sequence files.
+
+---
+
+## Primer FASTA Format
+
+Primer definitions must be provided as a FASTA file.
+
+Each primer ID must end with one of these suffixes:
+
+| Suffix | Meaning |
+|---|---|
+| `-F` | Forward primer |
+| `-R` | Reverse primer |
+| `-P` | Probe |
+
+The text before the final suffix is treated as the assay or target name. Forward, reverse, and probe entries belonging to the same assay must share the same base name.
+
+### Standard PCR mode
+
+Use standard PCR mode when each assay has a forward and reverse primer only.
+
+```fasta
+>toxA-F
+ATGCGTACGTTAGCTAGCTA
+>toxA-R
+TCGATCGATACGCGTACGTA
+
+>toxB-F
+GCTAGCTAGGATCGATCGAA
+>toxB-R
+TTCGATCGATCCTAGCTAGC
+```
+
+### qPCR/probe mode
+
+Use qPCR mode when each assay has a forward primer, reverse primer, and probe.
+
+```fasta
+>toxA-F
+ATGCGTACGTTAGCTAGCTA
+>toxA-R
+TCGATCGATACGCGTACGTA
+>toxA-P
+FAMACGTTAGCTAGCTACGTABHQ1
+
+>toxB-F
+GCTAGCTAGGATCGATCGAA
+>toxB-R
+TTCGATCGATCCTAGCTAGC
+>toxB-P
+FAMCGATCGATCCTAGCTAGCBHQ1
+```
+
+> **Important:** Do not mix standard PCR assays and qPCR/probe assays in the same primer FASTA file.
+>
+> If any primer ID includes a `-P` probe, the consolidated report is generated in qPCR mode. In qPCR mode, an assay is only reported as positive when the forward primer, reverse primer, and probe are detected in the expected amplicon. Standard PCR assays without probes should be run separately from qPCR assays.
+
+Primer sequences may contain standard IUPAC degenerate bases such as `R`, `Y`, `S`, `W`, `K`, `M`, `B`, `D`, `H`, `V`, and `N`.
 
 ---
 

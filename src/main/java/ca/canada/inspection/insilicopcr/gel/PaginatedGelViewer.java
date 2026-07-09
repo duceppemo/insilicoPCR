@@ -31,6 +31,7 @@ import javafx.stage.Stage;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -40,8 +41,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.zip.DeflaterOutputStream;
 import java.util.stream.Collectors;
 
 /** Paginated synthetic gel viewer for large runs. */
@@ -72,7 +75,7 @@ public final class PaginatedGelViewer {
             return;
         }
 
-        PageModel model = new PageModel(ownerScene, consolidatedReport, lanes, DEFAULT_SAMPLES_PER_GEL);
+        PageModel model = new PageModel(ownerScene, lanes, DEFAULT_SAMPLES_PER_GEL);
         showPagedGel(model);
     }
 
@@ -94,24 +97,34 @@ public final class PaginatedGelViewer {
         CheckBox colorByGene = new CheckBox("Color by gene");
         Button savePng = new Button("Save PNG...");
         Button saveSvg = new Button("Save SVG...");
+        Button savePdf = new Button("Save PDF...");
         Button zoomOut = new Button("−");
         Button zoomReset = new Button("100%");
         Button zoomIn = new Button("+");
         Button previous = new Button("Previous Gel");
         Button next = new Button("Next Gel");
 
-        HBox mainToolbar = new HBox(8, savePng, saveSvg, colorByGene, new Label("Search:"), searchField,
-                matchLabel, new Label("Zoom:"), zoomOut, zoomReset, zoomIn);
-        mainToolbar.setAlignment(Pos.CENTER_LEFT);
-        mainToolbar.setPadding(new Insets(8, 8, 4, 8));
+        HBox searchToolbar = new HBox(8, new Label("Search:"), searchField, matchLabel,
+                new Label("Zoom:"), zoomOut, zoomReset, zoomIn);
+        searchToolbar.setAlignment(Pos.CENTER_LEFT);
+        searchToolbar.setPadding(new Insets(8, 8, 4, 8));
         HBox.setHgrow(searchField, Priority.ALWAYS);
+
+        HBox exportToolbar = new HBox(8, savePng, saveSvg, savePdf, colorByGene);
+        exportToolbar.setAlignment(Pos.CENTER_LEFT);
+        exportToolbar.setPadding(new Insets(4, 8, 4, 8));
 
         HBox pageToolbar = new HBox(8, previous, next, pageLabel, rangeLabel);
         pageToolbar.setAlignment(Pos.CENTER_LEFT);
         pageToolbar.setPadding(new Insets(4, 8, 8, 8));
 
-        VBox toolbarRows = new VBox(mainToolbar, pageToolbar);
+        VBox toolbarRows = new VBox(searchToolbar, exportToolbar, pageToolbar);
         root.setTop(toolbarRows);
+
+        VBox legend = buildLegend(model.geneColors);
+        legend.setVisible(false);
+        legend.setManaged(false);
+        root.setRight(legend);
 
         Runnable render = () -> {
             Pane pagePane = drawPage(model, colorByGene.isSelected());
@@ -123,6 +136,8 @@ public final class PaginatedGelViewer {
             previous.setDisable(model.pageIndex == 0);
             next.setDisable(model.pageIndex >= model.totalPages() - 1);
             zoomReset.setText(Math.round(model.zoom * 100) + "%");
+            legend.setVisible(colorByGene.isSelected());
+            legend.setManaged(colorByGene.isSelected());
             stage.setTitle("Synthetic Gel - page " + (model.pageIndex + 1) + " of " + model.totalPages());
         };
 
@@ -162,12 +177,30 @@ public final class PaginatedGelViewer {
             }
         });
         savePng.setOnAction(event -> chooseAndSavePng(model, currentPane(zoomGroup)));
-        saveSvg.setOnAction(event -> chooseAndSaveSvg(model));
+        saveSvg.setOnAction(event -> chooseAndSaveSvg(model, colorByGene.isSelected()));
+        savePdf.setOnAction(event -> chooseAndSavePdf(model, currentPane(zoomGroup)));
 
         var screenBounds = Screen.getPrimary().getVisualBounds();
         stage.setScene(new Scene(root, Math.max(900, screenBounds.getWidth() - 120), Math.max(700, screenBounds.getHeight() - 120)));
         render.run();
         stage.show();
+    }
+
+    private static VBox buildLegend(Map<String, Color> geneColors) {
+        VBox legend = new VBox(5);
+        legend.setPadding(new Insets(10));
+        legend.setStyle("-fx-background-color: rgba(255,255,255,0.94); -fx-border-color: #bbbbbb;");
+        Label title = new Label("Gene legend");
+        title.setStyle("-fx-font-weight: bold;");
+        legend.getChildren().add(title);
+        for (Map.Entry<String, Color> entry : geneColors.entrySet()) {
+            Rectangle swatch = new Rectangle(12, 12, entry.getValue());
+            Label label = new Label(entry.getKey());
+            HBox row = new HBox(6, swatch, label);
+            row.setAlignment(Pos.CENTER_LEFT);
+            legend.getChildren().add(row);
+        }
+        return legend;
     }
 
     private static Pane currentPane(Group zoomGroup) {
@@ -335,18 +368,25 @@ public final class PaginatedGelViewer {
         }
     }
 
-    private static void chooseAndSaveSvg(PageModel model) {
+    private static void chooseAndSaveSvg(PageModel model, boolean colorByGene) {
         FileChooser chooser = new FileChooser();
         chooser.setTitle("Save current gel page SVG");
         chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("SVG image", "*.svg"));
         chooser.setInitialFileName("synthetic_gel_page_" + String.format("%03d", model.pageIndex + 1) + ".svg");
         File selected = chooser.showSaveDialog(null);
         if (selected != null) {
-            try {
-                Files.writeString(selected.toPath(), "<!-- SVG export for paginated gel pages is generated from the current PNG/SVG-capable single-page viewer. Use Save PNG for this paginated view. -->\n", StandardCharsets.UTF_8);
-            } catch (IOException e) {
-                throw new IllegalStateException("Unable to save SVG: " + selected, e);
-            }
+            saveSvg(model, colorByGene, selected.toPath());
+        }
+    }
+
+    private static void chooseAndSavePdf(PageModel model, Pane pane) {
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("Save current gel page PDF");
+        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("PDF document", "*.pdf"));
+        chooser.setInitialFileName("synthetic_gel_page_" + String.format("%03d", model.pageIndex + 1) + ".pdf");
+        File selected = chooser.showSaveDialog(null);
+        if (selected != null) {
+            savePdf(pane, selected.toPath());
         }
     }
 
@@ -354,17 +394,157 @@ public final class PaginatedGelViewer {
         try {
             WritableImage image = new WritableImage((int) Math.ceil(pane.getPrefWidth()), (int) Math.ceil(pane.getPrefHeight()));
             pane.snapshot(new SnapshotParameters(), image);
-            BufferedImage buffered = new BufferedImage((int) image.getWidth(), (int) image.getHeight(), BufferedImage.TYPE_INT_ARGB);
-            var reader = image.getPixelReader();
-            for (int y = 0; y < image.getHeight(); y++) {
-                for (int x = 0; x < image.getWidth(); x++) {
-                    buffered.setRGB(x, y, reader.getArgb(x, y));
-                }
-            }
-            ImageIO.write(buffered, "png", outputFile.toFile());
+            ImageIO.write(toBufferedImage(image, false), "png", outputFile.toFile());
         } catch (IOException e) {
             throw new IllegalStateException("Unable to save PNG: " + outputFile, e);
         }
+    }
+
+    private static void savePdf(Pane pane, Path outputFile) {
+        try {
+            WritableImage image = new WritableImage((int) Math.ceil(pane.getPrefWidth()), (int) Math.ceil(pane.getPrefHeight()));
+            pane.snapshot(new SnapshotParameters(), image);
+            Files.write(outputFile, pdfWithImage(toBufferedImage(image, true)));
+        } catch (IOException e) {
+            throw new IllegalStateException("Unable to save PDF: " + outputFile, e);
+        }
+    }
+
+    private static void saveSvg(PageModel model, boolean colorByGene, Path outputFile) {
+        try {
+            StringBuilder svg = new StringBuilder();
+            List<String> samples = model.currentSamples();
+            int laneCount = samples.size() + 1;
+            double leftLabelWidth = 82;
+            double topInset = 18;
+            double laneWidth = Math.max(74, (Math.max(model.ownerScene.getWidth(), 800) - leftLabelWidth - 18) / Math.max(laneCount, 11));
+            double gelHeight = Math.max(540, Math.max(model.ownerScene.getHeight(), 500) * 1.10);
+            double gelLeft = leftLabelWidth;
+            double gelWidth = laneWidth * laneCount;
+            double gelBottom = topInset + gelHeight;
+            double width = Math.max(900, gelLeft + gelWidth + 18);
+            double height = gelBottom + Math.max(150, Math.min(360, samples.stream().mapToInt(String::length).max().orElse(10) * 6.2 * 0.72 + 36));
+
+            svg.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
+            svg.append("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"").append(format(width)).append("\" height=\"").append(format(height)).append("\" viewBox=\"0 0 ")
+                    .append(format(width)).append(' ').append(format(height)).append("\">\n");
+            svg.append("  <rect width=\"100%\" height=\"100%\" fill=\"white\"/>\n");
+            for (int i = 0; i < laneCount; i++) {
+                double x = gelLeft + i * laneWidth;
+                svg.append("  <rect x=\"").append(format(x)).append("\" y=\"").append(format(topInset)).append("\" width=\"").append(format(laneWidth)).append("\" height=\"").append(format(gelHeight)).append("\" fill=\"").append(i % 2 == 0 ? "#f4f4f4" : "#e8e8e8").append("\"/>\n");
+                svg.append("  <rect x=\"").append(format(x)).append("\" y=\"").append(format(topInset)).append("\" width=\"3\" height=\"").append(format(gelHeight)).append("\" fill=\"white\"/>\n");
+            }
+            for (int i = 0; i < LADDER_SIZES.length; i++) {
+                double y = ladderY(topInset, gelHeight, LADDER_SIZES[i]);
+                svgBand(svg, gelLeft + laneWidth * 0.17, y - 1.0, laneWidth * 0.66, 2.0, Color.BLACK, 0.45, "Ladder " + LADDER_LABELS[i]);
+                svgText(svg, LADDER_LABELS[i], gelLeft - 8 - LADDER_LABELS[i].length() * 6.1, y + 4, null);
+            }
+            int laneIndex = 1;
+            for (String sampleName : samples) {
+                double laneX = gelLeft + laneIndex * laneWidth;
+                for (Map.Entry<Integer, List<GelBand>> entry : new TreeMap<>(GelReportReader.groupByRoundedSize(model.lanes.getOrDefault(sampleName, List.of()))).entrySet()) {
+                    List<GelBand> bands = entry.getValue();
+                    double y = ladderY(topInset, gelHeight, entry.getKey());
+                    double intensity = Math.min(1.0, 0.45 + Math.max(0, bands.size() - 1) * 0.12);
+                    Color color = colorByGene ? model.geneColors.getOrDefault(bands.getFirst().geneName(), Color.BLACK) : Color.BLACK;
+                    svgBand(svg, laneX + laneWidth * 0.17, y - 1.0, laneWidth * 0.66, 2.0 + intensity, color, intensity, tooltipText(bands));
+                }
+                svgText(svg, sampleName, gelLeft + laneIndex * laneWidth + laneWidth / 2, gelBottom + 34,
+                        "rotate(45 " + format(gelLeft + laneIndex * laneWidth + laneWidth / 2) + " " + format(gelBottom + 34) + ")");
+                laneIndex++;
+            }
+            svgText(svg, "Ladder", gelLeft + laneWidth / 2, gelBottom + 34,
+                    "rotate(45 " + format(gelLeft + laneWidth / 2) + " " + format(gelBottom + 34) + ")");
+            svg.append("  <rect x=\"").append(format(gelLeft)).append("\" y=\"").append(format(topInset)).append("\" width=\"").append(format(gelWidth)).append("\" height=\"").append(format(gelHeight)).append("\" fill=\"none\" stroke=\"black\" stroke-width=\"3\"/>\n");
+            svg.append("</svg>\n");
+            Files.writeString(outputFile, svg.toString(), StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            throw new IllegalStateException("Unable to save SVG: " + outputFile, e);
+        }
+    }
+
+    private static void svgBand(StringBuilder svg, double x, double y, double width, double height, Color color, double opacity, String title) {
+        svg.append("  <rect x=\"").append(format(x)).append("\" y=\"").append(format(y)).append("\" width=\"").append(format(width)).append("\" height=\"").append(format(height)).append("\" fill=\"").append(toHex(color)).append("\" opacity=\"").append(format(opacity)).append("\">");
+        if (title != null && !title.isBlank()) {
+            svg.append("<title>").append(escapeXml(title)).append("</title>");
+        }
+        svg.append("</rect>\n");
+    }
+
+    private static void svgText(StringBuilder svg, String text, double x, double y, String transform) {
+        svg.append("  <text x=\"").append(format(x)).append("\" y=\"").append(format(y)).append("\" font-family=\"Verdana\" font-size=\"10\" fill=\"black\"");
+        if (transform != null) {
+            svg.append(" transform=\"").append(transform).append("\"");
+        }
+        svg.append(">").append(escapeXml(text)).append("</text>\n");
+    }
+
+    private static BufferedImage toBufferedImage(WritableImage image, boolean whiteBackground) {
+        int width = (int) image.getWidth();
+        int height = (int) image.getHeight();
+        BufferedImage buffered = new BufferedImage(width, height, whiteBackground ? BufferedImage.TYPE_INT_RGB : BufferedImage.TYPE_INT_ARGB);
+        var reader = image.getPixelReader();
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                int argb = reader.getArgb(x, y);
+                if (whiteBackground && ((argb >>> 24) & 0xff) < 255) {
+                    argb = 0xffffffff;
+                }
+                buffered.setRGB(x, y, argb);
+            }
+        }
+        return buffered;
+    }
+
+    private static byte[] pdfWithImage(BufferedImage image) throws IOException {
+        int width = image.getWidth();
+        int height = image.getHeight();
+        byte[] imageData = compressedRgb(image);
+        ByteArrayOutputStream pdf = new ByteArrayOutputStream();
+        List<Integer> offsets = new ArrayList<>();
+        writeAscii(pdf, "%PDF-1.4\n%\u00e2\u00e3\u00cf\u00d3\n");
+        offsets.add(pdf.size());
+        writeAscii(pdf, "1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n");
+        offsets.add(pdf.size());
+        writeAscii(pdf, "2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n");
+        offsets.add(pdf.size());
+        writeAscii(pdf, "3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 " + width + " " + height + "] /Resources << /XObject << /Im0 5 0 R >> >> /Contents 4 0 R >>\nendobj\n");
+        String content = "q\n" + width + " 0 0 " + height + " 0 0 cm\n/Im0 Do\nQ\n";
+        byte[] contentBytes = content.getBytes(StandardCharsets.US_ASCII);
+        offsets.add(pdf.size());
+        writeAscii(pdf, "4 0 obj\n<< /Length " + contentBytes.length + " >>\nstream\n");
+        pdf.write(contentBytes);
+        writeAscii(pdf, "endstream\nendobj\n");
+        offsets.add(pdf.size());
+        writeAscii(pdf, "5 0 obj\n<< /Type /XObject /Subtype /Image /Width " + width + " /Height " + height + " /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /FlateDecode /Length " + imageData.length + " >>\nstream\n");
+        pdf.write(imageData);
+        writeAscii(pdf, "\nendstream\nendobj\n");
+        int xref = pdf.size();
+        writeAscii(pdf, "xref\n0 6\n0000000000 65535 f \n");
+        for (int offset : offsets) {
+            writeAscii(pdf, String.format(Locale.ROOT, "%010d 00000 n \n", offset));
+        }
+        writeAscii(pdf, "trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n" + xref + "\n%%EOF\n");
+        return pdf.toByteArray();
+    }
+
+    private static byte[] compressedRgb(BufferedImage image) throws IOException {
+        ByteArrayOutputStream raw = new ByteArrayOutputStream(image.getWidth() * image.getHeight() * 3);
+        try (DeflaterOutputStream compressed = new DeflaterOutputStream(raw)) {
+            for (int y = 0; y < image.getHeight(); y++) {
+                for (int x = 0; x < image.getWidth(); x++) {
+                    int rgb = image.getRGB(x, y);
+                    compressed.write((rgb >> 16) & 0xff);
+                    compressed.write((rgb >> 8) & 0xff);
+                    compressed.write(rgb & 0xff);
+                }
+            }
+        }
+        return raw.toByteArray();
+    }
+
+    private static void writeAscii(ByteArrayOutputStream out, String value) throws IOException {
+        out.write(value.getBytes(StandardCharsets.ISO_8859_1));
     }
 
     private static double ladderY(double gelTop, double gelHeight, int basePairs) {
@@ -389,9 +569,30 @@ public final class PaginatedGelViewer {
         return colors;
     }
 
+    private static String format(double value) {
+        return String.format(Locale.ROOT, "%.3f", value);
+    }
+
+    private static String toHex(Color color) {
+        int r = (int) Math.round(color.getRed() * 255.0);
+        int g = (int) Math.round(color.getGreen() * 255.0);
+        int b = (int) Math.round(color.getBlue() * 255.0);
+        return String.format("#%02x%02x%02x", r, g, b);
+    }
+
+    private static String escapeXml(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;")
+                .replace("'", "&apos;");
+    }
+
     private static final class PageModel {
         private final Scene ownerScene;
-        private final Path consolidatedReport;
         private final LinkedHashMap<String, List<GelBand>> lanes;
         private final List<String> sampleNames;
         private final int samplesPerGel;
@@ -400,11 +601,9 @@ public final class PaginatedGelViewer {
         private double zoom = 1.0;
 
         private PageModel(Scene ownerScene,
-                          Path consolidatedReport,
                           LinkedHashMap<String, List<GelBand>> lanes,
                           int samplesPerGel) {
             this.ownerScene = ownerScene;
-            this.consolidatedReport = consolidatedReport;
             this.lanes = lanes;
             this.sampleNames = new ArrayList<>(lanes.keySet());
             this.samplesPerGel = samplesPerGel;

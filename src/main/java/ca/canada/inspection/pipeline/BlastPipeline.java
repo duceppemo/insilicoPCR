@@ -23,18 +23,21 @@ public final class BlastPipeline {
     private final DependencyContext dependencies;
     private final ExternalProcessTracker processTracker;
     private final Map<String, Sample> sampleDict;
+    private final Path primerDatabase;
     private ThreadPoolExecutor pool;
 
     public BlastPipeline(PcrRunConfig config,
                          RunDirectories directories,
                          DependencyContext dependencies,
                          ExternalProcessTracker processTracker,
-                         Map<String, Sample> sampleDict) {
+                         Map<String, Sample> sampleDict,
+                         Path primerDatabase) {
         this.config = config;
         this.directories = directories;
         this.dependencies = dependencies;
         this.processTracker = processTracker;
         this.sampleDict = sampleDict;
+        this.primerDatabase = primerDatabase;
     }
 
     public void run() {
@@ -45,14 +48,12 @@ public final class BlastPipeline {
                 TimeUnit.SECONDS,
                 new LinkedBlockingQueue<>());
 
-        var primers = config.outDir().resolve("primer_tmp.fasta");
-
         for (var sample : sampleDict.values()) {
             if ("fastq".equals(sample.getFileType())) {
-                pool.submit(() -> runBlast(primers, sample.getAssemblyFile()));
+                pool.submit(() -> runBlast(primerDatabase, sample.getAssemblyFile()));
             } else {
                 for (var file : sample.getFiles()) {
-                    pool.submit(() -> runBlast(primers, file));
+                    pool.submit(() -> runBlast(primerDatabase, file));
                 }
             }
         }

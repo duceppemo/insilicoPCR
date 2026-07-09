@@ -31,10 +31,13 @@ import javafx.stage.Stage;
 import javafx.scene.image.Image;
 
 import javax.swing.JOptionPane;
+import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.file.Path;
+import java.nio.file.Files;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class MainRun extends Application {
@@ -48,6 +51,7 @@ public class MainRun extends Application {
     private ProgressBar mainProgress;
     private ProgressBar blastProgress;
     private Button gelButton;
+    private Scene scene;
 
     private final ExternalProcessTracker processTracker = new ExternalProcessTracker();
     private final AtomicBoolean currentlyRunning = new AtomicBoolean(false);
@@ -73,7 +77,7 @@ public class MainRun extends Application {
         addOutputLog(pane, alertText);
         addRunButton(pane, alertText, threadField, mismatchField, evalueField);
 
-        var scene = new Scene(pane, 800, 500);
+        scene = new Scene(pane, 800, 500);
         primaryStage.setScene(scene);
         primaryStage.setTitle("InSilico PCR " + Dispatcher.VERSION);
 
@@ -270,7 +274,7 @@ public class MainRun extends Application {
             if (gelButton.getParent() != null) {
                 ((Pane) gelButton.getParent()).getChildren().remove(gelButton);
             }
-            pane.add(gelButton, 30, 45, 7, 3);
+            pane.add(gelButton, 2, 45, 14, 3);
         });
         runningTask.setOnFailed(event -> {
             currentlyRunning.set(false);
@@ -339,8 +343,37 @@ public class MainRun extends Application {
         return prompt;
     }
 
-    public static void displayGelImage() {
-        // Placeholder retained from the original application.
+    private void displayGelImage() {
+        try {
+            Methods.makeSyntheticGel(scene, latestConsolidatedReport());
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(null, "Unable to create gel image:\n" + e.getMessage());
+        }
+    }
+
+    private Path latestConsolidatedReport() {
+        Path reportDir = outDir.resolve("consolidated_report");
+        if (!Files.isDirectory(reportDir)) {
+            throw new IllegalStateException("Consolidated report directory not found: " + reportDir);
+        }
+
+        try (var reports = Files.list(reportDir)) {
+            return reports
+                    .filter(Files::isRegularFile)
+                    .filter(path -> path.getFileName().toString().matches("report(\\(\\d+\\))?\\.tsv"))
+                    .max(Comparator.comparingLong(this::lastModifiedMillis))
+                    .orElseThrow(() -> new IllegalStateException("No consolidated report TSV found in: " + reportDir));
+        } catch (IOException e) {
+            throw new IllegalStateException("Unable to list consolidated reports in: " + reportDir, e);
+        }
+    }
+
+    private long lastModifiedMillis(Path path) {
+        try {
+            return Files.getLastModifiedTime(path).toMillis();
+        } catch (IOException e) {
+            throw new IllegalStateException("Unable to read modification time for: " + path, e);
+        }
     }
 
     public static void main(String[] args) {

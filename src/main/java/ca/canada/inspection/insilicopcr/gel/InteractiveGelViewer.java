@@ -494,10 +494,10 @@ public final class InteractiveGelViewer {
     private static void applySearch(List<BandNode> bands, String query) {
         String normalized = query == null ? "" : query.strip().toLowerCase();
         boolean searching = !normalized.isBlank();
-        for (BandNode band : bands) {
-            band.searchMatch = !searching || band.searchText.contains(normalized);
-            band.searching = searching;
-            band.updateVisual();
+        for (BandNode bandNode : bands) {
+            bandNode.searchMatch = !searching || bandNode.searchText.contains(normalized);
+            bandNode.searching = searching;
+            bandNode.updateVisual();
         }
     }
 
@@ -520,7 +520,7 @@ public final class InteractiveGelViewer {
 
         String sampleName = bands.getFirst().sampleName();
         String details = bands.stream()
-                .map(band -> band.geneName() + " — " + band.ampliconSize() + " bp")
+                .map(gelBand -> gelBand.geneName() + " — " + gelBand.ampliconSize() + " bp")
                 .collect(Collectors.joining("\n"));
         return "Sample: " + sampleName + '\n'
                 + "Co-migrating amplicons: " + bands.size() + '\n'
@@ -646,7 +646,7 @@ public final class InteractiveGelViewer {
             this.intensity = intensity;
             this.popupText = popupText;
             this.searchText = bands.stream()
-                    .map(band -> band.sampleName() + " " + band.geneName() + " " + band.ampliconSize())
+                    .map(gelBand -> gelBand.sampleName() + " " + gelBand.geneName() + " " + gelBand.ampliconSize())
                     .collect(Collectors.joining(" "))
                     .toLowerCase();
         }
@@ -709,7 +709,7 @@ public final class InteractiveGelViewer {
         }
 
         private String ampliconSizes() {
-            return bands.stream().map(band -> band.ampliconSize() + " bp").collect(Collectors.joining(", "));
+            return bands.stream().map(gelBand -> gelBand.ampliconSize() + " bp").collect(Collectors.joining(", "));
         }
 
         private String detailText() {
@@ -717,7 +717,7 @@ public final class InteractiveGelViewer {
                 return "No band details available.";
             }
             return popupText + "\n\nRows:\n" + bands.stream()
-                    .map(band -> band.sampleName() + '\t' + band.geneName() + '\t' + band.ampliconSize() + " bp")
+                    .map(gelBand -> gelBand.sampleName() + '\t' + gelBand.geneName() + '\t' + gelBand.ampliconSize() + " bp")
                     .collect(Collectors.joining("\n"));
         }
     }

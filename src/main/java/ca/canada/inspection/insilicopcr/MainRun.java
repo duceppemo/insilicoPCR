@@ -1,6 +1,7 @@
 package ca.canada.inspection.insilicopcr;
 
 import ca.canada.inspection.dispatchpcr.Dispatcher;
+import ca.canada.inspection.insilicopcr.gel.InteractiveGelViewer;
 import ca.canada.inspection.insilicopcr.ui.PathFieldBinder;
 import ca.canada.inspection.pipeline.DependencyContext;
 import ca.canada.inspection.pipeline.ExternalProcessTracker;
@@ -19,6 +20,7 @@ import javafx.scene.control.RadioButton;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.control.Tooltip;
+import javafx.scene.image.Image;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
@@ -28,16 +30,15 @@ import javafx.scene.text.Text;
 import javafx.scene.text.TextAlignment;
 import javafx.stage.Stage;
 
-import javafx.scene.image.Image;
-
 import javax.swing.JOptionPane;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.nio.file.Path;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class MainRun extends Application {
@@ -345,7 +346,7 @@ public class MainRun extends Application {
 
     private void displayGelImage() {
         try {
-            Methods.makeSyntheticGel(scene, latestConsolidatedReport());
+            InteractiveGelViewer.show(scene, latestConsolidatedReport(), new HashMap<>());
         } catch (Exception e) {
             JOptionPane.showMessageDialog(null, "Unable to create gel image:\n" + e.getMessage());
         }

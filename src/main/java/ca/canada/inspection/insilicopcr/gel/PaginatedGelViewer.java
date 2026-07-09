@@ -11,8 +11,12 @@ import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
+import javafx.scene.control.Spinner;
+import javafx.scene.control.SpinnerValueFactory;
 import javafx.scene.control.TextField;
 import javafx.scene.image.WritableImage;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
@@ -92,17 +96,24 @@ public final class PaginatedGelViewer {
         Label pageLabel = new Label();
         Label rangeLabel = new Label();
         Label matchLabel = new Label();
+        Label statusLabel = new Label();
         TextField searchField = new TextField();
         searchField.setPromptText("Search all samples/genes/sizes");
         CheckBox colorByGene = new CheckBox("Color by gene");
+        CheckBox showLegend = new CheckBox("Show legend");
+        showLegend.setSelected(true);
+        showLegend.setDisable(true);
         Button savePng = new Button("Save PNG...");
         Button saveSvg = new Button("Save SVG...");
         Button savePdf = new Button("Save PDF...");
         Button zoomOut = new Button("−");
         Button zoomReset = new Button("100%");
         Button zoomIn = new Button("+");
-        Button previous = new Button("Previous Gel");
-        Button next = new Button("Next Gel");
+        Button previous = new Button("◀ Previous Gel");
+        Button next = new Button("Next Gel ▶");
+        Spinner<Integer> pageSpinner = new Spinner<>(1, model.totalPages(), 1);
+        pageSpinner.setEditable(true);
+        pageSpinner.setPrefWidth(88);
 
         HBox searchToolbar = new HBox(8, new Label("Search:"), searchField, matchLabel,
                 new Label("Zoom:"), zoomOut, zoomReset, zoomIn);
@@ -110,11 +121,11 @@ public final class PaginatedGelViewer {
         searchToolbar.setPadding(new Insets(8, 8, 4, 8));
         HBox.setHgrow(searchField, Priority.ALWAYS);
 
-        HBox exportToolbar = new HBox(8, savePng, saveSvg, savePdf, colorByGene);
+        HBox exportToolbar = new HBox(8, savePng, saveSvg, savePdf, colorByGene, showLegend);
         exportToolbar.setAlignment(Pos.CENTER_LEFT);
         exportToolbar.setPadding(new Insets(4, 8, 4, 8));
 
-        HBox pageToolbar = new HBox(8, previous, next, pageLabel, rangeLabel);
+        HBox pageToolbar = new HBox(8, previous, new Label("Page"), pageSpinner, pageLabel, next, rangeLabel);
         pageToolbar.setAlignment(Pos.CENTER_LEFT);
         pageToolbar.setPadding(new Insets(4, 8, 8, 8));
 
@@ -126,45 +137,82 @@ public final class PaginatedGelViewer {
         legend.setManaged(false);
         root.setRight(legend);
 
+        HBox statusBar = new HBox(statusLabel);
+        statusBar.setAlignment(Pos.CENTER_LEFT);
+        statusBar.setPadding(new Insets(4, 8, 4, 8));
+        statusBar.setStyle("-fx-background-color: #f4f4f4; -fx-border-color: #d0d0d0 transparent transparent transparent;");
+        root.setBottom(statusBar);
+
+        final boolean[] rendering = {false};
         Runnable render = () -> {
-            Pane pagePane = drawPage(model, colorByGene.isSelected());
-            pagePane.setScaleX(model.zoom);
-            pagePane.setScaleY(model.zoom);
-            zoomGroup.getChildren().setAll(pagePane);
-            pageLabel.setText("Page " + (model.pageIndex + 1) + " of " + model.totalPages());
-            rangeLabel.setText(model.currentRangeText());
-            previous.setDisable(model.pageIndex == 0);
-            next.setDisable(model.pageIndex >= model.totalPages() - 1);
-            zoomReset.setText(Math.round(model.zoom * 100) + "%");
-            legend.setVisible(colorByGene.isSelected());
-            legend.setManaged(colorByGene.isSelected());
-            stage.setTitle("Synthetic Gel - page " + (model.pageIndex + 1) + " of " + model.totalPages());
+            rendering[0] = true;
+            try {
+                Pane pagePane = drawPage(model, colorByGene.isSelected());
+                pagePane.setScaleX(model.zoom);
+                pagePane.setScaleY(model.zoom);
+                zoomGroup.getChildren().setAll(pagePane);
+                pageLabel.setText("of " + model.totalPages());
+                rangeLabel.setText(model.currentRangeText());
+                previous.setDisable(model.pageIndex == 0);
+                next.setDisable(model.pageIndex >= model.totalPages() - 1);
+                zoomReset.setText(Math.round(model.zoom * 100) + "%");
+                legend.setVisible(colorByGene.isSelected() && showLegend.isSelected());
+                legend.setManaged(colorByGene.isSelected() && showLegend.isSelected());
+                showLegend.setDisable(!colorByGene.isSelected());
+                if (pageSpinner.getValue() == null || pageSpinner.getValue() != model.pageIndex + 1) {
+                    pageSpinner.getValueFactory().setValue(model.pageIndex + 1);
+                }
+                statusLabel.setText(model.sampleNames.size() + " samples | Page " + (model.pageIndex + 1) + "/" + model.totalPages()
+                        + " | " + model.samplesPerGel + " samples/page | Zoom " + Math.round(model.zoom * 100) + "%");
+                stage.setTitle("Synthetic Gel - page " + (model.pageIndex + 1) + " of " + model.totalPages());
+            } finally {
+                rendering[0] = false;
+            }
         };
 
-        previous.setOnAction(event -> {
+        Runnable goPrevious = () -> {
             if (model.pageIndex > 0) {
                 model.pageIndex--;
                 render.run();
             }
-        });
-        next.setOnAction(event -> {
+        };
+        Runnable goNext = () -> {
             if (model.pageIndex < model.totalPages() - 1) {
                 model.pageIndex++;
                 render.run();
             }
-        });
-        colorByGene.setOnAction(event -> render.run());
-        zoomOut.setOnAction(event -> {
-            model.zoom = Math.max(0.45, model.zoom / 1.15);
-            render.run();
-        });
-        zoomIn.setOnAction(event -> {
-            model.zoom = Math.min(3.0, model.zoom * 1.15);
-            render.run();
-        });
-        zoomReset.setOnAction(event -> {
+        };
+        Runnable saveCurrentPng = () -> chooseAndSavePng(model, currentPane(zoomGroup));
+        Runnable saveCurrentSvg = () -> chooseAndSaveSvg(model, colorByGene.isSelected());
+        Runnable saveCurrentPdf = () -> chooseAndSavePdf(model, currentPane(zoomGroup));
+        Runnable resetZoom = () -> {
             model.zoom = 1.0;
             render.run();
+        };
+        Runnable increaseZoom = () -> {
+            model.zoom = Math.min(3.0, model.zoom * 1.15);
+            render.run();
+        };
+        Runnable decreaseZoom = () -> {
+            model.zoom = Math.max(0.45, model.zoom / 1.15);
+            render.run();
+        };
+
+        previous.setOnAction(event -> goPrevious.run());
+        next.setOnAction(event -> goNext.run());
+        colorByGene.setOnAction(event -> render.run());
+        showLegend.setOnAction(event -> render.run());
+        zoomOut.setOnAction(event -> decreaseZoom.run());
+        zoomIn.setOnAction(event -> increaseZoom.run());
+        zoomReset.setOnAction(event -> resetZoom.run());
+        pageSpinner.valueProperty().addListener((observable, oldValue, newValue) -> {
+            if (!rendering[0] && newValue != null) {
+                int requested = Math.clamp(newValue, 1, model.totalPages());
+                if (requested != model.pageIndex + 1) {
+                    model.pageIndex = requested - 1;
+                    render.run();
+                }
+            }
         });
         searchField.setOnAction(event -> {
             PageSearchResult result = model.pageContaining(searchField.getText());
@@ -176,14 +224,59 @@ public final class PaginatedGelViewer {
                 matchLabel.setText("No matches");
             }
         });
-        savePng.setOnAction(event -> chooseAndSavePng(model, currentPane(zoomGroup)));
-        saveSvg.setOnAction(event -> chooseAndSaveSvg(model, colorByGene.isSelected()));
-        savePdf.setOnAction(event -> chooseAndSavePdf(model, currentPane(zoomGroup)));
+        savePng.setOnAction(event -> saveCurrentPng.run());
+        saveSvg.setOnAction(event -> saveCurrentSvg.run());
+        savePdf.setOnAction(event -> saveCurrentPdf.run());
 
         var screenBounds = Screen.getPrimary().getVisualBounds();
-        stage.setScene(new Scene(root, Math.max(900, screenBounds.getWidth() - 120), Math.max(700, screenBounds.getHeight() - 120)));
+        Scene scene = new Scene(root, Math.max(900, screenBounds.getWidth() - 120), Math.max(700, screenBounds.getHeight() - 120));
+        installShortcuts(scene, searchField, goPrevious, goNext, resetZoom, increaseZoom, decreaseZoom, saveCurrentPng, saveCurrentSvg, saveCurrentPdf);
+        stage.setScene(scene);
         render.run();
         stage.show();
+    }
+
+    private static void installShortcuts(Scene scene,
+                                         TextField searchField,
+                                         Runnable goPrevious,
+                                         Runnable goNext,
+                                         Runnable resetZoom,
+                                         Runnable increaseZoom,
+                                         Runnable decreaseZoom,
+                                         Runnable savePng,
+                                         Runnable saveSvg,
+                                         Runnable savePdf) {
+        scene.addEventFilter(KeyEvent.KEY_PRESSED, event -> {
+            if (event.isControlDown() && event.isShiftDown() && event.getCode() == KeyCode.S) {
+                saveSvg.run();
+                event.consume();
+            } else if (event.isControlDown() && event.getCode() == KeyCode.S) {
+                savePng.run();
+                event.consume();
+            } else if (event.isControlDown() && event.getCode() == KeyCode.P) {
+                savePdf.run();
+                event.consume();
+            } else if (event.isControlDown() && event.getCode() == KeyCode.F) {
+                searchField.requestFocus();
+                searchField.selectAll();
+                event.consume();
+            } else if (event.isControlDown() && event.getCode() == KeyCode.DIGIT0) {
+                resetZoom.run();
+                event.consume();
+            } else if (event.isControlDown() && (event.getCode() == KeyCode.EQUALS || event.getCode() == KeyCode.ADD)) {
+                increaseZoom.run();
+                event.consume();
+            } else if (event.isControlDown() && (event.getCode() == KeyCode.MINUS || event.getCode() == KeyCode.SUBTRACT)) {
+                decreaseZoom.run();
+                event.consume();
+            } else if (event.getCode() == KeyCode.LEFT || event.getCode() == KeyCode.PAGE_UP) {
+                goPrevious.run();
+                event.consume();
+            } else if (event.getCode() == KeyCode.RIGHT || event.getCode() == KeyCode.PAGE_DOWN) {
+                goNext.run();
+                event.consume();
+            }
+        });
     }
 
     private static VBox buildLegend(Map<String, Color> geneColors) {

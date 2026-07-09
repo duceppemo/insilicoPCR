@@ -177,6 +177,7 @@ public final class InteractiveGelViewer {
         border.setFill(Color.TRANSPARENT);
         border.setStroke(Color.BLACK);
         border.setStrokeWidth(3.0);
+        border.setMouseTransparent(true);
         pane.getChildren().add(border);
     }
 
@@ -199,6 +200,7 @@ public final class InteractiveGelViewer {
         text.setX(centerX);
         text.setY(y);
         text.getTransforms().add(new Rotate(45, centerX, y));
+        text.setMouseTransparent(true);
         pane.getChildren().add(text);
     }
 
@@ -216,6 +218,7 @@ public final class InteractiveGelViewer {
             text.setFill(Color.BLACK);
             text.setX(labelRightX - approximateTextWidth(LADDER_LABELS[i]));
             text.setY(ladderY(gelTop, gelHeight, LADDER_SIZES[i]) + 4);
+            text.setMouseTransparent(true);
             pane.getChildren().add(text);
         }
     }
@@ -269,15 +272,19 @@ public final class InteractiveGelViewer {
 
         Rectangle halo = new Rectangle(bandX - 1.5, bandY - 2.0, bandWidth + 3.0, bandHeight + 4.0);
         halo.setFill(Color.rgb(25, 25, 25, intensity * 0.20));
+        halo.setMouseTransparent(true);
 
         Rectangle band = new Rectangle(bandX, bandY, bandWidth, bandHeight);
         band.setFill(Color.rgb(8, 8, 8, intensity));
+        band.setMouseTransparent(true);
 
         Rectangle highlight = new Rectangle(bandX, bandY + 0.5, bandWidth, Math.max(0.75, bandHeight * 0.22));
         highlight.setFill(Color.rgb(255, 255, 255, Math.min(0.18, intensity * 0.14)));
+        highlight.setMouseTransparent(true);
 
         Rectangle shadow = new Rectangle(bandX, bandY + bandHeight - 0.75, bandWidth, 0.75);
         shadow.setFill(Color.rgb(0, 0, 0, Math.min(0.32, intensity * 0.24)));
+        shadow.setMouseTransparent(true);
 
         Rectangle hitBox = new Rectangle(
                 bandX - 5.0,
@@ -287,25 +294,27 @@ public final class InteractiveGelViewer {
         );
         hitBox.setFill(Color.rgb(255, 255, 255, 0.01));
         hitBox.setStroke(Color.TRANSPARENT);
+        hitBox.setCursor(Cursor.HAND);
 
-        Group group = new Group(hitBox, halo, band, highlight, shadow);
-        group.setPickOnBounds(true);
+        Group group = new Group(halo, band, highlight, shadow, hitBox);
+        group.setPickOnBounds(false);
 
         if (popupText != null && !popupText.isBlank()) {
             Popup popup = createMetadataPopup(popupText);
-            group.setCursor(Cursor.HAND);
-            group.addEventHandler(MouseEvent.MOUSE_ENTERED, event -> {
-                showPopup(popup, group, event);
+            hitBox.addEventHandler(MouseEvent.MOUSE_ENTERED, event -> {
+                showPopup(popup, hitBox, event);
                 band.setStroke(Color.rgb(30, 144, 255));
                 band.setStrokeWidth(1.25);
                 halo.setFill(Color.rgb(30, 144, 255, 0.25));
             });
-            group.addEventHandler(MouseEvent.MOUSE_MOVED, event -> showPopup(popup, group, event));
-            group.addEventHandler(MouseEvent.MOUSE_EXITED, event -> {
+            hitBox.addEventHandler(MouseEvent.MOUSE_MOVED, event -> showPopup(popup, hitBox, event));
+            hitBox.addEventHandler(MouseEvent.MOUSE_EXITED, event -> {
                 popup.hide();
                 band.setStroke(null);
                 halo.setFill(Color.rgb(25, 25, 25, intensity * 0.20));
             });
+        } else {
+            hitBox.setMouseTransparent(true);
         }
 
         pane.getChildren().add(group);
@@ -332,7 +341,7 @@ public final class InteractiveGelViewer {
         return popup;
     }
 
-    private static void showPopup(Popup popup, Group owner, MouseEvent event) {
+    private static void showPopup(Popup popup, Rectangle owner, MouseEvent event) {
         if (owner.getScene() == null || owner.getScene().getWindow() == null) {
             return;
         }

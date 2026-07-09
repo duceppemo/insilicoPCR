@@ -26,7 +26,9 @@ import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.RowConstraints;
+import javafx.scene.layout.VBox;
 import javafx.scene.text.Text;
 import javafx.scene.text.TextAlignment;
 import javafx.stage.DirectoryChooser;
@@ -83,8 +85,8 @@ public class MainRun extends Application {
         var threadField = addThreadControls(pane);
         var mismatchField = addMismatchControls(pane);
         var evalueField = addEvalueControls(pane);
-        addOutputLog(pane, alertText);
-        addRunButton(pane, alertText, threadField, mismatchField, evalueField);
+        addOutputLog(pane);
+        addBottomControls(pane, alertText, threadField, mismatchField, evalueField);
 
         scene = new Scene(pane, 800, 500);
         primaryStage.setScene(scene);
@@ -207,47 +209,61 @@ public class MainRun extends Application {
         return field;
     }
 
-    private void addOutputLog(GridPane pane, Text alertText) {
+    private void addOutputLog(GridPane pane) {
         outputField.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
         outputField.setEditable(false);
-        pane.add(outputField, 2, 21, 46, 22);
-
-        alertText.setStyle("-fx-fill: red;");
-        var alertBox = new HBox(10, alertText);
-        alertBox.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
-        alertBox.setAlignment(Pos.CENTER);
-        pane.add(alertBox, 1, 43, 48, 2);
+        pane.add(outputField, 2, 21, 46, 20);
     }
 
-    private void addRunButton(GridPane pane,
-                              Text alertText,
-                              ComboBox<Integer> threadField,
-                              ComboBox<Integer> mismatchField,
-                              TextField evalueField) {
+    private void addBottomControls(GridPane pane,
+                                   Text alertText,
+                                   ComboBox<Integer> threadField,
+                                   ComboBox<Integer> mismatchField,
+                                   TextField evalueField) {
+        alertText.setStyle("-fx-fill: red;");
+
+        mainProgress = new ProgressBar();
+        mainProgress.setMaxWidth(Double.MAX_VALUE);
+        mainProgress.setVisible(false);
+        mainProgress.setManaged(false);
+
+        blastProgress = new ProgressBar();
+        blastProgress.setMaxWidth(Double.MAX_VALUE);
+        blastProgress.setVisible(false);
+        blastProgress.setManaged(false);
+
         gelButton = new Button("View Gel Image");
-        gelButton.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
+        gelButton.setMaxWidth(Double.MAX_VALUE);
         gelButton.setDisable(true);
         gelButton.setOnAction(event -> displayGelImage());
-        pane.add(gelButton, 2, 45, 10, 3);
 
         var previousRunButton = new Button("Open Previous Run");
-        previousRunButton.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
+        previousRunButton.setMaxWidth(Double.MAX_VALUE);
         previousRunButton.setOnAction(event -> openPreviousRun());
-        pane.add(previousRunButton, 12, 45, 9, 3);
-
-        var reportButton = new Button("Open Report TSV");
-        reportButton.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
-        reportButton.setOnAction(event -> openReportOnly());
-        pane.add(reportButton, 29, 45, 9, 3);
 
         var runButton = new Button("Run");
-        runButton.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
-        runButton.setOnAction(event -> startRun(pane, alertText, threadField, mismatchField, evalueField));
-        pane.add(runButton, 22, 45, 5, 3);
+        runButton.setMaxWidth(Double.MAX_VALUE);
+        runButton.setOnAction(event -> startRun(alertText, threadField, mismatchField, evalueField));
+
+        var reportButton = new Button("Open Report TSV");
+        reportButton.setMaxWidth(Double.MAX_VALUE);
+        reportButton.setOnAction(event -> openReportOnly());
+
+        HBox buttons = new HBox(8, gelButton, previousRunButton, runButton, reportButton);
+        buttons.setAlignment(Pos.CENTER);
+        buttons.setPrefHeight(34);
+        HBox.setHgrow(gelButton, Priority.ALWAYS);
+        HBox.setHgrow(previousRunButton, Priority.ALWAYS);
+        HBox.setHgrow(runButton, Priority.ALWAYS);
+        HBox.setHgrow(reportButton, Priority.ALWAYS);
+
+        VBox bottomPanel = new VBox(5, alertText, mainProgress, buttons, blastProgress);
+        bottomPanel.setAlignment(Pos.CENTER);
+        bottomPanel.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
+        pane.add(bottomPanel, 2, 41, 46, 8);
     }
 
-    private void startRun(GridPane pane,
-                          Text alertText,
+    private void startRun(Text alertText,
                           ComboBox<Integer> threadField,
                           ComboBox<Integer> mismatchField,
                           TextField evalueField) {
@@ -261,21 +277,10 @@ public class MainRun extends Application {
         outputField.clear();
         currentlyRunning.set(true);
         gelButton.setDisable(true);
-
-        if (mainProgress != null && mainProgress.getParent() != null) {
-            ((Pane) mainProgress.getParent()).getChildren().remove(mainProgress);
-        }
-
-        if (blastProgress != null && blastProgress.getParent() != null) {
-            ((Pane) blastProgress.getParent()).getChildren().remove(blastProgress);
-        }
-        mainProgress = new ProgressBar();
-        mainProgress.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
-        pane.add(mainProgress, 2, 43, 46, 2);
-
-        blastProgress = new ProgressBar();
-        blastProgress.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
-        pane.add(blastProgress, 30, 46, 18, 2);
+        showProgressBars(true);
+        mainProgress.progressProperty().unbind();
+        mainProgress.setProgress(ProgressBar.INDETERMINATE_PROGRESS);
+        blastProgress.setProgress(ProgressBar.INDETERMINATE_PROGRESS);
 
         var config = new PcrRunConfig(
                 inputFile,
@@ -294,10 +299,12 @@ public class MainRun extends Application {
             currentlyRunning.set(false);
             dependencies = runningTask.dependencies();
             gelButton.setDisable(false);
+            showProgressBars(false);
         });
         runningTask.setOnFailed(event -> {
             currentlyRunning.set(false);
             gelButton.setDisable(true);
+            showProgressBars(false);
 
             Throwable error = runningTask.getException();
             if (error == null) {
@@ -315,6 +322,13 @@ public class MainRun extends Application {
         var thread = new Thread(runningTask, "insilico-pcr-run");
         thread.setDaemon(true);
         thread.start();
+    }
+
+    private void showProgressBars(boolean visible) {
+        mainProgress.setVisible(visible);
+        mainProgress.setManaged(visible);
+        blastProgress.setVisible(visible);
+        blastProgress.setManaged(visible);
     }
 
     private boolean confirmClose() {

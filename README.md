@@ -5,7 +5,7 @@
 </p>
 
 <p style="text-align: center;">
-  <strong>Modern cross-platform in silico PCR analysis for genome assemblies and raw reads</strong>
+  <strong>Modern cross-platform in silico PCR analysis for genome assemblies (FASTA) and sequencing reads (FASTQ)</strong>
 </p>
 
 <p style="text-align: center;">
@@ -44,9 +44,11 @@
 
 ## Overview
 
-**insilicoPCR** is a modern JavaFX desktop application for performing **in silico PCR** against assembled genomes using **BBMap** and **NCBI BLAST+**.
+**insilicoPCR** is a modern JavaFX desktop application for performing **in silico PCR** against **genome assemblies (FASTA)** and **high-throughput sequencing reads (FASTQ)** using **BBMap** and **NCBI BLAST+**.
 
-It is designed for researchers, diagnostic laboratories, and surveillance programs that need a reproducible workflow for primer validation, multiplex analysis, amplicon detection, and report generation.
+It is designed for researchers, diagnostic laboratories, surveillance programs, and microbial genomics workflows that need a reproducible way to validate primers, evaluate multiplex PCR assays, detect expected amplicons, and generate reviewable reports.
+
+insilicoPCR supports both assembled genomes and sequencing reads, allowing the same primer sets to be evaluated against finished assemblies or directly against raw sequencing datasets.
 
 Unlike ad hoc command-line workflows, insilicoPCR provides an integrated desktop experience while still packaging the underlying scientific tools in a deterministic, portable runtime.
 
@@ -58,7 +60,8 @@ insilicoPCR combines BBMap and BLAST+ into a reproducible desktop workflow, elim
 
 It is especially useful when users need to:
 
-- screen many assemblies against one or more primer sets;
+- screen genome assemblies against one or more primer sets;
+- analyze sequencing reads directly when an assembly is not available;
 - validate predicted amplicons;
 - support multiplex PCR workflows;
 - generate Excel reports for downstream review;
@@ -70,10 +73,13 @@ It is especially useful when users need to:
 
 | Feature | Status |
 |---|:---:|
+| Genome assembly analysis (`.fasta`, `.fa`, `.fna`) | ✅ |
+| Sequencing read analysis (`.fastq`, `.fq`) | ✅ |
+| Single-end FASTQ workflows | ✅ |
+| Paired-end FASTQ workflows | ✅ |
 | Primer pair analysis | ✅ |
 | Multiplex PCR workflows | ✅ |
 | Degenerate primer support | ✅ |
-| FASTA assembly support | ✅ |
 | BBMap candidate search | ✅ |
 | NCBI BLAST+ validation | ✅ |
 | Amplicon detection | ✅ |
@@ -83,9 +89,9 @@ It is especially useful when users need to:
 | Consolidated reports | ✅ |
 | Windows portable ZIP | ✅ |
 | Linux portable ZIP | ✅ |
-| Bundled JDK | ✅ |
-| Bundled JavaFX | ✅ |
-| No system Java required for releases | ✅ |
+| Bundled OpenJDK 26 | ✅ |
+| Bundled JavaFX 26.0.1 | ✅ |
+| No separate Java, JavaFX, BBMap, or BLAST+ installation required | ✅ |
 
 ---
 
@@ -112,11 +118,12 @@ It is especially useful when users need to:
 The workflow follows a practical analysis path:
 
 1. Load primer definitions.
-2. Search genome assemblies for candidate primer matches using BBMap.
-3. Detect candidate amplicons and validate product sizes.
-4. Confirm sequence-level results using BLAST+.
-5. Perform quality assessment and summarize hits.
-6. Generate detailed and consolidated Excel reports.
+2. Load genome assemblies (FASTA) and/or sequencing reads (FASTQ).
+3. Search input sequences for candidate primer matches using BBMap.
+4. Detect candidate amplicons and validate product sizes.
+5. Confirm sequence-level results using BLAST+ where applicable.
+6. Perform quality assessment and summarize hits.
+7. Generate detailed and consolidated Excel reports.
 
 ---
 
@@ -160,11 +167,11 @@ The recommended way to run insilicoPCR is to use the portable release for your o
 Portable releases include:
 
 - the insilicoPCR application;
-- a bundled Java runtime;
-- the JavaFX runtime;
+- a bundled OpenJDK 26 runtime;
+- the JavaFX 26.0.1 runtime;
 - BBMap;
 - NCBI BLAST+;
-- platform-specific launchers.
+- platform-specific launcher scripts.
 
 You do **not** need to install Java, JavaFX, BBMap, or BLAST+ separately.
 
@@ -176,8 +183,8 @@ Choose the archive that matches your operating system:
 
 | Operating system | Release archive |
 |---|---|
-| Linux | `insilicoPCR-linux.zip` |
-| Windows | `insilicoPCR-windows.zip` |
+| Linux | `insilicoPCR-<version>-linux-x64.zip` |
+| Windows | `insilicoPCR-<version>-windows-x64.zip` |
 
 ### 2. Unzip the archive
 
@@ -190,6 +197,8 @@ Extract the ZIP file to a writable folder, for example:
 
 Keep the extracted folder intact. Do not move files out of the release folder, because the launchers expect the bundled runtime tools to stay beside the application.
 
+Do **not** run the application directly from inside the compressed ZIP archive. Extract it first.
+
 ### 3. Start the application
 
 #### Linux
@@ -197,14 +206,16 @@ Keep the extracted folder intact. Do not move files out of the release folder, b
 Open a terminal in the extracted release folder and run:
 
 ```bash
-./insilicoPCR
+./run-insilicoPCR.sh
 ```
+
+Running insilicoPCR from a terminal on Linux is recommended because startup messages and errors are displayed directly in the console, which makes troubleshooting easier.
 
 If the launcher is not executable after unzipping, run this once:
 
 ```bash
-chmod +x insilicoPCR
-./insilicoPCR
+chmod +x run-insilicoPCR.sh
+./run-insilicoPCR.sh
 ```
 
 #### Windows
@@ -212,21 +223,25 @@ chmod +x insilicoPCR
 Open the extracted release folder and double-click:
 
 ```text
-insilicoPCR.exe
+run-insilicoPCR.bat
 ```
 
-You can also start it from PowerShell:
+You can also start it from Command Prompt or PowerShell:
 
 ```powershell
-.\insilicoPCR.exe
+.\run-insilicoPCR.bat
 ```
+
+The launcher scripts automatically configure the bundled Java runtime, JavaFX runtime, BBMap, and BLAST+ before starting the application.
 
 ### Troubleshooting startup
 
 - Make sure you downloaded the ZIP for the correct operating system.
 - Extract the ZIP before running the launcher. Do not run the application directly from inside the compressed archive.
 - Keep the bundled `runtime/` folder next to the launcher.
-- On Linux, make sure the launcher has executable permission.
+- Use `run-insilicoPCR.sh` on Linux and `run-insilicoPCR.bat` on Windows.
+- On Linux, start the application from a terminal so startup messages are visible.
+- On Linux, make sure the shell launcher has executable permission.
 - On Windows, if SmartScreen warns about an unsigned application, choose **More info** and then **Run anyway** only if you downloaded the release from this repository.
 
 ---
@@ -268,11 +283,13 @@ Portable release archives are built for distribution and are intended for users 
 Each portable release contains:
 
 - insilicoPCR application;
-- bundled JDK;
+- bundled OpenJDK 26 runtime;
 - bundled JavaFX runtime;
 - BBMap;
 - NCBI BLAST+;
-- platform-specific launchers.
+- platform-specific launcher script:
+  - `run-insilicoPCR.sh` for Linux;
+  - `run-insilicoPCR.bat` for Windows.
 
 ### Building a Linux portable ZIP
 
@@ -284,12 +301,13 @@ scripts/release/package-linux-portable.sh 0.6.0
 The expected output is:
 
 ```text
-insilicoPCR-linux.zip
+release/insilicoPCR-<version>-linux-x64.zip
+release/insilicoPCR-<version>-linux-x64.zip.sha256
 ```
 
 ### Building a Windows portable ZIP
 
-Run from PowerShell with `JAVA_HOME` pointing to JDK 26:
+Run from PowerShell with `JAVA_HOME` pointing to the Windows JDK 26 that should be bundled:
 
 ```powershell
 scripts/release-windows.ps1
@@ -298,7 +316,8 @@ scripts/release-windows.ps1
 The expected output is:
 
 ```text
-insilicoPCR-windows.zip
+release/insilicoPCR-<version>-windows-x64.zip
+release/insilicoPCR-<version>-windows-x64.zip.sha256
 ```
 
 ---
@@ -403,7 +422,7 @@ Planned future work includes:
 
 | Software | Purpose |
 |---|---|
-| BBMap | Candidate primer mapping |
+| BBMap | Candidate primer mapping for FASTA/FASTQ inputs |
 | NCBI BLAST+ | Sequence validation |
 | OpenJDK | Java runtime |
 | JavaFX | Desktop user interface |

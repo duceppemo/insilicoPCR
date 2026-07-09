@@ -26,6 +26,7 @@ public final class GelReportReader {
         }
 
         LinkedHashMap<String, List<GelBand>> lanes = new LinkedHashMap<>();
+        boolean keepEmptySampleLanes = sampleDict != null && !sampleDict.isEmpty();
         if (sampleDict != null) {
             sampleDict.keySet().stream()
                     .sorted()
@@ -60,7 +61,9 @@ public final class GelReportReader {
             throw new IllegalStateException("Unable to read consolidated report: " + consolidatedReport, e);
         }
 
-        lanes.entrySet().removeIf(entry -> entry.getValue().isEmpty());
+        if (!keepEmptySampleLanes) {
+            lanes.entrySet().removeIf(entry -> entry.getValue().isEmpty());
+        }
         lanes.replaceAll((sampleName, bands) -> bands.stream()
                 .sorted(Comparator.comparingInt(GelBand::ampliconSize).reversed()
                         .thenComparing(GelBand::geneName))

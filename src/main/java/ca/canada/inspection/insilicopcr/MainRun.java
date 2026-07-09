@@ -218,7 +218,9 @@ public class MainRun extends Application {
                               TextField evalueField) {
         gelButton = new Button("View Gel Image");
         gelButton.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
+        gelButton.setDisable(true);
         gelButton.setOnAction(event -> displayGelImage());
+        pane.add(gelButton, 2, 45, 14, 3);
 
         var runButton = new Button("Run");
         runButton.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
@@ -240,6 +242,7 @@ public class MainRun extends Application {
         alertText.setText("");
         outputField.clear();
         currentlyRunning.set(true);
+        gelButton.setDisable(true);
 
         if (mainProgress != null && mainProgress.getParent() != null) {
             ((Pane) mainProgress.getParent()).getChildren().remove(mainProgress);
@@ -272,13 +275,11 @@ public class MainRun extends Application {
         runningTask.setOnSucceeded(event -> {
             currentlyRunning.set(false);
             dependencies = runningTask.dependencies();
-            if (gelButton.getParent() != null) {
-                ((Pane) gelButton.getParent()).getChildren().remove(gelButton);
-            }
-            pane.add(gelButton, 2, 45, 14, 3);
+            gelButton.setDisable(false);
         });
         runningTask.setOnFailed(event -> {
             currentlyRunning.set(false);
+            gelButton.setDisable(true);
 
             Throwable error = runningTask.getException();
             if (error == null) {

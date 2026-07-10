@@ -4,12 +4,12 @@ This page summarizes the current project structure and points developers to the 
 
 ## Developer pages
 
-- [Architecture](Architecture.md)
-- [Runtime Layout](Runtime-Layout.md)
-- [Build System](Build-System.md)
-- [Release Pipeline](Release-Pipeline.md)
-- [Contributing](Contributing.md)
-- [Publishing to GitHub Wiki](Publishing-to-GitHub-Wiki.md)
+- [Architecture](Architecture)
+- [Runtime Layout](Runtime-Layout)
+- [Build System](Build-System)
+- [Release Pipeline](Release-Pipeline)
+- [Contributing](Contributing)
+- [Publishing to GitHub Wiki](Publishing-to-GitHub-Wiki)
 
 ## Requirements
 

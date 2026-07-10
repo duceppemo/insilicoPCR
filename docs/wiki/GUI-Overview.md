@@ -31,4 +31,4 @@ After a run finishes, the GUI can provide actions such as:
 
 ## Synthetic gel viewer
 
-The synthetic gel viewer displays consolidated report results as gel-like bands. See [Synthetic Gel Visualizer](Synthetic-Gel-Visualizer.md).
+The synthetic gel viewer displays consolidated report results as gel-like bands. See [Synthetic Gel Visualizer](Synthetic-Gel-Visualizer).

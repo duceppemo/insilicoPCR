@@ -11,6 +11,7 @@
 <p style="text-align: center;">
   <a href="../../actions"><img alt="Build" src="https://img.shields.io/github/actions/workflow/status/duceppemo/insilicoPCR/ci-portable-release.yml?branch=master&label=build"></a>
   <a href="../../releases"><img alt="Latest release" src="https://img.shields.io/github/v/release/duceppemo/insilicoPCR?display_name=tag"></a>
+  <a href="../../wiki"><img alt="Wiki" src="https://img.shields.io/badge/docs-Wiki-0ea5e9"></a>
   <img alt="Java" src="https://img.shields.io/badge/Java-26-blue">
   <img alt="JavaFX" src="https://img.shields.io/badge/JavaFX-26.0.1-0ea5e9">
   <img alt="Platform" src="https://img.shields.io/badge/platform-Windows%20%7C%20Linux-14b8a6">
@@ -101,7 +102,7 @@ Typical CLI run:
 
 The `--input` path can be a single FASTA/FASTQ file or a directory containing FASTA/FASTQ files.
 
-See [Command-line Usage](docs/wiki/Command-line-Usage.md) for the full CLI reference.
+See the [Command-line Usage Wiki page](https://github.com/duceppemo/insilicoPCR/wiki/Command-line-Interface) for the full CLI reference.
 
 ---
 
@@ -137,7 +138,7 @@ ACGTTAGCTAGCTACGTA
 
 **Do not mix standard PCR assays and qPCR/probe assays in the same primer FASTA file.** If any assay includes a `-P` probe, the consolidated report runs in qPCR mode and requires a probe hit for an assay to be reported positive.
 
-See [Primer FASTA Format](docs/wiki/Primer-FASTA-Format.md) for detailed examples and limitations.
+See the [Primer FASTA Format Wiki page](https://github.com/duceppemo/insilicoPCR/wiki/Primer-FASTA-Format) for detailed examples and limitations.
 
 ---
 
@@ -145,24 +146,23 @@ See [Primer FASTA Format](docs/wiki/Primer-FASTA-Format.md) for detailed example
 
 The synthetic gel visualizer displays consolidated PCR results as gel-like bands, making it easier to review amplicon size patterns across samples and targets.
 
-See [Synthetic Gel Visualizer](docs/wiki/Synthetic-Gel-Visualizer.md) for details.
+See the [Synthetic Gel Visualizer Wiki page](https://github.com/duceppemo/insilicoPCR/wiki/Synthetic-Gel-Visualizer) for details.
 
 ---
 
 ## Documentation
 
-Detailed documentation is kept under [`docs/wiki/`](docs/wiki/) so the README stays compact.
+Detailed documentation belongs in the GitHub **Wiki** tab:
 
-| Page | Audience |
-|---|---|
-| [Wiki Home](docs/wiki/Home.md) | Everyone |
-| [User Guide](docs/wiki/User-Guide.md) | End users |
-| [Command-line Usage](docs/wiki/Command-line-Usage.md) | End users / pipeline users |
-| [Primer FASTA Format](docs/wiki/Primer-FASTA-Format.md) | End users |
-| [Synthetic Gel Visualizer](docs/wiki/Synthetic-Gel-Visualizer.md) | End users |
-| [Developer Guide](docs/wiki/Developer-Guide.md) | Developers |
-| [Runtime Layout](docs/runtime-layout.md) | Developers / release maintainers |
-| [Release Process](docs/release-process.md) | Developers / release maintainers |
+- [insilicoPCR Wiki](https://github.com/duceppemo/insilicoPCR/wiki)
+- [Installation](https://github.com/duceppemo/insilicoPCR/wiki/Installation)
+- [First Analysis](https://github.com/duceppemo/insilicoPCR/wiki/First-Analysis)
+- [Command-line Interface](https://github.com/duceppemo/insilicoPCR/wiki/Command-line-Interface)
+- [Primer FASTA Format](https://github.com/duceppemo/insilicoPCR/wiki/Primer-FASTA-Format)
+- [Synthetic Gel Visualizer](https://github.com/duceppemo/insilicoPCR/wiki/Synthetic-Gel-Visualizer)
+- [Developer Guide](https://github.com/duceppemo/insilicoPCR/wiki/Developer-Guide)
+
+A source-controlled mirror of the Wiki content is kept under [`docs/wiki/`](docs/wiki/) for review, history, and easy publishing into the GitHub Wiki repository.
 
 ---
 

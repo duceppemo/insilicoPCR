@@ -1,6 +1,15 @@
 # Developer Guide
 
-This page summarizes the current project structure and development workflow.
+This page summarizes the current project structure and points developers to the detailed Wiki pages.
+
+## Developer pages
+
+- [Architecture](Architecture.md)
+- [Runtime Layout](Runtime-Layout.md)
+- [Build System](Build-System.md)
+- [Release Pipeline](Release-Pipeline.md)
+- [Contributing](Contributing.md)
+- [Publishing to GitHub Wiki](Publishing-to-GitHub-Wiki.md)
 
 ## Requirements
 
@@ -34,67 +43,17 @@ java -jar target/insilicoPCR.jar -h
 
 The dispatcher starts the GUI when no arguments are provided and starts the CLI pipeline when command-line arguments are present.
 
-## Pipeline overview
-
-The shared pipeline coordinates:
-
-1. Runtime dependency discovery
-2. Output directory creation
-3. Input sample loading
-4. Primer FASTA parsing and preparation
-5. FASTQ processing where applicable
-6. BLAST database creation
-7. BBMap/BLAST execution
-8. Report generation
-9. Consolidated output
-10. Synthetic gel visualization support
-
-## Runtime assets
-
-Runtime assets are staged under `runtime/`.
-
-```text
-runtime/
-├── common/
-│   └── bbmap/
-├── linux/
-│   └── blast/
-│       └── bin/
-└── windows/
-    └── blast/
-        └── bin/
-```
-
-The packaged JDK is not committed. Release scripts copy `JAVA_HOME` into the staged portable release.
-
-See [Runtime Layout](../runtime-layout.md).
-
-## Release packaging
-
-Linux portable ZIP:
-
-```bash
-export JAVA_HOME=/path/to/jdk-26
-scripts/release/package-linux-portable.sh 0.6.0
-```
-
-Windows portable ZIP:
-
-```powershell
-scripts/release-windows.ps1
-```
-
-See [Release Process](../release-process.md).
-
 ## Documentation approach
 
-Keep the README compact. Put detailed user and developer documentation under `docs/wiki/`.
+Keep the README compact. Use the GitHub Wiki as the user-facing manual.
+
+The `docs/wiki/` directory is a source-controlled mirror that can be pushed into the actual GitHub Wiki repository after the Wiki has been initialized.
 
 When adding a feature, update:
 
 - README only if the feature changes the project overview or quick start
-- relevant `docs/wiki/` page for full details
-- SVG diagrams under `docs/assets/` if the architecture/workflow changes
+- relevant Wiki page for full details
+- SVG diagrams under `docs/assets/` if the architecture, workflow, or release process changes
 - screenshots under `docs/screenshots/` when available
 
 ## Notes for future improvements
@@ -105,4 +64,4 @@ Potential future work:
 - enforce the standard PCR vs qPCR mode limitation earlier in the run
 - improve synthetic gel export options
 - add screenshots to the README and Wiki
-- publish `docs/wiki/` pages into the GitHub Wiki when desired
+- publish `docs/wiki/` pages into the GitHub Wiki after initialization

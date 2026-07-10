@@ -1,21 +1,37 @@
 # insilicoPCR Wiki
 
-Welcome to the insilicoPCR documentation.
+Welcome to the insilicoPCR Wiki.
 
-This directory is the source-controlled version of the project Wiki. The README is intentionally compact; detailed user and developer documentation lives here.
+This is the detailed documentation for users and developers. The repository README is intentionally compact; the Wiki should be the main manual for installing, running, troubleshooting, and developing the application.
 
-## User documentation
+> This `docs/wiki/` directory is a source-controlled mirror of the GitHub Wiki content. Once the GitHub Wiki is initialized, these pages can be copied or pushed into the `insilicoPCR.wiki` repository.
 
-- [User Guide](User-Guide.md)
-- [Command-line Usage](Command-line-Usage.md)
+## Getting Started
+
+- [Installation](Installation.md)
+- [Portable Releases](Portable-Releases.md)
+- [First Analysis](First-Analysis.md)
+
+## User Guide
+
+- [GUI Overview](GUI-Overview.md)
+- [Running Analyses](Running-Analyses.md)
 - [Primer FASTA Format](Primer-FASTA-Format.md)
+- [Standard PCR vs qPCR](Standard-PCR-vs-qPCR.md)
+- [Reports](Reports.md)
 - [Synthetic Gel Visualizer](Synthetic-Gel-Visualizer.md)
+- [Command-line Interface](Command-line-Interface.md)
+- [Troubleshooting](Troubleshooting.md)
+- [FAQ](FAQ.md)
 
-## Developer documentation
+## Developer Guide
 
 - [Developer Guide](Developer-Guide.md)
-- [Runtime Layout](../runtime-layout.md)
-- [Release Process](../release-process.md)
+- [Architecture](Architecture.md)
+- [Runtime Layout](Runtime-Layout.md)
+- [Build System](Build-System.md)
+- [Release Pipeline](Release-Pipeline.md)
+- [Contributing](Contributing.md)
 
 ## What insilicoPCR does
 
@@ -32,4 +48,4 @@ The application supports both:
 - a JavaFX graphical desktop interface
 - a command-line interface for batch runs and pipelines
 
-Portable releases include the Java runtime, JavaFX, BBMap, and NCBI BLAST+, so end users do not need to install these tools separately.
+Portable releases include Java, JavaFX, BBMap, and NCBI BLAST+, so end users do not need to install these tools separately.

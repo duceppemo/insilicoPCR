@@ -1,69 +1,84 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="560" viewBox="0 0 1100 560" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="620" viewBox="0 0 1100 620" role="img" aria-labelledby="title desc">
   <title id="title">insilicoPCR scientific workflow</title>
-  <desc id="desc">Primer input flows through BBMap, amplicon detection, BLAST validation, quality assessment, and report generation.</desc>
+  <desc id="desc">Primers and FASTA or FASTQ inputs flow through BBMap candidate search, amplicon detection, BLAST validation, reports, and synthetic gel visualization.</desc>
   <defs>
-    <linearGradient id="card" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#FFFFFF"/>
-      <stop offset="100%" stop-color="#ECFEFF"/>
-    </linearGradient>
     <filter id="shadow" x="-20%" y="-20%" width="140%" height="160%">
-      <feDropShadow dx="0" dy="8" stdDeviation="9" flood-color="#0F172A" flood-opacity="0.18"/>
+      <feDropShadow dx="0" dy="8" stdDeviation="9" flood-color="#0F172A" flood-opacity="0.16"/>
     </filter>
     <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
       <path d="M2 2 L10 6 L2 10 Z" fill="#0F766E"/>
     </marker>
+    <style>
+      .title{font:800 34px Inter,Segoe UI,Arial,sans-serif;fill:#0F172A}.sub{font:17px Inter,Segoe UI,Arial,sans-serif;fill:#475569}.label{font:800 20px Inter,Segoe UI,Arial,sans-serif;fill:#0F172A}.small{font:14px Inter,Segoe UI,Arial,sans-serif;fill:#475569}.num{font:800 20px Inter,Segoe UI,Arial,sans-serif;fill:#fff}.card{fill:#fff;stroke:#CBD5E1;stroke-width:1.4}.blue{fill:#E0F2FE;stroke:#38BDF8}.green{fill:#DCFCE7;stroke:#22C55E}.amber{fill:#FEF3C7;stroke:#F59E0B}.rose{fill:#FCE7F3;stroke:#F472B6}.ink{stroke:#0F766E;stroke-width:4;fill:none}
+    </style>
   </defs>
-  <rect width="1100" height="560" rx="28" fill="#F8FAFC"/>
-  <text x="550" y="62" text-anchor="middle" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="34" font-weight="800" fill="#0F172A">Scientific Workflow</text>
-  <text x="550" y="96" text-anchor="middle" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="17" fill="#475569">From primer input to publication-ready reports</text>
 
-  <g font-family="Inter, Segoe UI, Arial, sans-serif" font-size="18" text-anchor="middle">
-    <g transform="translate(64 190)" filter="url(#shadow)">
-      <rect width="150" height="110" rx="22" fill="url(#card)" stroke="#BAE6FD"/>
-      <circle cx="75" cy="38" r="21" fill="#38BDF8" opacity="0.9"/>
-      <text x="75" y="46" font-size="22" font-weight="800" fill="#fff">1</text>
-      <text x="75" y="82" font-weight="700" fill="#0F172A">Primers</text>
-    </g>
-    <line x1="232" y1="245" x2="323" y2="245" stroke="#0F766E" stroke-width="4" marker-end="url(#arrow)"/>
-    <g transform="translate(340 190)" filter="url(#shadow)">
-      <rect width="150" height="110" rx="22" fill="url(#card)" stroke="#A7F3D0"/>
-      <circle cx="75" cy="38" r="21" fill="#14B8A6" opacity="0.9"/>
-      <text x="75" y="46" font-size="22" font-weight="800" fill="#fff">2</text>
-      <text x="75" y="76" font-weight="700" fill="#0F172A">BBMap</text>
-      <text x="75" y="99" font-size="14" fill="#475569">candidate search</text>
-    </g>
-    <line x1="508" y1="245" x2="599" y2="245" stroke="#0F766E" stroke-width="4" marker-end="url(#arrow)"/>
-    <g transform="translate(616 190)" filter="url(#shadow)">
-      <rect width="150" height="110" rx="22" fill="url(#card)" stroke="#BAE6FD"/>
-      <circle cx="75" cy="38" r="21" fill="#0EA5E9" opacity="0.9"/>
-      <text x="75" y="46" font-size="22" font-weight="800" fill="#fff">3</text>
-      <text x="75" y="76" font-weight="700" fill="#0F172A">Amplicons</text>
-      <text x="75" y="99" font-size="14" fill="#475569">detect &amp; size</text>
-    </g>
-    <line x1="784" y1="245" x2="875" y2="245" stroke="#0F766E" stroke-width="4" marker-end="url(#arrow)"/>
-    <g transform="translate(892 190)" filter="url(#shadow)">
-      <rect width="150" height="110" rx="22" fill="url(#card)" stroke="#A7F3D0"/>
-      <circle cx="75" cy="38" r="21" fill="#0F766E" opacity="0.9"/>
-      <text x="75" y="46" font-size="22" font-weight="800" fill="#fff">4</text>
-      <text x="75" y="76" font-weight="700" fill="#0F172A">BLAST+</text>
-      <text x="75" y="99" font-size="14" fill="#475569">validation</text>
+  <rect width="1100" height="620" rx="28" fill="#F8FAFC"/>
+  <text x="550" y="58" text-anchor="middle" class="title">Scientific Workflow</text>
+  <text x="550" y="91" text-anchor="middle" class="sub">FASTA assemblies and FASTQ reads processed through the same PCR analysis pipeline</text>
+
+  <g text-anchor="middle">
+    <g filter="url(#shadow)">
+      <rect x="70" y="150" width="210" height="92" rx="20" class="blue"/>
+      <circle cx="105" cy="186" r="22" fill="#0EA5E9"/>
+      <text x="105" y="193" class="num">1</text>
+      <text x="180" y="184" class="label">Primer FASTA</text>
+      <text x="180" y="210" class="small">-F / -R / optional -P</text>
     </g>
 
-    <path d="M967 300 C967 382 826 388 826 412" fill="none" stroke="#0F766E" stroke-width="4" marker-end="url(#arrow)"/>
-    <g transform="translate(616 392)" filter="url(#shadow)">
-      <rect width="210" height="110" rx="22" fill="url(#card)" stroke="#BAE6FD"/>
-      <circle cx="105" cy="38" r="21" fill="#0284C7" opacity="0.9"/>
-      <text x="105" y="46" font-size="22" font-weight="800" fill="#fff">5</text>
-      <text x="105" y="76" font-weight="700" fill="#0F172A">Quality Assessment</text>
-      <text x="105" y="99" font-size="14" fill="#475569">primer and hit summaries</text>
+    <g filter="url(#shadow)">
+      <rect x="70" y="320" width="210" height="118" rx="20" class="green"/>
+      <circle cx="105" cy="360" r="22" fill="#14B8A6"/>
+      <text x="105" y="367" class="num">2</text>
+      <text x="180" y="354" class="label">Input Sequences</text>
+      <text x="180" y="382" class="small">FASTA assemblies</text>
+      <text x="180" y="404" class="small">FASTQ reads</text>
     </g>
-    <line x1="616" y1="447" x2="510" y2="447" stroke="#0F766E" stroke-width="4" marker-end="url(#arrow)"/>
-    <g transform="translate(270 392)" filter="url(#shadow)">
-      <rect width="220" height="110" rx="22" fill="url(#card)" stroke="#A7F3D0"/>
-      <circle cx="110" cy="38" r="21" fill="#059669" opacity="0.9"/>
-      <text x="110" y="46" font-size="22" font-weight="800" fill="#fff">6</text>
-      <text x="110" y="76" font-weight="700" fill="#0F172A">Excel Reports</text>
-      <text x="110" y="99" font-size="14" fill="#475569">detailed and consolidated</text>
+
+    <path d="M280 196 C338 196 338 276 392 276" class="ink" marker-end="url(#arrow)"/>
+    <path d="M280 379 C338 379 338 276 392 276" class="ink" marker-end="url(#arrow)"/>
+
+    <g filter="url(#shadow)">
+      <rect x="410" y="220" width="220" height="112" rx="22" class="card"/>
+      <circle cx="452" cy="260" r="22" fill="#0F766E"/>
+      <text x="452" y="267" class="num">3</text>
+      <text x="520" y="254" class="label">BBMap Search</text>
+      <text x="520" y="282" class="small">candidate primer hits</text>
+      <text x="520" y="304" class="small">mismatch-tolerant matching</text>
     </g>
+
+    <line x1="630" y1="276" x2="704" y2="276" class="ink" marker-end="url(#arrow)"/>
+
+    <g filter="url(#shadow)">
+      <rect x="720" y="220" width="220" height="112" rx="22" class="amber"/>
+      <circle cx="762" cy="260" r="22" fill="#F59E0B"/>
+      <text x="762" y="267" class="num">4</text>
+      <text x="830" y="254" class="label">Amplicons</text>
+      <text x="830" y="282" class="small">detect pairs</text>
+      <text x="830" y="304" class="small">size products</text>
+    </g>
+
+    <path d="M830 332 C830 385 730 392 690 430" class="ink" marker-end="url(#arrow)"/>
+    <path d="M940 276 C1000 276 1012 350 970 408" class="ink" marker-end="url(#arrow)"/>
+
+    <g filter="url(#shadow)">
+      <rect x="570" y="430" width="220" height="112" rx="22" class="blue"/>
+      <circle cx="612" cy="470" r="22" fill="#0284C7"/>
+      <text x="612" y="477" class="num">5</text>
+      <text x="680" y="464" class="label">BLAST+</text>
+      <text x="680" y="492" class="small">sequence validation</text>
+      <text x="680" y="514" class="small">contig-level confirmation</text>
+    </g>
+
+    <g filter="url(#shadow)">
+      <rect x="830" y="430" width="220" height="112" rx="22" class="rose"/>
+      <circle cx="872" cy="470" r="22" fill="#DB2777"/>
+      <text x="872" y="477" class="num">6</text>
+      <text x="940" y="464" class="label">Outputs</text>
+      <text x="940" y="492" class="small">reports + Excel</text>
+      <text x="940" y="514" class="small">synthetic gel viewer</text>
+    </g>
+
+    <line x1="790" y1="486" x2="814" y2="486" class="ink" marker-end="url(#arrow)"/>
   </g>
 </svg>

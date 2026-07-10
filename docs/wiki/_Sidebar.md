@@ -2,28 +2,28 @@
 
 ## Getting Started
 
-- [Home](Home.md)
-- [Installation](Installation.md)
-- [Portable Releases](Portable-Releases.md)
-- [First Analysis](First-Analysis.md)
+- [Home](Home)
+- [Installation](Installation)
+- [Portable Releases](Portable-Releases)
+- [First Analysis](First-Analysis)
 
 ## User Guide
 
-- [GUI Overview](GUI-Overview.md)
-- [Running Analyses](Running-Analyses.md)
-- [Primer FASTA Format](Primer-FASTA-Format.md)
-- [Standard PCR vs qPCR](Standard-PCR-vs-qPCR.md)
-- [Reports](Reports.md)
-- [Synthetic Gel Visualizer](Synthetic-Gel-Visualizer.md)
-- [Command-line Interface](Command-line-Interface.md)
-- [Troubleshooting](Troubleshooting.md)
-- [FAQ](FAQ.md)
+- [GUI Overview](GUI-Overview)
+- [Running Analyses](Running-Analyses)
+- [Primer FASTA Format](Primer-FASTA-Format)
+- [Standard PCR vs qPCR](Standard-PCR-vs-qPCR)
+- [Reports](Reports)
+- [Synthetic Gel Visualizer](Synthetic-Gel-Visualizer)
+- [Command-line Interface](Command-line-Interface)
+- [Troubleshooting](Troubleshooting)
+- [FAQ](FAQ)
 
 ## Developers
 
-- [Developer Guide](Developer-Guide.md)
-- [Architecture](Architecture.md)
-- [Runtime Layout](Runtime-Layout.md)
-- [Build System](Build-System.md)
-- [Release Pipeline](Release-Pipeline.md)
-- [Contributing](Contributing.md)
+- [Developer Guide](Developer-Guide)
+- [Architecture](Architecture)
+- [Runtime Layout](Runtime-Layout)
+- [Build System](Build-System)
+- [Release Pipeline](Release-Pipeline)
+- [Contributing](Contributing)

@@ -56,4 +56,4 @@ Review:
 - Excel report, if generated
 - synthetic gel view
 
-For primer naming requirements, see [Primer FASTA Format](Primer-FASTA-Format.md).
+For primer naming requirements, see [Primer FASTA Format](Primer-FASTA-Format).

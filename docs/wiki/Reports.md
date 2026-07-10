@@ -49,4 +49,4 @@ If any primer ID includes `-P`, the consolidated report is generated in qPCR mod
 
 ## Synthetic gel
 
-The synthetic gel visualizer reads consolidated result data and displays predicted amplicons as gel-like bands. See [Synthetic Gel Visualizer](Synthetic-Gel-Visualizer.md).
+The synthetic gel visualizer reads consolidated result data and displays predicted amplicons as gel-like bands. See [Synthetic Gel Visualizer](Synthetic-Gel-Visualizer).

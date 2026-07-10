@@ -65,7 +65,7 @@ The input can be one sequence file or a directory containing sequence files.
 
 ## Primer file
 
-The primer file must be a FASTA file using the special primer nomenclature described in [Primer FASTA Format](Primer-FASTA-Format.md).
+The primer file must be a FASTA file using the special primer nomenclature described in [Primer FASTA Format](Primer-FASTA-Format).
 
 ## Standard PCR and qPCR mode
 
@@ -90,7 +90,7 @@ A typical run creates output files such as:
 
 After a run completes, use the gel viewer button in the GUI to inspect a gel-like representation of the consolidated report.
 
-The gel viewer can also open previous run folders or consolidated report TSV files when available. See [Synthetic Gel Visualizer](Synthetic-Gel-Visualizer.md).
+The gel viewer can also open previous run folders or consolidated report TSV files when available. See [Synthetic Gel Visualizer](Synthetic-Gel-Visualizer).
 
 ## Troubleshooting
 

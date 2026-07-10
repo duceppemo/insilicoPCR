@@ -1,51 +1,73 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="620" viewBox="0 0 1100 620" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="680" viewBox="0 0 1100 680" role="img" aria-labelledby="title desc">
   <title id="title">insilicoPCR application architecture</title>
-  <desc id="desc">Layered architecture showing JavaFX GUI, services, tool runners, parsers, model, and report writers.</desc>
+  <desc id="desc">Layered architecture showing GUI and CLI entry points, pipeline services, external tools, reporting, synthetic gel visualization, and portable runtime assets.</desc>
   <defs>
-    <filter id="shadow" x="-20%" y="-20%" width="140%" height="160%"><feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#0F172A" flood-opacity="0.18"/></filter>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="160%"><feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#0F172A" flood-opacity="0.16"/></filter>
     <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M2 2 L10 6 L2 10 Z" fill="#334155"/></marker>
+    <style>
+      .title{font:800 34px Inter,Segoe UI,Arial,sans-serif;fill:#0F172A}.sub{font:17px Inter,Segoe UI,Arial,sans-serif;fill:#475569}.label{font:800 20px Inter,Segoe UI,Arial,sans-serif;fill:#0F172A}.small{font:14px Inter,Segoe UI,Arial,sans-serif;fill:#475569}.card{fill:#fff;stroke:#CBD5E1;stroke-width:1.4}.blue{fill:#E0F2FE;stroke:#38BDF8}.green{fill:#DCFCE7;stroke:#22C55E}.amber{fill:#FEF3C7;stroke:#F59E0B}.rose{fill:#FCE7F3;stroke:#F472B6}.violet{fill:#EDE9FE;stroke:#8B5CF6}.line{stroke:#334155;stroke-width:3;fill:none}
+    </style>
   </defs>
-  <rect width="1100" height="620" rx="28" fill="#F8FAFC"/>
-  <text x="550" y="58" text-anchor="middle" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="34" font-weight="800" fill="#0F172A">Application Architecture</text>
-  <text x="550" y="91" text-anchor="middle" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="17" fill="#475569">Clean separation between UI, domain services, external tools, and reports</text>
 
-  <g font-family="Inter, Segoe UI, Arial, sans-serif" text-anchor="middle">
+  <rect width="1100" height="680" rx="28" fill="#F8FAFC"/>
+  <text x="550" y="58" text-anchor="middle" class="title">Application Architecture</text>
+  <text x="550" y="91" text-anchor="middle" class="sub">GUI and CLI front ends over a shared, portable PCR analysis pipeline</text>
+
+  <g text-anchor="middle" font-family="Inter, Segoe UI, Arial, sans-serif">
     <g filter="url(#shadow)">
-      <rect x="410" y="125" width="280" height="72" rx="20" fill="#E0F2FE" stroke="#38BDF8"/>
-      <text x="550" y="168" font-size="22" font-weight="800" fill="#075985">JavaFX GUI</text>
-    </g>
-    <line x1="550" y1="197" x2="550" y2="244" stroke="#334155" stroke-width="3" marker-end="url(#arrow)"/>
-
-    <g filter="url(#shadow)">
-      <rect x="370" y="250" width="360" height="82" rx="20" fill="#DCFCE7" stroke="#22C55E"/>
-      <text x="550" y="284" font-size="22" font-weight="800" fill="#166534">Application Services</text>
-      <text x="550" y="309" font-size="14" fill="#475569">PrimerService • workflow orchestration • validation</text>
-    </g>
-
-    <line x1="452" y1="332" x2="315" y2="392" stroke="#334155" stroke-width="3" marker-end="url(#arrow)"/>
-    <line x1="550" y1="332" x2="550" y2="392" stroke="#334155" stroke-width="3" marker-end="url(#arrow)"/>
-    <line x1="648" y1="332" x2="785" y2="392" stroke="#334155" stroke-width="3" marker-end="url(#arrow)"/>
-
-    <g filter="url(#shadow)">
-      <rect x="160" y="400" width="250" height="82" rx="20" fill="#FFFFFF" stroke="#94A3B8"/>
-      <text x="285" y="434" font-size="21" font-weight="800" fill="#0F172A">External Tools</text>
-      <text x="285" y="459" font-size="14" fill="#475569">BBMap • BLAST+ runners</text>
+      <rect x="250" y="125" width="250" height="82" rx="20" class="blue"/>
+      <text x="375" y="160" class="label">JavaFX GUI</text>
+      <text x="375" y="186" class="small">MainRun • controls • progress • gel viewer</text>
     </g>
     <g filter="url(#shadow)">
-      <rect x="425" y="400" width="250" height="82" rx="20" fill="#FFFFFF" stroke="#94A3B8"/>
-      <text x="550" y="434" font-size="21" font-weight="800" fill="#0F172A">Domain Model</text>
-      <text x="550" y="459" font-size="14" fill="#475569">samples • primers • hits • paths</text>
-    </g>
-    <g filter="url(#shadow)">
-      <rect x="690" y="400" width="250" height="82" rx="20" fill="#FFFFFF" stroke="#94A3B8"/>
-      <text x="815" y="434" font-size="21" font-weight="800" fill="#0F172A">Parsers</text>
-      <text x="815" y="459" font-size="14" fill="#475569">BLAST output • mapping results</text>
+      <rect x="600" y="125" width="250" height="82" rx="20" class="blue"/>
+      <text x="725" y="160" class="label">Command-line Interface</text>
+      <text x="725" y="186" class="small">Dispatcher • CliConfig • batch runs</text>
     </g>
 
-    <line x1="550" y1="482" x2="550" y2="525" stroke="#334155" stroke-width="3" marker-end="url(#arrow)"/>
+    <path d="M375 207 C375 250 485 250 485 286" class="line" marker-end="url(#arrow)"/>
+    <path d="M725 207 C725 250 615 250 615 286" class="line" marker-end="url(#arrow)"/>
+
     <g filter="url(#shadow)">
-      <rect x="365" y="530" width="370" height="62" rx="20" fill="#FEF3C7" stroke="#F59E0B"/>
-      <text x="550" y="568" font-size="22" font-weight="800" fill="#92400E">Report Writers</text>
+      <rect x="360" y="290" width="380" height="88" rx="22" class="green"/>
+      <text x="550" y="326" class="label">Shared Pipeline</text>
+      <text x="550" y="352" class="small">InSilicoPcrPipeline • config • validation • orchestration</text>
     </g>
+
+    <line x1="550" y1="378" x2="550" y2="426" class="line" marker-end="url(#arrow)"/>
+
+    <g filter="url(#shadow)">
+      <rect x="70" y="430" width="210" height="88" rx="20" class="card"/>
+      <text x="175" y="465" class="label">Input Services</text>
+      <text x="175" y="491" class="small">samples • FASTA • FASTQ • primers</text>
+    </g>
+    <g filter="url(#shadow)">
+      <rect x="310" y="430" width="210" height="88" rx="20" class="card"/>
+      <text x="415" y="465" class="label">Tool Runners</text>
+      <text x="415" y="491" class="small">BBMap • BLAST+ • child Java</text>
+    </g>
+    <g filter="url(#shadow)">
+      <rect x="550" y="430" width="210" height="88" rx="20" class="card"/>
+      <text x="655" y="465" class="label">Domain Model</text>
+      <text x="655" y="491" class="small">samples • primers • hits • amplicons</text>
+    </g>
+    <g filter="url(#shadow)">
+      <rect x="790" y="430" width="240" height="88" rx="20" class="card"/>
+      <text x="910" y="465" class="label">Reports and Gel</text>
+      <text x="910" y="491" class="small">TSV • Excel • synthetic gel</text>
+    </g>
+
+    <path d="M550 378 C550 408 175 408 175 430" class="line" marker-end="url(#arrow)"/>
+    <path d="M550 378 C550 408 415 408 415 430" class="line" marker-end="url(#arrow)"/>
+    <path d="M550 378 C550 408 655 408 655 430" class="line" marker-end="url(#arrow)"/>
+    <path d="M550 378 C550 408 910 408 910 430" class="line" marker-end="url(#arrow)"/>
+
+    <g filter="url(#shadow)">
+      <rect x="145" y="575" width="810" height="62" rx="20" class="amber"/>
+      <text x="550" y="601" class="label">Portable Runtime Assets</text>
+      <text x="550" y="625" class="small">bundled OpenJDK 26 • JavaFX 26.0.1 • curated BBMap • curated NCBI BLAST+</text>
+    </g>
+    <path d="M415 518 C415 548 550 548 550 575" class="line" marker-end="url(#arrow)"/>
+    <path d="M910 518 C910 548 550 548 550 575" class="line" marker-end="url(#arrow)"/>
   </g>
 </svg>

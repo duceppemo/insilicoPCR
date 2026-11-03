@@ -114,8 +114,8 @@
     <text x="303" y="318" class="edge">FASTA</text>
 
     <!-- FASTQ reads go to baiting/assembly -->
-    <line x1="285" y1="392" x2="331" y2="392" class="ink" marker-end="url(#arrow)"/>
-    <text x="308" y="412" class="edge">FASTQ</text>
+    <line x1="285" y1="388" x2="331" y2="388" class="ink" marker-end="url(#arrow)"/>
+    <text x="308" y="424" class="edge">FASTQ</text>
 
     <!-- assembled contigs go to BLAST -->
     <line x1="424" y1="326" x2="424" y2="257" class="ink" marker-end="url(#arrow)"/>

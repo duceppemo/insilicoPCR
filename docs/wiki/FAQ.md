@@ -28,6 +28,10 @@ Yes. The input can be a single sequence file or a directory containing sequence 
 
 The primer file must be FASTA. Primer IDs must end with `-F`, `-R`, or `-P`.
 
+## Can another tool design the primers and write these files?
+
+Yes. [primer-finder](https://github.com/duceppemo/primer-finder) finds the sequences that tell one group of genomes from another, designs selective (q)PCR assays on them with Primer3, and writes insilicoPCR-ready primer FASTA files. Its `design --insilico-pcr` option also runs insilicoPCR itself against both genome groups and reports which assays amplify every target genome and none of the others (primer-finder 1.10.0+ pairs with insilicoPCR 0.8.0+).
+
 ## Can I mix PCR assays with qPCR/probe assays?
 
 Yes (since version 0.8.0). The probe requirement is decided per assay: assays with a `-P` probe are only reported when the probe hits inside the amplicon, while probe-less assays are reported on their primer pair alone. See [Standard PCR vs qPCR](Standard-PCR-vs-qPCR).

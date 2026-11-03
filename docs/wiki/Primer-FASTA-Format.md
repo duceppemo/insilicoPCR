@@ -22,6 +22,8 @@ targetA-P
 
 all belong to the same target, `targetA`.
 
+Primer files in this convention can also be generated rather than written by hand: [primer-finder](https://github.com/duceppemo/primer-finder) designs selective (q)PCR assays against a group of genomes and writes them as `assays_qpcr.fasta` (the probe assays, with their `-P` entries) and `assays_pcr.fasta` (every assay, primers only), ready to pass to `-p`.
+
 ## Standard PCR mode
 
 Use standard PCR mode when every assay has only a forward and reverse primer.

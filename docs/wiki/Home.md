@@ -54,3 +54,7 @@ The application supports both:
 Reported amplicons are restricted to primer pairs that could plausibly amplify in a real reaction: convergent orientation on opposite strands, a configurable product size limit, and a weighted 3'-end mismatch check. See [Amplicon Calling](Amplicon-Calling).
 
 Portable releases include Java, JavaFX, BBMap, and NCBI BLAST+, so end users do not need to install these tools separately.
+
+## Works with primer-finder
+
+[primer-finder](https://github.com/duceppemo/primer-finder) finds the sequences that tell one group of genomes from another, designs selective (q)PCR assays on them, and writes primer FASTA files in exactly the format insilicoPCR reads. Its `design --insilico-pcr` option also runs insilicoPCR against both genome groups and reports which assays amplify every target genome and none of the others. primer-finder 1.10.0 and newer require insilicoPCR 0.8.0 or newer.

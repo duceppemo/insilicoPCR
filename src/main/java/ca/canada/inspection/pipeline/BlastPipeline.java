@@ -104,7 +104,7 @@ public final class BlastPipeline {
                     "-evalue", Double.toString(config.evalue()),
                     "-num_alignments", "1000000",
                     "-num_threads", "1",
-                    "-outfmt", "6 qseqid sseqid positive mismatch gaps evalue bitscore slen length qstart qend qseq sstart send sseq",
+                    "-outfmt", BlastTsv.OUTFMT,
                     "-out", blastTsv.toString()};
 
             try (var process = new ProcessBuilder(command).start()) {
@@ -117,7 +117,7 @@ public final class BlastPipeline {
                     throw new IllegalStateException("BLAST failed with exit code " + exitCode + " for query " + query);
                 }
             }
-            Methods.addHeaderToTSV(blastTsv);
+            BlastTsv.prependHeader(blastTsv);
         } catch (IOException e) {
             throw new IllegalStateException("Unable to run BLAST for query: " + query, e);
         } catch (InterruptedException e) {

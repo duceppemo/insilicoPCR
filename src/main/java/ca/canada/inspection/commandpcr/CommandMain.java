@@ -1,6 +1,7 @@
 package ca.canada.inspection.commandpcr;
 
 import ca.canada.inspection.dispatchpcr.CliConfig;
+import ca.canada.inspection.pcr.AmpliconOptions;
 import ca.canada.inspection.pipeline.InSilicoPcrPipeline;
 import ca.canada.inspection.pipeline.PipelineConfig;
 
@@ -12,7 +13,7 @@ public final class CommandMain {
 	private final PipelineConfig config;
 
 	public CommandMain(Path inputFile, Path outDir, Path primerFile, int threads, int mismatches, double evalue) {
-		this(new PipelineConfig(inputFile, outDir, primerFile, threads, mismatches, evalue));
+		this(new PipelineConfig(inputFile, outDir, primerFile, threads, evalue, AmpliconOptions.withMismatches(mismatches)));
 	}
 
 	private CommandMain(PipelineConfig config) {
@@ -25,8 +26,8 @@ public final class CommandMain {
 				config.output(),
 				config.primers(),
 				config.threads(),
-				config.mismatches(),
-				config.evalue()
+				config.evalue(),
+				config.ampliconOptions()
 		));
 	}
 

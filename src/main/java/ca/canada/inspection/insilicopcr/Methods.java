@@ -43,6 +43,7 @@ import javax.imageio.ImageIO;
 
 
 import ca.canada.inspection.dispatchpcr.AppPaths;
+import ca.canada.inspection.pipeline.PrimerService;
 import ca.canada.inspection.util.SequenceFileUtils;
 
 import javafx.scene.canvas.Canvas;
@@ -50,9 +51,6 @@ import javafx.scene.canvas.GraphicsContext;
 
 @SuppressWarnings({"unused", "SameParameterValue"})
 public class Methods {
-
-	private static final HashMap<Character, Character[]> degenerates = new HashMap<>();
-	private static Pattern degenRegex;
 
 	private static final int GEL_MIN_BP = 0;
 	private static final int GEL_MAX_BP = 25_000;
@@ -169,110 +167,29 @@ public class Methods {
 		return parseFastaToDictionary(file.toPath());
 	}
 
-	// Process the primers in the primer dictionary
+	/**
+	 * Validates primers, expands degenerate bases into all combinations (updating
+	 * {@code primerDict} in place), and writes the expanded primer FASTA used to
+	 * build the BLAST database.
+	 */
 	public static Path processPrimers(HashMap<String, String> primerDict, TextArea outputField, Path workDir, String sep) {
-
-		// Need to generate the degen Regex
-		// Unfortunately cannot convert directly from Object[] to char[], or even from Character[] to char[]
-		degenerates.put('R', new Character[] {'A', 'G'});
-		degenerates.put('Y', new Character[] {'C', 'T'});
-		degenerates.put('S', new Character[] {'G', 'C'});
-		degenerates.put('W', new Character[] {'A', 'T'});
-		degenerates.put('K', new Character[] {'G', 'T'});
-		degenerates.put('M', new Character[] {'A', 'C'});
-		degenerates.put('B', new Character[] {'G', 'C', 'T'});
-		degenerates.put('D', new Character[] {'A', 'G', 'T'});
-		degenerates.put('H', new Character[] {'A', 'C', 'T'});
-		degenerates.put('V', new Character[] {'A', 'C', 'G'});
-		degenerates.put('N', new Character[] {'A', 'C', 'G', 'T'});
-//		Character[] degenCharArray = degenerates.keySet().toArray(new Character[degenerates.keySet().size()]);
-		Character[] degenCharArray = degenerates.keySet().toArray(new Character[0]);
-		char[] charDegen = new char[degenCharArray.length];
-		for(int i = 0; i < charDegen.length; i++) {
-			charDegen[i] = degenCharArray[i];
+		Map<String, String> expanded;
+		try {
+			expanded = PrimerService.expand(primerDict);
+		} catch (RuntimeException e) {
+			logMessage(outputField, e.getMessage());
+			throw new IllegalArgumentException(e.getMessage(), e);
 		}
-		String degenRegexString = String.join("", new String(charDegen));
-		degenRegex = Pattern.compile("[" + degenRegexString + "]");
+		primerDict.clear();
+		primerDict.putAll(expanded);
 
-		// This regex will find any incompatible characters in the primer sequences
-		Pattern regex = Pattern.compile("[^ATCGRYSWKMBDHVN]");
-
-		// Have to make a deep copy of the primerDict keys, otherwise we get a reference that changes when we change the primerDict
-		List<String> keySet = new ArrayList<>(primerDict.keySet());
-		for(String key : keySet) {
-			String seq = primerDict.get(key);
-
-			// Check for illegal bases
-			Matcher matcher = regex.matcher(seq);
-			if(matcher.find()) {
-				String message = "Primer sequence contains incompatible characters:\n" + key + "\n" + seq;
-				logMessage(outputField, message);
-				throw new IllegalArgumentException(message);
-			}
-
-			// If the sequence contains degenerated bases, create sequences for all possible iterations
-			Matcher degenMatcher = degenRegex.matcher(seq);
-			if(degenMatcher.find()) {
-				ArrayList<String> expandedSeq = expandDegenerated(seq, 0, new ArrayList<>());
-
-				// Remove the original entry which contained degenerate bases, replace with all the possible sequences
-				primerDict.remove(key);
-				for(int i = 0; i < expandedSeq.size(); i++) {
-					String newID = key + "_" + i;
-					String newSeq = expandedSeq.get(i);
-					primerDict.put(newID, newSeq);
-				}
-			}
-		}
-
-		// Must now write a primer file containing no degenerate bases for the BLAST
 		Path cleanedPrimers = workDir.resolve("primer_tmp.fasta");
-		try (BufferedWriter writer = Files.newBufferedWriter(cleanedPrimers, StandardCharsets.UTF_8)) {
-			for(String key : primerDict.keySet()) {
-				writer.write(">" + key);
-				writer.newLine();
-				writer.write(primerDict.get(key));
-				writer.newLine();
-			}
-		}catch(IOException e) {
-			throw new IllegalStateException("Unable to write cleaned primer file: " + cleanedPrimers, e);
-		}
+		PrimerService.writeFasta(cleanedPrimers, expanded);
 		return cleanedPrimers;
 	}
 
 	public static Path processPrimers(HashMap<String, String> primerDict, TextArea outputField, File workDir, String sep) {
 		return processPrimers(primerDict, outputField, workDir.toPath(), sep);
-	}
-
-	// Expand the sequences that contain degenerate bases into every possibility
-	public static ArrayList<String> expandDegenerated(String seq, int index, ArrayList<String> primerContainer){
-
-		char[] seqChars = seq.toCharArray();
-		// Due to recursive nature, need to keep going from where we left off
-		for(int i = index; i < seq.length(); i++) {
-			char c = seqChars[i];
-
-			// Check if the current character is contained in the list of degenerate bases. If so, replace this instance with each possible base.
-//			if(degenerates.keySet().contains(c)) {
-			if(degenerates.containsKey(c)) {
-				for(char s : degenerates.get(c)) {
-					String newSeq = seq.replaceFirst(Character.toString(c), Character.toString(s));
-					Matcher matcher = degenRegex.matcher(newSeq);
-
-					// Check the resulting primers.
-					// If more degenerate bases are found, do the same as above, but starting from the base following the one just replaced.
-					if(matcher.find()) {
-						int j = i + 1;
-						expandDegenerated(newSeq, j, primerContainer);
-
-						// If no more degenerate bases are found, we have reached the end, and can add the sequence to the list to be returned.
-					}else {
-						primerContainer.add(newSeq);
-					}
-				}
-			}
-		}
-		return primerContainer;
 	}
 
 	// Make BLAST binaries executable
@@ -332,94 +249,6 @@ public class Methods {
 		makeBlastDB(reference.toPath(), BLASTLocation.toPath(), outputField);
 	}
 
-	// Add the correct result headers to the Blast tsv output file
-	public static void addHeaderToTSV(Path tsvFile) {
-		String tab = "\t";
-		String[] headerFileIDs = {"qseqid", "sseqid", "positive", "mismatch", "gaps", "evalue",
-				"bitscore", "slen", "length", "qstart", "qend", "qseq", "sstart", "send", "sseq"};
-		String header = String.join(tab, headerFileIDs);
-		try {
-			ArrayList<String> lines = new ArrayList<>(Files.readAllLines(tsvFile, StandardCharsets.UTF_8));
-			lines.addFirst(header);
-			Files.write(tsvFile, lines, StandardCharsets.UTF_8);
-		}catch(IOException e) {
-			throw new IllegalStateException("Unable to add header to BLAST TSV: " + tsvFile, e);
-		}
-	}
-
-	public static void addHeaderToTSV(File tsvFile) {
-		addHeaderToTSV(tsvFile.toPath());
-	}
-
-	// Fills the sampleDict to be used in the consolidated report method
-	public static void parseBlastOutput(Path consolidatedDir, Path detailedReport, HashMap<String, String> primerDict,
-	                                    int mismatches, HashMap<String, Sample> sampleDict) {
-
-		ArrayList<Path> reportList = new ArrayList<>();
-		try (Stream<Path> paths = Files.walk(detailedReport, 2)) {
-			paths.filter(Files::isRegularFile)
-					.filter(path -> path.getFileName().toString().endsWith(".tsv"))
-					.forEach(reportList::add);
-		} catch (IOException e) {
-			throw new IllegalStateException("Unable to list BLAST reports in: " + detailedReport, e);
-		}
-
-		for (Path sampleReport : reportList) {
-			String sampleName = sampleReport.getFileName().toString().replaceFirst("\\.tsv$", "");
-			Sample sample = sampleDict.get(sampleName);
-			if (sample == null) {
-				continue;
-			}
-
-			try (BufferedReader reader = Files.newBufferedReader(sampleReport, StandardCharsets.UTF_8)) {
-				String line;
-				while ((line = reader.readLine()) != null) {
-					if (line.isEmpty() || line.startsWith("qseqid")) {
-						continue;
-					}
-
-					String[] fields = line.split("\t", -1);
-					if (fields.length < 15) {
-						continue;
-					}
-
-					String qseqid = fields[0];
-					String sseqid = fields[1];
-
-					String primer = primerDict.get(sseqid);
-					if (primer == null) {
-						continue;
-					}
-
-					int length = Integer.parseInt(fields[8]);
-					int actualMismatches = Integer.parseInt(fields[3]);
-
-					if (length <= primer.length()
-							&& length >= primer.length() - 2
-							&& actualMismatches <= mismatches) {
-
-						int qstart = Integer.parseInt(fields[9]);
-						int qend = Integer.parseInt(fields[10]);
-						String sseq = fields[14];
-
-						BlastResult result = new BlastResult(
-								sampleName, qseqid, sseqid, actualMismatches, qstart, qend, length, sseq
-						);
-
-						sample.addBlastResult(sseqid, result);
-					}
-				}
-			} catch (IOException e) {
-				throw new IllegalStateException("Unable to parse BLAST report: " + sampleReport, e);
-			}
-		}
-	}
-
-	public static void parseBlastOutput(File consolidatedDir, File detailedReport, HashMap<String, String> primerDict,
-	                                    int mismatches, HashMap<String, Sample> sampleDict) {
-		parseBlastOutput(consolidatedDir.toPath(), detailedReport.toPath(), primerDict, mismatches, sampleDict);
-	}
-
 	public static void addContigDict(HashMap<String, Sample> sampleDict) {
 		for (Map.Entry<String, Sample> entry : sampleDict.entrySet()) {
 			String sampleName = entry.getKey();
@@ -454,185 +283,6 @@ public class Methods {
 		String contigID = items[0];
 		String description = items.length > 1 ? items[1] : "";
 		sample.addContig(contigID, description);
-	}
-
-	// Makes the final consolidated report from the multiple blast reports
-	public static void makeConsolidatedReport(Path consolidatedDir, String sep, HashMap<String, Sample> sampleDict,
-	                                          HashMap<String, String> primerDict) {
-
-		// Check to see if this is a qPCR or a regular PCR for formatting purposes
-		boolean qPCR = false;
-		for(String key : primerDict.keySet()) {
-			if(key.split("-")[key.split("-").length - 1].startsWith("P")) {
-				qPCR = true;
-				break;
-			}
-		}
-
-		// The header for the consolidated report
-		String header;
-		if(qPCR) {
-			header = String.join("\t", "Sample", "Gene", "GenomeLocation", "AmpliconSize", "Contig", "Contig Description",
-					"ForwardPrimers", "ReversePrimers", "ForwardMismatches", "ReverseMismatches",
-					"ForwardEndMismatch", "ReverseEndMismatch", "Probe", "ProbeLocation", "ProbeSize", "ProbeMismatches");
-		}else {
-			header = String.join("\t", "Sample", "Gene", "GenomeLocation", "AmpliconSize", "Contig", "Contig Description",
-					"ForwardPrimers", "ReversePrimers", "ForwardMismatches", "ReverseMismatches",
-					"ForwardEndMismatch", "ReverseEndMismatch");
-		}
-
-		// Generate the file to be filled in
-		Path consolidatedReport = consolidatedDir.resolve("report.tsv");
-		int temp = 1;
-		while(Files.exists(consolidatedReport)) {
-			consolidatedReport = consolidatedDir.resolve("report(" + temp + ").tsv");
-			temp++;
-		}
-		try (BufferedWriter writer = Files.newBufferedWriter(consolidatedReport, StandardCharsets.UTF_8)) {
-			writer.write(header);
-			writer.write(System.lineSeparator());
-
-			for(String key : sampleDict.keySet()) {
-
-				// Set up all necessary values
-				Sample sample = sampleDict.get(key);
-//				String sampleName = key;
-//				HashMap<String, ArrayList<BlastResult>> blastResults = sampleDict.get(key).getBlastResults();
-				HashMap<String, ArrayList<BlastResult>> blastResults = sampleDict.get(key).getBlastResults();
-				if(!blastResults.isEmpty()) {
-//					String[] primerHits = blastResults.keySet().toArray(new String[blastResults.keySet().size()]); // Similar to what we did with the degenRegex issue
-					String[] primerHits = blastResults.keySet().toArray(new String[0]); // Similar to what we did with the degenRegex issue
-					HashMap<String, HashMap<String, ArrayList<String>>> primers = new HashMap<>();
-
-					/* What this is actually doing is placing the primers into a hashmap based on their base name, alongside
-					 *A list of directions. Therefore, a primer set of NAME-F and NAME-R would be listed under NAME with
-					 *Directions F and R. Similarly, a degenerate primer of NAME-F_1, NAME-F_2, NAME-R_1, and NAME-R_2 would be
-					 *listed under NAME with directions F_1, F_2, R_1, and R_2
-					 */
-					for(String primer : primerHits) {
-						String[] splitPrimer = primer.split("-");
-						String direction = splitPrimer[splitPrimer.length - 1];
-						String primerName = String.join("-", Arrays.copyOfRange(splitPrimer, 0, splitPrimer.length - 1));
-						if(!primers.containsKey(primerName)) {
-							HashMap<String, ArrayList<String>> list = new HashMap<>();
-							ArrayList<String> fList = new ArrayList<>();
-							ArrayList<String> rList = new ArrayList<>();
-							ArrayList<String> pList = new ArrayList<>();
-							if(direction.startsWith("F")) {
-								fList.add(direction);
-							}else if(direction.startsWith("R")) {
-								rList.add(direction);
-							}else if(direction.startsWith("P")) {
-								pList.add(direction);
-							}
-							list.put("F", fList);
-							list.put("R", rList);
-							list.put("P", pList);
-							primers.put(primerName, list);
-						}else {
-							if(direction.startsWith("F")) {
-								primers.get(primerName).get("F").add(direction);
-							}else if(direction.startsWith("R")) {
-								primers.get(primerName).get("R").add(direction);
-							}else if(direction.startsWith("P")) {
-								primers.get(primerName).get("P").add(direction);
-							}
-						}
-					}
-
-					// Check if primer pairs are present
-					for(String primerKey : primers.keySet()) {
-						HashMap<String, ArrayList<String>> primersList = primers.get(primerKey);
-						if(!primersList.get("F").isEmpty() && !primersList.get("R").isEmpty()) { // Have both F and R primers
-							for(String fPrimer : primersList.get("F")) {
-								for(String rPrimer : primersList.get("R")) {
-									String fwdPrimer = primerKey + "-" + fPrimer;
-									String revPrimer = primerKey + "-" + rPrimer;
-
-									for(BlastResult fResult : sample.getBlastResults().get(fwdPrimer)) {
-										for(BlastResult rResult : sample.getBlastResults().get(revPrimer)) {
-
-											// If this pair of primers are not on the same contig, skip and keep going
-											if(!fResult.getQueryID().equals(rResult.getQueryID())) {
-												continue;
-											}
-											int startF = fResult.getStart();
-											int endF = fResult.getEnd();
-											int startR = rResult.getStart();
-											int endR = rResult.getEnd();
-											Integer[] positions = {startF, endF, startR, endR};
-											int start = Collections.min(Arrays.asList(positions));
-											int end = Collections.max(Arrays.asList(positions));
-											String location = start + "-" + end;
-											String size = String.valueOf(end - start + 1);
-											String contig = fResult.getQueryID();
-											String contigDescription = getContigDescription(sampleDict, key, contig);
-											String fwdMismatch = String.valueOf(fResult.getMismatch());
-											String revMismatch = String.valueOf(rResult.getMismatch());
-											String fwdEndMismatch = String.valueOf(fResult.getLength() - primerDict.get(fResult.getSubjectID()).length());
-											String revEndMismatch = String.valueOf(rResult.getLength() - primerDict.get(rResult.getSubjectID()).length());
-
-											// If a qPCR probe exists
-											if(qPCR) {
-												if(!primersList.get("P").isEmpty()) {
-													for(String pPrimer : primersList.get("P")) {
-														String probePrimer = primerKey + "-" + pPrimer;
-														for(BlastResult pResult : sample.getBlastResults().get(probePrimer)) {
-															if(!pResult.getQueryID().equals(fResult.getQueryID())) {
-																continue;
-															}
-															int startP = pResult.getStart();
-															int endP = pResult.getEnd();
-															String locationP = startP + "-" + endP;
-															String sizeP = String.valueOf(endP - startP + 1);
-															String pMismatch = String.valueOf(pResult.getMismatch());
-
-															// Probe only valid if it is contained within the surrounding amplicon
-															if(startP >= start && endP <= end) {
-																writer.write(String.join("\t", key, primerKey, location, size, contig,
-																		contigDescription, fwdPrimer, revPrimer, fwdMismatch, revMismatch,
-																		fwdEndMismatch, revEndMismatch, probePrimer, locationP, sizeP, pMismatch));
-																writer.write(System.lineSeparator());
-															}
-
-														}
-													}
-												}
-											}else {
-												writer.write(String.join("\t", key, primerKey, location, size, contig, contigDescription,
-														fwdPrimer, revPrimer, fwdMismatch, revMismatch, fwdEndMismatch, revEndMismatch));
-												writer.write(System.lineSeparator());
-											}
-										}
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-		}catch(IOException e) {
-			throw new IllegalStateException("Unable to write consolidated report: " + consolidatedReport, e);
-		}
-	}
-
-	public static void makeConsolidatedReport(Path consolidatedDir, String sep, HashMap<String, Sample> sampleDict,
-	                                          HashMap<String, String> primerDict, TextArea outputField) {
-		makeConsolidatedReport(consolidatedDir, sep, sampleDict, primerDict);
-	}
-
-	public static void makeConsolidatedReport(File consolidatedDir, String sep, HashMap<String, Sample> sampleDict,
-	                                          HashMap<String, String> primerDict, TextArea outputField) {
-		makeConsolidatedReport(consolidatedDir.toPath(), sep, sampleDict, primerDict, outputField);
-	}
-
-	public static String getContigDescription(HashMap<String, Sample> sampleDict, String sampleName, String contig) {
-		Sample sample = sampleDict.get(sampleName);
-		HashMap<String, String> contigDict = sample.getContigDict();
-		if(contigDict.containsKey(contig)) {
-			return contigDict.get(contig);
-		}
-		return "";
 	}
 
 	public static void makeQALog(File qLog, String version, File outputDir, File inputFile, File primerFile, File BBToolsLocation, File BLASTLocation) {
@@ -673,10 +323,6 @@ public class Methods {
 		}catch(IOException e) {
 			throw new IllegalStateException("Unable to write QA log: " + qLog, e);
 		}
-	}
-
-	public static boolean checkVersion() {
-		return false;
 	}
 
 	// Make a synthetic gel image of what the PCR would look like

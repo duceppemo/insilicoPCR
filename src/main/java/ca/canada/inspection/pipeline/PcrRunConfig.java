@@ -1,5 +1,6 @@
 package ca.canada.inspection.pipeline;
 
+import ca.canada.inspection.pcr.AmpliconOptions;
 import javafx.scene.control.ProgressBar;
 import javafx.scene.control.TextArea;
 
@@ -10,8 +11,13 @@ public record PcrRunConfig(
         Path outDir,
         Path primerFile,
         int threads,
-        int mismatches,
         double evalue,
+        AmpliconOptions ampliconOptions,
         TextArea outputField,
         ProgressBar blastProgress
-) {}
+) {
+    /** Allowed primer mismatches; also used as BBDuk {@code hdist} when baiting reads. */
+    public int mismatches() {
+        return ampliconOptions.maxTotalMismatches();
+    }
+}

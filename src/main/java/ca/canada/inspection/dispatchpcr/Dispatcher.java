@@ -12,7 +12,7 @@ import org.apache.commons.cli.ParseException;
 
 public final class Dispatcher {
 
-    public static final String VERSION = "0.6.1";
+    public static final String VERSION = "0.7.0";
 
     /**
      * Compatibility alias for older code paths and release branches.
@@ -66,15 +66,24 @@ public final class Dispatcher {
         options.addOption(Option.builder("t").longOpt("threads").hasArg().argName("n")
                 .desc("Number of worker threads; default: available processors").build());
         options.addOption(Option.builder("m").longOpt("mismatches").hasArg().argName("n")
-                .desc("Allowed primer mismatches; default: 0").build());
+                .desc("Allowed mismatches+indels per primer (unaligned 3' bases count); default: 0").build());
         options.addOption(Option.builder("e").longOpt("evalue").hasArg().argName("value")
                 .desc("blastn e-value; default: 1e5").build());
+        options.addOption(Option.builder("l").longOpt("max-length").hasArg().argName("bp")
+                .desc("Maximum amplicon length in bp, 0 = unlimited; default: 5000").build());
+        options.addOption(Option.builder().longOpt("min-length").hasArg().argName("bp")
+                .desc("Minimum amplicon length in bp; default: 0").build());
+        options.addOption(Option.builder().longOpt("3p-window").hasArg().argName("n")
+                .desc("Bases at the primer 3' end checked with the weighted 3' penalty; default: 5").build());
+        options.addOption(Option.builder().longOpt("3p-penalty").hasArg().argName("score")
+                .desc("Maximum weighted 3'-end penalty (mismatch: 3 at terminus, 2 at -1/-2, 1 beyond;"
+                        + " +1 if a G/C pair is broken near the terminus; +1 for indels); default: 0").build());
         options.addOption(Option.builder("h").longOpt("help").desc("Print help and usage").build());
         options.addOption(Option.builder("v").longOpt("version").desc("Print version").build());
         return options;
     }
 
     private static void printHelp(HelpFormatter formatter, Options options) {
-        formatter.printHelp("java -jar insilicoPCR.jar -i <input> -o <output> -p <primers> [-t n] [-m n] [-e value]", options);
+        formatter.printHelp("java -jar insilicoPCR.jar -i <input> -o <output> -p <primers> [-t n] [-m n] [-e value] [-l bp]", options);
     }
 }

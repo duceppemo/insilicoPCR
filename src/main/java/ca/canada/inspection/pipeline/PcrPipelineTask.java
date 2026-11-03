@@ -2,6 +2,8 @@ package ca.canada.inspection.pipeline;
 
 import ca.canada.inspection.insilicopcr.Methods;
 import ca.canada.inspection.insilicopcr.Sample;
+import ca.canada.inspection.pcr.BlastReports;
+import ca.canada.inspection.pcr.ConsolidatedReport;
 import javafx.concurrent.Task;
 
 import java.io.IOException;
@@ -80,11 +82,11 @@ public final class PcrPipelineTask extends Task<Void> {
 
             Methods.addContigDict(sampleDict);
             Methods.logMessage(config.outputField(), "Completed Contig Dictionary");
-            Methods.parseBlastOutput(directories.consolidatedDir(), directories.detailedDir(), primerDict, config.mismatches(), sampleDict);
+            BlastReports.attachHits(directories.detailedDir(), sampleDict, primerDict, config.ampliconOptions());
             Methods.logMessage(config.outputField(), "Parsed BLAST output");
             updateProgress(11, 13);
 
-            Methods.makeConsolidatedReport(directories.consolidatedDir(), java.io.File.separator, sampleDict, primerDict);
+            ConsolidatedReport.write(directories.consolidatedDir(), sampleDict, primerDict, config.ampliconOptions());
             Methods.logMessage(config.outputField(), "Created Consolidated Report");
             updateProgress(12, 13);
 

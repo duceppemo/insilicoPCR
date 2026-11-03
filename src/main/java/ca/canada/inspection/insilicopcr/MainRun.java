@@ -2,6 +2,7 @@ package ca.canada.inspection.insilicopcr;
 
 import ca.canada.inspection.dispatchpcr.Dispatcher;
 import ca.canada.inspection.insilicopcr.gel.PaginatedGelViewer;
+import ca.canada.inspection.pcr.AmpliconOptions;
 import ca.canada.inspection.insilicopcr.ui.PathFieldBinder;
 import ca.canada.inspection.pipeline.DependencyContext;
 import ca.canada.inspection.pipeline.ExternalProcessTracker;
@@ -85,8 +86,9 @@ public class MainRun extends Application {
         var threadField = addThreadControls(pane);
         var mismatchField = addMismatchControls(pane);
         var evalueField = addEvalueControls(pane);
+        var maxLengthField = addMaxLengthControls(pane);
         addOutputLog(pane);
-        addBottomControls(pane, alertText, threadField, mismatchField, evalueField);
+        addBottomControls(pane, alertText, threadField, mismatchField, evalueField, maxLengthField);
 
         scene = new Scene(pane, 800, 500);
         primaryStage.setScene(scene);
@@ -209,6 +211,21 @@ public class MainRun extends Application {
         return field;
     }
 
+    private TextField addMaxLengthControls(GridPane pane) {
+        var prompt = promptText("Max amplicon (bp)");
+        prompt.setTextAlignment(TextAlignment.LEFT);
+        var box = new HBox(10, prompt);
+        box.setAlignment(Pos.TOP_LEFT);
+        pane.add(box, 38, 19, 6, 1);
+
+        var field = new TextField(String.valueOf(AmpliconOptions.DEFAULT_MAX_AMPLICON_LENGTH));
+        field.setTooltip(new Tooltip("Primer pairs farther apart than this are not reported. Use 0 to disable the limit."));
+        field.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
+        field.setEditable(true);
+        pane.add(field, 44, 18, 4, 3);
+        return field;
+    }
+
     private void addOutputLog(GridPane pane) {
         outputField.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
         outputField.setEditable(false);
@@ -219,7 +236,8 @@ public class MainRun extends Application {
                                    Text alertText,
                                    ComboBox<Integer> threadField,
                                    ComboBox<Integer> mismatchField,
-                                   TextField evalueField) {
+                                   TextField evalueField,
+                                   TextField maxLengthField) {
         alertText.setStyle("-fx-fill: red;");
 
         mainProgress = new ProgressBar();
@@ -243,7 +261,7 @@ public class MainRun extends Application {
 
         var runButton = new Button("Run");
         runButton.setMaxWidth(Double.MAX_VALUE);
-        runButton.setOnAction(event -> startRun(alertText, threadField, mismatchField, evalueField));
+        runButton.setOnAction(event -> startRun(alertText, threadField, mismatchField, evalueField, maxLengthField));
 
         var reportButton = new Button("Open Report TSV");
         reportButton.setMaxWidth(Double.MAX_VALUE);
@@ -266,10 +284,27 @@ public class MainRun extends Application {
     private void startRun(Text alertText,
                           ComboBox<Integer> threadField,
                           ComboBox<Integer> mismatchField,
-                          TextField evalueField) {
+                          TextField evalueField,
+                          TextField maxLengthField) {
         var validationMessage = InputValidator.validate(inputFile, outDir, primerFile);
         if (!validationMessage.isBlank()) {
             alertText.setText(validationMessage);
+            return;
+        }
+
+        AmpliconOptions ampliconOptions;
+        try {
+            int maxLength = Integer.parseInt(maxLengthField.getText().trim());
+            ampliconOptions = new AmpliconOptions(
+                    mismatchField.getSelectionModel().getSelectedItem(),
+                    AmpliconOptions.DEFAULT_THREE_PRIME_WINDOW,
+                    AmpliconOptions.DEFAULT_THREE_PRIME_PENALTY,
+                    AmpliconOptions.DEFAULT_FIVE_PRIME_TRUNCATION,
+                    AmpliconOptions.DEFAULT_MIN_AMPLICON_LENGTH,
+                    maxLength
+            );
+        } catch (IllegalArgumentException e) {
+            alertText.setText("Max amplicon length must be a whole number >= 0 (0 disables the limit).");
             return;
         }
 
@@ -287,8 +322,8 @@ public class MainRun extends Application {
                 outDir,
                 primerFile,
                 threadField.getSelectionModel().getSelectedItem(),
-                mismatchField.getSelectionModel().getSelectedItem(),
                 Double.parseDouble(evalueField.getText()),
+                ampliconOptions,
                 outputField,
                 blastProgress
         );

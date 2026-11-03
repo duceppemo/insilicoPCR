@@ -38,6 +38,16 @@ public final class PrimerService {
         return preparedPrimers;
     }
 
+    /** Validates and expands degenerate primers; shared with the GUI pipeline. */
+    public static Map<String, String> expand(Map<String, String> rawPrimers) {
+        return expandPrimers(rawPrimers);
+    }
+
+    /** Writes a primer FASTA file; shared with the GUI pipeline. */
+    public static void writeFasta(Path output, Map<String, String> primers) {
+        writePrimerDatabase(output, primers);
+    }
+
     private static Map<String, String> readFasta(Path file) {
         Objects.requireNonNull(file, "file");
         Map<String, String> fasta = new LinkedHashMap<>();

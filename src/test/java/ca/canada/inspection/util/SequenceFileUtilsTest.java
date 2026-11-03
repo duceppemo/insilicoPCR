@@ -67,4 +67,56 @@ class SequenceFileUtilsTest {
         assertEquals("lmono_EGDe", SequenceFileUtils.sampleName(Path.of("lmono_EGDe.fasta")));
         assertEquals("reads", SequenceFileUtils.sampleName(Path.of("reads.fq.gz")));
     }
+    @Test
+    void createSampleMapGroupsPairsAndSeparatesAssemblies() throws IOException {
+        write("genomeA.fasta", ">c1\nACGT\n");
+        write("run_1.fastq", "@r1\nACGT\n+\nIIII\n");
+        write("run_2.fastq", "@r1\nACGT\n+\nIIII\n");
+        write("notes.txt", "not a sequence file\n");
+
+        var samples = SequenceFileUtils.createSampleMap(dir);
+        assertEquals(java.util.Set.of("genomeA", "run"), samples.keySet());
+        assertEquals(2, samples.get("run").files().size());
+        assertEquals("fastq", samples.get("run").getFileType());
+        assertEquals("fasta", samples.get("genomeA").getFileType());
+    }
+
+    @Test
+    void createSampleMapAcceptsASingleFile() throws IOException {
+        Path file = write("solo.fasta", ">c1\nACGT\n");
+        var samples = SequenceFileUtils.createSampleMap(file);
+        assertEquals(java.util.Set.of("solo"), samples.keySet());
+    }
+
+    @Test
+    void looksLikeSequenceFileChecksContentNotJustExtension() throws IOException {
+        assertEquals(true, SequenceFileUtils.looksLikeSequenceFile(write("ok.fasta", ">c1\nACGT\n")));
+        assertEquals(true, SequenceFileUtils.looksLikeSequenceFile(write("ok.fastq", "@r1\nACGT\n")));
+        assertEquals(false, SequenceFileUtils.looksLikeSequenceFile(write("bad.fasta", "plain text\n")));
+        assertEquals(false, SequenceFileUtils.looksLikeSequenceFile(write("empty.fasta", "")));
+        assertEquals(false, SequenceFileUtils.looksLikeSequenceFile(write("wrong.txt", ">c1\nACGT\n")));
+        assertEquals(false, SequenceFileUtils.looksLikeSequenceFile(dir)); // a directory
+    }
+
+    @Test
+    void gzippedSequenceFilesAreRecognized() throws IOException {
+        Path gz = dir.resolve("reads.fastq.gz");
+        try (var out = new java.util.zip.GZIPOutputStream(Files.newOutputStream(gz))) {
+            out.write("@r1\nACGT\n+\nIIII\n".getBytes());
+        }
+        assertEquals(true, SequenceFileUtils.looksLikeSequenceFile(gz));
+        assertEquals("fastq", SequenceFileUtils.fileType(gz));
+    }
+
+    @Test
+    void fileTypeClassifiesByExtension() {
+        assertEquals("fasta", SequenceFileUtils.fileType(Path.of("x.fna")));
+        assertEquals("fastq", SequenceFileUtils.fileType(Path.of("x.fq.gz")));
+        assertEquals("unknown", SequenceFileUtils.fileType(Path.of("x.txt")));
+    }
+
+    private Path write(String name, String content) throws IOException {
+        return Files.writeString(dir.resolve(name), content);
+    }
+
 }

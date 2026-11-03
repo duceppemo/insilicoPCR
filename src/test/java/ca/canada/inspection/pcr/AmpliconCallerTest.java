@@ -121,4 +121,25 @@ class AmpliconCallerTest {
         assertTrue(!amplicon.contains(90, 110));
         assertTrue(!amplicon.contains(590, 610));
     }
+    @Test
+    void sizeLimitsAreInclusiveAtTheBoundaries() {
+        // 500 bp product: accepted when max == 500 and when min == 500.
+        BlastResult forward = TestHits.plusHit("assay-F", "c", 101);
+        BlastResult reverse = TestHits.minusHit("assay-R", "c", 581);
+        assertEquals(500, AmpliconCaller.call(forward, reverse,
+                new AmpliconOptions(0, 0, 5, 0, 5, 500, 500)).orElseThrow().size());
+        assertTrue(AmpliconCaller.call(forward, reverse,
+                new AmpliconOptions(0, 0, 5, 0, 5, 501, 5000)).isEmpty());
+        assertTrue(AmpliconCaller.call(forward, reverse,
+                new AmpliconOptions(0, 0, 5, 0, 5, 0, 499)).isEmpty());
+    }
+
+    @Test
+    void crossedPrimersDoNotAmplify() {
+        // Minus-strand primer entirely upstream of the plus-strand primer.
+        BlastResult forward = TestHits.plusHit("assay-F", "c", 300);
+        BlastResult reverse = TestHits.minusHit("assay-R", "c", 250);
+        assertTrue(AmpliconCaller.call(forward, reverse, DEFAULTS).isEmpty());
+    }
+
 }

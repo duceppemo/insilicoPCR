@@ -69,6 +69,17 @@ would never form in a real reaction. Version 0.7.0 reports a pair only when:
   single 5'-proximal SNP, which used to cause false-negative primer hits
   for strain variants that real PCR amplifies without trouble.
 
+### Tests, coverage, and community files
+
+- Test suite grown from 0 to 105 unit tests with edge cases across the
+  analysis core, gel data model (lane ordering, size rounding, palette),
+  sample/file utilities (gzip detection, pair grouping heuristics),
+  BLAST report scanning, CLI option parsing and validation, and input
+  validation. Headless (non-GUI) line coverage is 45%; the amplicon
+  core classes sit at 86-100%.
+- Added CONTRIBUTING.md, CODE_OF_CONDUCT.md (Contributor Covenant 2.1),
+  and SECURITY.md (private vulnerability reporting via GitHub).
+
 ### Second review pass and probe model
 
 - Hydrolysis probes get their own mismatch budget (`--probe-mismatches`,

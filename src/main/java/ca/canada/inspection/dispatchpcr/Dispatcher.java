@@ -55,7 +55,8 @@ public final class Dispatcher {
         }
     }
 
-    private static Options options() {
+    /** Package-private for unit tests. */
+    static Options options() {
         Options options = new Options();
         options.addOption(Option.builder("i").longOpt("input").hasArg().argName("path")
                 .desc("Input file/directory containing .fasta/.fastq sequence(s)").build());

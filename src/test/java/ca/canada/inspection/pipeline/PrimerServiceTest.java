@@ -51,4 +51,48 @@ class PrimerServiceTest {
         primers.put(id, seq);
         return primers;
     }
+    @org.junit.jupiter.api.io.TempDir
+    java.nio.file.Path dir;
+
+    @Test
+    void loadAndPrepareReadsMultiLineFastaExpandsAndWritesDatabase() throws java.io.IOException {
+        java.nio.file.Path primerFile = java.nio.file.Files.writeString(dir.resolve("primers.fasta"),
+                ">assay-F\nACGT\nacgt\n\n>assay-R\nACRT\n");
+        java.nio.file.Path input = java.nio.file.Files.writeString(dir.resolve("in.fasta"), ">c\nACGT\n");
+        java.nio.file.Path out = dir.resolve("out");
+        var config = new PipelineConfig(input, out, primerFile, 1, 1e5,
+                ca.canada.inspection.pcr.AmpliconOptions.withMismatches(0), false);
+        var directories = PipelineDirectories.create(out);
+
+        Map<String, String> primers = new PrimerService().loadAndPrepare(config, directories);
+
+        assertEquals("ACGTACGT", primers.get("assay-F")); // lines joined, uppercased
+        assertEquals("ACAT", primers.get("assay-R_0"));   // R expanded to A/G
+        assertEquals("ACGT", primers.get("assay-R_1"));
+        String db = java.nio.file.Files.readString(directories.primerDatabase());
+        assertTrue(db.contains(">assay-R_0"));
+    }
+
+    @Test
+    void everyIupacCodeExpandsToItsBases() {
+        Map<String, char[]> expected = Map.ofEntries(
+                Map.entry("R", "AG".toCharArray()), Map.entry("Y", "TC".toCharArray()),
+                Map.entry("S", "GC".toCharArray()), Map.entry("W", "AT".toCharArray()),
+                Map.entry("K", "TG".toCharArray()), Map.entry("M", "AC".toCharArray()),
+                Map.entry("B", "TGC".toCharArray()), Map.entry("D", "ATG".toCharArray()),
+                Map.entry("H", "ATC".toCharArray()), Map.entry("V", "ACG".toCharArray()),
+                Map.entry("N", "ATCG".toCharArray()));
+        for (var entry : expected.entrySet()) {
+            Map<String, String> expanded = PrimerService.expand(map("x-F", "A" + entry.getKey()));
+            assertEquals(entry.getValue().length, expanded.size(), "code " + entry.getKey());
+        }
+        // Two Ns expand to 16 combinations.
+        assertEquals(16, PrimerService.expand(map("x-F", "NN")).size());
+    }
+
+    @Test
+    void blankSequencesAreRejected() {
+        assertThrows(RuntimeException.class, () -> PrimerService.expand(map("x-F", "   ")));
+    }
+
 }

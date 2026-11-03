@@ -129,4 +129,43 @@ class BlastResultThreePrimeTest {
         sb.setCharAt(index, replacement);
         return sb.toString();
     }
+    @Test
+    void edgeWindowsAndLegacyAliasesBehave() {
+        BlastResult hit = TestHits.plusHit("assay-F", "contig1", 100);
+        // Zero or negative window: nothing to check.
+        assertEquals(0, hit.threePrimeMismatches(0));
+        assertEquals(0, hit.threePrimePenalty(-1));
+        // Window larger than the primer: clamps to the whole primer.
+        assertEquals(0, hit.threePrimeMismatches(50));
+        // Legacy accessors used by older code paths.
+        assertEquals(hit.qstart(), hit.getStart());
+        assertEquals(hit.qend(), hit.getEnd());
+        assertEquals(hit.sseq(), hit.getSeq());
+        assertEquals("assay-F", hit.getSubjectID());
+        assertEquals("contig1", hit.getQueryID());
+        assertEquals("sample", hit.getName());
+        assertEquals(0, hit.getMismatch());
+        assertEquals(20, hit.getLength());
+    }
+
+    @Test
+    void mismatchedAlignmentStringsFallBackToUncoveredCountOnly() {
+        // qseq/sseq length mismatch (defensive): only the unaligned 3' bases count.
+        BlastResult hit = new BlastResult("s", "c", "assay-F", 1, 0, 101, 118, 1, 18,
+                20, 18, "ACGT", "ACGTACGT", TestHits.PRIMER_20);
+        assertEquals(2, hit.threePrimeMismatches(5));
+        assertTrue(hit.threePrimePenalty(5) >= 5); // terminal T (3) + position -1 G (2+1)
+    }
+
+    @Test
+    void minusStrandUncoveredEndsAreOrientedCorrectly() {
+        // Minus-strand hit covering primer bases 3..18 of 20: sstart=18, send=3.
+        String aligned = TestHits.PRIMER_20.substring(2, 18);
+        BlastResult hit = new BlastResult("s", "c", "assay-R", 0, 0, 101, 116, 18, 3,
+                20, 16, aligned, aligned, TestHits.PRIMER_20);
+        assertFalse(hit.isPlusStrand());
+        assertEquals(2, hit.threePrimeUncovered());
+        assertEquals(2, hit.fivePrimeUncovered());
+    }
+
 }

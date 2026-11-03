@@ -140,4 +140,49 @@ class ConsolidatedReportTest {
         assertEquals("report.tsv", first.getFileName().toString());
         assertEquals("report(1).tsv", second.getFileName().toString());
     }
+    @Test
+    void degeneratePrimerVariantsPairAcrossSuffixes() throws IOException {
+        Sample sample = new Sample();
+        sample.setName("sampleA");
+        sample.setFileType("fasta");
+        sample.addBlastResult("assay-F_0", TestHits.plusHit("assay-F_0", "contig1", 101));
+        sample.addBlastResult("assay-R_1", TestHits.minusHit("assay-R_1", "contig1", 581));
+        Map<String, Sample> samples = new HashMap<>(Map.of("sampleA", sample));
+        Map<String, String> primers = Map.of("assay-F_0", PRIMER_20, "assay-R_1", PRIMER_20);
+
+        Path report = ConsolidatedReport.write(tempDir, samples, primers, DEFAULTS);
+        List<String> lines = Files.readAllLines(report);
+        assertEquals(2, lines.size());
+        String[] row = lines.get(1).split("\t", -1);
+        assertEquals("assay", row[1]);
+        assertEquals("assay-F_0", row[6]);
+        assertEquals("assay-R_1", row[7]);
+    }
+
+    @Test
+    void nonConformingHitIdsAreSkippedInsteadOfAborting() throws IOException {
+        Sample sample = sampleWithHits();
+        sample.addBlastResult("plainname", TestHits.plusHit("plainname", "contig1", 900));
+        sample.addBlastResult("odd-X", TestHits.plusHit("odd-X", "contig1", 950));
+        Map<String, Sample> samples = new HashMap<>(Map.of("sampleA", sample));
+        Map<String, String> primers = Map.of("assay-F", PRIMER_20, "assay-R", PRIMER_20);
+
+        Path report = ConsolidatedReport.write(tempDir, samples, primers, DEFAULTS);
+        assertEquals(2, Files.readAllLines(report).size(), "only the valid assay row is expected");
+    }
+
+    @Test
+    void samplesWithoutHitsProduceNoRows() throws IOException {
+        Sample silent = new Sample();
+        silent.setName("silent");
+        silent.setFileType("fasta");
+        Map<String, Sample> samples = new HashMap<>(Map.of("silent", silent, "sampleA", sampleWithHits()));
+        Map<String, String> primers = Map.of("assay-F", PRIMER_20, "assay-R", PRIMER_20);
+
+        Path report = ConsolidatedReport.write(tempDir, samples, primers, DEFAULTS);
+        List<String> lines = Files.readAllLines(report);
+        assertEquals(2, lines.size());
+        assertTrue(lines.get(1).startsWith("sampleA\t"));
+    }
+
 }

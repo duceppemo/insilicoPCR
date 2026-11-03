@@ -23,7 +23,9 @@
 
 ## Overview
 
-**insilicoPCR** is a JavaFX desktop and command-line application that tests PCR and qPCR assays *in silico* against **genome assemblies (FASTA)** and **sequencing reads (FASTQ)**, using bundled **BBMap** and **NCBI BLAST+** runtimes. It reports only amplicons that could plausibly form in a real reaction: primer pairs must be convergent on opposite strands, within a configurable product size limit, and free of destabilizing 3'-end mismatches.
+**insilicoPCR** is a JavaFX desktop and command-line application that tests PCR and qPCR assays *in silico* against **genome assemblies (FASTA)** and **sequencing reads (FASTQ)**, using bundled **BBMap** and **NCBI BLAST+** runtimes. It reports only amplicons that could plausibly form in a real reaction: primer pairs must be convergent on opposite strands, within a configurable product size limit, and free of destabilizing 3'-end mismatches. Typical uses include validating a new assay design against reference genomes, checking **inclusivity** across target strains and **exclusivity** against near-neighbor species, predicting amplicon sizes, and troubleshooting assays that fail on particular isolates.
+
+*Keywords: in silico PCR · virtual PCR · electronic PCR (e-PCR) · qPCR · TaqMan probe · primer specificity · assay validation · inclusivity / exclusivity testing · amplicon prediction · primer mismatch analysis · BLAST · BBMap · molecular diagnostics · food safety · genomics*
 
 <p align="center">
   <img src="docs/assets/workflow.svg" alt="insilicoPCR workflow" width="100%">

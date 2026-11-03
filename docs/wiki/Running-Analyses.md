@@ -58,8 +58,11 @@ Standard PCR assays and qPCR/probe assays can be mixed in the same primer FASTA 
 | Parameter | Purpose |
 |---|---|
 | Threads | Number of worker threads |
-| Mismatches | Allowed primer mismatches |
+| Mismatches | Allowed mismatches + indels per primer (unaligned 3' bases count) |
 | E-value | BLASTN e-value threshold |
+| Max amplicon (bp) | Maximum amplicon length; 0 disables the limit (default 5000) |
+
+The CLI additionally exposes `--min-length`, `--3p-window`, and `--3p-penalty`; see [Amplicon Calling](Amplicon-Calling).
 
 ## Outputs
 

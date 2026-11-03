@@ -29,13 +29,13 @@
     <text x="112" y="150" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="72" font-weight="800" fill="#FFFFFF">insilicoPCR</text>
     <text x="116" y="202" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="28" font-weight="500" fill="#D1FAE5">In silico PCR &amp; qPCR for assemblies and reads</text>
     <text x="116" y="257" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="21" fill="#BAE6FD">Java • JavaFX • BBMap • BLAST+ • Windows • Linux</text>
-    <g font-family="Inter, Segoe UI, Arial, sans-serif" font-size="18" font-weight="700">
+    <g font-family="Inter, Segoe UI, Arial, sans-serif" font-size="18" font-weight="700" text-anchor="middle">
       <rect x="116" y="294" width="122" height="38" rx="19" fill="#14B8A6"/>
-      <text x="144" y="319" fill="#062F2B">Portable</text>
+      <text x="177" y="319" fill="#062F2B">Portable</text>
       <rect x="252" y="294" width="130" height="38" rx="19" fill="#38BDF8"/>
-      <text x="281" y="319" fill="#082F49">GUI + CLI</text>
+      <text x="317" y="319" fill="#082F49">GUI + CLI</text>
       <rect x="396" y="294" width="142" height="38" rx="19" fill="#A7F3D0"/>
-      <text x="424" y="319" fill="#064E3B">Open source</text>
+      <text x="467" y="319" fill="#064E3B">Open source</text>
     </g>
   </g>
 

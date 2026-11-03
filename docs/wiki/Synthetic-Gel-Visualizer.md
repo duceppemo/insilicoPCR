@@ -42,13 +42,7 @@ Always confirm important results in the detailed or consolidated report tables.
 
 The gel visualizer depends on the consolidated report.
 
-Because the consolidated report behaves differently in standard PCR and qPCR mode, the same limitation applies:
-
-- standard PCR assays should be run together
-- qPCR/probe assays should be run together
-- do not mix standard PCR assays and qPCR/probe assays in one primer file
-
-If a qPCR/probe run is used, a target is reported only when the forward primer, reverse primer, and probe are detected in the expected amplicon.
+The gel shows exactly what the consolidated report contains. For an assay that defines a `-P` probe, a band appears only when the probe was also found inside the amplicon; probe-less assays produce bands from their primer pair alone (mixed runs are supported since version 0.7.0).
 
 ## Limitations
 

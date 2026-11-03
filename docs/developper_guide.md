@@ -1,101 +1,10 @@
-# insilicoPCR User Guide
+# insilicoPCR Developer Guide
 
-## Installation
+This page has been superseded by the GitHub Wiki, which is the maintained developer documentation:
 
-No installation is required.
+- [Developer Guide](https://github.com/duceppemo/insilicoPCR/wiki/Developer-Guide)
+- [Architecture](https://github.com/duceppemo/insilicoPCR/wiki/Architecture)
+- [Build System](https://github.com/duceppemo/insilicoPCR/wiki/Build-System)
+- [Release Pipeline](https://github.com/duceppemo/insilicoPCR/wiki/Release-Pipeline)
 
-Extract the release archive and run:
-
-Linux
-
-```
-./run.sh
-```
-
-Windows
-
-```
-run.bat
-```
-
-The application automatically detects the bundled Java runtime, JavaFX, BLAST+, and BBMap.
-
----
-
-## Input Files
-
-Supported formats
-
-* FASTA
-* FASTQ
-* gzipped FASTA
-* gzipped FASTQ
-
-Primer files may contain degenerate bases using IUPAC notation.
-
----
-
-## Running Analyses
-
-### Genome assemblies
-
-Select one or more FASTA files.
-
-### Raw sequencing reads
-
-Select paired or single FASTQ files.
-
-Assembly will be performed automatically when required.
-
----
-
-## Output
-
-The application produces
-
-* PCR product table
-* Summary report
-* BLAST results
-* Amplicon sequences
-* Virtual gel image
-
----
-
-## Command Line
-
-Example
-
-```
-java -jar insilicoPCR.jar \
-    --primers primers.csv \
-    --input genomes \
-    --output results
-```
-
-Use
-
-```
---help
-```
-
-to display all available options.
-
----
-
-## Troubleshooting
-
-### BLAST not found
-
-Verify the bundled runtime directory contains the BLAST executables.
-
-### Java runtime not found
-
-Ensure the bundled JDK is located inside the release package.
-
-### Large datasets
-
-Allocate additional memory using
-
-```
--Xmx16G
-```
+A source-controlled mirror of the Wiki lives in [`docs/wiki/`](wiki/).

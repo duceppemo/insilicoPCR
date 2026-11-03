@@ -49,6 +49,21 @@ would never form in a real reaction. Version 0.7.0 reports a pair only when:
 - `--3p-window <n>` (default 5), `--3p-penalty <score>` (default 0)
 - GUI gains a "Max amplicon (bp)" field.
 
+### Review-pass fixes
+
+- Amplicon coordinates now include primer bases BLAST left unaligned at the
+  5' end, so `GenomeLocation`/`AmpliconSize` always reflect the full primer
+  footprint (previously up to 2 bp short per primer).
+- Primer IDs are validated when the primer file is loaded: an ID that does
+  not follow `<assay>-F/-R/-P` fails fast with a clear message instead of
+  either aborting after the BLAST stage or being silently unreportable.
+- The GUI validates the E-value (and max amplicon length) before switching
+  into the running state, so a typo can no longer freeze the window, and the
+  Mismatches selector gained a tooltip explaining the 0.7.0 semantics.
+- BLAST reports with no matching sample in the run now print a warning
+  instead of being silently ignored; CI fails if the coverage report is
+  missing.
+
 ### Internals and quality
 
 - The GUI and CLI now share one analysis core (`ca.canada.inspection.pcr`):

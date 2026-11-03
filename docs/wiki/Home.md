@@ -4,7 +4,7 @@ Welcome to the insilicoPCR Wiki.
 
 This is the detailed documentation for users and developers. The repository README is intentionally compact; the Wiki should be the main manual for installing, running, troubleshooting, and developing the application.
 
-> This `docs/wiki/` directory is a source-controlled mirror of the GitHub Wiki content. Once the GitHub Wiki is initialized, these pages can be copied or pushed into the `insilicoPCR.wiki` repository.
+> This `docs/wiki/` directory is a source-controlled mirror of the GitHub Wiki content. After editing pages here, publish them with `scripts/docs/publish-wiki.sh` (see [Publishing to GitHub Wiki](Publishing-to-GitHub-Wiki)).
 
 ## Getting Started
 
@@ -14,6 +14,7 @@ This is the detailed documentation for users and developers. The repository READ
 
 ## User Guide
 
+- [User Guide](User-Guide)
 - [GUI Overview](GUI-Overview)
 - [Running Analyses](Running-Analyses)
 - [Primer FASTA Format](Primer-FASTA-Format)

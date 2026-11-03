@@ -56,6 +56,7 @@ jobs:
         run: |
           chmod +x mvnw
           ./mvnw --batch-mode test
+          test -f target/site/jacoco/jacoco.xml || { echo "JaCoCo report missing"; exit 1; }
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4

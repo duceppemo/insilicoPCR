@@ -26,6 +26,9 @@ public final class BlastReports {
             String sampleName = report.getFileName().toString().replaceFirst("\\.tsv$", "");
             Sample sample = samples.get(sampleName);
             if (sample == null) {
+                // Output directories may be reused across runs, so stale reports from
+                // other sample sets are expected; still say so instead of hiding it.
+                System.err.println("Warning: ignoring BLAST report with no matching sample in this run: " + report);
                 continue;
             }
             parseSingleReport(report, sampleName, sample, primers, options);

@@ -67,14 +67,14 @@ The input can be one sequence file or a directory containing sequence files.
 
 The primer file must be a FASTA file using the special primer nomenclature described in [Primer FASTA Format](Primer-FASTA-Format).
 
-## Standard PCR and qPCR mode
+## Standard PCR and qPCR assays
 
-Run standard PCR assays and qPCR/probe assays separately.
+Standard PCR and qPCR/probe assays can be mixed in the same primer FASTA file (since version 0.7.0); the probe requirement is applied per assay.
 
-- Standard PCR assays use `-F` and `-R` entries.
-- qPCR/probe assays use `-F`, `-R`, and `-P` entries.
+- Standard PCR assays use `-F` and `-R` entries and are reported on their primer pair alone.
+- qPCR/probe assays use `-F`, `-R`, and `-P` entries and are reported only when the probe also hits inside the amplicon.
 
-Do not mix assays with probes and assays without probes in the same primer FASTA file.
+See [Standard PCR vs qPCR](Standard-PCR-vs-qPCR) and [Amplicon Calling](Amplicon-Calling).
 
 ## Outputs
 

@@ -9,6 +9,7 @@
 
 ## User Guide
 
+- [User Guide](User-Guide)
 - [GUI Overview](GUI-Overview)
 - [Running Analyses](Running-Analyses)
 - [Primer FASTA Format](Primer-FASTA-Format)

@@ -33,6 +33,14 @@ class PrimerServiceTest {
     }
 
     @Test
+    void nonConformingPrimerIdsAreRejectedAtLoadTime() {
+        assertThrows(RuntimeException.class, () -> PrimerService.expand(map("16S_27F", "ACGT")));   // no dash
+        assertThrows(RuntimeException.class, () -> PrimerService.expand(map("assay-fwd", "ACGT"))); // bad type char
+        assertThrows(RuntimeException.class, () -> PrimerService.expand(map("-F", "ACGT")));        // empty assay name
+        assertThrows(RuntimeException.class, () -> PrimerService.expand(map("assay-", "ACGT")));    // dash at end
+    }
+
+    @Test
     void invalidCharactersAreRejected() {
         assertThrows(RuntimeException.class, () -> PrimerService.expand(map("assay-F", "ACGU")));
         assertThrows(RuntimeException.class, () -> PrimerService.expand(map("assay-F", "ACG T")));

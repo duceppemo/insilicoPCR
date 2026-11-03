@@ -190,6 +190,9 @@ public class MainRun extends Application {
         pane.add(box, 38, 10, 5, 1);
 
         var field = new ComboBox<Integer>();
+        field.setTooltip(new Tooltip("Allowed mismatches + indels per primer. Bases BLAST leaves unaligned at the "
+                + "primer 3' end also count. Independently, the last 5 bases of each primer must match perfectly "
+                + "(adjustable with --3p-window/--3p-penalty on the command line)."));
         field.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
         field.getItems().addAll(0, 1, 2, 3);
         field.getSelectionModel().selectFirst();
@@ -292,6 +295,19 @@ public class MainRun extends Application {
             return;
         }
 
+        // Validate every typed value BEFORE touching any UI state, so a bad entry
+        // cannot leave the window stuck in the "running" state.
+        double evalue;
+        try {
+            evalue = Double.parseDouble(evalueField.getText().trim());
+            if (!(evalue > 0.0)) {
+                throw new NumberFormatException();
+            }
+        } catch (NumberFormatException e) {
+            alertText.setText("E-value must be a number greater than 0, e.g. 1e5.");
+            return;
+        }
+
         AmpliconOptions ampliconOptions;
         try {
             int maxLength = Integer.parseInt(maxLengthField.getText().trim());
@@ -322,7 +338,7 @@ public class MainRun extends Application {
                 outDir,
                 primerFile,
                 threadField.getSelectionModel().getSelectedItem(),
-                Double.parseDouble(evalueField.getText()),
+                evalue,
                 ampliconOptions,
                 outputField,
                 blastProgress

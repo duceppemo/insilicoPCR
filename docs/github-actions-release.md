@@ -1,83 +1,27 @@
 # GitHub Actions CI/CD for portable releases
 
-This repository is configured to build and publish portable ZIP releases only:
+> Parts of this page previously described an older flow where CI downloaded BBMap/BLAST at build time. That is no longer the case: the runtime tools are committed under `runtime/` (via Git LFS) and CI only validates their presence. See [release-process.md](release-process.md) and the Wiki [Release Pipeline](https://github.com/duceppemo/insilicoPCR/wiki/Release-Pipeline) page.
 
-- `insilicoPCR-<version>-linux-x64.zip`
-- `insilicoPCR-<version>-windows-x64.zip`
-- matching `.sha256` checksum files
+The workflow is defined in `.github/workflows/ci-portable-release.yml` and runs on:
 
-It intentionally does **not** publish `.exe`, `.msi`, `.dmg`, `.deb`, or `.rpm` installers.
-
-## Workflows
-
-The workflow is defined in:
-
-```text
-.github/workflows/ci-portable-release.yml
-```
-
-It runs on:
-
-- pushes to `main` or `master`
-- pull requests
-- manual `workflow_dispatch`
-- version tags matching `v*`
-
-For normal pushes and pull requests, it builds Linux and Windows ZIPs and stores them as workflow artifacts.
-For tags, it also creates or updates a GitHub Release and uploads only the ZIP/checksum artifacts.
-
-## Runtime dependencies
-
-The workflow downloads runtime dependencies during CI, so large third-party binaries are not committed to Git:
-
-```text
-runtime/common/bbmap/
-runtime/linux/blast/
-runtime/windows/blast/
-```
-
-Default URLs are defined in:
-
-```text
-scripts/ci/fetch-runtime-deps-linux.sh
-scripts/ci/fetch-runtime-deps-windows.ps1
-```
-
-You can override them with repository variables or workflow environment variables:
-
-```text
-BBMAP_URL
-BLAST_LINUX_URL
-BLAST_WINDOWS_URL
-BLAST_BASE_URL
-```
-
-Use explicit `BLAST_LINUX_URL` and `BLAST_WINDOWS_URL` if you want fully pinned, reproducible dependency versions.
+- pushes to `master` and pull requests: runs the unit tests with coverage (uploaded to Codecov), builds the Linux and Windows portable ZIPs, and stores them as workflow artifacts
+- manual `workflow_dispatch` with a custom version string
+- version tags matching `v*`: additionally publishes a GitHub Release with the ZIPs and `.sha256` checksum files (archived on Zenodo with a DOI)
 
 ## Creating a release
 
-Push a version tag:
-
 ```bash
-git tag v0.6.0
-git push origin v0.6.0
+git tag v0.7.0
+git push origin v0.7.0
 ```
 
 The workflow publishes:
 
 ```text
-insilicoPCR-0.6.0-linux-x64.zip
-insilicoPCR-0.6.0-linux-x64.sha256
-insilicoPCR-0.6.0-windows-x64.zip
-insilicoPCR-0.6.0-windows-x64.sha256
+insilicoPCR-0.7.0-linux-x64.zip
+insilicoPCR-0.7.0-linux-x64.sha256
+insilicoPCR-0.7.0-windows-x64.zip
+insilicoPCR-0.7.0-windows-x64.sha256
 ```
 
-## Manual test build
-
-From GitHub, open:
-
-```text
-Actions → CI and portable releases → Run workflow
-```
-
-This creates workflow artifacts without requiring a tag.
+Only portable ZIPs are published — no `.exe`, `.msi`, `.dmg`, `.deb`, or `.rpm` installers.

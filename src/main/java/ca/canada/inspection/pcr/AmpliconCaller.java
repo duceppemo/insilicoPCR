@@ -40,8 +40,12 @@ public final class AmpliconCaller {
             return Optional.empty();
         }
 
-        int start = rightExtending.qstart();
-        int end = leftExtending.qend();
+        // The full primer is incorporated into the product, so extend the alignment
+        // bounds by any 5' bases BLAST left unaligned (clamped at the contig start;
+        // the contig end is unknown here, which only matters for a primer hanging
+        // off the final bases of a contig).
+        int start = Math.max(1, rightExtending.qstart() - rightExtending.fivePrimeUncovered());
+        int end = leftExtending.qend() + leftExtending.fivePrimeUncovered();
         int size = end - start + 1;
 
         if (size < options.minAmpliconLength()) {
@@ -58,8 +62,10 @@ public final class AmpliconCaller {
      * A predicted PCR product.
      *
      * @param contig        contig/sequence the product sits on
-     * @param start         1-based leftmost template position (5' end of the plus-strand primer)
-     * @param end           1-based rightmost template position (5' end of the minus-strand primer)
+     * @param start         1-based leftmost template position (5' terminus of the plus-strand
+     *                      primer, including any 5' bases BLAST left unaligned)
+     * @param end           1-based rightmost template position (5' terminus of the minus-strand
+     *                      primer, including any 5' bases BLAST left unaligned)
      * @param forwardStrand '+' when the forward primer matches the plus strand, '-' otherwise
      */
     public record Amplicon(String contig, int start, int end, char forwardStrand) {

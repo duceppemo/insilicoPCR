@@ -87,6 +87,7 @@ public final class PrimerService {
         Map<String, String> expandedPrimers = new LinkedHashMap<>();
         for (Map.Entry<String, String> entry : primers.entrySet()) {
             String id = entry.getKey();
+            validatePrimerId(id);
             String sequence = normalizePrimerSequence(id, entry.getValue());
             List<String> expanded = expandDegenerateBases(sequence);
 
@@ -99,6 +100,20 @@ public final class PrimerService {
             }
         }
         return expandedPrimers;
+    }
+
+    /**
+     * Fails fast on primer IDs that the report writer cannot assign to an assay.
+     * Without this, a bad ID would only surface after the whole BLAST stage, or
+     * worse, silently never be reported.
+     */
+    private static void validatePrimerId(String id) {
+        int lastDash = id.lastIndexOf('-');
+        boolean valid = lastDash > 0 && lastDash < id.length() - 1
+                && (id.charAt(lastDash + 1) == 'F' || id.charAt(lastDash + 1) == 'R' || id.charAt(lastDash + 1) == 'P');
+        if (!valid) {
+            throw new PipelineException("Primer ID must follow the <assay>-F / <assay>-R / <assay>-P naming convention: " + id);
+        }
     }
 
     private static String normalizePrimerSequence(String id, String sequence) {

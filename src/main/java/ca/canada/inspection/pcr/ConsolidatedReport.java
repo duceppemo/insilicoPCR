@@ -10,7 +10,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -106,7 +105,7 @@ public final class ConsolidatedReport {
             boolean probeRequired = assaysWithProbe.contains(assayName);
             for (String forwardPrimer : group.forward) {
                 for (String reversePrimer : group.reverse) {
-                    writePrimerPairResults(writer, sampleName, sample, assayName, group,
+                    writePrimerPairResults(writer, sampleName, sample, blastResults, assayName, group,
                             forwardPrimer, reversePrimer, options, probeRequired, probeColumns);
                 }
             }
@@ -114,11 +113,11 @@ public final class ConsolidatedReport {
     }
 
     private static void writePrimerPairResults(BufferedWriter writer, String sampleName, Sample sample,
+                                               Map<String, List<BlastResult>> blastResults,
                                                String assayName, PrimerGroup group, String forwardPrimer,
                                                String reversePrimer, AmpliconOptions options,
                                                boolean probeRequired, boolean probeColumns)
             throws IOException {
-        Map<String, List<BlastResult>> blastResults = sample.blastResults();
         for (BlastResult forwardHit : blastResults.getOrDefault(forwardPrimer, List.of())) {
             for (BlastResult reverseHit : blastResults.getOrDefault(reversePrimer, List.of())) {
                 Amplicon amplicon = AmpliconCaller.call(forwardHit, reverseHit, options).orElse(null);
@@ -143,7 +142,7 @@ public final class ConsolidatedReport {
                 );
 
                 if (probeRequired) {
-                    writeProbeRows(writer, sample, assayName, group, amplicon, baseColumns);
+                    writeProbeRows(writer, blastResults, group, amplicon, baseColumns);
                 } else {
                     List<String> columns = new ArrayList<>(baseColumns);
                     if (probeColumns) {
@@ -162,9 +161,9 @@ public final class ConsolidatedReport {
         return hit.mismatch() + hit.gaps() + hit.threePrimeUncovered();
     }
 
-    private static void writeProbeRows(BufferedWriter writer, Sample sample, String assayName, PrimerGroup group,
-                                       Amplicon amplicon, List<String> baseColumns) throws IOException {
-        Map<String, List<BlastResult>> blastResults = sample.blastResults();
+    private static void writeProbeRows(BufferedWriter writer, Map<String, List<BlastResult>> blastResults,
+                                       PrimerGroup group, Amplicon amplicon, List<String> baseColumns)
+            throws IOException {
         for (String probeId : group.probe) {
             for (BlastResult probeHit : blastResults.getOrDefault(probeId, List.of())) {
                 if (!probeHit.queryID().equals(amplicon.contig())) {
@@ -195,18 +194,22 @@ public final class ConsolidatedReport {
     private static Map<String, PrimerGroup> groupByAssay(Iterable<String> primerIds) {
         Map<String, PrimerGroup> groups = new TreeMap<>();
         for (String primerId : primerIds) {
+            // IDs are validated at load time (PrimerService); skip rather than
+            // abort mid-write if something nonconforming slips through anyway.
             int lastDash = primerId.lastIndexOf('-');
             if (lastDash <= 0 || lastDash == primerId.length() - 1) {
-                throw new IllegalArgumentException("Primer ID must end with -F, -R, or -P: " + primerId);
+                continue;
             }
             String assayName = primerId.substring(0, lastDash);
             char type = primerId.charAt(lastDash + 1);
+            if (type != 'F' && type != 'R' && type != 'P') {
+                continue;
+            }
             PrimerGroup group = groups.computeIfAbsent(assayName, ignored -> new PrimerGroup());
             switch (type) {
                 case 'F' -> group.forward.add(primerId);
                 case 'R' -> group.reverse.add(primerId);
-                case 'P' -> group.probe.add(primerId);
-                default -> throw new IllegalArgumentException("Primer ID must end with -F, -R, or -P: " + primerId);
+                default -> group.probe.add(primerId);
             }
         }
         return groups;

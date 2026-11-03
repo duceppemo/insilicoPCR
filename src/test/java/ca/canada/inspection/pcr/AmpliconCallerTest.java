@@ -4,7 +4,6 @@ import ca.canada.inspection.insilicopcr.BlastResult;
 import ca.canada.inspection.pcr.AmpliconCaller.Amplicon;
 import org.junit.jupiter.api.Test;
 
-import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -90,6 +89,28 @@ class AmpliconCallerTest {
         BlastResult forward = TestHits.plusHit("assay-F", "contig1", 101);
         BlastResult reverse = TestHits.minusHit("assay-R", "contig1", 111);
         assertEquals(30, AmpliconCaller.call(forward, reverse, DEFAULTS).orElseThrow().size());
+    }
+
+    @Test
+    void fivePrimeTruncatedHitsExtendToTheFullPrimerFootprint() {
+        // Forward alignment covers primer 3..20 (2 bp unaligned at the 5' end),
+        // starting at template position 103: the real product still starts at 101
+        // because the whole primer is incorporated into the amplicon.
+        BlastResult forward = TestHits.truncatedPlusHit("assay-F", "contig1", 103, 3, 20, TestHits.PRIMER_20);
+        BlastResult reverse = TestHits.minusHit("assay-R", "contig1", 581);
+
+        AmpliconCaller.Amplicon amplicon = AmpliconCaller.call(forward, reverse, DEFAULTS).orElseThrow();
+        assertEquals(101, amplicon.start());
+        assertEquals(600, amplicon.end());
+        assertEquals(500, amplicon.size());
+    }
+
+    @Test
+    void fivePrimeExtensionIsClampedAtTheContigStart() {
+        BlastResult forward = TestHits.truncatedPlusHit("assay-F", "contig1", 2, 3, 20, TestHits.PRIMER_20);
+        BlastResult reverse = TestHits.minusHit("assay-R", "contig1", 481);
+
+        assertEquals(1, AmpliconCaller.call(forward, reverse, DEFAULTS).orElseThrow().start());
     }
 
     @Test

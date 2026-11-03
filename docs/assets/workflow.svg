@@ -110,8 +110,8 @@
     <line x1="875" y1="195" x2="921" y2="195" class="ink" marker-end="url(#arrow)"/>
 
     <!-- FASTA assemblies go straight to BLAST -->
-    <line x1="285" y1="355" x2="406" y2="257" class="ink" marker-end="url(#arrow)"/>
-    <text x="303" y="318" class="edge">FASTA</text>
+    <path d="M285 355 L312 355 L312 215 L334 215" fill="none" class="ink" stroke-linejoin="round" marker-end="url(#arrow)"/>
+    <text x="284" y="292" class="edge">FASTA</text>
 
     <!-- FASTQ reads go to baiting/assembly -->
     <line x1="285" y1="388" x2="331" y2="388" class="ink" marker-end="url(#arrow)"/>

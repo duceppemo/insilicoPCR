@@ -62,20 +62,14 @@ CGATCGATCCTAGCTAGC
 
 In qPCR mode, a target is reported as positive only when the forward primer, reverse primer, and probe are detected in the expected amplicon.
 
-## Do not mix PCR and qPCR assays
+## Mixing PCR and qPCR assays
 
-Do not mix standard PCR assays and qPCR/probe assays in one primer FASTA file.
+Standard PCR assays and qPCR/probe assays can be mixed in the same primer FASTA file (since version 0.7.0). The probe requirement is decided per assay:
 
-If any primer ID includes a `-P` probe, the consolidated report is generated in qPCR mode. In qPCR mode, assays without probes are not reported as positive in the consolidated report because the program expects probe support.
+- an assay **with** a `-P` probe is reported only when the probe is also found inside the amplicon;
+- an assay **without** a probe is reported on its primer pair alone.
 
-Use separate primer files:
-
-```text
-standard-pcr-primers.fasta
-qpcr-probe-primers.fasta
-```
-
-Run them as separate analyses.
+When at least one assay defines a probe, the consolidated report includes the probe columns; they are left empty on rows of probe-less assays.
 
 ## Degenerate bases
 

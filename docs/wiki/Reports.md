@@ -30,9 +30,9 @@ The consolidated report is the primary summary table: one row per predicted ampl
 | `Forward3PrimeMismatches` / `Reverse3PrimeMismatches` | Number of imperfections within the 3'-end window (default last 5 bases) |
 | `Strand` | `+` when the forward primer matched the plus strand; `-` when the assay matched the reverse strand |
 
-### qPCR/probe mode columns
+### qPCR/probe columns
 
-qPCR mode (any `-P` primer present) appends:
+When at least one assay in the primer file defines a `-P` probe, the report appends:
 
 | Column | Meaning |
 |---|---|
@@ -41,15 +41,15 @@ qPCR mode (any `-P` primer present) appends:
 | `ProbeSize` | Length of the probe match |
 | `ProbeMismatches` | Mismatches + indels in the probe alignment |
 
-A row is only written when the probe lies entirely within the amplicon.
+For an assay that defines a probe, a row is only written when the probe lies entirely within the amplicon. Probe-less assays in the same run keep these columns empty.
 
 ## Detailed per-sample reports
 
 The `detailed_report` folder keeps the raw BLAST tabular output per sample (with a header line), useful for auditing why a primer hit was or was not accepted. Columns follow BLAST `-outfmt "6 qseqid sseqid positive mismatch gaps evalue bitscore slen length qstart qend qseq sstart send sseq"`.
 
-## Important mode behavior
+## Mode behavior
 
-If any primer ID includes `-P`, the consolidated report is generated in qPCR mode. Standard PCR assays without probes should be run separately from qPCR assays.
+The probe requirement is decided per assay (since version 0.7.0): assays with a `-P` probe require probe support inside the amplicon, while probe-less assays are reported on their primer pair alone — both can live in the same primer FASTA file. See [Standard PCR vs qPCR](Standard-PCR-vs-qPCR).
 
 ## Synthetic gel
 

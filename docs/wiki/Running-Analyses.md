@@ -49,11 +49,9 @@ TTCGATCGATCCTAGCTAGC
 ACGTTAGCTAGCTACGTA
 ```
 
-## Do not mix PCR modes
+## Mixing PCR modes
 
-Do not mix assays with probes and assays without probes in the same primer FASTA file.
-
-If any assay includes a `-P` probe, the consolidated report runs in qPCR mode and requires probe support for positive reporting.
+Standard PCR assays and qPCR/probe assays can be mixed in the same primer FASTA file (since version 0.7.0). Assays with a `-P` probe require probe support inside the amplicon; assays without a probe are reported on their primer pair alone.
 
 ## Parameters
 

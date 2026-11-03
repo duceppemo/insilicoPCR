@@ -30,7 +30,7 @@ The primer file must be FASTA. Primer IDs must end with `-F`, `-R`, or `-P`.
 
 ## Can I mix PCR assays with qPCR/probe assays?
 
-No. Run standard PCR assays and qPCR/probe assays separately.
+Yes (since version 0.7.0). The probe requirement is decided per assay: assays with a `-P` probe are only reported when the probe hits inside the amplicon, while probe-less assays are reported on their primer pair alone. See [Standard PCR vs qPCR](Standard-PCR-vs-qPCR).
 
 ## Why is Linux launched from a terminal?
 

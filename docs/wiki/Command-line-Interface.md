@@ -113,5 +113,5 @@ See [Amplicon Calling](Amplicon-Calling) for exactly how the mismatch budget, th
 
 - The input path can be a single sequence file or a directory.
 - The primer FASTA must follow the required `-F`, `-R`, and optional `-P` naming convention.
-- Standard PCR and qPCR/probe assays should be run separately.
+- Standard PCR and qPCR/probe assays can be mixed in one primer file: assays with a probe require the probe inside the amplicon, probe-less assays are reported on their primer pair alone.
 - The CLI uses the same analysis engine as the graphical application, so results are identical.

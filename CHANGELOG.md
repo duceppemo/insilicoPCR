@@ -2,6 +2,17 @@
 
 ## 0.7.0 (unreleased)
 
+### Mixed PCR + qPCR runs
+
+Standard PCR assays and qPCR/probe assays can now share one primer FASTA
+file and one run. The probe requirement is decided per assay from the
+primer file: an assay that defines a `-P` probe is reported only when the
+probe hits inside the amplicon (a defined-but-missing probe keeps the assay
+negative), while probe-less assays are reported on their primer pair alone.
+When any assay defines a probe, the report carries the probe columns, left
+empty on probe-less rows. Previously, a single `-P` primer switched the
+whole report to qPCR mode and silently dropped all probe-less assays.
+
 ### Amplicon calling is now realistic (breaking behavior change)
 
 Previous versions paired **any** forward/reverse BLAST hits found on the same

@@ -13,7 +13,9 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
 
 /**
  * Writes the final consolidated PCR/qPCR report. Shared by the command-line
@@ -30,20 +32,38 @@ public final class ConsolidatedReport {
      */
     public static Path write(Path consolidatedDir, Map<String, Sample> samples,
                              Map<String, String> primers, AmpliconOptions options) {
-        boolean qPcr = primers.keySet().stream().anyMatch(BlastHitParser::isProbe);
+        // Probe requirement is decided per assay from the primer FILE, so standard
+        // PCR and qPCR assays can be mixed in one run: an assay whose probe is
+        // defined but never hits must stay negative, while a probe-less assay is
+        // reported on its primer pair alone. The probe columns are present
+        // whenever at least one assay defines a probe.
+        Set<String> assaysWithProbe = assaysWithProbe(primers.keySet());
+        boolean probeColumns = !assaysWithProbe.isEmpty();
         Path report = nextAvailableReportFile(consolidatedDir);
 
         try (BufferedWriter writer = Files.newBufferedWriter(report, StandardCharsets.UTF_8)) {
-            writer.write(header(qPcr));
+            writer.write(header(probeColumns));
             writer.newLine();
             // TreeMap keeps samples in a stable, alphabetical order.
             for (Map.Entry<String, Sample> sampleEntry : new TreeMap<>(samples).entrySet()) {
-                writeSampleResults(writer, sampleEntry.getKey(), sampleEntry.getValue(), options, qPcr);
+                writeSampleResults(writer, sampleEntry.getKey(), sampleEntry.getValue(),
+                        options, assaysWithProbe, probeColumns);
             }
         } catch (IOException e) {
             throw new IllegalStateException("Unable to write consolidated report: " + report, e);
         }
         return report;
+    }
+
+    /** Assay names that define at least one -P probe in the primer file. */
+    private static Set<String> assaysWithProbe(Iterable<String> primerIds) {
+        Set<String> assays = new TreeSet<>();
+        for (String primerId : primerIds) {
+            if (BlastHitParser.isProbe(primerId)) {
+                assays.add(primerId.substring(0, primerId.lastIndexOf('-')));
+            }
+        }
+        return assays;
     }
 
     private static Path nextAvailableReportFile(Path consolidatedDir) {
@@ -56,20 +76,21 @@ public final class ConsolidatedReport {
         return report;
     }
 
-    private static String header(boolean qPcr) {
+    private static String header(boolean probeColumns) {
         List<String> columns = new ArrayList<>(List.of(
                 "Sample", "Gene", "GenomeLocation", "AmpliconSize", "Contig", "Contig Description",
                 "ForwardPrimers", "ReversePrimers", "ForwardMismatches", "ReverseMismatches",
                 "Forward3PrimeMismatches", "Reverse3PrimeMismatches", "Strand"
         ));
-        if (qPcr) {
+        if (probeColumns) {
             columns.addAll(List.of("Probe", "ProbeLocation", "ProbeSize", "ProbeMismatches"));
         }
         return String.join("\t", columns);
     }
 
     private static void writeSampleResults(BufferedWriter writer, String sampleName, Sample sample,
-                                           AmpliconOptions options, boolean qPcr) throws IOException {
+                                           AmpliconOptions options, Set<String> assaysWithProbe,
+                                           boolean probeColumns) throws IOException {
         Map<String, List<BlastResult>> blastResults = sample.blastResults();
         if (blastResults.isEmpty()) {
             return;
@@ -82,10 +103,11 @@ public final class ConsolidatedReport {
             if (group.forward.isEmpty() || group.reverse.isEmpty()) {
                 continue;
             }
+            boolean probeRequired = assaysWithProbe.contains(assayName);
             for (String forwardPrimer : group.forward) {
                 for (String reversePrimer : group.reverse) {
                     writePrimerPairResults(writer, sampleName, sample, assayName, group,
-                            forwardPrimer, reversePrimer, options, qPcr);
+                            forwardPrimer, reversePrimer, options, probeRequired, probeColumns);
                 }
             }
         }
@@ -93,7 +115,8 @@ public final class ConsolidatedReport {
 
     private static void writePrimerPairResults(BufferedWriter writer, String sampleName, Sample sample,
                                                String assayName, PrimerGroup group, String forwardPrimer,
-                                               String reversePrimer, AmpliconOptions options, boolean qPcr)
+                                               String reversePrimer, AmpliconOptions options,
+                                               boolean probeRequired, boolean probeColumns)
             throws IOException {
         Map<String, List<BlastResult>> blastResults = sample.blastResults();
         for (BlastResult forwardHit : blastResults.getOrDefault(forwardPrimer, List.of())) {
@@ -119,10 +142,15 @@ public final class ConsolidatedReport {
                         String.valueOf(amplicon.forwardStrand())
                 );
 
-                if (qPcr) {
+                if (probeRequired) {
                     writeProbeRows(writer, sample, assayName, group, amplicon, baseColumns);
                 } else {
-                    writer.write(String.join("\t", baseColumns));
+                    List<String> columns = new ArrayList<>(baseColumns);
+                    if (probeColumns) {
+                        // Probe-less assay in a mixed run: pad the probe columns.
+                        columns.addAll(List.of("", "", "", ""));
+                    }
+                    writer.write(String.join("\t", columns));
                     writer.newLine();
                 }
             }

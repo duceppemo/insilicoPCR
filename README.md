@@ -32,7 +32,7 @@
 ## Features
 
 - Analyze genome assemblies (`.fasta`, `.fa`, `.fna`) and sequencing reads (`.fastq`, `.fq`), single-end or paired-end
-- Run standard PCR assays or qPCR/probe assays, including multiplex primer files
+- Run standard PCR assays and qPCR/probe assays — mixed in the same primer file if desired, with the probe requirement applied per assay
 - Use degenerate primers with IUPAC bases (expanded automatically)
 - Realistic amplicon calling:
   - primers must face each other on opposite strands of the same contig
@@ -138,7 +138,7 @@ ATGCGTACGTTAGCTAGCTA
 TCGATCGATACGCGTACGTA
 ```
 
-**Do not mix standard PCR assays and qPCR/probe assays in the same primer FASTA file.** If any assay includes a `-P` probe, the consolidated report runs in qPCR mode and requires a probe hit inside the amplicon for an assay to be reported positive.
+Standard PCR assays and qPCR/probe assays **can be mixed in the same primer FASTA file**: the probe requirement is decided per assay. An assay that defines a `-P` probe is reported only when the probe also hits inside the amplicon; assays without a probe are reported on their primer pair alone (probe columns are left empty on their rows).
 
 See the [Primer FASTA Format Wiki page](https://github.com/duceppemo/insilicoPCR/wiki/Primer-FASTA-Format) for detailed examples and limitations.
 
@@ -146,7 +146,7 @@ See the [Primer FASTA Format Wiki page](https://github.com/duceppemo/insilicoPCR
 
 The consolidated `report.tsv` contains one row per predicted amplicon:
 
-`Sample, Gene, GenomeLocation, AmpliconSize, Contig, Contig Description, ForwardPrimers, ReversePrimers, ForwardMismatches, ReverseMismatches, Forward3PrimeMismatches, Reverse3PrimeMismatches, Strand` — plus `Probe, ProbeLocation, ProbeSize, ProbeMismatches` in qPCR mode.
+`Sample, Gene, GenomeLocation, AmpliconSize, Contig, Contig Description, ForwardPrimers, ReversePrimers, ForwardMismatches, ReverseMismatches, Forward3PrimeMismatches, Reverse3PrimeMismatches, Strand` — plus `Probe, ProbeLocation, ProbeSize, ProbeMismatches` when any assay defines a probe (left empty on probe-less rows).
 
 The synthetic gel visualizer displays these results as gel-like bands for quick review of amplicon size patterns across samples. See the [Synthetic Gel Visualizer Wiki page](https://github.com/duceppemo/insilicoPCR/wiki/Synthetic-Gel-Visualizer).
 

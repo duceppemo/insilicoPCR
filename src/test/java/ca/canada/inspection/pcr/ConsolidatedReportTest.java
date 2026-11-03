@@ -89,6 +89,47 @@ class ConsolidatedReportTest {
     }
 
     @Test
+    void mixedPcrAndQPcrAssaysAreReportedInOneRun() throws IOException {
+        // "assay" has no probe in the primer file; "taq" is a qPCR assay with one.
+        Sample sample = sampleWithHits();
+        sample.addBlastResult("taq-F", TestHits.plusHit("taq-F", "contig1", 2101));
+        sample.addBlastResult("taq-R", TestHits.minusHit("taq-R", "contig1", 2581));
+        sample.addBlastResult("taq-P", TestHits.plusHit("taq-P", "contig1", 2300));
+        Map<String, Sample> samples = new HashMap<>(Map.of("sampleA", sample));
+        Map<String, String> primers = Map.of(
+                "assay-F", PRIMER_20, "assay-R", PRIMER_20,
+                "taq-F", PRIMER_20, "taq-R", PRIMER_20, "taq-P", PRIMER_20);
+
+        Path report = ConsolidatedReport.write(tempDir, samples, primers, DEFAULTS);
+        List<String> lines = Files.readAllLines(report);
+
+        assertEquals(3, lines.size(), "header + PCR row + qPCR row expected, got: " + lines);
+        assertTrue(lines.get(0).endsWith("Probe\tProbeLocation\tProbeSize\tProbeMismatches"));
+
+        String[] pcrRow = lines.get(1).split("\t", -1);
+        assertEquals("assay", pcrRow[1]);
+        assertEquals(17, pcrRow.length, "probe columns must be padded for probe-less assays");
+        assertEquals("", pcrRow[13]);
+
+        String[] qpcrRow = lines.get(2).split("\t", -1);
+        assertEquals("taq", qpcrRow[1]);
+        assertEquals("taq-P", qpcrRow[13]);
+        assertEquals("2300-2319", qpcrRow[14]);
+    }
+
+    @Test
+    void assayWithDefinedProbeStaysNegativeWhenProbeDoesNotHit() throws IOException {
+        // The primer file defines assay-P, but no probe hit was found: the primer
+        // pair alone must NOT produce a row for this assay.
+        Map<String, Sample> samples = new HashMap<>(Map.of("sampleA", sampleWithHits()));
+        Map<String, String> primers = Map.of(
+                "assay-F", PRIMER_20, "assay-R", PRIMER_20, "assay-P", PRIMER_20);
+
+        Path report = ConsolidatedReport.write(tempDir, samples, primers, DEFAULTS);
+        assertEquals(1, Files.readAllLines(report).size(), "only the header is expected");
+    }
+
+    @Test
     void existingReportIsNotOverwritten() throws IOException {
         Map<String, Sample> samples = new HashMap<>(Map.of("sampleA", sampleWithHits()));
         Map<String, String> primers = Map.of("assay-F", PRIMER_20, "assay-R", PRIMER_20);

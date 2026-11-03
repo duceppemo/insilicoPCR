@@ -1,0 +1,23 @@
+cff-version: 1.2.0
+message: "If you use insilicoPCR in published work, please cite it using these metadata."
+title: "insilicoPCR"
+type: software
+authors:
+  - family-names: Duceppe
+    given-names: Marc-Olivier
+repository-code: "https://github.com/duceppemo/insilicoPCR"
+url: "https://github.com/duceppemo/insilicoPCR"
+license: MIT
+keywords:
+  - in silico PCR
+  - qPCR
+  - primer validation
+  - bioinformatics
+  - BLAST
+  - genomics
+abstract: >-
+  Portable desktop and command-line application for in silico PCR against
+  genome assemblies (FASTA) and sequencing reads (FASTQ), with realistic
+  amplicon calling (primer orientation, product size limits, and weighted
+  3'-end mismatch assessment), qPCR probe support, consolidated reports,
+  and a synthetic gel visualizer.

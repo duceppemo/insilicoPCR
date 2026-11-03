@@ -42,7 +42,7 @@ jobs:
           elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             echo "value=${{ inputs.version }}" >> "$GITHUB_OUTPUT"
           else
-            echo "value=0.6.0" >> "$GITHUB_OUTPUT"
+            echo "value=0.7.0" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Validate source runtime layout
@@ -50,6 +50,19 @@ jobs:
         run: |
           chmod +x scripts/dev/verify-runtime-layout.sh
           scripts/dev/verify-runtime-layout.sh
+
+      - name: Run unit tests with coverage
+        shell: bash
+        run: |
+          chmod +x mvnw
+          ./mvnw --batch-mode test
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: target/site/jacoco/jacoco.xml
+          fail_ci_if_error: false
 
       - name: Build Linux portable ZIP
         shell: bash
@@ -100,7 +113,7 @@ jobs:
           } elseif ('${{ github.event_name }}' -eq 'workflow_dispatch') {
             "value=${{ inputs.version }}" >> $env:GITHUB_OUTPUT
           } else {
-            "value=0.6.0" >> $env:GITHUB_OUTPUT
+            "value=0.7.0" >> $env:GITHUB_OUTPUT
           }
 
       - name: Validate source runtime layout

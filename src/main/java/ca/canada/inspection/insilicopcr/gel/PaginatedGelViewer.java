@@ -63,12 +63,6 @@ public final class PaginatedGelViewer {
     private static final double LABEL_MARGIN = 56.0;
     private static final int[] LADDER_SIZES = {20_000, 10_000, 7_000, 5_000, 4_000, 3_000, 2_000, 1_500, 1_000, 700, 500, 400, 300, 200, 100};
     private static final String[] LADDER_LABELS = {"20kb", "10kb", "7kb", "5kb", "4kb", "3kb", "2kb", "1.5kb", "1kb", "700", "500", "400", "300", "200", "100"};
-    private static final Color[] GENE_PALETTE = {
-            Color.rgb(31, 119, 180), Color.rgb(214, 39, 40), Color.rgb(44, 160, 44),
-            Color.rgb(255, 127, 14), Color.rgb(148, 103, 189), Color.rgb(23, 190, 207),
-            Color.rgb(140, 86, 75), Color.rgb(227, 119, 194), Color.rgb(188, 189, 34),
-            Color.rgb(127, 127, 127)
-    };
 
     private PaginatedGelViewer() {
     }
@@ -648,15 +642,6 @@ public final class PaginatedGelViewer {
         return Math.clamp((valueLog - minLog) / (maxLog - minLog), 0.0, 1.0);
     }
 
-    private static Map<String, Color> assignGeneColors(LinkedHashMap<String, List<GelBand>> lanes) {
-        Map<String, Color> colors = new LinkedHashMap<>();
-        for (List<GelBand> bands : lanes.values()) {
-            for (GelBand band : bands) {
-                colors.computeIfAbsent(band.geneName(), gene -> GENE_PALETTE[colors.size() % GENE_PALETTE.length]);
-            }
-        }
-        return colors;
-    }
 
     private static String format(double value) {
         return String.format(Locale.ROOT, "%.3f", value);
@@ -730,7 +715,7 @@ public final class PaginatedGelViewer {
             this.lanes = lanes;
             this.sampleNames = new ArrayList<>(lanes.keySet());
             this.samplesPerGel = samplesPerGel;
-            this.geneColors = assignGeneColors(lanes);
+            this.geneColors = GelColors.assignGeneColors(lanes);
         }
 
         private int totalPages() {

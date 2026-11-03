@@ -57,7 +57,9 @@ would never form in a real reaction. Version 0.7.0 reports a pair only when:
   and reads as negative controls.
 - New `-g/--gel` CLI option renders the synthetic gel PNG without the GUI;
   lanes are kept for samples with no amplicons, so negative controls show
-  as empty lanes like on a real gel.
+  as empty lanes like on a real gel. The exported image is cropped to its
+  content and, like the interactive viewer, colors bands by gene and
+  includes a gene legend (the palette is now shared between both).
 - ENA/SRA-style `_1`/`_2` paired FASTQ files are now grouped into one
   paired-end sample (previously only `_R1`/`_R2` were recognized, so each
   mate was treated as its own single-end sample). The bare-digit form is

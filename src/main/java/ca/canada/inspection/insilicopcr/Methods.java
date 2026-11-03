@@ -40,6 +40,9 @@ import javax.imageio.ImageIO;
 
 
 import ca.canada.inspection.dispatchpcr.AppPaths;
+import ca.canada.inspection.insilicopcr.gel.GelBand;
+import ca.canada.inspection.insilicopcr.gel.GelColors;
+import ca.canada.inspection.insilicopcr.gel.GelReportReader;
 import ca.canada.inspection.pipeline.PrimerService;
 import ca.canada.inspection.util.SequenceFileUtils;
 
@@ -339,7 +342,7 @@ public class Methods {
 			throw new IllegalArgumentException("Consolidated report not found: " + consolidatedReport);
 		}
 
-		LinkedHashMap<String, ArrayList<Integer>> sampleBands = readSyntheticGelBands(consolidatedReport, sampleDict);
+		LinkedHashMap<String, List<GelBand>> sampleBands = GelReportReader.read(consolidatedReport, sampleDict);
 		if (sampleBands.isEmpty()) {
 			throw new IllegalStateException("No amplicons were found in consolidated report: " + consolidatedReport);
 		}
@@ -394,11 +397,13 @@ public class Methods {
 		stage.show();
 	}
 
-	private static Canvas drawSyntheticGelCanvas(Scene scene, LinkedHashMap<String, ArrayList<Integer>> sampleBands) {
-		return drawSyntheticGelCanvas(scene.getWidth(), scene.getHeight(), sampleBands);
+	private static Canvas drawSyntheticGelCanvas(Scene scene, LinkedHashMap<String, List<GelBand>> sampleBands) {
+		return drawSyntheticGelCanvas(scene.getWidth(), scene.getHeight(), sampleBands, false);
 	}
 
-	private static Canvas drawSyntheticGelCanvas(double width, double height, LinkedHashMap<String, ArrayList<Integer>> sampleBands) {
+	private static Canvas drawSyntheticGelCanvas(double width, double height,
+	                                             LinkedHashMap<String, List<GelBand>> sampleBands,
+	                                             boolean exactFit) {
 		int laneCount = sampleBands.size() + 1; // lane 0 is the ladder
 		double visibleWidth = Math.max(width, 800);
 		double visibleHeight = Math.max(height, 500);
@@ -407,14 +412,23 @@ public class Methods {
 		double leftLabelWidth = 82;
 		double rightInset = 18;
 		double topInset = 18;
-		double gelHeight = Math.max(540, visibleHeight * 1.10);
+		double gelHeight = exactFit ? 560 : Math.max(540, visibleHeight * 1.10);
 		double longestLabelWidth = longestLaneLabelWidth(sampleBands);
 		double labelAreaHeight = Math.max(150, Math.min(360, longestLabelWidth * 0.72 + 36));
-		double laneWidth = Math.max(74, (visibleWidth - leftLabelWidth - rightInset) / Math.max(laneCount, 11));
+		// Exact fit (PNG export): the canvas hugs the gel instead of filling a window,
+		// leaving just enough right margin for the slanted label of the last lane.
+		double laneWidth = exactFit
+				? 110
+				: Math.max(74, (visibleWidth - leftLabelWidth - rightInset) / Math.max(laneCount, 11));
 		double gelLeft = leftLabelWidth;
 		double gelWidth = laneWidth * laneCount;
 		double gelBottom = topInset + gelHeight;
-		double canvasWidth = Math.max(visibleWidth, gelLeft + gelWidth + rightInset);
+		Map<String, Color> geneColors = GelColors.assignGeneColors(sampleBands);
+		double legendX = gelLeft + gelWidth + 20;
+		double canvasWidth = exactFit
+				? gelLeft + gelWidth + Math.max(rightInset, longestLabelWidth * 0.72 - laneWidth / 2)
+				: Math.max(visibleWidth, gelLeft + gelWidth + rightInset);
+		canvasWidth = Math.max(canvasWidth, legendX + legendWidth(geneColors) + 12);
 		double canvasHeight = gelBottom + labelAreaHeight;
 		double bandHeight = 2.0;
 
@@ -427,13 +441,14 @@ public class Methods {
 		drawGelBackground(gc, gelLeft, topInset, gelWidth, gelHeight, laneCount, laneWidth);
 		drawLadder(gc, gelLeft, topInset, gelHeight, laneWidth, bandHeight);
 		drawLadderLabels(gc, topInset, gelHeight, gelLeft - 8);
-		drawSamples(gc, sampleBands, gelLeft, topInset, gelHeight, laneWidth, bandHeight);
+		drawSamples(gc, sampleBands, geneColors, gelLeft, topInset, gelHeight, laneWidth, bandHeight);
 		drawGelBorder(gc, gelLeft, topInset, gelWidth, gelHeight);
 		drawLaneLabels(gc, sampleBands, gelLeft, gelBottom + 34, laneWidth);
+		drawLegend(gc, geneColors, legendX, topInset);
 		return canvas;
 	}
 
-	private static double longestLaneLabelWidth(LinkedHashMap<String, ArrayList<Integer>> sampleBands) {
+	private static double longestLaneLabelWidth(LinkedHashMap<String, List<GelBand>> sampleBands) {
 		double longest = "Ladder".length();
 		for (String sampleName : sampleBands.keySet()) {
 			longest = Math.max(longest, sampleName.length());
@@ -481,48 +496,6 @@ public class Methods {
 		return buffered;
 	}
 
-	private static LinkedHashMap<String, ArrayList<Integer>> readSyntheticGelBands(Path consolidatedReport,
-	                                                                               HashMap<String, Sample> sampleDict) {
-		LinkedHashMap<String, ArrayList<Integer>> sampleBands = new LinkedHashMap<>();
-		if (sampleDict != null) {
-			sampleDict.keySet().stream().sorted()
-					.forEach(sampleName -> sampleBands.put(sampleName, new ArrayList<>()));
-		}
-
-		try (BufferedReader reader = Files.newBufferedReader(consolidatedReport, StandardCharsets.UTF_8)) {
-			String line;
-			while ((line = reader.readLine()) != null) {
-				if (line.isBlank() || line.startsWith("Sample\t")) {
-					continue;
-				}
-
-				String[] fields = line.split("\t", -1);
-				if (fields.length < 4) {
-					continue;
-				}
-
-				String sampleName = fields[0];
-				int ampliconSize;
-				try {
-					ampliconSize = Integer.parseInt(fields[3]);
-				} catch (NumberFormatException ignored) {
-					continue;
-				}
-
-				sampleBands.computeIfAbsent(sampleName, key -> new ArrayList<>()).add(ampliconSize);
-			}
-		} catch (IOException e) {
-			throw new IllegalStateException("Unable to read consolidated report: " + consolidatedReport, e);
-		}
-
-		// When the run's sample names are known, keep empty lanes: a negative
-		// control showing an empty lane is informative, exactly like a real gel.
-		if (sampleDict == null || sampleDict.isEmpty()) {
-			sampleBands.entrySet().removeIf(entry -> entry.getValue().isEmpty());
-		}
-		return sampleBands;
-	}
-
 	private static void drawGelBackground(GraphicsContext gc, double x, double y, double width, double height,
 	                                      int laneCount, double laneWidth) {
 		gc.setFill(Color.rgb(238, 238, 238));
@@ -555,7 +528,7 @@ public class Methods {
 		gc.strokeRect(x, y, width, height);
 	}
 
-	private static void drawLaneLabels(GraphicsContext gc, LinkedHashMap<String, ArrayList<Integer>> sampleBands,
+	private static void drawLaneLabels(GraphicsContext gc, LinkedHashMap<String, List<GelBand>> sampleBands,
 	                                   double gelLeft, double labelY, double laneWidth) {
 		gc.setFill(Color.BLACK);
 		gc.setStroke(Color.BLACK);
@@ -584,7 +557,7 @@ public class Methods {
 		int[] ladderSizes = {20000, 10000, 7000, 5000, 4000, 3000, 2000, 1500, 1000, 700, 500, 400, 300, 200, 100};
 
 		for (int size : ladderSizes) {
-			drawGelBand(gc, gelLeft, ladderY(gelTop, gelHeight, size), laneWidth, bandHeight, 0.45);
+			drawGelBand(gc, gelLeft, ladderY(gelTop, gelHeight, size), laneWidth, bandHeight, 0.45, Color.BLACK);
 		}
 	}
 
@@ -614,61 +587,28 @@ public class Methods {
 		return Math.clamp((valueLog - minLog) / (maxLog - minLog), 0.0, 1.0);
 	}
 
-	public static void drawSamples(GraphicsContext gc, String consolidatedReport, HashMap<String, Sample> sampleDict, double gelLeft,
-	                               double gelTop, double gelHeight, double laneWidth, double bandHeight) {
-		drawSamples(gc, Path.of(consolidatedReport), sampleDict, gelLeft, gelTop, gelHeight, laneWidth, bandHeight);
-	}
-
-	public static void drawSamples(GraphicsContext gc, Path consolidatedReport, HashMap<String, Sample> sampleDict, double gelLeft,
-	                               double gelTop, double gelHeight, double laneWidth, double bandHeight) {
-		drawSamples(gc, readSyntheticGelBands(consolidatedReport, sampleDict), gelLeft, gelTop, gelHeight, laneWidth, bandHeight);
-	}
-
-	private static void drawSamples(GraphicsContext gc, LinkedHashMap<String, ArrayList<Integer>> sampleBands, double gelLeft,
-	                                double gelTop, double gelHeight, double laneWidth, double baseBandHeight) {
+	private static void drawSamples(GraphicsContext gc, LinkedHashMap<String, List<GelBand>> sampleBands,
+	                                Map<String, Color> geneColors, double gelLeft, double gelTop, double gelHeight,
+	                                double laneWidth, double baseBandHeight) {
 		int laneIndex = 1; // lane 0 is the ladder
-		for (Map.Entry<String, ArrayList<Integer>> sampleEntry : sampleBands.entrySet()) {
+		for (Map.Entry<String, List<GelBand>> sampleEntry : sampleBands.entrySet()) {
 			String sampleName = sampleEntry.getKey();
 			double x = gelLeft + (laneIndex * laneWidth);
-			Map<Integer, Integer> bandCounts = countBandsByRoundedSize(sampleEntry.getValue());
-			for (Map.Entry<Integer, Integer> bandEntry : bandCounts.entrySet()) {
+			for (Map.Entry<Integer, List<GelBand>> bandEntry : GelReportReader.groupByRoundedSize(sampleEntry.getValue()).entrySet()) {
 				int size = bandEntry.getKey();
-				int count = bandEntry.getValue();
+				List<GelBand> bands = bandEntry.getValue();
 
 				double laneVariation = deterministicRange(sampleName, 0.90, 1.10);
 				double verticalJitter = deterministicRange(sampleName + ':' + size, -0.45, 0.45);
-				double intensity = Math.min(1.0, bandIntensity(size, count) * laneVariation);
+				// Same intensity model as the interactive gel viewer.
+				double intensity = Math.min(1.0, (0.45 + Math.max(0, bands.size() - 1) * 0.12) * laneVariation);
 				double adjustedBandHeight = baseBandHeight + (intensity * 1.2);
+				Color color = geneColors.getOrDefault(bands.getFirst().geneName(), Color.BLACK);
 
-				drawGelBand(gc, x, ladderY(gelTop, gelHeight, size) + verticalJitter, laneWidth, adjustedBandHeight, intensity);
+				drawGelBand(gc, x, ladderY(gelTop, gelHeight, size) + verticalJitter, laneWidth, adjustedBandHeight, intensity, color);
 			}
 			laneIndex++;
 		}
-	}
-
-	private static Map<Integer, Integer> countBandsByRoundedSize(ArrayList<Integer> bands) {
-		Map<Integer, Integer> bandCounts = new LinkedHashMap<>();
-		for (int size : bands) {
-			int roundedSize = roundAmpliconSizeForGel(size);
-			bandCounts.merge(roundedSize, 1, Integer::sum);
-		}
-		return bandCounts;
-	}
-
-	private static int roundAmpliconSizeForGel(int size) {
-		if (size >= 1000) {
-			return Math.round(size / 50.0f) * 50;
-		}
-		if (size >= 300) {
-			return Math.round(size / 25.0f) * 25;
-		}
-		return Math.max(GEL_MIN_BP, Math.round(size / 10.0f) * 10);
-	}
-
-	private static double bandIntensity(int basePairs, int count) {
-		double sizeFactor = 0.35 + (0.30 * (1.0 - normalizedGelPosition(basePairs)));
-		double countFactor = Math.min(0.35, Math.max(0, count - 1) * 0.12);
-		return Math.min(1.0, Math.max(0.30, sizeFactor + countFactor));
 	}
 
 	private static double deterministicRange(String key, double minimum, double maximum) {
@@ -677,25 +617,69 @@ public class Methods {
 		return minimum + ((maximum - minimum) * unit);
 	}
 
-	private static void drawGelBand(GraphicsContext gc, double x, double centerY, double laneWidth, double bandHeight, double intensity) {
+	private static void drawGelBand(GraphicsContext gc, double x, double centerY, double laneWidth,
+	                                double bandHeight, double intensity, Color color) {
 		double bandWidth = Math.max(4, laneWidth * 0.66);
 		double bandX = x + ((laneWidth - bandWidth) / 2.0);
 		double bandY = centerY - (bandHeight / 2.0);
 
-		// Soft dark halo around the band so thin bands stay visible without looking like solid rectangles.
-		gc.setFill(Color.rgb(25, 25, 25, intensity * 0.20));
+		// Soft halo around the band so thin bands stay visible without looking like solid rectangles.
+		gc.setFill(color.deriveColor(0, 1.0, 0.35, intensity * 0.22));
 		gc.fillRect(bandX - 1.5, bandY - 2.0, bandWidth + 3.0, bandHeight + 4.0);
 
-		// Main high-contrast dark band. Higher intensity means darker and slightly thicker.
-		gc.setFill(Color.rgb(8, 8, 8, intensity));
+		// Main band in the gene color. Higher intensity means more opaque and slightly thicker.
+		gc.setFill(color.deriveColor(0, 1.0, 0.75, Math.min(1.0, 0.55 + intensity * 0.45)));
 		gc.fillRect(bandX, bandY, bandWidth, bandHeight);
 
 		// Subtle highlight and lower shadow make the band look less computer-generated.
 		gc.setFill(Color.rgb(255, 255, 255, Math.min(0.18, intensity * 0.14)));
 		gc.fillRect(bandX, bandY + 0.5, bandWidth, Math.max(0.75, bandHeight * 0.22));
 
-		gc.setFill(Color.rgb(0, 0, 0, Math.min(0.32, intensity * 0.24)));
+		gc.setFill(color.deriveColor(0, 1.0, 0.25, Math.min(0.32, intensity * 0.24)));
 		gc.fillRect(bandX, bandY + bandHeight - 0.75, bandWidth, 0.75);
+	}
+
+	private static double legendWidth(Map<String, Color> geneColors) {
+		if (geneColors.isEmpty()) {
+			return 0;
+		}
+		int longest = "Gene legend".length();
+		for (String gene : geneColors.keySet()) {
+			longest = Math.max(longest, gene.length());
+		}
+		return Math.max(130, longest * 6.8 + 48);
+	}
+
+	private static void drawLegend(GraphicsContext gc, Map<String, Color> geneColors, double x, double y) {
+		if (geneColors.isEmpty()) {
+			return;
+		}
+		double rowHeight = 20;
+		double width = legendWidth(geneColors) - 8;
+		double height = 32 + geneColors.size() * rowHeight;
+
+		gc.setFill(Color.rgb(255, 255, 255, 0.95));
+		gc.fillRect(x, y, width, height);
+		gc.setStroke(Color.rgb(160, 160, 160));
+		gc.setLineWidth(1.0);
+		gc.strokeRect(x, y, width, height);
+
+		gc.setFill(Color.BLACK);
+		gc.setFont(new Font("Verdana", 11));
+		gc.fillText("Gene legend", x + 10, y + 19);
+
+		int row = 0;
+		gc.setFont(new Font("Verdana", 10.5));
+		for (Map.Entry<String, Color> entry : geneColors.entrySet()) {
+			double rowY = y + 32 + row * rowHeight;
+			gc.setFill(entry.getValue());
+			gc.fillRect(x + 10, rowY, 14, 10);
+			gc.setStroke(Color.rgb(90, 90, 90));
+			gc.strokeRect(x + 10, rowY, 14, 10);
+			gc.setFill(Color.BLACK);
+			gc.fillText(entry.getKey(), x + 32, rowY + 9);
+			row++;
+		}
 	}
 
 	/**
@@ -714,10 +698,10 @@ public class Methods {
 	public static Path exportSyntheticGelPng(Path consolidatedReport, Path outputFile,
 	                                         java.util.Collection<String> sampleNames) {
 		HashMap<String, Sample> laneSamples = new HashMap<>();
-		for (String name : new java.util.TreeSet<>(sampleNames)) {
+		for (String name : sampleNames) {
 			laneSamples.put(name, null);
 		}
-		LinkedHashMap<String, ArrayList<Integer>> sampleBands = readSyntheticGelBands(consolidatedReport, laneSamples);
+		LinkedHashMap<String, List<GelBand>> sampleBands = GelReportReader.read(consolidatedReport, laneSamples);
 		if (sampleBands.isEmpty()) {
 			throw new IllegalStateException("No amplicons were found in consolidated report: " + consolidatedReport);
 		}
@@ -726,7 +710,7 @@ public class Methods {
 		java.util.concurrent.atomic.AtomicReference<Throwable> failure = new java.util.concurrent.atomic.AtomicReference<>();
 		Platform.runLater(() -> {
 			try {
-				Canvas canvas = drawSyntheticGelCanvas(1280, 720, sampleBands);
+				Canvas canvas = drawSyntheticGelCanvas(0, 0, sampleBands, true);
 				saveCanvasAsPng(canvas, outputFile);
 			} catch (Throwable t) {
 				failure.set(t);

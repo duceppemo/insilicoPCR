@@ -49,6 +49,24 @@ would never form in a real reaction. Version 0.7.0 reports a pair only when:
 - `--3p-window <n>` (default 5), `--3p-penalty <score>` (default 0)
 - GUI gains a "Max amplicon (bp)" field.
 
+### Tutorial, gel export, and read-pair fixes
+
+- New wiki tutorial using downloaded public data: mixed conventional +
+  TaqMan assays (hly, *Listeria monocytogenes*) against the EGD-e
+  reference assembly and real Illumina reads, with *L. innocua* assembly
+  and reads as negative controls.
+- New `-g/--gel` CLI option renders the synthetic gel PNG without the GUI;
+  lanes are kept for samples with no amplicons, so negative controls show
+  as empty lanes like on a real gel.
+- ENA/SRA-style `_1`/`_2` paired FASTQ files are now grouped into one
+  paired-end sample (previously only `_R1`/`_R2` were recognized, so each
+  mate was treated as its own single-end sample). The bare-digit form is
+  only applied to FASTQ, never FASTA.
+- The 5'-end truncation allowance is now configurable (`--5p-truncation`)
+  and defaults to 5 (was a fixed 2): BLAST trims the whole 5' tail at a
+  single 5'-proximal SNP, which used to cause false-negative primer hits
+  for strain variants that real PCR amplifies without trouble.
+
 ### Review-pass fixes
 
 - Amplicon coordinates now include primer bases BLAST left unaligned at the

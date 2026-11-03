@@ -11,6 +11,7 @@ This is the detailed documentation for users and developers. The repository READ
 - [Installation](Installation)
 - [Portable Releases](Portable-Releases)
 - [First Analysis](First-Analysis)
+- [Tutorial: Mixed PCR + qPCR](Tutorial-Mixed-PCR-qPCR)
 
 ## User Guide
 

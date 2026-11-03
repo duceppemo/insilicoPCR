@@ -395,9 +395,13 @@ public class Methods {
 	}
 
 	private static Canvas drawSyntheticGelCanvas(Scene scene, LinkedHashMap<String, ArrayList<Integer>> sampleBands) {
+		return drawSyntheticGelCanvas(scene.getWidth(), scene.getHeight(), sampleBands);
+	}
+
+	private static Canvas drawSyntheticGelCanvas(double width, double height, LinkedHashMap<String, ArrayList<Integer>> sampleBands) {
 		int laneCount = sampleBands.size() + 1; // lane 0 is the ladder
-		double visibleWidth = Math.max(scene.getWidth(), 800);
-		double visibleHeight = Math.max(scene.getHeight(), 500);
+		double visibleWidth = Math.max(width, 800);
+		double visibleHeight = Math.max(height, 500);
 
 		// Keep the gel itself tall. Long sample names grow only the label area below the gel.
 		double leftLabelWidth = 82;
@@ -481,9 +485,8 @@ public class Methods {
 	                                                                               HashMap<String, Sample> sampleDict) {
 		LinkedHashMap<String, ArrayList<Integer>> sampleBands = new LinkedHashMap<>();
 		if (sampleDict != null) {
-			for (String sampleName : sampleDict.keySet()) {
-				sampleBands.put(sampleName, new ArrayList<>());
-			}
+			sampleDict.keySet().stream().sorted()
+					.forEach(sampleName -> sampleBands.put(sampleName, new ArrayList<>()));
 		}
 
 		try (BufferedReader reader = Files.newBufferedReader(consolidatedReport, StandardCharsets.UTF_8)) {
@@ -512,7 +515,11 @@ public class Methods {
 			throw new IllegalStateException("Unable to read consolidated report: " + consolidatedReport, e);
 		}
 
-		sampleBands.entrySet().removeIf(entry -> entry.getValue().isEmpty());
+		// When the run's sample names are known, keep empty lanes: a negative
+		// control showing an empty lane is informative, exactly like a real gel.
+		if (sampleDict == null || sampleDict.isEmpty()) {
+			sampleBands.entrySet().removeIf(entry -> entry.getValue().isEmpty());
+		}
 		return sampleBands;
 	}
 
@@ -689,6 +696,54 @@ public class Methods {
 
 		gc.setFill(Color.rgb(0, 0, 0, Math.min(0.32, intensity * 0.24)));
 		gc.fillRect(bandX, bandY + bandHeight - 0.75, bandWidth, 0.75);
+	}
+
+	/**
+	 * Renders the synthetic gel for a consolidated report straight to a PNG file,
+	 * without opening a window. The JavaFX toolkit must already be running and
+	 * this method must NOT be called on the FX application thread.
+	 */
+	public static Path exportSyntheticGelPng(Path consolidatedReport, Path outputFile) {
+		return exportSyntheticGelPng(consolidatedReport, outputFile, java.util.List.of());
+	}
+
+	/**
+	 * As {@link #exportSyntheticGelPng(Path, Path)}, but keeps one lane per given
+	 * sample name even when it produced no amplicons (negative controls).
+	 */
+	public static Path exportSyntheticGelPng(Path consolidatedReport, Path outputFile,
+	                                         java.util.Collection<String> sampleNames) {
+		HashMap<String, Sample> laneSamples = new HashMap<>();
+		for (String name : new java.util.TreeSet<>(sampleNames)) {
+			laneSamples.put(name, null);
+		}
+		LinkedHashMap<String, ArrayList<Integer>> sampleBands = readSyntheticGelBands(consolidatedReport, laneSamples);
+		if (sampleBands.isEmpty()) {
+			throw new IllegalStateException("No amplicons were found in consolidated report: " + consolidatedReport);
+		}
+
+		java.util.concurrent.CountDownLatch done = new java.util.concurrent.CountDownLatch(1);
+		java.util.concurrent.atomic.AtomicReference<Throwable> failure = new java.util.concurrent.atomic.AtomicReference<>();
+		Platform.runLater(() -> {
+			try {
+				Canvas canvas = drawSyntheticGelCanvas(1280, 720, sampleBands);
+				saveCanvasAsPng(canvas, outputFile);
+			} catch (Throwable t) {
+				failure.set(t);
+			} finally {
+				done.countDown();
+			}
+		});
+		try {
+			done.await();
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			throw new IllegalStateException("Interrupted while rendering synthetic gel", e);
+		}
+		if (failure.get() != null) {
+			throw new IllegalStateException("Unable to render synthetic gel image", failure.get());
+		}
+		return outputFile;
 	}
 
 	// Simple method to print a message to the output TextArea

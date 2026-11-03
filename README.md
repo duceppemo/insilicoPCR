@@ -39,7 +39,7 @@
   - product size limits (`--max-length`, default 5000 bp) suppress fragments too long to amplify
   - weighted 3'-end mismatch assessment — mismatches near the primer terminus weigh more, and breaking a G/C pair near the 3' end weighs extra
 - Consolidated TSV reports with per-primer mismatch and 3'-end diagnostics
-- View results as a synthetic gel image
+- View results as a synthetic gel image (GUI viewer, or `--gel` PNG export from the CLI)
 - Graphical desktop app and CLI in the same portable ZIP (Windows and Linux) with bundled Java, JavaFX, BBMap, and BLAST+
 
 ## Quick Start
@@ -99,6 +99,8 @@ Typical CLI run:
 | `--min-length <bp>` | 0 | Minimum amplicon length |
 | `--3p-window <n>` | 5 | Bases at the primer 3' end checked with the weighted penalty |
 | `--3p-penalty <score>` | 0 | Maximum tolerated 3'-end penalty (see below) |
+| `--5p-truncation <n>` | 5 | Primer bases allowed unaligned at the harmless 5' end |
+| `-g, --gel` | off | Also write the synthetic gel image as PNG |
 
 See the [Command-line Interface Wiki page](https://github.com/duceppemo/insilicoPCR/wiki/Command-line-Interface) for the full reference.
 
@@ -155,6 +157,7 @@ The synthetic gel visualizer displays these results as gel-like bands for quick 
 - [insilicoPCR Wiki](https://github.com/duceppemo/insilicoPCR/wiki)
 - [Installation](https://github.com/duceppemo/insilicoPCR/wiki/Installation)
 - [First Analysis](https://github.com/duceppemo/insilicoPCR/wiki/First-Analysis)
+- [Tutorial: Mixed PCR + qPCR with real data](https://github.com/duceppemo/insilicoPCR/wiki/Tutorial-Mixed-PCR-qPCR)
 - [Amplicon Calling Rules](https://github.com/duceppemo/insilicoPCR/wiki/Amplicon-Calling)
 - [Command-line Interface](https://github.com/duceppemo/insilicoPCR/wiki/Command-line-Interface)
 - [Primer FASTA Format](https://github.com/duceppemo/insilicoPCR/wiki/Primer-FASTA-Format)

@@ -12,7 +12,8 @@ public record PipelineConfig(
         Path primers,
         int threads,
         double evalue,
-        AmpliconOptions ampliconOptions
+        AmpliconOptions ampliconOptions,
+        boolean gel
 ) {
     public PipelineConfig {
         input = Objects.requireNonNull(input, "input").toAbsolutePath().normalize();

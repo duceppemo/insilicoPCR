@@ -78,6 +78,11 @@ public final class Dispatcher {
         options.addOption(Option.builder().longOpt("3p-penalty").hasArg().argName("score")
                 .desc("Maximum weighted 3'-end penalty (mismatch: 3 at terminus, 2 at -1/-2, 1 beyond;"
                         + " +1 if a G/C pair is broken near the terminus; +1 for indels); default: 0").build());
+        options.addOption(Option.builder().longOpt("5p-truncation").hasArg().argName("n")
+                .desc("Maximum primer bases allowed to be unaligned at the harmless 5' end"
+                        + " (one 5'-proximal mismatch makes BLAST trim the whole tail); default: 5").build());
+        options.addOption(Option.builder("g").longOpt("gel").desc("Also write the synthetic gel image as PNG"
+                + " (requires a graphical environment)").build());
         options.addOption(Option.builder("h").longOpt("help").desc("Print help and usage").build());
         options.addOption(Option.builder("v").longOpt("version").desc("Print version").build());
         return options;

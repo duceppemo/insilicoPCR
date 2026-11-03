@@ -24,7 +24,12 @@ usage: java -jar insilicoPCR.jar -i <input> -o <output> -p <primers> [-t
                            indels); default: 0
     --3p-window <n>        Bases at the primer 3' end checked with the
                            weighted 3' penalty; default: 5
+    --5p-truncation <n>    Maximum primer bases allowed to be unaligned at
+                           the harmless 5' end (one 5'-proximal mismatch
+                           makes BLAST trim the whole tail); default: 5
  -e,--evalue <value>       blastn e-value; default: 1e5
+ -g,--gel                  Also write the synthetic gel image as PNG
+                           (requires a graphical environment)
  -h,--help                 Print help and usage
  -i,--input <path>         Input file/directory containing .fasta/.fastq
                            sequence(s)
@@ -59,6 +64,8 @@ usage: java -jar insilicoPCR.jar -i <input> -o <output> -p <primers> [-t
 | `--min-length` | `0` | Minimum amplicon length in bp |
 | `--3p-window` | `5` | Number of bases at the primer 3' end checked with the weighted penalty |
 | `--3p-penalty` | `0` | Maximum tolerated weighted 3'-end penalty |
+| `--5p-truncation` | `5` | Maximum primer bases allowed unaligned at the 5' end |
+| `-g`, `--gel` | off | Also write the synthetic gel image as PNG (needs a graphical environment) |
 | `-v`, `--version` | | Print version |
 | `-h`, `--help` | | Print help |
 

@@ -29,6 +29,10 @@ public final class SequenceFileUtils {
 
     private static final Pattern SEQUENCE_EXTENSION = Pattern.compile("(?i)\\.(fasta|ffn|fna|fsa|fa|fastq|fq)(\\.gz)?$");
     private static final Pattern READ_PAIR_SUFFIX = Pattern.compile("(?i)_R[12](_001)?$");
+    // FASTQ reads from ENA/SRA (fasterq-dump) are named <run>_1 / <run>_2. The
+    // bare-digit form is only applied to FASTQ files: two FASTA assemblies named
+    // strain_1/strain_2 are distinct samples, not a read pair.
+    private static final Pattern FASTQ_PAIR_SUFFIX = Pattern.compile("(?i)_(R[12](_001)?|[12])$");
 
     public static boolean hasExtension(String filename, String[] extensions) {
         String lower = filename.toLowerCase(Locale.ROOT);
@@ -40,10 +44,10 @@ public final class SequenceFileUtils {
     }
 
     public static String sampleName(Path path) {
-        String name = path.getFileName().toString();
-        name = SEQUENCE_EXTENSION.matcher(name).replaceFirst("");
-        name = READ_PAIR_SUFFIX.matcher(name).replaceFirst("");
-        return name;
+        String fileName = path.getFileName().toString();
+        Pattern pairSuffix = hasExtension(fileName, FASTQ_EXTENSIONS) ? FASTQ_PAIR_SUFFIX : READ_PAIR_SUFFIX;
+        String name = SEQUENCE_EXTENSION.matcher(fileName).replaceFirst("");
+        return pairSuffix.matcher(name).replaceFirst("");
     }
 
     public static String fileType(Path file) {

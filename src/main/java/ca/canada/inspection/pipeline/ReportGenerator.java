@@ -11,7 +11,12 @@ public final class ReportGenerator {
     public void generate(PipelineContext context) {
         contigs.load(context);
         blastReports.parse(context);
-        consolidatedReport.write(context);
+        java.nio.file.Path report = consolidatedReport.write(context);
+        if (context.config().gel()) {
+            String baseName = report.getFileName().toString().replaceFirst("\\.tsv$", "");
+            GelImageWriter.write(report, context.config().output().resolve("synthetic_gel_" + baseName + ".png"),
+                    context.samples().keySet());
+        }
         qaLog.write(context, Dispatcher.VERSION);
     }
 }

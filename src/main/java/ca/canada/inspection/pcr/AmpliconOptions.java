@@ -22,7 +22,13 @@ public record AmpliconOptions(
 ) {
     public static final int DEFAULT_THREE_PRIME_WINDOW = 5;
     public static final int DEFAULT_THREE_PRIME_PENALTY = 0;
-    public static final int DEFAULT_FIVE_PRIME_TRUNCATION = 2;
+    /**
+     * BLAST trims terminal mismatches, so a single SNP near the primer 5' end
+     * shows up as several unaligned 5' bases. Real PCR tolerates 5'-end
+     * mismatches well (the 3' end does the priming), so the default allowance
+     * is generous.
+     */
+    public static final int DEFAULT_FIVE_PRIME_TRUNCATION = 5;
     public static final int DEFAULT_MIN_AMPLICON_LENGTH = 0;
     public static final int DEFAULT_MAX_AMPLICON_LENGTH = 5_000;
 

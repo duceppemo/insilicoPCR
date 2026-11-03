@@ -13,7 +13,8 @@ public record CliConfig(
         Path primers,
         int threads,
         double evalue,
-        AmpliconOptions ampliconOptions
+        AmpliconOptions ampliconOptions,
+        boolean gel
 ) {
     public static final double DEFAULT_EVALUE = 1e5;
 
@@ -45,7 +46,7 @@ public record CliConfig(
                 parseNonNegative(cmd, "mismatches", 0),
                 parseNonNegative(cmd, "3p-window", AmpliconOptions.DEFAULT_THREE_PRIME_WINDOW),
                 parseNonNegative(cmd, "3p-penalty", AmpliconOptions.DEFAULT_THREE_PRIME_PENALTY),
-                AmpliconOptions.DEFAULT_FIVE_PRIME_TRUNCATION,
+                parseNonNegative(cmd, "5p-truncation", AmpliconOptions.DEFAULT_FIVE_PRIME_TRUNCATION),
                 parseNonNegative(cmd, "min-length", AmpliconOptions.DEFAULT_MIN_AMPLICON_LENGTH),
                 parseNonNegative(cmd, "max-length", AmpliconOptions.DEFAULT_MAX_AMPLICON_LENGTH)
         );
@@ -56,7 +57,8 @@ public record CliConfig(
                 primers,
                 parseThreads(cmd.getOptionValue("threads")),
                 parseEvalue(cmd.getOptionValue("evalue")),
-                options
+                options,
+                cmd.hasOption("gel")
         );
     }
 

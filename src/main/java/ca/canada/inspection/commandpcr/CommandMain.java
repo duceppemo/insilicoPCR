@@ -13,7 +13,7 @@ public final class CommandMain {
 	private final PipelineConfig config;
 
 	public CommandMain(Path inputFile, Path outDir, Path primerFile, int threads, int mismatches, double evalue) {
-		this(new PipelineConfig(inputFile, outDir, primerFile, threads, evalue, AmpliconOptions.withMismatches(mismatches)));
+		this(new PipelineConfig(inputFile, outDir, primerFile, threads, evalue, AmpliconOptions.withMismatches(mismatches), false));
 	}
 
 	private CommandMain(PipelineConfig config) {
@@ -27,7 +27,8 @@ public final class CommandMain {
 				config.primers(),
 				config.threads(),
 				config.evalue(),
-				config.ampliconOptions()
+				config.ampliconOptions(),
+				config.gel()
 		));
 	}
 

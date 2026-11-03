@@ -6,6 +6,7 @@
 - [Installation](Installation)
 - [Portable Releases](Portable-Releases)
 - [First Analysis](First-Analysis)
+- [Tutorial: Mixed PCR + qPCR](Tutorial-Mixed-PCR-qPCR)
 
 ## User Guide
 

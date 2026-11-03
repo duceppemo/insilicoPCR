@@ -145,6 +145,8 @@ TCGATCGATACGCGTACGTA
 
 Standard PCR assays and qPCR/probe assays **can be mixed in the same primer FASTA file**: the probe requirement is decided per assay. An assay that defines a `-P` probe is reported only when the probe also hits inside the amplicon; assays without a probe are reported on their primer pair alone (probe columns are left empty on their rows).
 
+Primer files in this convention can also be generated rather than written by hand: [primer-finder](https://github.com/duceppemo/primer-finder) designs selective (q)PCR assays against a group of genomes, writes insilicoPCR-ready primer files, and can run insilicoPCR itself (release 0.8.0 or newer) through its `--insilico-pcr` option.
+
 See the [Primer FASTA Format Wiki page](https://github.com/duceppemo/insilicoPCR/wiki/Primer-FASTA-Format) for detailed examples and limitations.
 
 ## Output

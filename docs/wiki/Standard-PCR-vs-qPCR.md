@@ -27,7 +27,9 @@ assayName-R
 assayName-P
 ```
 
-A positive consolidated report row is generated only when the forward primer, reverse primer, and probe are detected in the expected amplicon.
+A positive consolidated report row is generated only when the forward primer, reverse primer, and probe are detected in the expected amplicon: the probe match must lie entirely between the two primers.
+
+Because hydrolysis probes do not extend, the 3'-end mismatch rules that apply to primers are not applied to probes — a probe hit only needs to fit the total mismatch budget (see [Amplicon Calling](Amplicon-Calling)).
 
 ## Important limitation
 

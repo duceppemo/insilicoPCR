@@ -36,6 +36,23 @@ No. Run standard PCR assays and qPCR/probe assays separately.
 
 Launching from a terminal makes startup messages and errors visible, which helps troubleshooting.
 
+## Why is an amplicon I expected missing from the report?
+
+The most common reasons, in order:
+
+1. **Product too long.** The default maximum amplicon length is 5000 bp. Raise it with `-l <bp>` or disable it with `-l 0`.
+2. **3'-end mismatch.** By default the last 5 bases of each primer must match perfectly (BLAST-trimmed terminal bases count as mismatches). Relax with `--3p-penalty` together with `-m` — see [Amplicon Calling](Amplicon-Calling).
+3. **Wrong orientation.** Primer pairs on the same strand, or pointing away from each other, are never reported because they cannot amplify.
+4. **qPCR mode without a probe hit.** If any primer in the file ends with `-P`, every reported assay needs its probe inside the amplicon.
+
+## Why does the report show huge amplicons from old versions but not anymore?
+
+Versions before 0.7.0 paired any forward/reverse hits on the same contig, regardless of distance or orientation. Those "phantom" products would not amplify in a real reaction and are now filtered out.
+
+## Are G/C mismatches treated differently from A/T mismatches?
+
+Yes, near the 3' end. Within the last 3 bases of a primer, a mismatch that breaks a G/C pair scores one extra penalty point compared to an A/T pair, because losing the stronger pairing destabilizes extension more. See the penalty table in [Amplicon Calling](Amplicon-Calling).
+
 ## What is the synthetic gel visualizer?
 
 It is a visual summary of consolidated report results, displayed as gel-like bands. It is useful for reviewing amplicon size patterns across samples.

@@ -12,6 +12,9 @@ The GUI lets users select:
 - number of worker threads
 - allowed primer mismatches
 - BLAST e-value
+- maximum amplicon length in bp (default 5000; 0 disables the limit)
+
+The GUI uses the default 3'-end strictness (perfect match over the last 5 primer bases). The additional `--3p-window`/`--3p-penalty` and `--min-length` knobs are available through the [command-line interface](Command-line-Interface).
 
 After the inputs are selected, click **Run** to start the analysis.
 

@@ -4,44 +4,48 @@ insilicoPCR produces report files that summarize primer hits, predicted amplicon
 
 ## Report types
 
-Common output types include:
+- runtime and quality logs (`QAlog.txt`)
+- detailed per-sample BLAST hit tables (`detailed_report/<sample>/<sample>.tsv`)
+- consolidated TSV report (`consolidated_report/report.tsv`)
+- synthetic gel images rendered from the consolidated report
 
-- runtime and quality logs
-- detailed per-sample reports
-- consolidated TSV report
-- Excel reports
-- files used by the synthetic gel visualizer
+If a `report.tsv` already exists in the output folder, a new run writes `report(1).tsv`, `report(2).tsv`, and so on instead of overwriting it.
 
 ## Consolidated report
 
-The consolidated report is the primary summary table for reviewing positive results across samples and assays.
+The consolidated report is the primary summary table: one row per predicted amplicon that passed the [amplicon calling rules](Amplicon-Calling).
 
-The exact columns depend on the reporting mode.
+### Standard PCR mode columns
 
-### Standard PCR mode
+| Column | Meaning |
+|---|---|
+| `Sample` | Sample name (from the input file name) |
+| `Gene` | Assay name (primer ID without the `-F`/`-R`/`-P` suffix) |
+| `GenomeLocation` | 1-based start-end of the product on the contig |
+| `AmpliconSize` | Product length in bp, primers included |
+| `Contig` | Contig/sequence ID the product sits on |
+| `Contig Description` | Free text from the contig FASTA header |
+| `ForwardPrimers` / `ReversePrimers` | Primer IDs that formed the pair (degenerate variants keep their `_n` suffix) |
+| `ForwardMismatches` / `ReverseMismatches` | Mismatches + indels + unaligned 3' bases for each primer |
+| `Forward3PrimeMismatches` / `Reverse3PrimeMismatches` | Number of imperfections within the 3'-end window (default last 5 bases) |
+| `Strand` | `+` when the forward primer matched the plus strand; `-` when the assay matched the reverse strand |
 
-Standard PCR mode reports forward/reverse primer-supported amplicons.
+### qPCR/probe mode columns
 
-Typical information includes:
+qPCR mode (any `-P` primer present) appends:
 
-- sample
-- gene or assay name
-- genome location
-- amplicon size
-- contig
-- forward and reverse primer names
-- mismatch information
+| Column | Meaning |
+|---|---|
+| `Probe` | Probe ID |
+| `ProbeLocation` | 1-based start-end of the probe on the contig |
+| `ProbeSize` | Length of the probe match |
+| `ProbeMismatches` | Mismatches + indels in the probe alignment |
 
-### qPCR/probe mode
+A row is only written when the probe lies entirely within the amplicon.
 
-qPCR/probe mode adds probe-related information.
+## Detailed per-sample reports
 
-Typical additional information includes:
-
-- probe name
-- probe location
-- probe size
-- probe mismatches
+The `detailed_report` folder keeps the raw BLAST tabular output per sample (with a header line), useful for auditing why a primer hit was or was not accepted. Columns follow BLAST `-outfmt "6 qseqid sseqid positive mismatch gaps evalue bitscore slen length qstart qend qseq sstart send sseq"`.
 
 ## Important mode behavior
 

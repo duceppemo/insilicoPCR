@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="420" viewBox="0 0 1280 420" role="img" aria-labelledby="title desc">
   <title id="title">insilicoPCR project banner</title>
-  <desc id="desc">Modern cross-platform in silico PCR analysis for genome assemblies.</desc>
+  <desc id="desc">In silico PCR and qPCR for genome assemblies and sequencing reads: two primers converge on a DNA template to define an amplicon.</desc>
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0%" stop-color="#0B1020"/>
@@ -8,7 +8,7 @@
       <stop offset="100%" stop-color="#0F766E"/>
     </linearGradient>
     <radialGradient id="glow" cx="78%" cy="24%" r="55%">
-      <stop offset="0%" stop-color="#7DD3FC" stop-opacity="0.55"/>
+      <stop offset="0%" stop-color="#7DD3FC" stop-opacity="0.5"/>
       <stop offset="100%" stop-color="#7DD3FC" stop-opacity="0"/>
     </radialGradient>
     <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
@@ -23,35 +23,59 @@
   <rect width="1280" height="420" rx="32" fill="url(#glow)"/>
   <rect width="1280" height="420" rx="32" fill="url(#grid)"/>
 
-  <g opacity="0.22" stroke="#A7F3D0" stroke-width="5" fill="none">
-    <path d="M818 84 C895 42 978 42 1055 84 C1132 126 1132 182 1055 224 C978 266 895 266 818 224"/>
-    <path d="M818 224 C895 182 978 182 1055 224 C1132 266 1132 322 1055 364 C978 406 895 406 818 364"/>
-    <path d="M860 65 L1020 384"/>
-    <path d="M1016 65 L856 384"/>
-  </g>
-
+  <!-- left: name and tagline -->
   <g filter="url(#shadow)">
     <rect x="70" y="68" width="700" height="284" rx="26" fill="#FFFFFF" fill-opacity="0.09" stroke="#FFFFFF" stroke-opacity="0.18"/>
     <text x="112" y="150" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="72" font-weight="800" fill="#FFFFFF">insilicoPCR</text>
-    <text x="116" y="202" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="29" font-weight="500" fill="#D1FAE5">Modern in silico PCR analysis for genome assemblies</text>
-    <text x="116" y="257" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="21" fill="#BAE6FD">Java 26 • JavaFX 26 • BBMap • BLAST+ • Windows • Linux</text>
+    <text x="116" y="202" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="28" font-weight="500" fill="#D1FAE5">In silico PCR &amp; qPCR for assemblies and reads</text>
+    <text x="116" y="257" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="21" fill="#BAE6FD">Java • JavaFX • BBMap • BLAST+ • Windows • Linux</text>
     <g font-family="Inter, Segoe UI, Arial, sans-serif" font-size="18" font-weight="700">
       <rect x="116" y="294" width="122" height="38" rx="19" fill="#14B8A6"/>
       <text x="144" y="319" fill="#062F2B">Portable</text>
-      <rect x="252" y="294" width="154" height="38" rx="19" fill="#38BDF8"/>
-      <text x="281" y="319" fill="#082F49">Cross-platform</text>
-      <rect x="420" y="294" width="142" height="38" rx="19" fill="#A7F3D0"/>
-      <text x="448" y="319" fill="#064E3B">Open source</text>
+      <rect x="252" y="294" width="130" height="38" rx="19" fill="#38BDF8"/>
+      <text x="281" y="319" fill="#082F49">GUI + CLI</text>
+      <rect x="396" y="294" width="142" height="38" rx="19" fill="#A7F3D0"/>
+      <text x="424" y="319" fill="#064E3B">Open source</text>
     </g>
   </g>
 
-  <g transform="translate(907 128)" filter="url(#shadow)">
-    <rect x="0" y="0" width="250" height="158" rx="22" fill="#F8FAFC" fill-opacity="0.93"/>
-    <rect x="24" y="28" width="202" height="14" rx="7" fill="#0F766E" opacity="0.9"/>
-    <rect x="24" y="62" width="160" height="12" rx="6" fill="#0284C7" opacity="0.75"/>
-    <rect x="24" y="92" width="196" height="12" rx="6" fill="#475569" opacity="0.45"/>
-    <rect x="24" y="120" width="118" height="12" rx="6" fill="#475569" opacity="0.35"/>
-    <circle cx="212" cy="120" r="22" fill="#14B8A6" opacity="0.9"/>
-    <path d="M201 120 l8 8 l16 -20" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <!-- right: PCR motif - template duplex with converging primers -->
+  <g filter="url(#shadow)">
+    <!-- template strands -->
+    <path d="M820 170 C870 150 920 190 970 170 C1020 150 1070 190 1120 170 C1160 155 1190 175 1215 168"
+          stroke="#E0F2FE" stroke-width="7" fill="none" stroke-linecap="round" opacity="0.95"/>
+    <path d="M820 250 C870 270 920 230 970 250 C1020 270 1070 230 1120 250 C1160 265 1190 245 1215 252"
+          stroke="#A7F3D0" stroke-width="7" fill="none" stroke-linecap="round" opacity="0.95"/>
+    <!-- base-pair rungs -->
+    <g stroke="#7DD3FC" stroke-width="3.5" stroke-linecap="round" opacity="0.55">
+      <line x1="845" y1="166" x2="845" y2="254"/>
+      <line x1="885" y1="172" x2="885" y2="248"/>
+      <line x1="925" y1="178" x2="925" y2="242"/>
+      <line x1="965" y1="172" x2="965" y2="248"/>
+      <line x1="1005" y1="164" x2="1005" y2="256"/>
+      <line x1="1045" y1="172" x2="1045" y2="248"/>
+      <line x1="1085" y1="178" x2="1085" y2="242"/>
+      <line x1="1125" y1="172" x2="1125" y2="248"/>
+      <line x1="1165" y1="164" x2="1165" y2="256"/>
+    </g>
+    <!-- forward primer annealing above the top strand, extending right -->
+    <g>
+      <path d="M856 128 L976 128" stroke="#34D399" stroke-width="12" stroke-linecap="round"/>
+      <path d="M976 128 L1002 128" stroke="#34D399" stroke-width="12" stroke-linecap="round" stroke-dasharray="2 14"/>
+      <path d="M1002 112 L1030 128 L1002 144 Z" fill="#34D399"/>
+      <text x="856" y="106" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="19" font-weight="700" fill="#6EE7B7">forward primer 5'&#8594;3'</text>
+    </g>
+    <!-- reverse primer annealing below the bottom strand, extending left -->
+    <g>
+      <path d="M1180 292 L1060 292" stroke="#38BDF8" stroke-width="12" stroke-linecap="round"/>
+      <path d="M1060 292 L1034 292" stroke="#38BDF8" stroke-width="12" stroke-linecap="round" stroke-dasharray="2 14"/>
+      <path d="M1034 276 L1006 292 L1034 308 Z" fill="#38BDF8"/>
+      <text x="1180" y="330" text-anchor="end" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="19" font-weight="700" fill="#7DD3FC">reverse primer 3'&#8592;5'</text>
+    </g>
+    <!-- amplicon bracket -->
+    <g stroke="#FBBF24" stroke-width="3" fill="none" opacity="0.9">
+      <path d="M856 360 L856 374 L1180 374 L1180 360"/>
+    </g>
+    <text x="1018" y="403" text-anchor="middle" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="19" font-weight="700" fill="#FDE68A">amplicon</text>
   </g>
 </svg>

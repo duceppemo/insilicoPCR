@@ -18,13 +18,14 @@ This page summarizes the current project structure and points developers to the 
 - Git
 - Platform runtime assets for release packaging
 
-## Build
+## Build and test
 
 ```bash
+./mvnw test           # JUnit 5 unit tests + JaCoCo coverage (target/site/jacoco/)
 ./mvnw clean package
 ```
 
-The packaged JAR is created under `target/`.
+The packaged JAR is created under `target/`. CI uploads coverage to Codecov on every push.
 
 ## Run CLI from source build
 
@@ -60,7 +61,6 @@ When adding a feature, update:
 
 Potential future work:
 
-- add tests for primer FASTA validation
 - enforce the standard PCR vs qPCR mode limitation earlier in the run
 - improve synthetic gel export options
 - add screenshots to the README and Wiki

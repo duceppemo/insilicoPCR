@@ -13,6 +13,7 @@
 - [Running Analyses](Running-Analyses)
 - [Primer FASTA Format](Primer-FASTA-Format)
 - [Standard PCR vs qPCR](Standard-PCR-vs-qPCR)
+- [Amplicon Calling](Amplicon-Calling)
 - [Reports](Reports)
 - [Synthetic Gel Visualizer](Synthetic-Gel-Visualizer)
 - [Command-line Interface](Command-line-Interface)

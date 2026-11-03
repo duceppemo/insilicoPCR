@@ -83,7 +83,6 @@ A typical run creates output files such as:
 - quality/runtime logs
 - detailed per-sample results
 - consolidated reports
-- Excel reports
 - files used by the synthetic gel visualizer
 
 ## Synthetic gel visualizer

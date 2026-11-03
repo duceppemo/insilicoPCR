@@ -18,6 +18,7 @@ This is the detailed documentation for users and developers. The repository READ
 - [Running Analyses](Running-Analyses)
 - [Primer FASTA Format](Primer-FASTA-Format)
 - [Standard PCR vs qPCR](Standard-PCR-vs-qPCR)
+- [Amplicon Calling](Amplicon-Calling)
 - [Reports](Reports)
 - [Synthetic Gel Visualizer](Synthetic-Gel-Visualizer)
 - [Command-line Interface](Command-line-Interface)
@@ -47,5 +48,7 @@ The application supports both:
 
 - a JavaFX graphical desktop interface
 - a command-line interface for batch runs and pipelines
+
+Reported amplicons are restricted to primer pairs that could plausibly amplify in a real reaction: convergent orientation on opposite strands, a configurable product size limit, and a weighted 3'-end mismatch check. See [Amplicon Calling](Amplicon-Calling).
 
 Portable releases include Java, JavaFX, BBMap, and NCBI BLAST+, so end users do not need to install these tools separately.

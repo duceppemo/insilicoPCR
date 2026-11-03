@@ -17,17 +17,27 @@ Expected help output:
 
 ```text
 usage: java -jar insilicoPCR.jar -i <input> -o <output> -p <primers> [-t
-            n] [-m n] [-e value]
- -e,--evalue <value>   blastn e-value; default: 1e5
- -h,--help             Print help and usage
- -i,--input <path>     Input file/directory containing .fasta/.fastq
-                       sequence(s)
- -m,--mismatches <n>   Allowed primer mismatches; default: 0
- -o,--output <dir>     Directory for output files
- -p,--primers <file>   Primer FASTA file
- -t,--threads <n>      Number of worker threads; default: available
-                       processors
- -v,--version          Print version
+            n] [-m n] [-e value] [-l bp]
+    --3p-penalty <score>   Maximum weighted 3'-end penalty (mismatch: 3 at
+                           terminus, 2 at -1/-2, 1 beyond; +1 if a G/C
+                           pair is broken near the terminus; +1 for
+                           indels); default: 0
+    --3p-window <n>        Bases at the primer 3' end checked with the
+                           weighted 3' penalty; default: 5
+ -e,--evalue <value>       blastn e-value; default: 1e5
+ -h,--help                 Print help and usage
+ -i,--input <path>         Input file/directory containing .fasta/.fastq
+                           sequence(s)
+ -l,--max-length <bp>      Maximum amplicon length in bp, 0 = unlimited;
+                           default: 5000
+ -m,--mismatches <n>       Allowed mismatches+indels per primer (unaligned
+                           3' bases count); default: 0
+    --min-length <bp>      Minimum amplicon length in bp; default: 0
+ -o,--output <dir>         Directory for output files
+ -p,--primers <file>       Primer FASTA file
+ -t,--threads <n>          Number of worker threads; default: available
+                           processors
+ -v,--version              Print version
 ```
 
 ## Required options
@@ -40,13 +50,19 @@ usage: java -jar insilicoPCR.jar -i <input> -o <output> -p <primers> [-t
 
 ## Optional options
 
-| Option | Meaning |
-|---|---|
-| `-t`, `--threads` | Number of worker threads; default is available processors |
-| `-m`, `--mismatches` | Allowed primer mismatches; default is `0` |
-| `-e`, `--evalue` | BLASTN e-value; default is `1e5` |
-| `-v`, `--version` | Print version |
-| `-h`, `--help` | Print help |
+| Option | Default | Meaning |
+|---|---|---|
+| `-t`, `--threads` | available processors | Number of worker threads |
+| `-m`, `--mismatches` | `0` | Allowed mismatches + indels per primer; unaligned 3' bases count against the budget |
+| `-e`, `--evalue` | `1e5` | BLASTN e-value |
+| `-l`, `--max-length` | `5000` | Maximum amplicon length in bp; `0` disables the limit |
+| `--min-length` | `0` | Minimum amplicon length in bp |
+| `--3p-window` | `5` | Number of bases at the primer 3' end checked with the weighted penalty |
+| `--3p-penalty` | `0` | Maximum tolerated weighted 3'-end penalty |
+| `-v`, `--version` | | Print version |
+| `-h`, `--help` | | Print help |
+
+See [Amplicon Calling](Amplicon-Calling) for exactly how the mismatch budget, the 3'-end penalty, and the size limits decide which amplicons are reported.
 
 ## Example: assembly folder
 
@@ -58,7 +74,7 @@ usage: java -jar insilicoPCR.jar -i <input> -o <output> -p <primers> [-t
   -o results/
 ```
 
-## Example: read folder
+## Example: read folder, one tolerated internal mismatch
 
 ```bash
 ./runtime/linux/jdk/bin/java \
@@ -70,14 +86,27 @@ usage: java -jar insilicoPCR.jar -i <input> -o <output> -p <primers> [-t
   -m 1
 ```
 
-## Example: one input file
+## Example: inclusivity screen that tolerates 3'-end wobble
 
 ```bash
 ./runtime/linux/jdk/bin/java \
   -jar insilicoPCR.jar \
-  -i sample.fasta \
+  -i assemblies/ \
   -p primers.fasta \
-  -o sample-results/
+  -o results/ \
+  -m 2 \
+  --3p-penalty 3
+```
+
+## Example: long-range PCR (no product size cap)
+
+```bash
+./runtime/linux/jdk/bin/java \
+  -jar insilicoPCR.jar \
+  -i assemblies/ \
+  -p primers.fasta \
+  -o results/ \
+  -l 0
 ```
 
 ## Notes
@@ -85,4 +114,4 @@ usage: java -jar insilicoPCR.jar -i <input> -o <output> -p <primers> [-t
 - The input path can be a single sequence file or a directory.
 - The primer FASTA must follow the required `-F`, `-R`, and optional `-P` naming convention.
 - Standard PCR and qPCR/probe assays should be run separately.
-- The CLI uses the same pipeline as the graphical application.
+- The CLI uses the same analysis engine as the graphical application, so results are identical.

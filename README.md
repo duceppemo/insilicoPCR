@@ -1,19 +1,20 @@
 # insilicoPCR
 
-<p style="text-align: center;">
+<p align="center">
   <img src="docs/assets/banner.svg" alt="insilicoPCR banner" width="100%">
 </p>
 
-<p style="text-align: center;">
-  <strong>Portable in silico PCR for genome assemblies (FASTA) and sequencing reads (FASTQ)</strong>
+<p align="center">
+  <strong>Portable in silico PCR and qPCR for genome assemblies (FASTA) and sequencing reads (FASTQ)</strong>
 </p>
 
-<p style="text-align: center;">
+<p align="center">
   <a href="../../actions"><img alt="Build" src="https://img.shields.io/github/actions/workflow/status/duceppemo/insilicoPCR/ci-portable-release.yml?branch=master&label=build"></a>
+  <a href="https://codecov.io/gh/duceppemo/insilicoPCR"><img alt="Coverage" src="https://codecov.io/gh/duceppemo/insilicoPCR/graph/badge.svg"></a>
   <a href="../../releases"><img alt="Latest release" src="https://img.shields.io/github/v/release/duceppemo/insilicoPCR?display_name=tag"></a>
+  <a href="https://zenodo.org/badge/latestdoi/828414474"><img alt="DOI" src="https://zenodo.org/badge/828414474.svg"></a>
   <a href="../../wiki"><img alt="Wiki" src="https://img.shields.io/badge/docs-Wiki-0ea5e9"></a>
   <img alt="Java" src="https://img.shields.io/badge/Java-26-blue">
-  <img alt="JavaFX" src="https://img.shields.io/badge/JavaFX-26.0.1-0ea5e9">
   <img alt="Platform" src="https://img.shields.io/badge/platform-Windows%20%7C%20Linux-14b8a6">
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/github/license/duceppemo/insilicoPCR"></a>
 </p>
@@ -22,30 +23,24 @@
 
 ## Overview
 
-**insilicoPCR** is a JavaFX desktop and command-line application for performing **in silico PCR** against **genome assemblies (FASTA)** and **sequencing reads (FASTQ)** using bundled **BBMap** and **NCBI BLAST+** runtimes.
+**insilicoPCR** is a JavaFX desktop and command-line application that tests PCR and qPCR assays *in silico* against **genome assemblies (FASTA)** and **sequencing reads (FASTQ)**, using bundled **BBMap** and **NCBI BLAST+** runtimes. It reports only amplicons that could plausibly form in a real reaction: primer pairs must be convergent on opposite strands, within a configurable product size limit, and free of destabilizing 3'-end mismatches.
 
-It supports primer validation, standard PCR assays, qPCR/probe assays, multiplex workflows, consolidated reports, Excel reports, and a synthetic gel visualizer.
-
-<p style="text-align: center;">
+<p align="center">
   <img src="docs/assets/workflow.svg" alt="insilicoPCR workflow" width="100%">
 </p>
 
----
-
 ## Features
 
-- Analyze genome assemblies: `.fasta`, `.fa`, `.fna`
-- Analyze sequencing reads: `.fastq`, `.fq`
-- Support single-end and paired-end FASTQ workflows
-- Run standard PCR assays or qPCR/probe assays
-- Use degenerate primers with IUPAC bases
-- Detect candidate amplicons with BBMap and validate with BLAST+
-- Generate detailed, consolidated, and Excel reports
+- Analyze genome assemblies (`.fasta`, `.fa`, `.fna`) and sequencing reads (`.fastq`, `.fq`), single-end or paired-end
+- Run standard PCR assays or qPCR/probe assays, including multiplex primer files
+- Use degenerate primers with IUPAC bases (expanded automatically)
+- Realistic amplicon calling:
+  - primers must face each other on opposite strands of the same contig
+  - product size limits (`--max-length`, default 5000 bp) suppress fragments too long to amplify
+  - weighted 3'-end mismatch assessment — mismatches near the primer terminus weigh more, and breaking a G/C pair near the 3' end weighs extra
+- Consolidated TSV reports with per-primer mismatch and 3'-end diagnostics
 - View results as a synthetic gel image
-- Run through the graphical desktop app or CLI
-- Use portable Windows and Linux ZIP releases with bundled Java, JavaFX, BBMap, and BLAST+
-
----
+- Graphical desktop app and CLI in the same portable ZIP (Windows and Linux) with bundled Java, JavaFX, BBMap, and BLAST+
 
 ## Quick Start
 
@@ -69,19 +64,11 @@ Starting the Linux app from a terminal is recommended because startup messages a
 
 ### Windows GUI
 
-Extract the ZIP, open the extracted folder, and double-click:
+Extract the ZIP, open the extracted folder, and double-click `run-insilicoPCR.bat`.
 
-```text
-run-insilicoPCR.bat
-```
-
-The portable launchers configure the bundled Java runtime, JavaFX runtime, BBMap, and BLAST+ automatically. No separate installation of Java, JavaFX, BBMap, or BLAST+ is required.
-
----
+The portable launchers configure the bundled Java runtime, JavaFX runtime, BBMap, and BLAST+ automatically — no separate installation required.
 
 ## Command-line Usage
-
-The portable release can also be used without launching the graphical interface.
 
 ```bash
 cd insilicoPCR-linux-x64
@@ -100,11 +87,39 @@ Typical CLI run:
   -m 1
 ```
 
-The `--input` path can be a single FASTA/FASTQ file or a directory containing FASTA/FASTQ files.
+| Option | Default | Description |
+|---|---|---|
+| `-i, --input <path>` | required | FASTA/FASTQ file, or directory of them |
+| `-o, --output <dir>` | required | Output directory |
+| `-p, --primers <file>` | required | Primer FASTA file |
+| `-t, --threads <n>` | all cores | Worker threads |
+| `-m, --mismatches <n>` | 0 | Allowed mismatches + indels per primer (unaligned 3' bases count too) |
+| `-e, --evalue <value>` | 1e5 | blastn e-value cutoff |
+| `-l, --max-length <bp>` | 5000 | Maximum amplicon length; `0` disables the limit |
+| `--min-length <bp>` | 0 | Minimum amplicon length |
+| `--3p-window <n>` | 5 | Bases at the primer 3' end checked with the weighted penalty |
+| `--3p-penalty <score>` | 0 | Maximum tolerated 3'-end penalty (see below) |
 
-See the [Command-line Usage Wiki page](https://github.com/duceppemo/insilicoPCR/wiki/Command-line-Interface) for the full CLI reference.
+See the [Command-line Interface Wiki page](https://github.com/duceppemo/insilicoPCR/wiki/Command-line-Interface) for the full reference.
 
----
+## How Amplicons Are Called
+
+A forward/reverse hit pair is reported only when **all** of the following hold:
+
+1. Both primers hit the **same contig** on **opposite strands**, facing each other (3' ends pointing inward).
+2. The product length is within `--min-length`/`--max-length` (default ≤ 5000 bp). Primer pairs megabases apart no longer produce phantom amplicons.
+3. Each primer passes the mismatch budget (`-m`): BLAST mismatches + indels + 3' bases BLAST left unaligned.
+4. Each primer passes the **3'-end check**: within the last `--3p-window` bases (default 5), every imperfection is scored and the sum must not exceed `--3p-penalty` (default 0 = perfect 3' end required):
+
+| Imperfection in the 3' window | Penalty |
+|---|---|
+| Mismatch on the terminal base | 3 |
+| Mismatch 1–2 bases from the terminus | 2 |
+| Mismatch 3+ bases from the terminus | 1 |
+| The broken pair involves a primer G/C within the last 3 bases | +1 |
+| Insertion/deletion | +1 |
+
+For example, tolerating a single A/T terminal mismatch requires `-m 1 --3p-penalty 3`; a G/C terminal mismatch requires `--3p-penalty 4`. Hydrolysis probes (`-P`) do not extend, so the 3' rules do not apply to them; a probe hit must simply lie within the amplicon.
 
 ## Primer FASTA Format
 
@@ -114,9 +129,7 @@ Primer files must be FASTA files using this assay naming convention:
 |---|---|
 | `-F` | Forward primer |
 | `-R` | Reverse primer |
-| `-P` | Probe |
-
-Example standard PCR assay:
+| `-P` | Probe (qPCR assays) |
 
 ```fasta
 >targetA-F
@@ -125,75 +138,58 @@ ATGCGTACGTTAGCTAGCTA
 TCGATCGATACGCGTACGTA
 ```
 
-Example qPCR/probe assay:
-
-```fasta
->targetB-F
-GCTAGCTAGGATCGATCGAA
->targetB-R
-TTCGATCGATCCTAGCTAGC
->targetB-P
-ACGTTAGCTAGCTACGTA
-```
-
-**Do not mix standard PCR assays and qPCR/probe assays in the same primer FASTA file.** If any assay includes a `-P` probe, the consolidated report runs in qPCR mode and requires a probe hit for an assay to be reported positive.
+**Do not mix standard PCR assays and qPCR/probe assays in the same primer FASTA file.** If any assay includes a `-P` probe, the consolidated report runs in qPCR mode and requires a probe hit inside the amplicon for an assay to be reported positive.
 
 See the [Primer FASTA Format Wiki page](https://github.com/duceppemo/insilicoPCR/wiki/Primer-FASTA-Format) for detailed examples and limitations.
 
----
+## Output
 
-## Synthetic Gel Visualizer
+The consolidated `report.tsv` contains one row per predicted amplicon:
 
-The synthetic gel visualizer displays consolidated PCR results as gel-like bands, making it easier to review amplicon size patterns across samples and targets.
+`Sample, Gene, GenomeLocation, AmpliconSize, Contig, Contig Description, ForwardPrimers, ReversePrimers, ForwardMismatches, ReverseMismatches, Forward3PrimeMismatches, Reverse3PrimeMismatches, Strand` — plus `Probe, ProbeLocation, ProbeSize, ProbeMismatches` in qPCR mode.
 
-See the [Synthetic Gel Visualizer Wiki page](https://github.com/duceppemo/insilicoPCR/wiki/Synthetic-Gel-Visualizer) for details.
-
----
+The synthetic gel visualizer displays these results as gel-like bands for quick review of amplicon size patterns across samples. See the [Synthetic Gel Visualizer Wiki page](https://github.com/duceppemo/insilicoPCR/wiki/Synthetic-Gel-Visualizer).
 
 ## Documentation
-
-Detailed documentation belongs in the GitHub **Wiki** tab:
 
 - [insilicoPCR Wiki](https://github.com/duceppemo/insilicoPCR/wiki)
 - [Installation](https://github.com/duceppemo/insilicoPCR/wiki/Installation)
 - [First Analysis](https://github.com/duceppemo/insilicoPCR/wiki/First-Analysis)
+- [Amplicon Calling Rules](https://github.com/duceppemo/insilicoPCR/wiki/Amplicon-Calling)
 - [Command-line Interface](https://github.com/duceppemo/insilicoPCR/wiki/Command-line-Interface)
 - [Primer FASTA Format](https://github.com/duceppemo/insilicoPCR/wiki/Primer-FASTA-Format)
 - [Synthetic Gel Visualizer](https://github.com/duceppemo/insilicoPCR/wiki/Synthetic-Gel-Visualizer)
 - [Developer Guide](https://github.com/duceppemo/insilicoPCR/wiki/Developer-Guide)
 
-A source-controlled mirror of the Wiki content is kept under [`docs/wiki/`](docs/wiki/) for review, history, and easy publishing into the GitHub Wiki repository.
-
----
+A source-controlled mirror of the Wiki content is kept under [`docs/wiki/`](docs/wiki/).
 
 ## Building From Source
 
 ```bash
 git clone https://github.com/duceppemo/insilicoPCR.git
 cd insilicoPCR
+./mvnw test          # unit tests (JUnit 5 + JaCoCo coverage)
 ./mvnw clean package
 java -jar target/insilicoPCR.jar -h
 ```
 
 Development requires Java 26. End users should normally use the portable releases.
 
----
-
 ## Architecture and Releases
 
-<p style="text-align: center;">
+<p align="center">
   <img src="docs/assets/architecture.svg" alt="insilicoPCR architecture" width="100%">
 </p>
 
-<p style="text-align: center;">
+Releases are fully automated: pushing a `v*` tag builds the Linux and Windows portable ZIPs and publishes a GitHub Release (archived on Zenodo with a DOI).
+
+<p align="center">
   <img src="docs/assets/release-pipeline.svg" alt="insilicoPCR release pipeline" width="100%">
 </p>
 
----
-
 ## Citation
 
-If you use insilicoPCR in published work, please cite this repository and the underlying tools used by the workflow.
+If you use insilicoPCR in published work, please cite it via the repository DOI (see the Zenodo badge above, or [`CITATION.cff`](CITATION.cff)):
 
 ```bibtex
 @software{insilicopcr,
@@ -204,7 +200,7 @@ If you use insilicoPCR in published work, please cite this repository and the un
 }
 ```
 
----
+Please also cite the underlying tools: NCBI BLAST+ and BBMap (BBDuk/Tadpole).
 
 ## License
 

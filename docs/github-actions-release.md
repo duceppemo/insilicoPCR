@@ -11,17 +11,17 @@ The workflow is defined in `.github/workflows/ci-portable-release.yml` and runs 
 ## Creating a release
 
 ```bash
-git tag v0.7.0
-git push origin v0.7.0
+git tag v0.8.0
+git push origin v0.8.0
 ```
 
 The workflow publishes:
 
 ```text
-insilicoPCR-0.7.0-linux-x64.zip
-insilicoPCR-0.7.0-linux-x64.sha256
-insilicoPCR-0.7.0-windows-x64.zip
-insilicoPCR-0.7.0-windows-x64.sha256
+insilicoPCR-0.8.0-linux-x64.zip
+insilicoPCR-0.8.0-linux-x64.sha256
+insilicoPCR-0.8.0-windows-x64.zip
+insilicoPCR-0.8.0-windows-x64.sha256
 ```
 
 Only portable ZIPs are published — no `.exe`, `.msi`, `.dmg`, `.deb`, or `.rpm` installers.

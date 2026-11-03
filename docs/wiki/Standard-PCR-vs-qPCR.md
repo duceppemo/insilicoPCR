@@ -1,6 +1,6 @@
 # Standard PCR vs qPCR
 
-insilicoPCR decides per assay whether to apply standard PCR or qPCR/probe reporting, based on the primers defined in the primer FASTA file. Both kinds of assays can be tested in the same run (since version 0.7.0).
+insilicoPCR decides per assay whether to apply standard PCR or qPCR/probe reporting, based on the primers defined in the primer FASTA file. Both kinds of assays can be tested in the same run (since version 0.8.0).
 
 ## Standard PCR assays
 
@@ -36,4 +36,4 @@ Mixed primer files are fully supported. The probe requirement follows each assay
 
 When at least one assay in the file defines a probe, the consolidated report includes the probe columns (`Probe`, `ProbeLocation`, `ProbeSize`, `ProbeMismatches`); those columns are left empty on rows of probe-less assays.
 
-> Versions before 0.7.0 switched the whole report to qPCR mode as soon as any `-P` primer was present, silently dropping all probe-less assays. If you need that behavior for some reason, run the assay types separately.
+> Versions before 0.8.0 switched the whole report to qPCR mode as soon as any `-P` primer was present, silently dropping all probe-less assays. If you need that behavior for some reason, run the assay types separately.

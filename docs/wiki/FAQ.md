@@ -30,7 +30,7 @@ The primer file must be FASTA. Primer IDs must end with `-F`, `-R`, or `-P`.
 
 ## Can I mix PCR assays with qPCR/probe assays?
 
-Yes (since version 0.7.0). The probe requirement is decided per assay: assays with a `-P` probe are only reported when the probe hits inside the amplicon, while probe-less assays are reported on their primer pair alone. See [Standard PCR vs qPCR](Standard-PCR-vs-qPCR).
+Yes (since version 0.8.0). The probe requirement is decided per assay: assays with a `-P` probe are only reported when the probe hits inside the amplicon, while probe-less assays are reported on their primer pair alone. See [Standard PCR vs qPCR](Standard-PCR-vs-qPCR).
 
 ## Why is Linux launched from a terminal?
 
@@ -47,7 +47,7 @@ The most common reasons, in order:
 
 ## Why does the report show huge amplicons from old versions but not anymore?
 
-Versions before 0.7.0 paired any forward/reverse hits on the same contig, regardless of distance or orientation. Those "phantom" products would not amplify in a real reaction and are now filtered out.
+Versions before 0.8.0 paired any forward/reverse hits on the same contig, regardless of distance or orientation. Those "phantom" products would not amplify in a real reaction and are now filtered out.
 
 ## Are G/C mismatches treated differently from A/T mismatches?
 

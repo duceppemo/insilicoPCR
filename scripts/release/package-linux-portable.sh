@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-VERSION="${1:-0.7.0}"
+VERSION="${1:-0.8.0}"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 RELEASE_DIR="$ROOT/release"
 STAGE_DIR="$ROOT/build/insilicoPCR-linux-x64"

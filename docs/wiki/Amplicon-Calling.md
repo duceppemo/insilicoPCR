@@ -62,7 +62,7 @@ An accepted forward hit and an accepted reverse hit are reported as an amplicon 
 1. **Same contig.** Both primers hit the same input sequence.
 2. **Opposite strands, convergent.** One primer anneals to the plus strand and extends rightward; the other anneals to the minus strand and extends leftward — and they must face each other. Divergent (back-to-back) and same-strand pairs never amplify and are rejected. The assay may legitimately sit on either strand of your genome: `Strand` in the report shows `+` when the forward primer matched the plus strand, `-` when the assay matched the reverse strand.
 3. **Product size limits.** The product (5' end of one primer to the 5' end of the other, inclusive) must be at least `--min-length` (default 0) and at most `--max-length` (default **5000 bp**). This suppresses "phantom" products from primer sites that are tens of kilobases — or megabases — apart, which would never amplify in a real reaction. Set `-l 0` to disable the cap (e.g., for long-range PCR assessments).
-4. **Probe assays only: probe inside the product.** For an assay that defines a `-P` probe, a row is reported only if an accepted probe hit lies entirely within the amplicon. Probe-less assays in the same primer file are reported on their primer pair alone (per-assay decision; mixing both kinds in one run is supported since 0.7.0).
+4. **Probe assays only: probe inside the product.** For an assay that defines a `-P` probe, a row is reported only if an accepted probe hit lies entirely within the amplicon. Probe-less assays in the same primer file are reported on their primer pair alone (per-assay decision; mixing both kinds in one run is supported since 0.8.0).
 
 ## Typical settings
 

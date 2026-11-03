@@ -42,7 +42,7 @@ Always confirm important results in the detailed or consolidated report tables.
 
 The gel visualizer depends on the consolidated report.
 
-The gel shows exactly what the consolidated report contains. For an assay that defines a `-P` probe, a band appears only when the probe was also found inside the amplicon; probe-less assays produce bands from their primer pair alone (mixed runs are supported since version 0.7.0).
+The gel shows exactly what the consolidated report contains. For an assay that defines a `-P` probe, a band appears only when the probe was also found inside the amplicon; probe-less assays produce bands from their primer pair alone (mixed runs are supported since version 0.8.0).
 
 ## Limitations
 

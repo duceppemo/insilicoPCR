@@ -49,7 +49,7 @@ The `detailed_report` folder keeps the raw BLAST tabular output per sample (with
 
 ## Mode behavior
 
-The probe requirement is decided per assay (since version 0.7.0): assays with a `-P` probe require probe support inside the amplicon, while probe-less assays are reported on their primer pair alone — both can live in the same primer FASTA file. See [Standard PCR vs qPCR](Standard-PCR-vs-qPCR).
+The probe requirement is decided per assay (since version 0.8.0): assays with a `-P` probe require probe support inside the amplicon, while probe-less assays are reported on their primer pair alone — both can live in the same primer FASTA file. See [Standard PCR vs qPCR](Standard-PCR-vs-qPCR).
 
 ## Synthetic gel
 

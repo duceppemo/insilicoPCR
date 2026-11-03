@@ -51,7 +51,7 @@ ACGTTAGCTAGCTACGTA
 
 ## Mixing PCR modes
 
-Standard PCR assays and qPCR/probe assays can be mixed in the same primer FASTA file (since version 0.7.0). Assays with a `-P` probe require probe support inside the amplicon; assays without a probe are reported on their primer pair alone.
+Standard PCR assays and qPCR/probe assays can be mixed in the same primer FASTA file (since version 0.8.0). Assays with a `-P` probe require probe support inside the amplicon; assays without a probe are reported on their primer pair alone.
 
 ## Parameters
 

@@ -69,7 +69,7 @@ The primer file must be a FASTA file using the special primer nomenclature descr
 
 ## Standard PCR and qPCR assays
 
-Standard PCR and qPCR/probe assays can be mixed in the same primer FASTA file (since version 0.7.0); the probe requirement is applied per assay.
+Standard PCR and qPCR/probe assays can be mixed in the same primer FASTA file (since version 0.8.0); the probe requirement is applied per assay.
 
 - Standard PCR assays use `-F` and `-R` entries and are reported on their primer pair alone.
 - qPCR/probe assays use `-F`, `-R`, and `-P` entries and are reported only when the probe also hits inside the amplicon.

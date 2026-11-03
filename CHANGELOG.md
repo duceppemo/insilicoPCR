@@ -1,6 +1,10 @@
 # Changelog
 
-## 0.7.0 (unreleased)
+## 0.8.0
+
+> Note: this release was developed as "0.7.0" but a v0.7.0 tag and GitHub
+> release (2026-07-09) already existed from earlier work, so it ships as
+> 0.8.0. All "0.8.0" behavior notes below refer to this release.
 
 ### Mixed PCR + qPCR runs
 
@@ -18,7 +22,7 @@ whole report to qPCR mode and silently dropped all probe-less assays.
 Previous versions paired **any** forward/reverse BLAST hits found on the same
 contig, regardless of distance or orientation, which reported "phantom"
 amplicons (same-strand pairs, divergent pairs, products megabases long) that
-would never form in a real reaction. Version 0.7.0 reports a pair only when:
+would never form in a real reaction. Version 0.8.0 reports a pair only when:
 
 - the primers sit on **opposite strands in convergent orientation** (3' ends
   facing each other) on the same contig;
@@ -108,7 +112,7 @@ would never form in a real reaction. Version 0.7.0 reports a pair only when:
   either aborting after the BLAST stage or being silently unreportable.
 - The GUI validates the E-value (and max amplicon length) before switching
   into the running state, so a typo can no longer freeze the window, and the
-  Mismatches selector gained a tooltip explaining the 0.7.0 semantics.
+  Mismatches selector gained a tooltip explaining the 0.8.0 semantics.
 - BLAST reports with no matching sample in the run now print a warning
   instead of being silently ignored; CI fails if the coverage report is
   missing.

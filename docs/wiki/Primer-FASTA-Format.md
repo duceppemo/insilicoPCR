@@ -64,7 +64,7 @@ In qPCR mode, a target is reported as positive only when the forward primer, rev
 
 ## Mixing PCR and qPCR assays
 
-Standard PCR assays and qPCR/probe assays can be mixed in the same primer FASTA file (since version 0.7.0). The probe requirement is decided per assay:
+Standard PCR assays and qPCR/probe assays can be mixed in the same primer FASTA file (since version 0.8.0). The probe requirement is decided per assay:
 
 - an assay **with** a `-P` probe is reported only when the probe is also found inside the amplicon;
 - an assay **without** a probe is reported on its primer pair alone.

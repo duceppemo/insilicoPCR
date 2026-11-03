@@ -164,7 +164,7 @@ jobs:
         with:
           files: |
             dist/*linux-x64.zip
-            dist/*linux-x64.sha256
+            dist/*linux-x64.zip.sha256
             dist/*windows-x64.zip
-            dist/*windows-x64.sha256
+            dist/*windows-x64.zip.sha256
           generate_release_notes: true

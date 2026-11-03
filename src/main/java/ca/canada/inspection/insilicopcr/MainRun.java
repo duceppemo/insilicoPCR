@@ -311,8 +311,10 @@ public class MainRun extends Application {
         AmpliconOptions ampliconOptions;
         try {
             int maxLength = Integer.parseInt(maxLengthField.getText().trim());
+            int mismatches = mismatchField.getSelectionModel().getSelectedItem();
             ampliconOptions = new AmpliconOptions(
-                    mismatchField.getSelectionModel().getSelectedItem(),
+                    mismatches,
+                    mismatches,
                     AmpliconOptions.DEFAULT_THREE_PRIME_WINDOW,
                     AmpliconOptions.DEFAULT_THREE_PRIME_PENALTY,
                     AmpliconOptions.DEFAULT_FIVE_PRIME_TRUNCATION,

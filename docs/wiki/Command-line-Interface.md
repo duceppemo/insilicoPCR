@@ -18,31 +18,36 @@ Expected help output:
 ```text
 usage: java -jar insilicoPCR.jar -i <input> -o <output> -p <primers> [-t
             n] [-m n] [-e value] [-l bp]
-    --3p-penalty <score>   Maximum weighted 3'-end penalty (mismatch: 3 at
-                           terminus, 2 at -1/-2, 1 beyond; +1 if a G/C
-                           pair is broken near the terminus; +1 for
-                           indels); default: 0
-    --3p-window <n>        Bases at the primer 3' end checked with the
-                           weighted 3' penalty; default: 5
-    --5p-truncation <n>    Maximum primer bases allowed to be unaligned at
-                           the harmless 5' end (one 5'-proximal mismatch
-                           makes BLAST trim the whole tail); default: 5
- -e,--evalue <value>       blastn e-value; default: 1e5
- -g,--gel                  Also write the synthetic gel image as PNG
-                           (requires a graphical environment)
- -h,--help                 Print help and usage
- -i,--input <path>         Input file/directory containing .fasta/.fastq
-                           sequence(s)
- -l,--max-length <bp>      Maximum amplicon length in bp, 0 = unlimited;
-                           default: 5000
- -m,--mismatches <n>       Allowed mismatches+indels per primer (unaligned
-                           3' bases count); default: 0
-    --min-length <bp>      Minimum amplicon length in bp; default: 0
- -o,--output <dir>         Directory for output files
- -p,--primers <file>       Primer FASTA file
- -t,--threads <n>          Number of worker threads; default: available
-                           processors
- -v,--version              Print version
+    --3p-penalty <score>     Maximum weighted 3'-end penalty (mismatch: 3
+                             at terminus, 2 at -1/-2, 1 beyond; +1 if a
+                             G/C pair is broken near the terminus; +1 for
+                             indels); default: 0
+    --3p-window <n>          Bases at the primer 3' end checked with the
+                             weighted 3' penalty; default: 5
+    --5p-truncation <n>      Maximum primer bases allowed to be unaligned
+                             at the harmless 5' end (one 5'-proximal
+                             mismatch makes BLAST trim the whole tail);
+                             default: 5
+ -e,--evalue <value>         blastn e-value; default: 1e5
+ -g,--gel                    Also write the synthetic gel image as PNG
+                             (requires a graphical environment)
+ -h,--help                   Print help and usage
+ -i,--input <path>           Input file/directory containing .fasta/.fastq
+                             sequence(s)
+ -l,--max-length <bp>        Maximum amplicon length in bp, 0 = unlimited;
+                             default: 5000
+ -m,--mismatches <n>         Allowed mismatches+indels per primer
+                             (unaligned 3' bases count); default: 0
+    --min-length <bp>        Minimum amplicon length in bp; default: 0
+ -o,--output <dir>           Directory for output files
+ -p,--primers <file>         Primer FASTA file
+    --probe-mismatches <n>   Allowed mismatches+indels per hydrolysis
+                             probe; probes bind hotter than primers and
+                             tolerate roughly one more mismatch; default:
+                             same as -m
+ -t,--threads <n>            Number of worker threads; default: available
+                             processors
+ -v,--version                Print version
 ```
 
 ## Required options
@@ -59,6 +64,7 @@ usage: java -jar insilicoPCR.jar -i <input> -o <output> -p <primers> [-t
 |---|---|---|
 | `-t`, `--threads` | available processors | Number of worker threads |
 | `-m`, `--mismatches` | `0` | Allowed mismatches + indels per primer; unaligned 3' bases count against the budget |
+| `--probe-mismatches` | same as `-m` | Allowed mismatches + indels per hydrolysis probe (probes bind hotter and tolerate more) |
 | `-e`, `--evalue` | `1e5` | BLASTN e-value |
 | `-l`, `--max-length` | `5000` | Maximum amplicon length in bp; `0` disables the limit |
 | `--min-length` | `0` | Minimum amplicon length in bp |

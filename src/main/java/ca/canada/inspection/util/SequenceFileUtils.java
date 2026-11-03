@@ -13,6 +13,7 @@ import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import java.util.zip.GZIPInputStream;
@@ -29,10 +30,8 @@ public final class SequenceFileUtils {
 
     private static final Pattern SEQUENCE_EXTENSION = Pattern.compile("(?i)\\.(fasta|ffn|fna|fsa|fa|fastq|fq)(\\.gz)?$");
     private static final Pattern READ_PAIR_SUFFIX = Pattern.compile("(?i)_R[12](_001)?$");
-    // FASTQ reads from ENA/SRA (fasterq-dump) are named <run>_1 / <run>_2. The
-    // bare-digit form is only applied to FASTQ files: two FASTA assemblies named
-    // strain_1/strain_2 are distinct samples, not a read pair.
-    private static final Pattern FASTQ_PAIR_SUFFIX = Pattern.compile("(?i)_(R[12](_001)?|[12])$");
+    // FASTQ reads from ENA/SRA (fasterq-dump) are named <run>_1 / <run>_2.
+    private static final Pattern BARE_FASTQ_PAIR_SUFFIX = Pattern.compile("_([12])$");
 
     public static boolean hasExtension(String filename, String[] extensions) {
         String lower = filename.toLowerCase(Locale.ROOT);
@@ -45,9 +44,35 @@ public final class SequenceFileUtils {
 
     public static String sampleName(Path path) {
         String fileName = path.getFileName().toString();
-        Pattern pairSuffix = hasExtension(fileName, FASTQ_EXTENSIONS) ? FASTQ_PAIR_SUFFIX : READ_PAIR_SUFFIX;
-        String name = SEQUENCE_EXTENSION.matcher(fileName).replaceFirst("");
-        return pairSuffix.matcher(name).replaceFirst("");
+        String base = SEQUENCE_EXTENSION.matcher(fileName).replaceFirst("");
+        String withoutIlluminaSuffix = READ_PAIR_SUFFIX.matcher(base).replaceFirst("");
+        if (!withoutIlluminaSuffix.equals(base)) {
+            return withoutIlluminaSuffix;
+        }
+        // The bare _1/_2 convention is ambiguous (sequentially numbered samples
+        // use it too), so it only counts as a read pair when the mate file is
+        // actually present and no _3 sibling suggests sequential numbering.
+        // It is also never applied to FASTA files: strain_1.fasta and
+        // strain_2.fasta are distinct samples.
+        if (hasExtension(fileName, FASTQ_EXTENSIONS)) {
+            Matcher mate = BARE_FASTQ_PAIR_SUFFIX.matcher(base);
+            if (mate.find() && isPartOfReadPair(path, fileName, base, mate.group(1))) {
+                return base.substring(0, mate.start());
+            }
+        }
+        return base;
+    }
+
+    private static boolean isPartOfReadPair(Path path, String fileName, String base, String digit) {
+        Path directory = path.toAbsolutePath().getParent();
+        if (directory == null) {
+            return false;
+        }
+        String extension = fileName.substring(base.length());
+        String stem = base.substring(0, base.length() - 2);
+        String mateName = stem + "_" + ("1".equals(digit) ? "2" : "1") + extension;
+        return Files.exists(directory.resolve(mateName))
+                && !Files.exists(directory.resolve(stem + "_3" + extension));
     }
 
     public static String fileType(Path file) {

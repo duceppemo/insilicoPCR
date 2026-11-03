@@ -78,6 +78,9 @@ public final class Dispatcher {
         options.addOption(Option.builder().longOpt("3p-penalty").hasArg().argName("score")
                 .desc("Maximum weighted 3'-end penalty (mismatch: 3 at terminus, 2 at -1/-2, 1 beyond;"
                         + " +1 if a G/C pair is broken near the terminus; +1 for indels); default: 0").build());
+        options.addOption(Option.builder().longOpt("probe-mismatches").hasArg().argName("n")
+                .desc("Allowed mismatches+indels per hydrolysis probe; probes bind hotter than primers"
+                        + " and tolerate roughly one more mismatch; default: same as -m").build());
         options.addOption(Option.builder().longOpt("5p-truncation").hasArg().argName("n")
                 .desc("Maximum primer bases allowed to be unaligned at the harmless 5' end"
                         + " (one 5'-proximal mismatch makes BLAST trim the whole tail); default: 5").build());

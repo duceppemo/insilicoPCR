@@ -42,8 +42,10 @@ public record CliConfig(
             throw new IllegalArgumentException("Primer file does not exist or is not a regular file: " + primers);
         }
 
+        int mismatches = parseNonNegative(cmd, "mismatches", 0);
         AmpliconOptions options = new AmpliconOptions(
-                parseNonNegative(cmd, "mismatches", 0),
+                mismatches,
+                parseNonNegative(cmd, "probe-mismatches", mismatches),
                 parseNonNegative(cmd, "3p-window", AmpliconOptions.DEFAULT_THREE_PRIME_WINDOW),
                 parseNonNegative(cmd, "3p-penalty", AmpliconOptions.DEFAULT_THREE_PRIME_PENALTY),
                 parseNonNegative(cmd, "5p-truncation", AmpliconOptions.DEFAULT_FIVE_PRIME_TRUNCATION),

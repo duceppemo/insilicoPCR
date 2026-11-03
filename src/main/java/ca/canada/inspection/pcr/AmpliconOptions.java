@@ -5,6 +5,8 @@ package ca.canada.inspection.pcr;
  * forward/reverse hit pairs are reported as amplicons.
  *
  * @param maxTotalMismatches    maximum mismatches + indels + unaligned 3' bases over the whole primer
+ * @param maxProbeMismatches    maximum mismatches + indels over a hydrolysis probe (probes are longer
+ *                              and bind hotter than primers, so they tolerate more)
  * @param threePrimeWindow      number of bases at the primer 3' end checked separately
  * @param maxThreePrimePenalty  maximum weighted 3' penalty tolerated inside the window
  *                              (see {@link ca.canada.inspection.insilicopcr.BlastResult#threePrimePenalty(int)})
@@ -14,6 +16,7 @@ package ca.canada.inspection.pcr;
  */
 public record AmpliconOptions(
         int maxTotalMismatches,
+        int maxProbeMismatches,
         int threePrimeWindow,
         int maxThreePrimePenalty,
         int maxFivePrimeTruncation,
@@ -34,6 +37,7 @@ public record AmpliconOptions(
 
     public AmpliconOptions {
         requireNonNegative(maxTotalMismatches, "maxTotalMismatches");
+        requireNonNegative(maxProbeMismatches, "maxProbeMismatches");
         requireNonNegative(threePrimeWindow, "threePrimeWindow");
         requireNonNegative(maxThreePrimePenalty, "maxThreePrimePenalty");
         requireNonNegative(maxFivePrimeTruncation, "maxFivePrimeTruncation");
@@ -48,6 +52,7 @@ public record AmpliconOptions(
     /** Default options with the given number of allowed total mismatches. */
     public static AmpliconOptions withMismatches(int maxTotalMismatches) {
         return new AmpliconOptions(
+                maxTotalMismatches,
                 maxTotalMismatches,
                 DEFAULT_THREE_PRIME_WINDOW,
                 DEFAULT_THREE_PRIME_PENALTY,

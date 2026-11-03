@@ -18,7 +18,7 @@ class BlastHitParserTest {
             "assay-P", PRIMER_20
     );
     private static final AmpliconOptions STRICT = AmpliconOptions.withMismatches(0);
-    private static final AmpliconOptions RELAXED = new AmpliconOptions(2, 5, 0, 2, 0, 5000);
+    private static final AmpliconOptions RELAXED = new AmpliconOptions(2, 2, 5, 0, 2, 0, 5000);
 
     // outfmt: qseqid sseqid positive mismatch gaps evalue bitscore slen length qstart qend qseq sstart send sseq
     private static String line(String sseqid, int mismatch, int gaps, int slen, int length,
@@ -71,7 +71,7 @@ class BlastHitParserTest {
 
         assertTrue(BlastHitParser.parse(blastLine, "sample1", PRIMERS, STRICT).isEmpty());
         assertTrue(BlastHitParser.parse(blastLine, "sample1", PRIMERS,
-                new AmpliconOptions(1, 5, 0, 2, 0, 5000)).isPresent());
+                new AmpliconOptions(1, 1, 5, 0, 2, 0, 5000)).isPresent());
     }
 
     @Test
@@ -85,7 +85,7 @@ class BlastHitParserTest {
         assertTrue(BlastHitParser.parse(blastLine, "sample1", PRIMERS, RELAXED).isEmpty());
         // Raising the 3' penalty allowance rescues it (G/C mismatch at distance 2 scores 2+1).
         assertTrue(BlastHitParser.parse(blastLine, "sample1", PRIMERS,
-                new AmpliconOptions(1, 5, 3, 2, 0, 5000)).isPresent());
+                new AmpliconOptions(1, 1, 5, 3, 2, 0, 5000)).isPresent());
     }
 
     @Test
@@ -94,6 +94,29 @@ class BlastHitParserTest {
         String aligned = PRIMER_20.substring(0, 18);
         String blastLine = line("assay-P", 0, 0, 20, 18, 101, 118, aligned, 1, 18, aligned);
         assertTrue(BlastHitParser.parse(blastLine, "sample1", PRIMERS, STRICT).isPresent());
+    }
+
+    @Test
+    void probeCoverageIsIndependentOfPrimerFivePrimeAllowance() {
+        // 3 unaligned probe bases: rejected even though --5p-truncation (5) would
+        // allow it for a primer. Probes must cover nearly their whole length.
+        String aligned = PRIMER_20.substring(0, 17);
+        String blastLine = line("assay-P", 0, 0, 20, 17, 101, 117, aligned, 1, 17, aligned);
+        assertTrue(BlastHitParser.parse(blastLine, "sample1", PRIMERS, STRICT).isEmpty());
+    }
+
+    @Test
+    void probesUseTheirOwnMismatchBudget() {
+        // One internal mismatch in the probe, probe position 10: no 3' rules apply.
+        StringBuilder qseq = new StringBuilder(PRIMER_20);
+        qseq.setCharAt(9, qseq.charAt(9) == 'A' ? 'G' : 'A');
+        String blastLine = line("assay-P", 1, 0, 20, 20, 101, 120, qseq.toString(), 1, 20, PRIMER_20);
+
+        // Rejected when the probe budget is 0, accepted with --probe-mismatches 1
+        // even though the primer budget (-m) stays 0.
+        assertTrue(BlastHitParser.parse(blastLine, "sample1", PRIMERS, STRICT).isEmpty());
+        AmpliconOptions probeTolerant = new AmpliconOptions(0, 1, 5, 0, 5, 0, 5000);
+        assertTrue(BlastHitParser.parse(blastLine, "sample1", PRIMERS, probeTolerant).isPresent());
     }
 
     @Test

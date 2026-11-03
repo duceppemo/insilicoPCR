@@ -34,6 +34,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.stream.Stream;
 
 import javax.imageio.ImageIO;
@@ -343,7 +344,7 @@ public class Methods {
 		}
 
 		LinkedHashMap<String, List<GelBand>> sampleBands = GelReportReader.read(consolidatedReport, sampleDict);
-		if (sampleBands.isEmpty()) {
+		if (sampleBands.values().stream().allMatch(List::isEmpty)) {
 			throw new IllegalStateException("No amplicons were found in consolidated report: " + consolidatedReport);
 		}
 
@@ -596,16 +597,25 @@ public class Methods {
 			double x = gelLeft + (laneIndex * laneWidth);
 			for (Map.Entry<Integer, List<GelBand>> bandEntry : GelReportReader.groupByRoundedSize(sampleEntry.getValue()).entrySet()) {
 				int size = bandEntry.getKey();
-				List<GelBand> bands = bandEntry.getValue();
-
-				double laneVariation = deterministicRange(sampleName, 0.90, 1.10);
 				double verticalJitter = deterministicRange(sampleName + ':' + size, -0.45, 0.45);
-				// Same intensity model as the interactive gel viewer.
-				double intensity = Math.min(1.0, (0.45 + Math.max(0, bands.size() - 1) * 0.12) * laneVariation);
-				double adjustedBandHeight = baseBandHeight + (intensity * 1.2);
-				Color color = geneColors.getOrDefault(bands.getFirst().geneName(), Color.BLACK);
 
-				drawGelBand(gc, x, ladderY(gelTop, gelHeight, size) + verticalJitter, laneWidth, adjustedBandHeight, intensity, color);
+				// Different genes can share a rounded size: draw one band per gene,
+				// slightly offset, so neither color is hidden.
+				Map<String, List<GelBand>> byGene = new TreeMap<>();
+				for (GelBand band : bandEntry.getValue()) {
+					byGene.computeIfAbsent(band.geneName(), ignored -> new ArrayList<>()).add(band);
+				}
+				int geneIndex = 0;
+				for (Map.Entry<String, List<GelBand>> geneEntry : byGene.entrySet()) {
+					double geneOffset = (geneIndex - (byGene.size() - 1) / 2.0) * 3.0;
+					double intensity = GelColors.bandIntensity(geneEntry.getValue().size());
+					double adjustedBandHeight = baseBandHeight + (intensity * 1.2);
+					Color color = geneColors.getOrDefault(geneEntry.getKey(), Color.BLACK);
+
+					drawGelBand(gc, x, ladderY(gelTop, gelHeight, size) + verticalJitter + geneOffset,
+							laneWidth, adjustedBandHeight, intensity, color);
+					geneIndex++;
+				}
 			}
 			laneIndex++;
 		}
@@ -687,14 +697,6 @@ public class Methods {
 	 * without opening a window. The JavaFX toolkit must already be running and
 	 * this method must NOT be called on the FX application thread.
 	 */
-	public static Path exportSyntheticGelPng(Path consolidatedReport, Path outputFile) {
-		return exportSyntheticGelPng(consolidatedReport, outputFile, java.util.List.of());
-	}
-
-	/**
-	 * As {@link #exportSyntheticGelPng(Path, Path)}, but keeps one lane per given
-	 * sample name even when it produced no amplicons (negative controls).
-	 */
 	public static Path exportSyntheticGelPng(Path consolidatedReport, Path outputFile,
 	                                         java.util.Collection<String> sampleNames) {
 		HashMap<String, Sample> laneSamples = new HashMap<>();
@@ -702,7 +704,7 @@ public class Methods {
 			laneSamples.put(name, null);
 		}
 		LinkedHashMap<String, List<GelBand>> sampleBands = GelReportReader.read(consolidatedReport, laneSamples);
-		if (sampleBands.isEmpty()) {
+		if (sampleBands.values().stream().allMatch(List::isEmpty)) {
 			throw new IllegalStateException("No amplicons were found in consolidated report: " + consolidatedReport);
 		}
 

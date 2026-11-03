@@ -20,6 +20,11 @@ public final class GelColors {
     private GelColors() {
     }
 
+    /** Band opacity as a function of how many amplicons share the band. */
+    public static double bandIntensity(int bandCount) {
+        return Math.min(1.0, 0.45 + Math.max(0, bandCount - 1) * 0.12);
+    }
+
     /** Assigns a stable palette color to each gene, in first-appearance order across lanes. */
     public static Map<String, Color> assignGeneColors(Map<String, List<GelBand>> lanes) {
         Map<String, Color> colors = new LinkedHashMap<>();

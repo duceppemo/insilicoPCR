@@ -69,7 +69,7 @@ class AmpliconCallerTest {
 
     @Test
     void maxLengthZeroDisablesTheLimit() {
-        AmpliconOptions unlimited = new AmpliconOptions(0, 5, 0, 2, 0, 0);
+        AmpliconOptions unlimited = new AmpliconOptions(0, 0, 5, 0, 2, 0, 0);
         BlastResult forward = TestHits.plusHit("assay-F", "contig1", 1);
         BlastResult reverse = TestHits.minusHit("assay-R", "contig1", 1_999_981);
         assertEquals(2_000_000, AmpliconCaller.call(forward, reverse, unlimited).orElseThrow().size());
@@ -77,7 +77,7 @@ class AmpliconCallerTest {
 
     @Test
     void productsShorterThanMinLengthAreRejected() {
-        AmpliconOptions options = new AmpliconOptions(0, 5, 0, 2, 100, 5000);
+        AmpliconOptions options = new AmpliconOptions(0, 0, 5, 0, 2, 100, 5000);
         BlastResult forward = TestHits.plusHit("assay-F", "contig1", 101);
         BlastResult reverse = TestHits.minusHit("assay-R", "contig1", 131); // 50 bp product
         assertTrue(AmpliconCaller.call(forward, reverse, options).isEmpty());

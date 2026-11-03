@@ -312,7 +312,7 @@ public final class PaginatedGelViewer {
             for (Map.Entry<Integer, List<GelBand>> entry : bySize.entrySet()) {
                 List<GelBand> bands = entry.getValue();
                 double y = ladderY(layout.gelTop(), layout.gelHeight(), entry.getKey());
-                double intensity = Math.min(1.0, 0.45 + Math.max(0, bands.size() - 1) * 0.12);
+                double intensity = GelColors.bandIntensity(bands.size());
                 Color color = colorByGene ? model.geneColors.getOrDefault(bands.getFirst().geneName(), Color.BLACK) : Color.BLACK;
                 addBand(pane, laneX, y, layout.laneWidth(), 2.0 + intensity, intensity, color, tooltipText(bands));
             }
@@ -520,7 +520,7 @@ public final class PaginatedGelViewer {
                 for (Map.Entry<Integer, List<GelBand>> entry : new TreeMap<>(GelReportReader.groupByRoundedSize(model.lanes.getOrDefault(sampleName, List.of()))).entrySet()) {
                     List<GelBand> bands = entry.getValue();
                     double y = ladderY(layout.gelTop(), layout.gelHeight(), entry.getKey());
-                    double intensity = Math.min(1.0, 0.45 + Math.max(0, bands.size() - 1) * 0.12);
+                    double intensity = GelColors.bandIntensity(bands.size());
                     Color color = colorByGene ? model.geneColors.getOrDefault(bands.getFirst().geneName(), Color.BLACK) : Color.BLACK;
                     svgBand(svg, laneX + layout.laneWidth() * 0.17, y - 1.0, layout.laneWidth() * 0.66, 2.0 + intensity,
                             color, intensity, tooltipText(bands));

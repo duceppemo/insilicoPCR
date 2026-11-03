@@ -94,6 +94,7 @@ Typical CLI run:
 | `-p, --primers <file>` | required | Primer FASTA file |
 | `-t, --threads <n>` | all cores | Worker threads |
 | `-m, --mismatches <n>` | 0 | Allowed mismatches + indels per primer (unaligned 3' bases count too) |
+| `--probe-mismatches <n>` | same as `-m` | Allowed mismatches + indels per hydrolysis probe |
 | `-e, --evalue <value>` | 1e5 | blastn e-value cutoff |
 | `-l, --max-length <bp>` | 5000 | Maximum amplicon length; `0` disables the limit |
 | `--min-length <bp>` | 0 | Minimum amplicon length |

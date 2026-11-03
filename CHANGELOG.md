@@ -69,6 +69,24 @@ would never form in a real reaction. Version 0.7.0 reports a pair only when:
   single 5'-proximal SNP, which used to cause false-negative primer hits
   for strain variants that real PCR amplifies without trouble.
 
+### Second review pass and probe model
+
+- Hydrolysis probes get their own mismatch budget (`--probe-mismatches`,
+  default: same as `-m`): probes are longer and bind hotter than primers,
+  so screens can legitimately allow them one extra mismatch. Probe
+  coverage is now a fixed rule (at most 2 unaligned terminal bases) and
+  no longer silently follows the primer `--5p-truncation` setting.
+- Bare `_1`/`_2` FASTQ pairing now requires the mate file to exist and
+  backs off when a `_3` sibling suggests sequential sample numbering, so
+  distinct single-end samples are never merged into a fake pair.
+- An all-negative run raises "No amplicons were found" again in the GUI
+  gel viewer instead of rendering a blank gel; in the exported PNG,
+  same-size bands from different assays are drawn as separate offset
+  bands so no gene is hidden; the band intensity model is shared between
+  the viewer and the export; `--gel` failure handling no longer swallows
+  JVM errors and reports a truthful message if export is attempted twice
+  in one process.
+
 ### Review-pass fixes
 
 - Amplicon coordinates now include primer bases BLAST left unaligned at the

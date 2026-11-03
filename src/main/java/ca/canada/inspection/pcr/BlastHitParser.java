@@ -23,6 +23,12 @@ public final class BlastHitParser {
 
     private static final int EXPECTED_FIELDS = 15;
 
+    /**
+     * Probes must cover nearly their whole length to report fluorescence; this
+     * is intentionally independent of the primer {@code --5p-truncation} knob.
+     */
+    private static final int MAX_PROBE_END_UNCOVERED = 2;
+
     private BlastHitParser() {
     }
 
@@ -70,8 +76,8 @@ public final class BlastHitParser {
             // Probes anneal without extension: no 3'-specific rules, but the
             // alignment must cover nearly the whole probe.
             int uncovered = hit.fivePrimeUncovered() + hit.threePrimeUncovered();
-            return hit.mismatch() + hit.gaps() <= options.maxTotalMismatches()
-                    && uncovered <= options.maxFivePrimeTruncation();
+            return hit.mismatch() + hit.gaps() <= options.maxProbeMismatches()
+                    && uncovered <= MAX_PROBE_END_UNCOVERED;
         }
 
         // Unaligned 3' bases are bases that stopped pairing (BLAST trims terminal

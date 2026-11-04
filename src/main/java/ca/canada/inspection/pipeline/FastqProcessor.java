@@ -54,7 +54,8 @@ public final class FastqProcessor {
                 sample,
                 sampleDir.resolve(sample.getName() + "_targetMatches.fastq.gz"),
                 sampleDir.resolve(sample.getName() + "_doubleTargetMatches.fastq.gz"),
-                null
+                null,
+                0
         );
         ProcessRunner.run(context.dependencies().bbmapDirectory(), command.toArray(String[]::new));
     }
@@ -71,11 +72,18 @@ public final class FastqProcessor {
     }
 
     private static List<String> bbdukCommand(PipelineContext context, Sample sample, Path ref, Path output, Integer kLength) {
+        return bbdukCommand(context, sample, ref, output, kLength, context.config().mismatches());
+    }
+
+    // The second baiting pass recruits reads that overlap already-matched reads, so exact k-mer
+    // matching suffices; expanding its reference by hdist grows the k-mer table by ~hdist^k-fold
+    // (tens of billions of entries at hdist=2 on a large match set) and exhausts the child heap.
+    private static List<String> bbdukCommand(PipelineContext context, Sample sample, Path ref, Path output, Integer kLength, int hdist) {
         ArrayList<String> command = new ArrayList<>(List.of(
                 context.dependencies().javaCommand(), "-ea", "-Xmx" + context.childJavaMemoryGiB() + "g",
                 "-cp", context.dependencies().bbtoolsJar().toString(), "jgi.BBDuk",
                 "ref=" + ref,
-                "hdist=" + context.config().mismatches(),
+                "hdist=" + hdist,
                 "threads=" + context.config().threads(),
                 "overwrite=t",
                 "interleaved=t"

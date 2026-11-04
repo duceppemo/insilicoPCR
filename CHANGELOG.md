@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.9.0 (2026-11-03)
 
 ### Bundled BBTools updated to 40.04 (fixes silent truncation of bcl-convert FASTQs)
 

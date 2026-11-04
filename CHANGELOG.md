@@ -1,5 +1,28 @@
 # Changelog
 
+## Unreleased
+
+### Bundled BBTools updated to 40.04 (fixes silent truncation of bcl-convert FASTQs)
+
+BBTools 39.94's multithreaded reader stopped silently at a gzip member
+boundary partway into multi-member (concatenated) `.fastq.gz` files — the
+default output of Illumina bcl-convert/DRAGEN — whenever BBDuk ran with more
+than one thread. FASTQ-mode runs failed with the misleading
+`truncated or corrupt input` / `There appear to be different numbers of reads
+in the paired input files` errors on intact inputs (#5). The bundled BBTools
+is now 40.04, where upstream fixed the threaded reader; multi-member FASTQs
+are read completely with no repacking needed.
+
+### FASTQ mode: second baiting pass no longer applies the mismatch budget as hdist
+
+The read-recruitment (second BBDuk) pass used `-m` as `hdist` while loading
+every first-pass matching read as a k-mer reference. The mutant k-mer
+expansion (~3,200x per k-mer at `hdist=2`, ~26,000x at 3) made the table
+exceed any configurable child heap on large samples, aborting the run with
+an `OutOfMemoryError`. Recruiting reads that overlap already-matched reads
+only needs exact k-mers, so this pass now runs with `hdist=0`; memory use is
+bounded and `-m` still applies to primer baiting and amplicon calling.
+
 ## 0.8.0
 
 > Note: this release was developed as "0.7.0" but a v0.7.0 tag and GitHub

@@ -37,8 +37,12 @@ final class QaLogWriter {
             } else {
                 writeLine(writer, input.toAbsolutePath().toString());
             }
-            for (String line : extraLines) {
-                writeLine(writer, line);
+            if (!extraLines.isEmpty()) {
+                // A blank line ends the input-file list; readers stop there (QaLogInputs).
+                writeLine(writer, "");
+                for (String line : extraLines) {
+                    writeLine(writer, line);
+                }
             }
         } catch (IOException e) {
             throw new PipelineException("Could not write QA log: " + qLog, e);

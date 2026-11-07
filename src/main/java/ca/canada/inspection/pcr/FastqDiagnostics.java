@@ -112,8 +112,8 @@ public final class FastqDiagnostics {
             if (group.forward.isEmpty() || group.reverse.isEmpty() || reported.contains(assay)) {
                 continue;
             }
-            ReadsWithOligo counts = new ReadsWithOligo(sum(reads.readsPerOligo(), group.forward),
-                    sum(reads.readsPerOligo(), group.reverse), sum(reads.readsPerOligo(), group.probe));
+            ReadsWithOligo counts = new ReadsWithOligo(reads.readsCarrying(group.forward),
+                    reads.readsCarrying(group.reverse), reads.readsCarrying(group.probe));
             if (counts.total() == 0) {
                 continue; // nothing in the reads: an ordinary negative
             }
@@ -202,10 +202,6 @@ public final class FastqDiagnostics {
     static String shortName(String contigId) {
         int comma = contigId.indexOf(',');
         return comma > 0 ? contigId.substring(0, comma) : contigId;
-    }
-
-    private static long sum(Map<String, Long> counts, List<String> oligoIds) {
-        return oligoIds.stream().mapToLong(id -> counts.getOrDefault(id, 0L)).sum();
     }
 
     private static List<BlastResult> hitsOf(Map<String, List<BlastResult>> hits, List<String> oligoIds) {

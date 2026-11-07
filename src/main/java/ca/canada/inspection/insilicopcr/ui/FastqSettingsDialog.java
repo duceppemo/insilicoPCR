@@ -46,12 +46,14 @@ public final class FastqSettingsDialog {
         TextField readFraction = dialog.field("Min share of informative reads (0-1)",
                 String.valueOf(current.readMinFraction()),
                 "An assay the mini-assembly missed is reported from reads when at least "
-                        + ReadLevelCaller.MIN_SUPPORTING_READS + " reads, and at least this share of the reads that "
+                        + ReadLevelCaller.MIN_SUPPORTING_READS + " reads (the two reads of a pair count once), and at "
+                        + "least this share of the reads that "
                         + "carry one of its primers and are long enough, hold a complete amplicon "
                         + "(--read-min-fraction). Default " + ReadLevelCaller.DEFAULT_MIN_SUPPORT_FRACTION + ".");
 
         return dialog.show(owner, "FASTQ settings", "Settings used only for FASTQ (read) input",
-                () -> parse(k, minSeed, minCov, minContig, readFraction),
+                () -> parse(k.getText(), minSeed.getText(), minCov.getText(), minContig.getText(),
+                        readFraction.getText()),
                 () -> {
                     FastqSettings defaults = FastqSettings.DEFAULTS;
                     k.setText(String.valueOf(defaults.tadpole().k()));
@@ -71,12 +73,16 @@ public final class FastqSettingsDialog {
     public static String summary(FastqSettings settings) {
         return (settings.isDefault() ? "Defaults" : "Changed from defaults (*)")
                 + "\nTadpole: " + String.join(" ", settings.tadpole().arguments())
-                + "\nRead-level calls: at least " + ReadLevelCaller.MIN_SUPPORTING_READS + " reads and "
+                + "\nRead-level calls: at least " + ReadLevelCaller.MIN_SUPPORTING_READS + " reads or read pairs and "
                 + Math.round(100 * settings.readMinFraction()) + "% of informative reads";
     }
 
-    private static FastqSettings parse(TextField k, TextField minSeed, TextField minCov, TextField minContig,
-                                       TextField readFraction) {
+    /**
+     * Parses the dialog's field texts.
+     *
+     * @throws IllegalArgumentException with a user-facing message when a value is invalid
+     */
+    static FastqSettings parse(String k, String minSeed, String minCov, String minContig, String readFraction) {
         TadpoleOptions tadpole = new TadpoleOptions(
                 SettingsDialog.parseInt(k, "k-mer length", 1),
                 SettingsDialog.parseInt(minSeed, "Min k-mer count to seed", 1),
@@ -84,7 +90,7 @@ public final class FastqSettingsDialog {
                 SettingsDialog.parseInt(minContig, "Min contig length", 1));
         double fraction;
         try {
-            fraction = Double.parseDouble(readFraction.getText().trim());
+            fraction = Double.parseDouble(readFraction.trim());
         } catch (NumberFormatException e) {
             throw new IllegalArgumentException("Min share of informative reads must be a number between 0 and 1.");
         }

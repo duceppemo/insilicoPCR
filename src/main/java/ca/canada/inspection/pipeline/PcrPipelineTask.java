@@ -86,7 +86,9 @@ public final class PcrPipelineTask extends Task<Void> {
             if (fastqPresent) {
                 readEvidence = ReadLevelStage.run(new ReadLevelStage.Settings(
                                 AppPaths.executable(dependencies.blastLocation(), "blastn"), cleanedPrimers,
-                                config.evalue(), config.threads(), config.readMinFraction()),
+                                config.evalue(), config.threads(), config.readMinFraction(),
+                                processTracker, line -> Methods.logMessage(config.outputField(), line),
+                                this::isCancelled),
                         directories.detailedDir(), sampleDict, primerDict, config.ampliconOptions());
                 Methods.logMessage(config.outputField(), "Completed read-level amplicon search");
             }
@@ -108,7 +110,9 @@ public final class PcrPipelineTask extends Task<Void> {
             diagnostics.logLines().forEach(line -> Methods.logMessage(config.outputField(), line));
             updateProgress(12, 13);
 
-            LogFiles.ensureQaLog(config.outDir(), config.inputFile(), config.primerFile(), dependencies);
+            // Rewritten each run, like the command line: an output folder reused by several
+            // runs must not keep the first run's header with every later run's FASTQ lines.
+            LogFiles.writeQaLog(config.outDir(), config.inputFile(), config.primerFile(), dependencies);
             LogFiles.appendQaLog(config.outDir(), diagnostics.qaLogLines(config.tadpole(),
                     config.readMinFraction()));
             var seconds = (System.nanoTime() - startTime) / 1_000_000_000L;

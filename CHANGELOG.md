@@ -2,19 +2,67 @@
 
 ## Unreleased
 
+### Fixed
+
+- FASTQ mode: a single-end sample rerun into an output folder that held an
+  earlier paired run of the same sample name could be reported positive from
+  the earlier run's merged reads. The reads searched are now chosen from the
+  sample's input files, not from what is on disk.
+- FASTQ mode: read-level support is counted per DNA fragment, so the two
+  unmerged reads of one pair can no longer meet the 2-read minimum alone. On
+  ERR2938678 (#7) BA's support becomes 17 of 25 informative reads (68%,
+  was 17 of 28); calls on the #7 read sets are unchanged.
+- FASTQ mode: the diagnostics' reads-per-primer counts no longer count a read
+  twice when it matches two expansions of a degenerate primer.
+- GUI: **Open Previous Run** read the FASTQ-mode lines of `QAlog.txt` as input
+  files (fake gel lanes; on Windows the run would not open). Both QA log
+  writers now end the input list with a blank line, and the reader stops
+  there or at the first `FASTQ mode` line of logs written by 0.10.0.
+- GUI: `QAlog.txt` is rewritten on every run, like on the command line,
+  instead of collecting every later run's FASTQ lines under the first run's
+  header.
+- GUI: the read-level BLAST search logs to the window and is stopped when the
+  window is closed during a run, like the other external tools; a process
+  that starts while the window is closing is killed too, so it can no longer
+  keep the application alive.
+- GUI: a path typed or pasted into the input, primer or output field is
+  used (a leading `~` is the home folder; relative paths are made absolute);
+  before, only a chosen or dropped path was, even after the text was edited,
+  and the output field did not accept typing at all.
+- GUI: closing the window writes `QAlog.txt` and `log.txt` to the folder of
+  the last run started, and **View Gel Image** opens that run's report,
+  rather than whatever the output field holds by then. Closing without
+  having run anything no longer writes logs.
+- GUI: **Open Previous Run** showed extra empty gel lanes: one per read file
+  for paired FASTQ input (e.g. `S_1` and `S_2` next to `S`), and one per
+  non-sequence file or subfolder entry of a folder input. It now keeps only
+  sequence files, as the pipeline does, and pairs mates using the run's own
+  file list, so the lanes stay right after the inputs are moved.
+- GUI: **Run** is disabled while a run is in progress, so two runs can no
+  longer write to the same output folder at once.
+
+### Added
+
 - FASTQ mode: `--read-min-fraction <0-1>` sets the share of informative reads
   that must hold a complete amplicon for a read-level call (default 0.3, as
   in 0.10.0). The value used is recorded in `QAlog.txt`.
-- GUI: every command-line setting is now available. **Amplicon settings…**
-  holds probe mismatches, the 3'-end window and penalty, the 5'-truncation
-  allowance and the min/max amplicon length (max moved off the main window);
-  **FASTQ settings…** holds the Tadpole settings and the read-level call
-  threshold. A ` *` marks a button whose settings differ from the defaults.
+- GUI: **Amplicon settings…** holds probe mismatches, the 3'-end window and
+  penalty, the 5'-truncation allowance and the min/max amplicon length (max
+  moved off the main window, which also fixes its label overlapping the
+  field); **FASTQ settings…** holds the Tadpole settings and the read-level
+  call threshold. A ` *` marks a button whose settings differ from the
+  defaults. Mismatches above 3, running on every core and the `--gel` PNG
+  export remain command-line only.
 - GUI: the "Input is a directory" radio button is gone. Input type was
   already detected automatically; **Select ▾** now offers **File…** or
   **Folder…**. The primer and output rows moved up to make room.
-- GUI: the "Max amplicon (bp)" label no longer overlaps its field at the
-  default window width.
+
+### Changed
+
+- FASTQ mode: the read-level BLAST search splits the thread budget between
+  samples instead of using one thread per sample.
+- Docs: the e-value help, README, GUI tooltip and a new "BLAST e-value"
+  section of Amplicon Calling explain why the 1e5 default is deliberate.
 
 ## 0.10.0 (2026-11-06)
 

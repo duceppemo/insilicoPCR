@@ -42,7 +42,7 @@ class ReadLevelCallerTest {
         assertEquals(2, call.supportingReads());
         assertEquals(Set.of(70), call.sizes());
         assertEquals("read_1", call.row().get(ConsolidatedReport.CONTIG_COLUMN));
-        assertEquals(2L, evidence.readsPerOligo().get("assay-F"));
+        assertEquals(Set.of("read_1", "read_2"), evidence.readsWithOligo().get("assay-F"));
 
         List<String> row = ReadLevelCaller.reportRow(call);
         assertEquals("70", row.get(ConsolidatedReport.AMPLICON_SIZE_COLUMN));
@@ -83,9 +83,32 @@ class ReadLevelCallerTest {
         // The same 20% support passes a lower --read-min-fraction.
         ReadCall lenient = ReadLevelCaller.evaluate(reads, lengths, PRIMERS, DEFAULTS, 0.2).calls().get("assay");
         assertTrue(lenient.isReportable());
-        assertEquals("at least 2 reads and 20% of informative reads", lenient.thresholdSummary());
+        assertEquals("at least 2 reads or read pairs and 20% of informative reads", lenient.thresholdSummary());
         assertThrows(IllegalArgumentException.class,
                 () -> ReadLevelCaller.evaluate(reads, lengths, PRIMERS, DEFAULTS, 1.1));
+    }
+
+    @Test
+    void matesOfOneUnmergedPairCountAsOneFragment() {
+        // Both mates of one pair hold the whole amplicon: one molecule, so 1 supporting
+        // fragment, below the 2-read minimum. As separate reads they would be called.
+        Sample reads = reads();
+        for (String read : List.of("read_1", "read_2")) {
+            reads.addBlastResult("assay-F", TestHits.plusHit("assay-F", read, 11));
+            reads.addBlastResult("assay-R", TestHits.minusHit("assay-R", read, 61));
+            reads.addBlastResult("assay-P", TestHits.plusHit("assay-P", read, 35));
+        }
+        Map<String, Integer> lengths = Map.of("read_1", 101, "read_2", 101);
+
+        ReadCall paired = ReadLevelCaller.evaluate(reads, lengths, Map.of("read_1", "read_1", "read_2", "read_1"),
+                PRIMERS, DEFAULTS, ReadLevelCaller.DEFAULT_MIN_SUPPORT_FRACTION).calls().get("assay");
+        assertEquals(1, paired.supportingReads());
+        assertEquals(1, paired.informativeReads());
+        assertTrue(!paired.isReportable());
+
+        ReadCall separate = ReadLevelCaller.evaluate(reads, lengths, PRIMERS, DEFAULTS).calls().get("assay");
+        assertEquals(2, separate.supportingReads());
+        assertTrue(separate.isReportable());
     }
 
     @Test
@@ -127,7 +150,7 @@ class ReadLevelCallerTest {
         ReadEvidence evidence = ReadLevelCaller.evaluate(reads, Map.of("read_1", 101), PRIMERS, DEFAULTS);
 
         assertTrue(evidence.calls().isEmpty());
-        assertEquals(null, evidence.readsPerOligo().get("assay-F"), "a clipped primer is not counted as carried");
+        assertEquals(null, evidence.readsWithOligo().get("assay-F"), "a clipped primer is not counted as carried");
     }
 
     @Test

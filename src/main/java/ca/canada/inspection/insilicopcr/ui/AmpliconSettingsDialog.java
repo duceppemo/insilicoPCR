@@ -73,7 +73,8 @@ public final class AmpliconSettingsDialog {
 
         return dialog.show(owner, "Amplicon settings", "Amplicon-calling settings (primer mismatches are on the"
                         + " main window)",
-                () -> parse(probe, window, penalty, truncation, minLength, maxLength),
+                () -> parse(probe.getText(), window.getText(), penalty.getText(), truncation.getText(),
+                        minLength.getText(), maxLength.getText()),
                 () -> {
                     AmpliconSettings defaults = AmpliconSettings.DEFAULTS;
                     probe.setText("");
@@ -100,10 +101,14 @@ public final class AmpliconSettingsDialog {
                 + (settings.maxLength() == 0 ? "unlimited" : settings.maxLength() + " bp");
     }
 
-    private static AmpliconSettings parse(TextField probe, TextField window, TextField penalty,
-                                          TextField truncation, TextField minLength, TextField maxLength) {
-        String probeText = probe.getText().trim();
-        Integer probeMismatches = probeText.isEmpty() ? null : SettingsDialog.parseInt(probe, "Probe mismatches", 0);
+    /**
+     * Parses the dialog's field texts.
+     *
+     * @throws IllegalArgumentException with a user-facing message when a value is invalid
+     */
+    static AmpliconSettings parse(String probe, String window, String penalty, String truncation,
+                                  String minLength, String maxLength) {
+        Integer probeMismatches = probe.isBlank() ? null : SettingsDialog.parseInt(probe, "Probe mismatches", 0);
         int min = SettingsDialog.parseInt(minLength, "Min amplicon", 0);
         int max = SettingsDialog.parseInt(maxLength, "Max amplicon", 0);
         if (max > 0 && min > max) {

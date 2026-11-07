@@ -97,7 +97,7 @@ Typical CLI run:
 | `-t, --threads <n>` | all cores | Worker threads |
 | `-m, --mismatches <n>` | 0 | Allowed mismatches + indels per primer (unaligned 3' bases count too) |
 | `--probe-mismatches <n>` | same as `-m` | Allowed mismatches + indels per hydrolysis probe |
-| `-e, --evalue <value>` | 1e5 | blastn e-value cutoff |
+| `-e, --evalue <value>` | 1e5 | blastn e-value cutoff; deliberately permissive (see [Amplicon Calling](https://github.com/duceppemo/insilicoPCR/wiki/Amplicon-Calling#blast-e-value)) |
 | `-l, --max-length <bp>` | 5000 | Maximum amplicon length; `0` disables the limit |
 | `--min-length <bp>` | 0 | Minimum amplicon length |
 | `--3p-window <n>` | 5 | Bases at the primer 3' end checked with the weighted penalty |

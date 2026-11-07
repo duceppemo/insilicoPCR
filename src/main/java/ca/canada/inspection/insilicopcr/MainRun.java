@@ -14,6 +14,7 @@ import ca.canada.inspection.pipeline.InputValidator;
 import ca.canada.inspection.pipeline.LogFiles;
 import ca.canada.inspection.pipeline.PcrPipelineTask;
 import ca.canada.inspection.pipeline.PcrRunConfig;
+import ca.canada.inspection.pipeline.QaLogInputs;
 import ca.canada.inspection.util.SequenceFileUtils;
 import javafx.application.Application;
 import javafx.application.Platform;
@@ -32,7 +33,6 @@ import javafx.scene.image.Image;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
-import javafx.scene.layout.Pane;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.RowConstraints;
 import javafx.scene.layout.VBox;
@@ -67,6 +67,7 @@ public class MainRun extends Application {
     private ProgressBar mainProgress;
     private ProgressBar blastProgress;
     private Button gelButton;
+    private Button runButton;
     private Scene scene;
     private Stage primaryStage;
 
@@ -75,6 +76,10 @@ public class MainRun extends Application {
     private PcrPipelineTask runningTask;
     private DependencyContext dependencies;
     private FastqSettings fastqSettings = FastqSettings.DEFAULTS;
+    /** Paths of the last run started; the fields may have been edited since. */
+    private Path lastRunInput;
+    private Path lastRunPrimer;
+    private Path lastRunOutDir;
     private AmpliconSettings ampliconSettings = AmpliconSettings.DEFAULTS;
 
     @Override
@@ -132,6 +137,7 @@ public class MainRun extends Application {
         inputField.setEditable(true);
         pane.add(inputField, 2, 4, 28, 2);
         PathFieldBinder.bindDropTarget(inputField, path -> inputFile = path);
+        PathFieldBinder.bindTypedPath(inputField, path -> inputFile = path);
 
         // Files and directories are told apart when the run starts; only the chooser
         // dialog has to be one or the other, so "Select" offers both.
@@ -153,6 +159,7 @@ public class MainRun extends Application {
         primerField.setEditable(true);
         pane.add(primerField, 2, 9, 28, 2);
         PathFieldBinder.bindDropTarget(primerField, path -> primerFile = path);
+        PathFieldBinder.bindTypedPath(primerField, path -> primerFile = path);
 
         var browse = new Button("Select");
         browse.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
@@ -163,9 +170,10 @@ public class MainRun extends Application {
     private void addOutputControls(Stage stage, GridPane pane, TextField outputDirField) {
         addPrompt(pane, "Output directory. Path MUST NOT contain spaces", 2, 12, 20, 2);
         outputDirField.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
-        outputDirField.setEditable(false);
+        outputDirField.setEditable(true);
         pane.add(outputDirField, 2, 14, 28, 2);
         PathFieldBinder.bindDropTarget(outputDirField, path -> outDir = path);
+        PathFieldBinder.bindTypedPath(outputDirField, path -> outDir = path);
 
         var browse = new Button("Select");
         browse.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
@@ -218,6 +226,12 @@ public class MainRun extends Application {
         pane.add(box, 38, 15, 5, 1);
 
         var field = new TextField("1e5");
+        var tip = new Tooltip("BLAST e-value. Deliberately permissive: primer hits are filtered by the mismatch and "
+                + "3'/5'-end rules instead. A short primer's e-value grows with contig length, so a strict value "
+                + "such as 1e-5 drops valid hits. Default 1e5 (-e on the command line).");
+        tip.setWrapText(true);
+        tip.setMaxWidth(380);
+        field.setTooltip(tip);
         field.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
         field.setEditable(true);
         pane.add(field, 44, 14, 4, 3);
@@ -283,7 +297,7 @@ public class MainRun extends Application {
         previousRunButton.setMaxWidth(Double.MAX_VALUE);
         previousRunButton.setOnAction(event -> openPreviousRun());
 
-        var runButton = new Button("Run");
+        runButton = new Button("Run");
         runButton.setMaxWidth(Double.MAX_VALUE);
         runButton.setOnAction(event -> startRun(alertText, threadField, mismatchField, evalueField));
 
@@ -309,6 +323,9 @@ public class MainRun extends Application {
                           ComboBox<Integer> threadField,
                           ComboBox<Integer> mismatchField,
                           TextField evalueField) {
+        if (currentlyRunning.get()) {
+            return; // the button is disabled while running; ignore a stray second trigger
+        }
         var validationMessage = InputValidator.validate(inputFile, outDir, primerFile);
         if (!validationMessage.isBlank()) {
             alertText.setText(validationMessage);
@@ -334,12 +351,16 @@ public class MainRun extends Application {
         alertText.setText("");
         outputField.clear();
         currentlyRunning.set(true);
+        runButton.setDisable(true);
         gelButton.setDisable(true);
         showProgressBars(true);
         mainProgress.progressProperty().unbind();
         mainProgress.setProgress(ProgressBar.INDETERMINATE_PROGRESS);
         blastProgress.setProgress(ProgressBar.INDETERMINATE_PROGRESS);
 
+        lastRunInput = inputFile;
+        lastRunPrimer = primerFile;
+        lastRunOutDir = outDir;
         var config = new PcrRunConfig(
                 inputFile,
                 outDir,
@@ -355,13 +376,20 @@ public class MainRun extends Application {
 
         runningTask = new PcrPipelineTask(config, processTracker);
         mainProgress.progressProperty().bind(runningTask.progressProperty());
+        runningTask.setOnCancelled(event -> {
+            currentlyRunning.set(false);
+            runButton.setDisable(false);
+            showProgressBars(false);
+        });
         runningTask.setOnSucceeded(event -> {
+            runButton.setDisable(false);
             currentlyRunning.set(false);
             dependencies = runningTask.dependencies();
             gelButton.setDisable(false);
             showProgressBars(false);
         });
         runningTask.setOnFailed(event -> {
+            runButton.setDisable(false);
             currentlyRunning.set(false);
             gelButton.setDisable(true);
             showProgressBars(false);
@@ -392,7 +420,9 @@ public class MainRun extends Application {
     }
 
     private boolean confirmClose() {
-        if (inputFile == null || outDir == null || primerFile == null) {
+        // Logs belong to the last run started, in the folder it used: the path fields
+        // may since hold another, half-typed or mistyped path. No run, no logs.
+        if (lastRunOutDir == null) {
             Platform.exit();
             return true;
         }
@@ -406,8 +436,9 @@ public class MainRun extends Application {
                 return false;
             }
             if (runningTask != null) {
-                runningTask.shutdownNow();
+                // Cancel first so no stage starts a new process, then kill the running ones.
                 runningTask.cancel(true);
+                runningTask.shutdownNow();
             }
         }
 
@@ -415,8 +446,8 @@ public class MainRun extends Application {
             if (dependencies == null) {
                 dependencies = DependencyContext.discover(outputField);
             }
-            LogFiles.ensureQaLog(outDir, inputFile, primerFile, dependencies);
-            LogFiles.appendRunLog(outDir, outputField);
+            LogFiles.ensureQaLog(lastRunOutDir, lastRunInput, lastRunPrimer, dependencies);
+            LogFiles.appendRunLog(lastRunOutDir, outputField);
         } catch (RuntimeException e) {
             Methods.logMessage(outputField, "Unable to write shutdown logs: " + e.getMessage());
         }
@@ -485,11 +516,12 @@ public class MainRun extends Application {
         }
     }
 
+    /** The last run's report: the output field may have been edited since the run. */
     private Path latestConsolidatedReport() {
-        if (outDir == null) {
-            throw new IllegalStateException("No current output directory is selected.");
+        if (lastRunOutDir == null) {
+            throw new IllegalStateException("No run has been started in this window.");
         }
-        return latestConsolidatedReport(outDir);
+        return latestConsolidatedReport(lastRunOutDir);
     }
 
     private Path latestConsolidatedReport(Path runDir) {
@@ -514,45 +546,11 @@ public class MainRun extends Application {
             throw new IllegalStateException("QAlog.txt not found: " + qaLog);
         }
         HashMap<String, Sample> samples = new HashMap<>();
-        boolean readingInputs = false;
-        try {
-            for (String line : Files.readAllLines(qaLog, StandardCharsets.UTF_8)) {
-                String trimmed = line.strip();
-                if (trimmed.equals("Input File(s) :")) {
-                    readingInputs = true;
-                    continue;
-                }
-                if (!readingInputs || trimmed.isBlank()) {
-                    continue;
-                }
-                Path inputPath = Path.of(trimmed);
-                if (Files.isDirectory(inputPath)) {
-                    try (Stream<Path> files = Files.list(inputPath)) {
-                        files.filter(SequenceFileUtils::looksLikeSequenceFile)
-                                .map(MainRun::sampleNameFromPath)
-                                .forEach(sampleName -> samples.put(sampleName, null));
-                    }
-                } else {
-                    samples.put(sampleNameFromPath(inputPath), null);
-                }
-            }
-        } catch (IOException e) {
-            throw new IllegalStateException("Unable to read QAlog sample list: " + qaLog, e);
-        }
+        QaLogInputs.sampleNames(QaLogInputs.read(qaLog)).forEach(name -> samples.put(name, null));
         if (samples.isEmpty()) {
             throw new IllegalStateException("No input samples were found in QAlog.txt: " + qaLog);
         }
         return samples;
-    }
-
-    private static String sampleNameFromPath(Path path) {
-        String fileName = path.getFileName() == null ? path.toString() : path.getFileName().toString();
-        for (String suffix : List.of(".fastq.gz", ".fq.gz", ".fasta.gz", ".fa.gz", ".fna.gz", ".fastq", ".fq", ".fasta", ".fa", ".fna")) {
-            if (fileName.toLowerCase().endsWith(suffix)) {
-                return fileName.substring(0, fileName.length() - suffix.length());
-            }
-        }
-        return fileName;
     }
 
     private long lastModifiedMillis(Path path) {

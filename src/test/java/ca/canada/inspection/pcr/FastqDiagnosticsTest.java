@@ -12,8 +12,12 @@ import org.junit.jupiter.api.io.TempDir;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static ca.canada.inspection.pcr.TestHits.PRIMER_20;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -36,9 +40,15 @@ class FastqDiagnosticsTest {
         return sample;
     }
 
-    /** Evidence with oligos in reads, no read-level call, reads able to hold amplicons up to 240 bp. */
+    /**
+     * Evidence with oligos in reads (that many distinct reads per oligo, no read shared
+     * between oligos), no read-level call, reads able to hold amplicons up to 240 bp.
+     */
     private static ReadEvidence noReadCall(Map<String, Long> readsPerOligo) {
-        return new ReadEvidence(readsPerOligo, Map.of(), Map.of("assay", 240));
+        Map<String, Set<String>> ids = new HashMap<>();
+        readsPerOligo.forEach((oligo, count) -> ids.put(oligo,
+                IntStream.range(0, count.intValue()).mapToObj(i -> oligo + "#" + i).collect(Collectors.toSet())));
+        return new ReadEvidence(ids, Map.of(), Map.of("assay", 240));
     }
 
     private static List<Finding> assess(Sample sample, ReadEvidence evidence, Map<String, Integer> lengths) {
@@ -144,12 +154,16 @@ class FastqDiagnosticsTest {
     }
 
     @Test
-    void expandedDegenerateOligosAreSummedPerRole() {
+    void expandedDegenerateOligosCountEachReadOnce() {
+        // read_2 matches both expansions of the degenerate forward primer: it is one read.
         Map<String, String> primers = Map.of("assay-F_0", PRIMER_20, "assay-F_1", PRIMER_20, "assay-R", PRIMER_20);
-        List<Finding> findings = FastqDiagnostics.assess(fastqSample(), primers, DEFAULTS,
-                noReadCall(Map.of("assay-F_0", 3L, "assay-F_1", 4L, "assay-R", 5L)), Map.of());
+        ReadEvidence evidence = new ReadEvidence(Map.of(
+                "assay-F_0", Set.of("read_1", "read_2"),
+                "assay-F_1", Set.of("read_2", "read_3"),
+                "assay-R", Set.of("read_4")), Map.of(), Map.of("assay", 240));
+        List<Finding> findings = FastqDiagnostics.assess(fastqSample(), primers, DEFAULTS, evidence, Map.of());
 
-        assertEquals(new ReadsWithOligo(7, 5, 0), findings.getFirst().readsWithOligo());
+        assertEquals(new ReadsWithOligo(3, 1, 0), findings.getFirst().readsWithOligo());
     }
 
     @Test

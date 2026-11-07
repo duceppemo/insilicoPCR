@@ -95,10 +95,10 @@ final class SettingsDialog {
         return dialog.showAndWait();
     }
 
-    static int parseInt(TextField field, String label, int minimum) {
+    static int parseInt(String text, String label, int minimum) {
         int value;
         try {
-            value = Integer.parseInt(field.getText().trim());
+            value = Integer.parseInt(text.trim());
         } catch (NumberFormatException e) {
             throw new IllegalArgumentException(label + " must be a whole number.");
         }

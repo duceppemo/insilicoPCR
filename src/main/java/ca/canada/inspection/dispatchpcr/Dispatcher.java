@@ -71,7 +71,7 @@ public final class Dispatcher {
         options.addOption(Option.builder("m").longOpt("mismatches").hasArg().argName("n")
                 .desc("Allowed mismatches+indels per primer (unaligned 3' bases count); default: 0").build());
         options.addOption(Option.builder("e").longOpt("evalue").hasArg().argName("value")
-                .desc("blastn e-value; default: 1e5").build());
+                .desc("blastn e-value; deliberately permissive, since primer hits are filtered by the mismatch and 3'/5' rules instead, and lowering it (e.g. to 1e-5) drops valid hits; default: 1e5").build());
         options.addOption(Option.builder("l").longOpt("max-length").hasArg().argName("bp")
                 .desc("Maximum amplicon length in bp, 0 = unlimited; default: 5000").build());
         options.addOption(Option.builder().longOpt("min-length").hasArg().argName("bp")

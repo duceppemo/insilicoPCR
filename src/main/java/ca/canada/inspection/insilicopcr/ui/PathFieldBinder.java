@@ -7,6 +7,7 @@ import javafx.stage.FileChooser;
 import javafx.stage.Window;
 
 import java.io.File;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.util.Optional;
 import java.util.function.Consumer;
@@ -14,6 +15,26 @@ import java.util.function.Consumer;
 /** Utility methods that isolate JavaFX FileChooser/File drag APIs from Path-based application code. */
 public final class PathFieldBinder {
     private PathFieldBinder() {}
+
+    /**
+     * Keeps the selected path in step with what is typed in {@code field}: without this,
+     * editing the text after choosing or dropping a path left the old path in use. Blank
+     * or unparsable text clears the selection ({@code null}).
+     */
+    public static void bindTypedPath(TextField field, Consumer<Path> onPathSelected) {
+        field.textProperty().addListener((observable, oldText, newText) -> onPathSelected.accept(toPath(newText)));
+    }
+
+    static Path toPath(String text) {
+        if (text == null || text.isBlank()) {
+            return null;
+        }
+        try {
+            return Path.of(text.strip());
+        } catch (InvalidPathException e) {
+            return null;
+        }
+    }
 
     public static void bindDropTarget(TextField field, Consumer<Path> onPathSelected) {
         field.setOnDragOver(event -> {

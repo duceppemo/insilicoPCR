@@ -28,7 +28,11 @@ usage: java -jar insilicoPCR.jar -i <input> -o <output> -p <primers> [-t
                                 unaligned at the harmless 5' end (one
                                 5'-proximal mismatch makes BLAST trim the
                                 whole tail); default: 5
- -e,--evalue <value>            blastn e-value; default: 1e5
+ -e,--evalue <value>            blastn e-value; deliberately permissive,
+                                since primer hits are filtered by the
+                                mismatch and 3'/5' rules instead, and
+                                lowering it (e.g. to 1e-5) drops valid
+                                hits; default: 1e5
  -g,--gel                       Also write the synthetic gel image as PNG
                                 (requires a graphical environment)
  -h,--help                      Print help and usage
@@ -79,7 +83,7 @@ usage: java -jar insilicoPCR.jar -i <input> -o <output> -p <primers> [-t
 | `-t`, `--threads` | available processors | Number of worker threads |
 | `-m`, `--mismatches` | `0` | Allowed mismatches + indels per primer; unaligned 3' bases count against the budget |
 | `--probe-mismatches` | same as `-m` | Allowed mismatches + indels per hydrolysis probe (probes bind hotter and tolerate more) |
-| `-e`, `--evalue` | `1e5` | BLASTN e-value |
+| `-e`, `--evalue` | `1e5` | BLASTN e-value; deliberately permissive, see [BLAST e-value](Amplicon-Calling#blast-e-value) |
 | `-l`, `--max-length` | `5000` | Maximum amplicon length in bp; `0` disables the limit |
 | `--min-length` | `0` | Minimum amplicon length in bp |
 | `--3p-window` | `5` | Number of bases at the primer 3' end checked with the weighted penalty |
@@ -89,8 +93,8 @@ usage: java -jar insilicoPCR.jar -i <input> -o <output> -p <primers> [-t
 | `--tadpole-k` | `31` | FASTQ mode: Tadpole k-mer length |
 | `--tadpole-min-seed` | `2` | FASTQ mode: minimum k-mer count to seed a contig (Tadpole `mincountseed`) |
 | `--tadpole-min-cov` | `1` | FASTQ mode: minimum average contig coverage (Tadpole `mincov`) |
-| `--read-min-fraction` | `0.3` | FASTQ mode: share (0–1) of informative reads that must hold a complete amplicon for a read-level call; see [Read-level calls](Reports#read-level-calls) |
 | `--tadpole-min-contig` | `60` | FASTQ mode: minimum contig length kept (Tadpole `mincontig`); keep it below the shortest amplicon you expect |
+| `--read-min-fraction` | `0.3` | FASTQ mode: share (0–1) of informative reads that must hold a complete amplicon for a read-level call; see [Read-level calls](Reports#read-level-calls) |
 | `-v`, `--version` | | Print version |
 | `-h`, `--help` | | Print help |
 

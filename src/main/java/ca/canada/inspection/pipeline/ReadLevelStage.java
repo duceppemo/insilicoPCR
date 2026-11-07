@@ -5,20 +5,24 @@ import ca.canada.inspection.pcr.AmpliconOptions;
 import ca.canada.inspection.pcr.BlastHitParser;
 import ca.canada.inspection.pcr.ReadLevelCaller;
 import ca.canada.inspection.pcr.ReadLevelCaller.ReadEvidence;
-import ca.canada.inspection.util.ProcessRunner;
 import ca.canada.inspection.util.SequenceFileUtils;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BooleanSupplier;
+import java.util.function.Consumer;
 
 /**
  * FASTQ mode: searches the first-pass baited reads directly for amplicons, so a
@@ -29,16 +33,32 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class ReadLevelStage {
 
     /**
-     * @param blastn          blastn executable
-     * @param primerDatabase  primer FASTA with its BLAST database
-     * @param evalue          blastn e-value, as for contigs
-     * @param threads         samples searched in parallel
+     * @param blastn             blastn executable
+     * @param primerDatabase     primer FASTA with its BLAST database
+     * @param evalue             blastn e-value, as for contigs
+     * @param threads            total threads; split between samples searched in parallel
      * @param minSupportFraction share of informative reads required for a read-level call
+     * @param processes          tracks the blastn processes so a GUI can kill them; may be {@code null}
+     * @param log                receives blastn output lines; {@code null} inherits the console
+     * @param cancelled          checked before each sample; may be {@code null}
      */
-    public record Settings(Path blastn, Path primerDatabase, double evalue, int threads, double minSupportFraction) {
+    public record Settings(Path blastn, Path primerDatabase, double evalue, int threads, double minSupportFraction,
+                           ExternalProcessTracker processes, Consumer<String> log, BooleanSupplier cancelled) {
         public Settings {
             ReadLevelCaller.requireFraction(minSupportFraction);
+            if (threads < 1) {
+                throw new IllegalArgumentException("threads must be >= 1");
+            }
         }
+
+        /** Command-line settings: blastn output goes to the console, nothing to cancel. */
+        public Settings(Path blastn, Path primerDatabase, double evalue, int threads, double minSupportFraction) {
+            this(blastn, primerDatabase, evalue, threads, minSupportFraction, null, null, null);
+        }
+    }
+
+    /** The reads searched for one sample and which of them are mates of one pair. */
+    record ReadSet(Map<String, Integer> lengths, Map<String, String> descriptions, Map<String, String> fragments) {
     }
 
     private ReadLevelStage() {
@@ -51,41 +71,40 @@ public final class ReadLevelStage {
                 .filter(Sample::isFastq)
                 .sorted(Comparator.comparing(Sample::getName))
                 .toList();
+        if (fastq.isEmpty()) {
+            return Map.of();
+        }
+        // Samples run in parallel; give each blastn its share of the threads.
+        int blastThreads = Math.max(1, settings.threads() / Math.min(settings.threads(), fastq.size()));
         Map<String, ReadEvidence> evidence = new ConcurrentHashMap<>();
-        ParallelStageRunner.run("Read-level amplicon search", fastq, settings.threads(), sample ->
-                evidence.put(sample.getName(), searchSample(settings, detailedDir.resolve(sample.getName()),
-                        sample, primers, options)));
+        ParallelStageRunner.run("Read-level amplicon search", fastq, settings.threads(), sample -> {
+            if (settings.cancelled() != null && settings.cancelled().getAsBoolean()) {
+                throw new CancellationException("Read-level search was cancelled.");
+            }
+            evidence.put(sample.getName(), searchSample(settings, blastThreads,
+                    detailedDir.resolve(sample.getName()), sample, primers, options));
+        });
         return Map.copyOf(evidence);
     }
 
-    private static ReadEvidence searchSample(Settings settings, Path sampleDir, Sample sample,
+    private static ReadEvidence searchSample(Settings settings, int blastThreads, Path sampleDir, Sample sample,
                                              Map<String, String> primers, AmpliconOptions options) {
         String name = sample.getName();
         Path fasta = BbtoolsCommands.baitedReadsFasta(sampleDir, name);
-        Map<String, Integer> lengths = new HashMap<>();
-        Map<String, String> descriptions = new HashMap<>();
-        writeReadsFasta(readInputs(sampleDir, name), fasta, lengths, descriptions);
-
         Path hitsFile = BbtoolsCommands.baitedReadsHits(sampleDir, name);
-        if (lengths.isEmpty()) {
+        boolean paired = sample.files().size() == 2;
+        ReadSet reads = writeReadsFasta(readInputs(sampleDir, name, paired), paired, fasta);
+        if (reads.lengths().isEmpty()) {
+            deleteQuietly(hitsFile); // no stale hits from an earlier run in this folder
             return new ReadEvidence(Map.of(), Map.of(), Map.of());
         }
-        ProcessRunner.run(null,
-                settings.blastn().toString(),
-                "-task", "blastn-short",
-                "-query", fasta.toString(),
-                "-db", settings.primerDatabase().toString(),
-                "-evalue", Double.toString(settings.evalue()),
-                "-num_alignments", "1000000",
-                "-num_threads", "1",
-                "-outfmt", BlastTsv.OUTFMT,
-                "-out", hitsFile.toString());
+        runBlast(settings, blastThreads, fasta, hitsFile);
         BlastTsv.prependHeader(hitsFile);
 
-        Sample reads = new Sample();
-        reads.setName(name);
-        reads.setFileType("reads");
-        descriptions.forEach(reads::addContig);
+        Sample readSample = new Sample();
+        readSample.setName(name);
+        readSample.setFileType("reads");
+        reads.descriptions().forEach(readSample::addContig);
         try (BufferedReader reader = Files.newBufferedReader(hitsFile, StandardCharsets.UTF_8)) {
             String line;
             while ((line = reader.readLine()) != null) {
@@ -93,20 +112,69 @@ public final class ReadLevelStage {
                     continue;
                 }
                 BlastHitParser.parse(line, name, primers, options)
-                        .ifPresent(hit -> reads.addBlastResult(hit.subjectID(), hit));
+                        .ifPresent(hit -> readSample.addBlastResult(hit.subjectID(), hit));
             }
         } catch (IOException e) {
             throw new PipelineException("Could not parse read-level BLAST output: " + hitsFile, e);
         }
-        return ReadLevelCaller.evaluate(reads, lengths, primers, options, settings.minSupportFraction());
+        return ReadLevelCaller.evaluate(readSample, reads.lengths(), reads.fragments(), primers, options,
+                settings.minSupportFraction());
     }
 
-    /** Merged pairs plus unmerged mates when BBMerge ran (paired input), else the first-pass reads. */
-    private static List<Path> readInputs(Path sampleDir, String name) {
-        Path merged = BbtoolsCommands.mergedReads(sampleDir, name);
-        Path unmerged = BbtoolsCommands.unmergedReads(sampleDir, name);
-        if (Files.isRegularFile(merged) && Files.isRegularFile(unmerged)) {
-            return List.of(merged, unmerged);
+    private static void runBlast(Settings settings, int blastThreads, Path fasta, Path hitsFile) {
+        List<String> command = List.of(
+                settings.blastn().toString(),
+                "-task", "blastn-short",
+                "-query", fasta.toString(),
+                "-db", settings.primerDatabase().toString(),
+                "-evalue", Double.toString(settings.evalue()),
+                "-num_alignments", "1000000",
+                "-num_threads", String.valueOf(blastThreads),
+                "-outfmt", BlastTsv.OUTFMT,
+                "-out", hitsFile.toString());
+        ProcessBuilder builder = new ProcessBuilder(command);
+        if (settings.log() == null) {
+            builder.inheritIO();
+        } else {
+            builder.redirectErrorStream(true);
+        }
+        try {
+            Process process = builder.start();
+            if (settings.processes() != null) {
+                settings.processes().add(process);
+            }
+            if (settings.log() != null) {
+                try (BufferedReader output = new BufferedReader(
+                        new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
+                    String line;
+                    while ((line = output.readLine()) != null) {
+                        settings.log().accept(line);
+                    }
+                }
+            }
+            int exit = process.waitFor();
+            if (settings.cancelled() != null && settings.cancelled().getAsBoolean()) {
+                throw new CancellationException("Read-level search was cancelled.");
+            }
+            if (exit != 0) {
+                throw new PipelineException("blastn failed with exit code " + exit + ": " + String.join(" ", command));
+            }
+        } catch (IOException e) {
+            throw new PipelineException("Could not run blastn: " + String.join(" ", command), e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new PipelineException("Interrupted while running blastn on " + fasta, e);
+        }
+    }
+
+    /**
+     * The reads to search: merged pairs plus unmerged mates for paired input (BBMerge
+     * ran this run), the first-pass reads otherwise. Decided from the input, not from
+     * which files exist: a reused output folder may hold an earlier run's merge output.
+     */
+    static List<Path> readInputs(Path sampleDir, String name, boolean paired) {
+        if (paired) {
+            return List.of(BbtoolsCommands.mergedReads(sampleDir, name), BbtoolsCommands.unmergedReads(sampleDir, name));
         }
         return List.of(BbtoolsCommands.targetMatches(sampleDir, name));
     }
@@ -114,13 +182,20 @@ public final class ReadLevelStage {
     /**
      * Writes FASTQ records as FASTA named {@code read_<n>}: SRA-style mates share a
      * name, and reads with the same BLAST query ID would be treated as one sequence.
-     * The original header is kept as the description.
+     * The original header is kept as the description. For paired input the second
+     * file holds BBMerge's unmerged mates, interleaved; consecutive records there are
+     * one pair and share a fragment, so a read-level call counts the pair once.
      */
-    static void writeReadsFasta(List<Path> fastqFiles, Path fasta, Map<String, Integer> lengths,
-                                Map<String, String> descriptions) {
+    static ReadSet writeReadsFasta(List<Path> fastqFiles, boolean pairedUnmergedLast, Path fasta) {
+        Map<String, Integer> lengths = new HashMap<>();
+        Map<String, String> descriptions = new HashMap<>();
+        Map<String, String> fragments = new HashMap<>();
         int index = 0;
         try (BufferedWriter writer = Files.newBufferedWriter(fasta, StandardCharsets.UTF_8)) {
-            for (Path fastq : fastqFiles) {
+            for (int file = 0; file < fastqFiles.size(); file++) {
+                Path fastq = fastqFiles.get(file);
+                boolean interleavedMates = pairedUnmergedLast && file == fastqFiles.size() - 1;
+                List<String> mateIds = new ArrayList<>(2);
                 try (BufferedReader reader = SequenceFileUtils.openMaybeGzip(fastq)) {
                     String header;
                     while ((header = reader.readLine()) != null) {
@@ -141,11 +216,28 @@ public final class ReadLevelStage {
                         writer.newLine();
                         lengths.put(id, sequence.trim().length());
                         descriptions.put(id, original);
+                        if (interleavedMates) {
+                            mateIds.add(id);
+                            if (mateIds.size() == 2) {
+                                fragments.put(mateIds.get(1), mateIds.get(0));
+                                fragments.put(mateIds.get(0), mateIds.get(0));
+                                mateIds.clear();
+                            }
+                        }
                     }
                 }
             }
         } catch (IOException e) {
             throw new PipelineException("Could not write baited reads FASTA: " + fasta, e);
+        }
+        return new ReadSet(lengths, descriptions, fragments);
+    }
+
+    private static void deleteQuietly(Path file) {
+        try {
+            Files.deleteIfExists(file);
+        } catch (IOException ignored) {
+            // A leftover file is only clutter; it is never read without being rewritten.
         }
     }
 }

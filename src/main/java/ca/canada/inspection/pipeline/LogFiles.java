@@ -22,18 +22,32 @@ public final class LogFiles {
         }
     }
 
+    /** Writes QAlog.txt for the run that just finished, replacing any earlier one. */
+    public static void writeQaLog(Path outDir, Path inputFile, Path primerFile, DependencyContext dependencies) {
+        Methods.makeQALog(outDir.resolve("QAlog.txt"), Dispatcher.VERSION, outDir, inputFile, primerFile,
+                dependencies.bbtoolsLocation(), dependencies.blastLocation());
+    }
+
     /** Appends run-specific lines (e.g. FASTQ-mode diagnostics) to QAlog.txt. */
     public static void appendQaLog(Path outDir, List<String> lines) {
         if (lines.isEmpty()) {
             return;
         }
         var qaFile = outDir.resolve("QAlog.txt");
-        try (var writer = Files.newBufferedWriter(qaFile, StandardCharsets.UTF_8,
-                StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
-            writer.newLine();
-            for (var line : lines) {
-                writer.write(line);
+        try {
+            // A blank line ends the input-file list; readers stop there (QaLogInputs).
+            boolean endsWithNewline = !Files.exists(qaFile) || Files.size(qaFile) == 0
+                    || Files.readString(qaFile, StandardCharsets.UTF_8).endsWith("\n");
+            try (var writer = Files.newBufferedWriter(qaFile, StandardCharsets.UTF_8,
+                    StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
+                if (!endsWithNewline) {
+                    writer.newLine();
+                }
                 writer.newLine();
+                for (var line : lines) {
+                    writer.write(line);
+                    writer.newLine();
+                }
             }
         } catch (IOException e) {
             throw new IllegalStateException("Unable to append to QA log: " + qaFile, e);

@@ -39,6 +39,38 @@ class SettingsRecordsTest {
     }
 
     @Test
+    void ampliconDialogParsesAndRejectsInvalidValues() {
+        AmpliconSettings parsed = AmpliconSettingsDialog.parse(" ", "5", "3", "5", "60", "300");
+        assertEquals(new AmpliconSettings(null, 5, 3, 5, 60, 300), parsed);
+        assertEquals(2, AmpliconSettingsDialog.parse("2", "5", "0", "5", "0", "0").probeMismatches());
+        assertTrue(AmpliconSettingsDialog.parse("", "5", "0", "5", "6000", "0").toOptions(0).maxAmpliconLength() == 0);
+
+        IllegalArgumentException minAboveMax = assertThrows(IllegalArgumentException.class,
+                () -> AmpliconSettingsDialog.parse("", "5", "0", "5", "600", "500"));
+        assertEquals("Min amplicon (600 bp) is larger than Max amplicon (500 bp).", minAboveMax.getMessage());
+        assertThrows(IllegalArgumentException.class, () -> AmpliconSettingsDialog.parse("-1", "5", "0", "5", "0", "0"));
+        assertThrows(IllegalArgumentException.class, () -> AmpliconSettingsDialog.parse("", "five", "0", "5", "0", "0"));
+    }
+
+    @Test
+    void fastqDialogParsesAndRejectsInvalidValues() {
+        assertEquals(new FastqSettings(new TadpoleOptions(25, 2, 1, 80), 0.25),
+                FastqSettingsDialog.parse("25", "2", "1", "80", " 0.25 "));
+        assertThrows(IllegalArgumentException.class, () -> FastqSettingsDialog.parse("0", "2", "1", "60", "0.3"));
+        assertThrows(IllegalArgumentException.class, () -> FastqSettingsDialog.parse("31", "2", "1", "60", "1.5"));
+        assertThrows(IllegalArgumentException.class, () -> FastqSettingsDialog.parse("31", "2", "1", "60", "NaN"));
+        assertThrows(IllegalArgumentException.class, () -> FastqSettingsDialog.parse("31", "2", "1", "60", "30%"));
+    }
+
+    @Test
+    void typedPathsAreParsedOrCleared() {
+        assertEquals(java.nio.file.Path.of("/data/reads"), PathFieldBinder.toPath("  /data/reads "));
+        assertEquals(null, PathFieldBinder.toPath("   "));
+        assertEquals(null, PathFieldBinder.toPath(null));
+        assertEquals(null, PathFieldBinder.toPath("bad\u0000path"));
+    }
+
+    @Test
     void fastqSettingsDefaultsAndLabel() {
         assertTrue(FastqSettings.DEFAULTS.isDefault());
         assertEquals("FASTQ settings…", FastqSettingsDialog.buttonLabel(FastqSettings.DEFAULTS));

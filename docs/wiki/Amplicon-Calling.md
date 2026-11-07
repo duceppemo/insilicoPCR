@@ -78,3 +78,16 @@ An accepted forward hit and an accepted reverse hit are reported as an amplicon 
 ## Degenerate primers
 
 IUPAC degenerate bases are expanded into every explicit combination before BLAST (e.g. `...R...Y...` becomes 4 primers, suffixed `_0`, `_1`, ...). Mismatch counting and the 3' check are applied against each expanded variant, so a degenerate position never counts as a mismatch.
+
+## BLAST e-value
+
+The default `-e`/`--evalue` of `1e5` is deliberately permissive, and lowering it is not a way to make results
+stricter. Each contig (or read) is the BLAST query and the primers are a tiny database, so a primer hit's e-value
+grows with the length of the contig it sits on and climbs steeply when a few bases are trimmed or mismatched.
+Hits are filtered afterwards by the rules on this page, which do not depend on contig length.
+
+On two *Brucella* genome assemblies with a four-assay qPCR panel ([#7](https://github.com/duceppemo/insilicoPCR/issues/7)),
+the weakest hit those rules accept had an e-value of 0.79 at `-m 0` (a 17-nt primer aligned over 12 bases, within
+the 5' allowance) and 47 at `-m 2`. A cutoff of `1e-5` lost two assays that the assemblies carry; `0.05` dropped
+6 accepted hits at `-m 0` and 31 at `-m 2`. Above `1000` (BLAST's own default for `blastn-short`) nothing changes:
+`1e5` and `1000` returned identical hits. Keep the default unless runtime matters more than sensitivity.

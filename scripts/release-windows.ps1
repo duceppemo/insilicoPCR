@@ -28,6 +28,7 @@ function Validate-BundledTools {
     Require-File (Join-Path $Root "runtime\common\bbmap\tadpole.sh")
     Require-File (Join-Path $Root "runtime\common\bbmap\calcmem.sh")
     Require-File (Join-Path $Root "runtime\common\bbmap\javasetup.sh")
+    Require-File (Join-Path $Root "runtime\common\bbmap\networks\bbmerge.bbnet.gz")
     Require-Directory (Join-Path $Root "runtime\common\bbmap\config")
     Require-Directory (Join-Path $Root "runtime\common\bbmap\resources")
 

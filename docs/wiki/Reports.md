@@ -50,44 +50,68 @@ The `detailed_report` folder keeps the raw BLAST tabular output per sample (with
 
 ## FASTQ mode and false negatives
 
-FASTQ input is not searched read by read. The reads are baited twice with BBDuk (reads carrying a primer
-k-mer, then reads overlapping those), the baited reads are micro-assembled with Tadpole, and the primers
-are BLASTed against the resulting contigs. An assay can therefore come out negative although its oligos are
-in the reads, when the mini-assembly:
+FASTQ input is not assembled into a genome. The reads are baited twice with BBDuk (reads carrying a primer
+k-mer, then reads overlapping those), the baited reads are micro-assembled with Tadpole, and the primers are
+BLASTed against the resulting contigs. The mini-assembly can **omit the target region** or **break inside the
+amplicon**, so the forward and reverse primers land on different contigs. Recruitment only reaches about one
+fragment length beyond each primer, so amplicons longer than roughly two fragment lengths always end up split.
 
-- **omits the target region** — e.g. the contig spanning it is shorter than Tadpole's minimum contig length
-  or too thinly covered to seed; or
-- **breaks inside the amplicon**, so the forward and reverse primers land on different contigs and no
-  convergent pair exists on one sequence. Recruitment only reaches about one fragment length beyond each
-  primer, so amplicons longer than roughly two fragment lengths always end up split in FASTQ mode.
+### Read-level calls
 
-Neither case means the target is absent. **A FASTQ-mode negative is weaker evidence than a negative on a
-genome assembly**; for exclusivity or diagnostic work, confirm negatives on an assembly of the reads.
+To catch what the mini-assembly misses, the first-pass reads are also searched directly. Overlapping pairs are
+merged with BBMerge, and each read or merged pair is treated as a tiny contig: the primers are BLASTed against it
+and the same hit filters, amplicon rules and probe requirement apply. A read only counts when it holds the
+**whole** product, both primers included.
 
-To make these cases visible, the first BBDuk pass records the reads matched per oligo
-(`detailed_report/<sample>/<sample>_baitStats.txt`). Every assay without a reported amplicon whose oligos
-matched reads is listed in `report_fastq_diagnostics.tsv` (named after the consolidated report, e.g.
-`report(1)_fastq_diagnostics.tsv`), warned about on the console and in the GUI log, and summarized in
-`QAlog.txt`:
+An assay the assembly did not report is reported from reads when at least **2 reads** hold a complete amplicon
+**and** they make up at least **30% of the informative reads**: reads that carry the assay's forward or reverse
+primer and reach far enough from it to have shown the amplicon. A real target shows in most informative reads
+(not all: a sequencing error in a primer or probe disqualifies a read under a strict `-m`), while a few
+contaminating or index-hopped reads from another library show in few of them.
+
+Read-level rows appear in `report.tsv` like any other amplicon, with the representative read as `Contig` (its
+coordinates are on that read) and a `Contig Description` starting with `FASTQ read-level call:` and giving the
+support, e.g. `complete amplicon in 17 of 28 informative read(s) (61%)`.
+
+Read-level calling only works when an amplicon fits in a read or a merged pair. **A FASTQ-mode negative is weaker
+evidence than a negative on a genome assembly**; for exclusivity or diagnostic work, confirm negatives on an
+assembly of the reads.
+
+### Diagnostics file
+
+Every assay the mini-assembly did not report but whose oligos are in the baited reads is listed in
+`report_fastq_diagnostics.tsv` (named after the consolidated report, e.g. `report(1)_fastq_diagnostics.tsv`),
+summarized in `QAlog.txt`, and noted on the console or in the GUI log. Files kept per sample under
+`detailed_report/<sample>/`: `_merged.fastq.gz` / `_unmerged.fastq.gz` (BBMerge output), `_baitedReads.fasta`
+(the reads searched, renamed `read_<n>` with the original name as description) and `_baitedReads.blast.txt`
+(their BLAST hits).
 
 | Column | Meaning |
 |---|---|
 | `Sample` / `Gene` | Sample and assay |
-| `Status` | See below |
-| `ForwardReads` / `ReverseReads` / `ProbeReads` | Reads matched by the assay's oligos in the first baiting pass (degenerate variants summed). BBDuk credits each read to one oligo, so a read carrying two oligos of an assay counts once |
-| `Detail` | What the mini-assembly holds for the assay |
+| `Status` | What the reads show; see below |
+| `Assembly` | Why the mini-assembly did not report it; see below |
+| `ReadsWithForward` / `ReadsWithReverse` / `ReadsWithProbe` | Baited reads (or merged pairs) holding the whole oligo with an accepted hit; every oligo a read carries is counted, degenerate variants are summed |
+| `CheckableLength` | Longest amplicon a read carrying one of the primers could have held |
+| `ReadDetail` / `AssemblyDetail` | Details for the two classifications |
 
-| Status | Meaning | What to try |
-|---|---|---|
-| `NOT_ASSEMBLED` | Forward and reverse primers both matched reads, but at least one has no accepted hit on any contig | Lower `--tadpole-min-contig` / `--tadpole-min-seed`, or use a genome assembly |
-| `SPLIT_ACROSS_CONTIGS` | Both primers hit contigs, never the same one. `Detail` lists each hit and its distance to the contig end in the primer's extension direction — a short distance on both sides means the assembly broke inside the amplicon | Use a genome assembly; Tadpole settings rarely join these |
-| `NO_VALID_PAIR` | Both primers share a contig but form no reportable amplicon (orientation, `--min-length`/`--max-length`, or missing probe) | Inspect `detailed_report/<sample>/<sample>.tsv` |
-| `PARTIAL_BAIT` | Only some of the assay's primers matched reads. Possibly a true negative (e.g. one primer site diverged beyond `-m`); listed for completeness, not warned about | Usually none |
+| Status | Meaning |
+|---|---|
+| `CALLED_FROM_READS` | Reported in `report.tsv` from reads |
+| `WEAK_READ_SUPPORT` | Complete amplicons in reads, but fewer than 2 or under 30% of informative reads. **Not reported, and warned about**: contamination, index hopping, a mixed sample, or a primer site repeated elsewhere in the genome. Inspect the reads before trusting either answer |
+| `NOT_IN_READS` | Both primers are in the reads, but no read holds a complete amplicon. Conclusive only for amplicons up to `CheckableLength`; a longer amplicon cannot be ruled out |
+| `PARTIAL_BAIT` | Only some of the assay's primers are in the reads (e.g. one primer site diverged beyond `-m`); usually a true negative |
+
+| Assembly | Meaning |
+|---|---|
+| `NOT_ASSEMBLED` | A primer found in the reads has no accepted hit on any contig |
+| `SPLIT_ACROSS_CONTIGS` | Both primers hit contigs, never the same one. `AssemblyDetail` lists each hit and its distance to the contig end in the primer's extension direction; short distances on both sides mean the assembly broke inside the amplicon |
+| `NO_VALID_PAIR` | Both primers share a contig but form no reportable amplicon (orientation, `--min-length`/`--max-length`, or missing probe) |
 
 `QAlog.txt` also records the Tadpole settings used. The command-line options `--tadpole-k`,
 `--tadpole-min-seed`, `--tadpole-min-cov` and `--tadpole-min-contig` tune the mini-assembly; the defaults
-(`k=31 mincountseed=2 mincov=1 mincontig=60`) are deliberately less strict than Tadpole's own
-(`mincountseed=3 mincontig=500`), which dropped contigs spanning short amplicons.
+(`k=31 mincountseed=2 mincov=1 mincontig=60`) are less strict than Tadpole's own (`mincountseed=3
+mincontig=500`), which drops contigs spanning short amplicons.
 
 ## Mode behavior
 

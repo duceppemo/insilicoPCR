@@ -1,8 +1,11 @@
 package ca.canada.inspection.pcr;
 
 import ca.canada.inspection.insilicopcr.Sample;
+import ca.canada.inspection.pcr.FastqDiagnostics.Assembly;
 import ca.canada.inspection.pcr.FastqDiagnostics.Finding;
+import ca.canada.inspection.pcr.FastqDiagnostics.ReadsWithOligo;
 import ca.canada.inspection.pcr.FastqDiagnostics.Status;
+import ca.canada.inspection.pcr.ReadLevelCaller.ReadEvidence;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -21,7 +24,7 @@ class FastqDiagnosticsTest {
     private static final AmpliconOptions DEFAULTS = AmpliconOptions.withMismatches(0);
     private static final Map<String, String> PRIMERS = Map.of(
             "assay-F", PRIMER_20, "assay-R", PRIMER_20, "assay-P", PRIMER_20);
-    private static final Map<String, Long> ALL_BAITED = Map.of("assay-F", 50L, "assay-R", 54L, "assay-P", 64L);
+    private static final Map<String, Long> ALL_IN_READS = Map.of("assay-F", 50L, "assay-R", 54L, "assay-P", 64L);
 
     @TempDir
     Path tempDir;
@@ -33,36 +36,71 @@ class FastqDiagnosticsTest {
         return sample;
     }
 
-    private static List<Finding> assess(Sample sample, Map<String, Long> baited, Map<String, Integer> lengths) {
-        return FastqDiagnostics.assess(sample, PRIMERS, DEFAULTS, baited, lengths);
+    /** Evidence with oligos in reads, no read-level call, reads able to hold amplicons up to 240 bp. */
+    private static ReadEvidence noReadCall(Map<String, Long> readsPerOligo) {
+        return new ReadEvidence(readsPerOligo, Map.of(), Map.of("assay", 240));
+    }
+
+    private static List<Finding> assess(Sample sample, ReadEvidence evidence, Map<String, Integer> lengths) {
+        return FastqDiagnostics.assess(sample, PRIMERS, DEFAULTS, evidence, lengths);
     }
 
     @Test
-    void reportedAssayIsNotFlagged() {
+    void assayReportedOnTheAssemblyIsNotListed() {
         Sample sample = fastqSample();
         sample.addBlastResult("assay-F", TestHits.plusHit("assay-F", "contig_0", 101));
         sample.addBlastResult("assay-R", TestHits.minusHit("assay-R", "contig_0", 281));
         sample.addBlastResult("assay-P", TestHits.plusHit("assay-P", "contig_0", 200));
 
-        assertTrue(assess(sample, ALL_BAITED, Map.of()).isEmpty());
+        assertTrue(assess(sample, noReadCall(ALL_IN_READS), Map.of()).isEmpty());
     }
 
     @Test
-    void assayWithoutBaitedReadsIsAnOrdinaryNegative() {
-        assertTrue(assess(fastqSample(), Map.of(), Map.of()).isEmpty());
+    void assayWithoutOligosInReadsIsAnOrdinaryNegative() {
+        assertTrue(assess(fastqSample(), noReadCall(Map.of()), Map.of()).isEmpty());
+    }
+
+    private static ReadEvidence readsWithAmplicon(int count) {
+        Sample reads = readsSample();
+        Map<String, Integer> lengths = new java.util.HashMap<>();
+        for (int i = 1; i <= count; i++) {
+            String read = "read_" + i;
+            lengths.put(read, 101);
+            reads.addBlastResult("assay-F", TestHits.plusHit("assay-F", read, 11));
+            reads.addBlastResult("assay-R", TestHits.minusHit("assay-R", read, 61));
+            reads.addBlastResult("assay-P", TestHits.plusHit("assay-P", read, 35));
+        }
+        return ReadLevelCaller.evaluate(reads, lengths, PRIMERS, DEFAULTS);
     }
 
     @Test
-    void baitedButMissingFromAssemblyIsNotAssembled() {
-        List<Finding> findings = assess(fastqSample(), ALL_BAITED, Map.of());
+    void readLevelCallIsCalledFromReads() {
+        Finding finding = assess(fastqSample(), readsWithAmplicon(2), Map.of()).getFirst();
 
-        assertEquals(1, findings.size());
-        Finding finding = findings.getFirst();
-        assertEquals(Status.NOT_ASSEMBLED, finding.status());
-        assertEquals("assay", finding.assay());
-        assertEquals(new FastqDiagnostics.BaitedReads(50, 54, 64), finding.baitedReads());
-        assertTrue(finding.detail().contains("assay-F and assay-R"), finding.detail());
-        assertTrue(finding.status().isWarning());
+        assertEquals(Status.CALLED_FROM_READS, finding.status());
+        assertEquals(Assembly.NOT_ASSEMBLED, finding.assembly());
+        assertEquals(new ReadsWithOligo(2, 2, 2), finding.readsWithOligo());
+        assertTrue(finding.readDetail().contains("2 of 2 informative read(s) (100%), size(s) 70 bp"),
+                finding.readDetail());
+    }
+
+    @Test
+    void readLevelCallBelowSupportThresholdIsWeak() {
+        Finding finding = assess(fastqSample(), readsWithAmplicon(1), Map.of()).getFirst();
+
+        assertEquals(Status.WEAK_READ_SUPPORT, finding.status());
+        assertTrue(finding.readDetail().contains("needs at least 2 reads"), finding.readDetail());
+    }
+
+    @Test
+    void primersInReadsWithoutCompleteAmpliconAreNotInReads() {
+        Finding finding = assess(fastqSample(), noReadCall(ALL_IN_READS), Map.of()).getFirst();
+
+        assertEquals(Status.NOT_IN_READS, finding.status());
+        assertEquals(Assembly.NOT_ASSEMBLED, finding.assembly());
+        assertEquals(240, finding.checkableLength());
+        assertTrue(finding.readDetail().contains("up to 240 bp"), finding.readDetail());
+        assertTrue(finding.assemblyDetail().contains("assay-F and assay-R"), finding.assemblyDetail());
     }
 
     @Test
@@ -75,15 +113,13 @@ class FastqDiagnosticsTest {
         sample.addBlastResult("assay-F", TestHits.plusHit("assay-F", contig6, 1496));    // ends at 1515
         sample.addBlastResult("assay-R", TestHits.minusHit("assay-R", contig60, 15));    // starts at 15
 
-        List<Finding> findings = assess(sample, ALL_BAITED, Map.of(contig6, 1534, contig60, 439));
+        Finding finding = assess(sample, noReadCall(ALL_IN_READS), Map.of(contig6, 1534, contig60, 439)).getFirst();
 
-        assertEquals(1, findings.size());
-        Finding finding = findings.getFirst();
-        assertEquals(Status.SPLIT_ACROSS_CONTIGS, finding.status());
-        assertTrue(finding.detail().contains("assay-F contig_6:1496-1515(+), 19 bp to contig end (contig 1534 bp)"),
-                finding.detail());
-        assertTrue(finding.detail().contains("assay-R contig_60:15-34(-), 14 bp to contig end (contig 439 bp)"),
-                finding.detail());
+        assertEquals(Assembly.SPLIT_ACROSS_CONTIGS, finding.assembly());
+        assertTrue(finding.assemblyDetail().contains(
+                "assay-F contig_6:1496-1515(+), 19 bp to contig end (contig 1534 bp)"), finding.assemblyDetail());
+        assertTrue(finding.assemblyDetail().contains(
+                "assay-R contig_60:15-34(-), 14 bp to contig end (contig 439 bp)"), finding.assemblyDetail());
     }
 
     @Test
@@ -93,53 +129,31 @@ class FastqDiagnosticsTest {
         sample.addBlastResult("assay-F", TestHits.plusHit("assay-F", "contig_0,len=900", 101));
         sample.addBlastResult("assay-R", TestHits.plusHit("assay-R", "contig_0,len=900", 400));
 
-        List<Finding> findings = assess(sample, ALL_BAITED, Map.of());
+        Finding finding = assess(sample, noReadCall(ALL_IN_READS), Map.of()).getFirst();
 
-        assertEquals(Status.NO_VALID_PAIR, findings.getFirst().status());
-        assertTrue(findings.getFirst().detail().contains("contig_0"));
+        assertEquals(Assembly.NO_VALID_PAIR, finding.assembly());
+        assertTrue(finding.assemblyDetail().contains("contig_0"));
     }
 
     @Test
-    void missingProbeOnValidPairIsNoValidPair() {
-        Sample sample = fastqSample();
-        sample.addBlastResult("assay-F", TestHits.plusHit("assay-F", "contig_0", 101));
-        sample.addBlastResult("assay-R", TestHits.minusHit("assay-R", "contig_0", 281));
+    void onlyOnePrimerInReadsIsPartialBait() {
+        Finding finding = assess(fastqSample(), noReadCall(Map.of("assay-F", 12L)), Map.of()).getFirst();
 
-        assertEquals(Status.NO_VALID_PAIR, assess(sample, ALL_BAITED, Map.of()).getFirst().status());
-    }
-
-    @Test
-    void onlyOnePrimerBaitedIsPartialAndNotAWarning() {
-        List<Finding> findings = assess(fastqSample(), Map.of("assay-F", 12L), Map.of());
-
-        Finding finding = findings.getFirst();
         assertEquals(Status.PARTIAL_BAIT, finding.status());
-        assertTrue(finding.detail().contains("reverse"));
-        assertTrue(!finding.status().isWarning());
+        assertTrue(finding.readDetail().contains("reverse"));
     }
 
     @Test
     void expandedDegenerateOligosAreSummedPerRole() {
         Map<String, String> primers = Map.of("assay-F_0", PRIMER_20, "assay-F_1", PRIMER_20, "assay-R", PRIMER_20);
         List<Finding> findings = FastqDiagnostics.assess(fastqSample(), primers, DEFAULTS,
-                Map.of("assay-F_0", 3L, "assay-F_1", 4L, "assay-R", 5L), Map.of());
+                noReadCall(Map.of("assay-F_0", 3L, "assay-F_1", 4L, "assay-R", 5L)), Map.of());
 
-        assertEquals(new FastqDiagnostics.BaitedReads(7, 5, 0), findings.getFirst().baitedReads());
+        assertEquals(new ReadsWithOligo(7, 5, 0), findings.getFirst().readsWithOligo());
     }
 
     @Test
-    void readsBbdukStatsAndContigLengths() throws IOException {
-        Path stats = Files.writeString(tempDir.resolve("stats.txt"), """
-                #File\tr1.fq.gz\tr2.fq.gz
-                #Total\t1600
-                #Matched\t168\t10.50000%
-                #Name\tReads\tReadsPct
-                assay-P\t64\t4.00000%
-                assay-R\t54\t3.37500%
-                assay-F\t50\t3.12500%
-                """);
-        assertEquals(ALL_BAITED, FastqDiagnosticsReport.readBaitStats(stats));
-
+    void readsContigLengths() throws IOException {
         Path fasta = Files.writeString(tempDir.resolve("asm.fasta"),
                 ">contig_0,len=12,cov=3.0\nACGTACGT\nACGT\n>contig_1 desc\nAC\n");
         assertEquals(Map.of("contig_0,len=12,cov=3.0", 12, "contig_1", 2), FastqDiagnosticsReport.contigLengths(fasta));
@@ -150,5 +164,12 @@ class FastqDiagnosticsTest {
         Path file = tempDir.resolve("diag.tsv");
         FastqDiagnosticsReport.write(file, List.of());
         assertEquals(List.of(FastqDiagnosticsReport.HEADER), Files.readAllLines(file));
+    }
+
+    static Sample readsSample() {
+        Sample reads = new Sample();
+        reads.setName("reads");
+        reads.setFileType("reads");
+        return reads;
     }
 }

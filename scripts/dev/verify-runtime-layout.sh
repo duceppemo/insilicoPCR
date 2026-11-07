@@ -26,6 +26,7 @@ if [[ "$REQUIRE_BINARIES" == "true" ]]; then
     "runtime/common/bbmap/tadpole.sh"
     "runtime/common/bbmap/calcmem.sh"
     "runtime/common/bbmap/javasetup.sh"
+    "runtime/common/bbmap/networks/bbmerge.bbnet.gz"
   )
 fi
 

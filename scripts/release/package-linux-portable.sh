@@ -35,6 +35,7 @@ validate_bundled_tools() {
   require_file "$ROOT/runtime/common/bbmap/tadpole.sh"
   require_file "$ROOT/runtime/common/bbmap/calcmem.sh"
   require_file "$ROOT/runtime/common/bbmap/javasetup.sh"
+  require_file "$ROOT/runtime/common/bbmap/networks/bbmerge.bbnet.gz"
   require_dir  "$ROOT/runtime/common/bbmap/config"
   require_dir  "$ROOT/runtime/common/bbmap/resources"
 

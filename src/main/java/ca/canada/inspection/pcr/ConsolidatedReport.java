@@ -31,6 +31,17 @@ public final class ConsolidatedReport {
      */
     public static Path write(Path consolidatedDir, Map<String, Sample> samples,
                              Map<String, String> primers, AmpliconOptions options) {
+        return write(consolidatedDir, samples, primers, options, Map.of());
+    }
+
+    /**
+     * As {@link #write(Path, Map, Map, AmpliconOptions)}, appending {@code extraRows}
+     * (keyed by sample name, already in report column order) after each sample's
+     * own rows; used for FASTQ-mode amplicons called on reads rather than contigs.
+     */
+    public static Path write(Path consolidatedDir, Map<String, Sample> samples,
+                             Map<String, String> primers, AmpliconOptions options,
+                             Map<String, List<List<String>>> extraRows) {
         // Probe requirement is decided per assay from the primer FILE, so standard
         // PCR and qPCR assays can be mixed in one run: an assay whose probe is
         // defined but never hits must stay negative, while a probe-less assay is
@@ -51,6 +62,9 @@ public final class ConsolidatedReport {
             for (Map.Entry<String, Sample> sampleEntry : new TreeMap<>(samples).entrySet()) {
                 writeSampleResults(sink, sampleEntry.getKey(), sampleEntry.getValue(),
                         options, assaysWithProbe, probeColumns);
+                for (List<String> row : extraRows.getOrDefault(sampleEntry.getKey(), List.of())) {
+                    sink.accept(row);
+                }
             }
         } catch (IOException e) {
             throw new IllegalStateException("Unable to write consolidated report: " + report, e);
@@ -63,16 +77,33 @@ public final class ConsolidatedReport {
      * the same pairing, size and probe rules, without writing anything.
      */
     public static Set<String> reportedAssays(Sample sample, Map<String, String> primers, AmpliconOptions options) {
-        Set<String> assaysWithProbe = assaysWithProbe(primers.keySet());
         Set<String> reported = new TreeSet<>();
+        for (List<String> row : rows(sample, primers, options)) {
+            reported.add(row.get(GENE_COLUMN));
+        }
+        return reported;
+    }
+
+    /** The rows {@link #write} would write for {@code sample}, in report column order. */
+    public static List<List<String>> rows(Sample sample, Map<String, String> primers, AmpliconOptions options) {
+        Set<String> assaysWithProbe = assaysWithProbe(primers.keySet());
+        List<List<String>> rows = new ArrayList<>();
         try {
-            writeSampleResults(columns -> reported.add(columns.get(1)), sample.getName(), sample,
+            writeSampleResults(columns -> rows.add(List.copyOf(columns)), sample.getName(), sample,
                     options, assaysWithProbe, !assaysWithProbe.isEmpty());
         } catch (IOException e) {
             throw new IllegalStateException("Collecting rows in memory cannot fail", e);
         }
-        return reported;
+        return rows;
     }
+
+    /** Report column indexes used by callers that post-process rows. */
+    public static final int GENE_COLUMN = 1;
+    public static final int CONTIG_COLUMN = 4;
+    public static final int CONTIG_DESCRIPTION_COLUMN = 5;
+    public static final int FORWARD_MISMATCHES_COLUMN = 8;
+    public static final int REVERSE_MISMATCHES_COLUMN = 9;
+    public static final int AMPLICON_SIZE_COLUMN = 3;
 
     /** Assay names that define at least one -P probe in the primer file. */
     private static Set<String> assaysWithProbe(Iterable<String> primerIds) {

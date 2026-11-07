@@ -2,19 +2,32 @@
 
 ## Unreleased
 
-### FASTQ mode: negatives the reads do not support are now flagged (#7)
+### FASTQ mode: targets the mini-assembly misses are called from reads (#7)
 
 An assay could be reported negative in FASTQ mode although its oligos were in
 the baited reads, because the Tadpole mini-assembly omitted the target region
 or broke inside the amplicon. Nothing in the reports told this apart from
-"target absent".
+"target absent". On the two read sets in #7 (SRR642185, ERR2938678), FASTQ
+mode now reports the same assays as a SKESA assembly of the same reads.
 
-- The first baiting pass now writes reads matched per oligo
-  (`<sample>_baitStats.txt`). Every negative assay whose oligos matched reads
-  is listed in `consolidated_report/report_fastq_diagnostics.tsv` with a
-  status — `NOT_ASSEMBLED`, `SPLIT_ACROSS_CONTIGS` (with each primer's contig
-  and distance to the contig end), `NO_VALID_PAIR`, or `PARTIAL_BAIT` — and
-  the first three are warned about on the console/GUI log and in `QAlog.txt`.
+- The first-pass baited reads are searched directly: pairs are merged with
+  BBMerge, and each read or merged pair goes through the same hit filters and
+  amplicon/probe rules as a contig, counting only reads that hold the whole
+  product. An assay the assembly missed is reported from reads when at least 2
+  reads, and at least 30% of the reads that could have shown it, hold a
+  complete amplicon. Such rows are marked `FASTQ read-level call` in
+  `report.tsv`, with their support.
+- Every assay the assembly missed whose oligos are in the reads is listed in
+  `consolidated_report/report_fastq_diagnostics.tsv`: `CALLED_FROM_READS`,
+  `WEAK_READ_SUPPORT` (amplicon in too few reads: contamination or index
+  hopping? not reported, warned about), `NOT_IN_READS` (with the longest
+  amplicon the reads could have held) or `PARTIAL_BAIT`, plus why the assembly
+  missed it (`NOT_ASSEMBLED`, `SPLIT_ACROSS_CONTIGS` with each primer's contig
+  and distance to the contig end, `NO_VALID_PAIR`). Summarized in `QAlog.txt`
+  and on the console/GUI log; per-oligo read counts are exact.
+- The bundled BBTools now includes `networks/bbmerge.bbnet.gz`: BBMerge 40.04
+  loads it at startup and crashed without it (the 40.04 update synced only
+  `config/` and `resources/`). The release layout checks require it.
 - Tadpole defaults are now `mincountseed=2 mincontig=60` (Tadpole's own are
   3 and 500; a contig over a short amplicon is often under 500 bp), and
   `--tadpole-k`, `--tadpole-min-seed`, `--tadpole-min-cov` and

@@ -26,6 +26,16 @@ public final class FastqProcessor {
                 sample -> secondBait(context, commands, sample));
         ParallelStageRunner.run("Tadpole assembly", samples, context.config().threads(),
                 sample -> assemble(context, commands, sample));
+        List<Sample> paired = samples.stream().filter(sample -> sample.files().size() == 2).toList();
+        ParallelStageRunner.run("BBMerge of baited pairs", paired, context.config().threads(),
+                sample -> merge(context, commands, sample));
+    }
+
+    private static void merge(PipelineContext context, BbtoolsCommands commands, Sample sample) {
+        Path sampleDir = sampleDirectory(context, sample);
+        run(context, commands.mergePairs(BbtoolsCommands.targetMatches(sampleDir, sample.getName()),
+                BbtoolsCommands.mergedReads(sampleDir, sample.getName()),
+                BbtoolsCommands.unmergedReads(sampleDir, sample.getName())));
     }
 
     private static List<Sample> fastqSamples(PipelineContext context) {
@@ -42,7 +52,6 @@ public final class FastqProcessor {
                 context.directories().primerDatabase(),
                 sample.files(),
                 BbtoolsCommands.targetMatches(sampleDir, sample.getName()),
-                BbtoolsCommands.baitStats(sampleDir, sample.getName()),
                 kLength,
                 context.config().mismatches()
         ));

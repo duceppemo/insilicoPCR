@@ -109,9 +109,11 @@ Typical CLI run:
 | `--tadpole-min-cov <n>` | 1 | FASTQ mode: minimum average contig coverage |
 | `--tadpole-min-contig <bp>` | 60 | FASTQ mode: minimum contig length kept |
 
-> **FASTQ input:** amplicons are called on a small Tadpole assembly of the baited reads, so a FASTQ-mode
-> negative is weaker evidence than one from a genome assembly. Negatives whose oligos *were* found in the
-> reads are listed in `consolidated_report/report_fastq_diagnostics.tsv` and flagged in `QAlog.txt`; see
+> **FASTQ input:** amplicons are called on a small Tadpole assembly of the baited reads, and on the baited
+> reads themselves when the assembly misses a target (rows marked `FASTQ read-level call`). A FASTQ-mode
+> negative is still weaker evidence than one from a genome assembly. Assays whose oligos were found in the
+> reads but that the assembly missed are listed in `consolidated_report/report_fastq_diagnostics.tsv` and
+> summarized in `QAlog.txt`; see
 > [Reports](https://github.com/duceppemo/insilicoPCR/wiki/Reports#fastq-mode-and-false-negatives).
 
 See the [Command-line Interface Wiki page](https://github.com/duceppemo/insilicoPCR/wiki/Command-line-Interface) for the full reference.

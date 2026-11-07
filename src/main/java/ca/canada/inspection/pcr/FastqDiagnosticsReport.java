@@ -13,42 +13,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/** File I/O around {@link FastqDiagnostics}: its inputs on disk and its TSV output. */
+/** File I/O around {@link FastqDiagnostics}: contig lengths in, TSV out. */
 public final class FastqDiagnosticsReport {
 
     static final String HEADER = String.join("\t",
-            "Sample", "Gene", "Status", "ForwardReads", "ReverseReads", "ProbeReads", "Detail");
+            "Sample", "Gene", "Status", "Assembly", "ReadsWithForward", "ReadsWithReverse", "ReadsWithProbe",
+            "CheckableLength", "ReadDetail", "AssemblyDetail");
 
     private FastqDiagnosticsReport() {
-    }
-
-    /**
-     * Reads a BBDuk {@code stats=} file: reads matched per reference sequence (here,
-     * per expanded oligo ID). Comment lines start with {@code #}; data lines are
-     * {@code name<TAB>reads<TAB>percent}. BBDuk omits references without matches.
-     */
-    public static Map<String, Long> readBaitStats(Path statsFile) {
-        Map<String, Long> reads = new HashMap<>();
-        try (BufferedReader reader = Files.newBufferedReader(statsFile, StandardCharsets.UTF_8)) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                if (line.isBlank() || line.startsWith("#")) {
-                    continue;
-                }
-                String[] fields = line.split("\t");
-                if (fields.length < 2) {
-                    continue;
-                }
-                try {
-                    reads.merge(fields[0].trim(), Long.parseLong(fields[1].trim()), Long::sum);
-                } catch (NumberFormatException e) {
-                    throw new IllegalStateException("Unexpected BBDuk stats line in " + statsFile + ": " + line, e);
-                }
-            }
-        } catch (IOException e) {
-            throw new IllegalStateException("Unable to read BBDuk stats: " + statsFile, e);
-        }
-        return reads;
     }
 
     /** Sequence lengths of a FASTA file keyed by ID (header up to the first whitespace, as BLAST reports it). */
@@ -89,10 +61,13 @@ public final class FastqDiagnosticsReport {
                         finding.sample(),
                         finding.assay(),
                         finding.status().name(),
-                        String.valueOf(finding.baitedReads().forward()),
-                        String.valueOf(finding.baitedReads().reverse()),
-                        String.valueOf(finding.baitedReads().probe()),
-                        finding.detail().replace('\t', ' ')));
+                        finding.assembly().name(),
+                        String.valueOf(finding.readsWithOligo().forward()),
+                        String.valueOf(finding.readsWithOligo().reverse()),
+                        String.valueOf(finding.readsWithOligo().probe()),
+                        String.valueOf(finding.checkableLength()),
+                        finding.readDetail().replace('\t', ' '),
+                        finding.assemblyDetail().replace('\t', ' ')));
                 writer.newLine();
             }
         } catch (IOException e) {

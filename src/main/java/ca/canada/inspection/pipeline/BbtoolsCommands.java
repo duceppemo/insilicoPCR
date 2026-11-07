@@ -40,21 +40,54 @@ record BbtoolsCommands(String javaCommand, Path bbtoolsJar, int childMemoryGiB, 
         return sampleDir.resolve(sampleName + "_assembly.fasta");
     }
 
-    /** Reads matched per oligo in the first pass (BBDuk {@code stats=}), used to flag unsupported negatives. */
-    static Path baitStats(Path sampleDir, String sampleName) {
-        return sampleDir.resolve(sampleName + "_baitStats.txt");
+    /** First-pass pairs that BBMerge could overlap into one fragment. */
+    static Path mergedReads(Path sampleDir, String sampleName) {
+        return sampleDir.resolve(sampleName + "_merged.fastq.gz");
+    }
+
+    /** First-pass pairs that BBMerge could not merge, kept as interleaved mates. */
+    static Path unmergedReads(Path sampleDir, String sampleName) {
+        return sampleDir.resolve(sampleName + "_unmerged.fastq.gz");
+    }
+
+    /** First-pass reads (merged where possible) as FASTA with unique IDs, searched for read-level amplicons. */
+    static Path baitedReadsFasta(Path sampleDir, String sampleName) {
+        return sampleDir.resolve(sampleName + "_baitedReads.fasta");
+    }
+
+    /**
+     * BLAST hits of the primers on the baited reads. Deliberately not {@code .tsv}:
+     * per-sample {@code .tsv} files are read as contig hits of a sample of that name.
+     */
+    static Path baitedReadsHits(Path sampleDir, String sampleName) {
+        return sampleDir.resolve(sampleName + "_baitedReads.blast.txt");
     }
 
     /**
      * First pass: keep reads sharing a k-mer with any primer, allowing
      * {@code hdist} mismatches so primers with tolerated mismatches still bait.
-     * {@code stats} receives the reads matched per oligo.
      */
-    List<String> firstBait(Path primerDatabase, List<Path> reads, Path output, Path stats, int kLength, int hdist) {
+    List<String> firstBait(Path primerDatabase, List<Path> reads, Path output, int kLength, int hdist) {
         List<String> command = bbduk(primerDatabase, reads, output, hdist);
         command.add("k=" + kLength);
-        command.add("stats=" + stats);
         return command;
+    }
+
+    /**
+     * Merges overlapping first-pass pairs so a read-level search can find amplicons
+     * longer than one read (up to the fragment length).
+     */
+    List<String> mergePairs(Path interleavedPairs, Path merged, Path unmerged) {
+        return new ArrayList<>(List.of(
+                javaCommand, "-ea", "-Xmx" + childMemoryGiB + "g",
+                "-cp", bbtoolsJar.toString(), "jgi.BBMerge",
+                "in=" + interleavedPairs,
+                "interleaved=t",
+                "out=" + merged,
+                "outu=" + unmerged,
+                "overwrite=t",
+                "threads=" + threads
+        ));
     }
 
     /**

@@ -16,8 +16,7 @@ class BbtoolsCommandsTest {
 
     @Test
     void firstBaitUsesPrimerDatabaseShortestPrimerAndMismatchBudget() {
-        List<String> command = commands.firstBait(Path.of("primers.fasta"), paired, Path.of("out.fq.gz"),
-                Path.of("stats.txt"), 17, 2);
+        List<String> command = commands.firstBait(Path.of("primers.fasta"), paired, Path.of("out.fq.gz"), 17, 2);
 
         assertTrue(command.contains("jgi.BBDuk"));
         assertTrue(command.contains("ref=primers.fasta"));
@@ -26,7 +25,6 @@ class BbtoolsCommandsTest {
         assertTrue(command.contains("in1=s_R1.fastq.gz"));
         assertTrue(command.contains("in2=s_R2.fastq.gz"));
         assertTrue(command.contains("outm=out.fq.gz"));
-        assertTrue(command.contains("stats=stats.txt"));
         assertTrue(command.contains("overwrite=t"));
         assertTrue(command.contains("-Xmx6g"));
         assertTrue(command.contains("threads=4"));
@@ -83,6 +81,21 @@ class BbtoolsCommandsTest {
         assertEquals(dir.resolve("s_targetMatches.fastq.gz"), BbtoolsCommands.targetMatches(dir, "s"));
         assertEquals(dir.resolve("s_doubleTargetMatches.fastq.gz"), BbtoolsCommands.doubleTargetMatches(dir, "s"));
         assertEquals(dir.resolve("s_assembly.fasta"), BbtoolsCommands.assembly(dir, "s"));
-        assertEquals(dir.resolve("s_baitStats.txt"), BbtoolsCommands.baitStats(dir, "s"));
+        assertEquals(dir.resolve("s_merged.fastq.gz"), BbtoolsCommands.mergedReads(dir, "s"));
+        assertEquals(dir.resolve("s_unmerged.fastq.gz"), BbtoolsCommands.unmergedReads(dir, "s"));
+        assertEquals(dir.resolve("s_baitedReads.fasta"), BbtoolsCommands.baitedReadsFasta(dir, "s"));
+        // Must not end in .tsv, or it would be parsed as a sample's contig hits.
+        assertEquals(dir.resolve("s_baitedReads.blast.txt"), BbtoolsCommands.baitedReadsHits(dir, "s"));
+    }
+
+    @Test
+    void mergeKeepsUnmergedMates() {
+        List<String> command = commands.mergePairs(Path.of("first.fq.gz"), Path.of("m.fq.gz"), Path.of("u.fq.gz"));
+
+        assertTrue(command.contains("jgi.BBMerge"));
+        assertTrue(command.contains("in=first.fq.gz"));
+        assertTrue(command.contains("interleaved=t"));
+        assertTrue(command.contains("out=m.fq.gz"));
+        assertTrue(command.contains("outu=u.fq.gz"));
     }
 }

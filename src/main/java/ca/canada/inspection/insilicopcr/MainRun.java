@@ -76,6 +76,10 @@ public class MainRun extends Application {
     private PcrPipelineTask runningTask;
     private DependencyContext dependencies;
     private FastqSettings fastqSettings = FastqSettings.DEFAULTS;
+    /** Paths of the last run started; the fields may have been edited since. */
+    private Path lastRunInput;
+    private Path lastRunPrimer;
+    private Path lastRunOutDir;
     private AmpliconSettings ampliconSettings = AmpliconSettings.DEFAULTS;
 
     @Override
@@ -354,6 +358,9 @@ public class MainRun extends Application {
         mainProgress.setProgress(ProgressBar.INDETERMINATE_PROGRESS);
         blastProgress.setProgress(ProgressBar.INDETERMINATE_PROGRESS);
 
+        lastRunInput = inputFile;
+        lastRunPrimer = primerFile;
+        lastRunOutDir = outDir;
         var config = new PcrRunConfig(
                 inputFile,
                 outDir,
@@ -413,7 +420,9 @@ public class MainRun extends Application {
     }
 
     private boolean confirmClose() {
-        if (inputFile == null || outDir == null || primerFile == null) {
+        // Logs belong to the last run started, in the folder it used: the path fields
+        // may since hold another, half-typed or mistyped path. No run, no logs.
+        if (lastRunOutDir == null) {
             Platform.exit();
             return true;
         }
@@ -427,8 +436,9 @@ public class MainRun extends Application {
                 return false;
             }
             if (runningTask != null) {
-                runningTask.shutdownNow();
+                // Cancel first so no stage starts a new process, then kill the running ones.
                 runningTask.cancel(true);
+                runningTask.shutdownNow();
             }
         }
 
@@ -436,8 +446,8 @@ public class MainRun extends Application {
             if (dependencies == null) {
                 dependencies = DependencyContext.discover(outputField);
             }
-            LogFiles.ensureQaLog(outDir, inputFile, primerFile, dependencies);
-            LogFiles.appendRunLog(outDir, outputField);
+            LogFiles.ensureQaLog(lastRunOutDir, lastRunInput, lastRunPrimer, dependencies);
+            LogFiles.appendRunLog(lastRunOutDir, outputField);
         } catch (RuntimeException e) {
             Methods.logMessage(outputField, "Unable to write shutdown logs: " + e.getMessage());
         }
@@ -506,11 +516,12 @@ public class MainRun extends Application {
         }
     }
 
+    /** The last run's report: the output field may have been edited since the run. */
     private Path latestConsolidatedReport() {
-        if (outDir == null) {
-            throw new IllegalStateException("No current output directory is selected.");
+        if (lastRunOutDir == null) {
+            throw new IllegalStateException("No run has been started in this window.");
         }
-        return latestConsolidatedReport(outDir);
+        return latestConsolidatedReport(lastRunOutDir);
     }
 
     private Path latestConsolidatedReport(Path runDir) {
@@ -535,22 +546,7 @@ public class MainRun extends Application {
             throw new IllegalStateException("QAlog.txt not found: " + qaLog);
         }
         HashMap<String, Sample> samples = new HashMap<>();
-        try {
-            for (String input : QaLogInputs.read(qaLog)) {
-                Path inputPath = Path.of(input);
-                if (Files.isDirectory(inputPath)) {
-                    try (Stream<Path> files = Files.list(inputPath)) {
-                        files.filter(SequenceFileUtils::looksLikeSequenceFile)
-                                .map(SequenceFileUtils::sampleName)
-                                .forEach(sampleName -> samples.put(sampleName, null));
-                    }
-                } else {
-                    samples.put(SequenceFileUtils.sampleName(inputPath), null);
-                }
-            }
-        } catch (IOException e) {
-            throw new IllegalStateException("Unable to read QAlog sample list: " + qaLog, e);
-        }
+        QaLogInputs.sampleNames(QaLogInputs.read(qaLog)).forEach(name -> samples.put(name, null));
         if (samples.isEmpty()) {
             throw new IllegalStateException("No input samples were found in QAlog.txt: " + qaLog);
         }

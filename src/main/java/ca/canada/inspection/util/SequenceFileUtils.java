@@ -43,7 +43,17 @@ public final class SequenceFileUtils {
     }
 
     public static String sampleName(Path path) {
-        String fileName = path.getFileName().toString();
+        Path directory = path.toAbsolutePath().getParent();
+        return sampleName(path.getFileName().toString(),
+                sibling -> directory != null && Files.exists(directory.resolve(sibling)));
+    }
+
+    /**
+     * Sample name of {@code fileName} with the same rules as {@link #sampleName(Path)},
+     * asking {@code siblingExists} instead of the disk whether a mate file is present
+     * (e.g. when the names come from a run's QA log and the files may have moved).
+     */
+    public static String sampleName(String fileName, java.util.function.Predicate<String> siblingExists) {
         String base = SEQUENCE_EXTENSION.matcher(fileName).replaceFirst("");
         String withoutIlluminaSuffix = READ_PAIR_SUFFIX.matcher(base).replaceFirst("");
         if (!withoutIlluminaSuffix.equals(base)) {
@@ -56,23 +66,19 @@ public final class SequenceFileUtils {
         // strain_2.fasta are distinct samples.
         if (hasExtension(fileName, FASTQ_EXTENSIONS)) {
             Matcher mate = BARE_FASTQ_PAIR_SUFFIX.matcher(base);
-            if (mate.find() && isPartOfReadPair(path, fileName, base, mate.group(1))) {
+            if (mate.find() && isPartOfReadPair(siblingExists, fileName, base, mate.group(1))) {
                 return base.substring(0, mate.start());
             }
         }
         return base;
     }
 
-    private static boolean isPartOfReadPair(Path path, String fileName, String base, String digit) {
-        Path directory = path.toAbsolutePath().getParent();
-        if (directory == null) {
-            return false;
-        }
+    private static boolean isPartOfReadPair(java.util.function.Predicate<String> siblingExists, String fileName,
+                                            String base, String digit) {
         String extension = fileName.substring(base.length());
         String stem = base.substring(0, base.length() - 2);
         String mateName = stem + "_" + ("1".equals(digit) ? "2" : "1") + extension;
-        return Files.exists(directory.resolve(mateName))
-                && !Files.exists(directory.resolve(stem + "_3" + extension));
+        return siblingExists.test(mateName) && !siblingExists.test(stem + "_3" + extension);
     }
 
     public static String fileType(Path file) {

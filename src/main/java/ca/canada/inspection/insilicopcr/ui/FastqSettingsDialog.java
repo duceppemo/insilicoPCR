@@ -46,7 +46,8 @@ public final class FastqSettingsDialog {
         TextField readFraction = dialog.field("Min share of informative reads (0-1)",
                 String.valueOf(current.readMinFraction()),
                 "An assay the mini-assembly missed is reported from reads when at least "
-                        + ReadLevelCaller.MIN_SUPPORTING_READS + " reads, and at least this share of the reads that "
+                        + ReadLevelCaller.MIN_SUPPORTING_READS + " reads (the two reads of a pair count once), and at "
+                        + "least this share of the reads that "
                         + "carry one of its primers and are long enough, hold a complete amplicon "
                         + "(--read-min-fraction). Default " + ReadLevelCaller.DEFAULT_MIN_SUPPORT_FRACTION + ".");
 
@@ -72,7 +73,7 @@ public final class FastqSettingsDialog {
     public static String summary(FastqSettings settings) {
         return (settings.isDefault() ? "Defaults" : "Changed from defaults (*)")
                 + "\nTadpole: " + String.join(" ", settings.tadpole().arguments())
-                + "\nRead-level calls: at least " + ReadLevelCaller.MIN_SUPPORTING_READS + " reads and "
+                + "\nRead-level calls: at least " + ReadLevelCaller.MIN_SUPPORTING_READS + " reads or read pairs and "
                 + Math.round(100 * settings.readMinFraction()) + "% of informative reads";
     }
 

@@ -21,14 +21,23 @@
 - GUI: `QAlog.txt` is rewritten on every run, like on the command line,
   instead of collecting every later run's FASTQ lines under the first run's
   header.
-- GUI: the read-level BLAST search logs to the window, stops when the run is
-  cancelled or the window closed, and no longer outlives the application.
+- GUI: the read-level BLAST search logs to the window and is stopped when the
+  window is closed during a run, like the other external tools; a process
+  that starts while the window is closing is killed too, so it can no longer
+  keep the application alive.
 - GUI: a path typed or pasted into the input, primer or output field is
-  used; before, only a chosen or dropped path was, even after the text was
-  edited, and the output field did not accept typing at all.
-- GUI: **Open Previous Run** showed one gel lane per read file for paired
-  FASTQ input (e.g. `S_1` and `S_2` next to `S`); it now names samples with
-  the same rule as the pipeline.
+  used (a leading `~` is the home folder; relative paths are made absolute);
+  before, only a chosen or dropped path was, even after the text was edited,
+  and the output field did not accept typing at all.
+- GUI: closing the window writes `QAlog.txt` and `log.txt` to the folder of
+  the last run started, and **View Gel Image** opens that run's report,
+  rather than whatever the output field holds by then. Closing without
+  having run anything no longer writes logs.
+- GUI: **Open Previous Run** showed extra empty gel lanes: one per read file
+  for paired FASTQ input (e.g. `S_1` and `S_2` next to `S`), and one per
+  non-sequence file or subfolder entry of a folder input. It now keeps only
+  sequence files, as the pipeline does, and pairs mates using the run's own
+  file list, so the lanes stay right after the inputs are moved.
 - GUI: **Run** is disabled while a run is in progress, so two runs can no
   longer write to the same output folder at once.
 

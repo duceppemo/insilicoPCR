@@ -83,7 +83,7 @@ class ReadLevelCallerTest {
         // The same 20% support passes a lower --read-min-fraction.
         ReadCall lenient = ReadLevelCaller.evaluate(reads, lengths, PRIMERS, DEFAULTS, 0.2).calls().get("assay");
         assertTrue(lenient.isReportable());
-        assertEquals("at least 2 reads and 20% of informative reads", lenient.thresholdSummary());
+        assertEquals("at least 2 reads or read pairs and 20% of informative reads", lenient.thresholdSummary());
         assertThrows(IllegalArgumentException.class,
                 () -> ReadLevelCaller.evaluate(reads, lengths, PRIMERS, DEFAULTS, 1.1));
     }

@@ -62,7 +62,7 @@ public final class ReadLevelCaller {
 
         /** The reporting threshold, for messages. */
         public String thresholdSummary() {
-            return "at least " + MIN_SUPPORTING_READS + " reads and " + percent(minSupportFraction)
+            return "at least " + MIN_SUPPORTING_READS + " reads or read pairs and " + percent(minSupportFraction)
                     + " of informative reads";
         }
 

@@ -38,6 +38,36 @@ class QaLogInputsTest {
     }
 
     @Test
+    void sampleNamesPairMatesFromTheLoggedListEvenWhenTheFilesAreGone() {
+        // None of these files exist: names must come from the logged list alone.
+        assertEquals(java.util.Set.of("ERR2938678", "SRR642185"), QaLogInputs.sampleNames(List.of(
+                "/gone/ERR2938678_1.fastq.gz", "/gone/ERR2938678_2.fastq.gz",
+                "/gone/SRR642185_1.fastq.gz", "/gone/SRR642185_2.fastq.gz")));
+    }
+
+    @Test
+    void sampleNamesSkipNonSequenceEntriesAndSubfoldersOfAFolderInput() throws IOException {
+        Path input = Files.createDirectories(dir.resolve("input"));
+        Files.createDirectories(input.resolve("sub"));
+        Files.writeString(input.resolve("T.fastq.gz"), "");
+        Files.writeString(input.resolve("md5sums.txt"), "");
+        // A folder input is logged entry by entry, subfolders included; the pipeline runs only T.
+        assertEquals(java.util.Set.of("T"), QaLogInputs.sampleNames(List.of(
+                input.resolve("T.fastq.gz").toString(), input.resolve("md5sums.txt").toString(),
+                input.resolve("sub").toString(), input.resolve("samplesheet.csv").toString())));
+    }
+
+    @Test
+    void sampleNamesFollowThePipelinesPairingRules() {
+        // /y/D_2.fq has no mate in its own folder, so it stays a sample of its own, as in the pipeline.
+        assertEquals(java.util.Set.of("A", "B_1", "B_2", "B_3", "C_1", "C_2", "D", "D_2"), QaLogInputs.sampleNames(List.of(
+                "/x/A_R1_001.fastq.gz", "/x/A_R2_001.fastq.gz",        // Illumina suffix: always a pair
+                "/x/B_1.fastq.gz", "/x/B_2.fastq.gz", "/x/B_3.fastq.gz", // _3 present: sequential samples
+                "/x/C_1.fasta", "/x/C_2.fasta",                           // FASTA _1/_2 are distinct samples
+                "/x/D_1.fq", "/y/D_2.fq", "/x/D_2.fq")));                  // mate looked up in its own folder
+    }
+
+    @Test
     void appendedFastqSectionIsSeparatedFromTheInputs() throws IOException {
         // The GUI's QA log header ends without a newline after the last input.
         Files.writeString(dir.resolve("QAlog.txt"), HEADER.stripTrailing());

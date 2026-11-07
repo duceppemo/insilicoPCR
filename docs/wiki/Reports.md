@@ -63,7 +63,7 @@ merged with BBMerge, and each read or merged pair is treated as a tiny contig: t
 and the same hit filters, amplicon rules and probe requirement apply. A read only counts when it holds the
 **whole** product, both primers included.
 
-An assay the assembly did not report is reported from reads when at least **2 reads** hold a complete amplicon
+An assay the assembly did not report is reported from reads when at least **2 reads** (the two reads of one pair count once) hold a complete amplicon
 **and** they make up at least **30% of the informative reads**: reads that carry the assay's forward or reverse
 primer and reach far enough from it to have shown the amplicon. A real target shows in most informative reads
 (not all: a sequencing error in a primer or probe disqualifies a read under a strict `-m`), while a few

@@ -25,12 +25,21 @@ public final class PathFieldBinder {
         field.textProperty().addListener((observable, oldText, newText) -> onPathSelected.accept(toPath(newText)));
     }
 
+    /**
+     * Typed text as an absolute path: a leading {@code ~} is the home folder (as in a
+     * shell; Java would otherwise create a folder literally named {@code ~}), and a
+     * relative path is resolved now, so logs record where the run really read or wrote.
+     */
     static Path toPath(String text) {
         if (text == null || text.isBlank()) {
             return null;
         }
+        String path = text.strip();
+        if (path.equals("~") || path.startsWith("~/") || path.startsWith("~\\")) {
+            path = System.getProperty("user.home") + path.substring(1);
+        }
         try {
-            return Path.of(text.strip());
+            return Path.of(path).toAbsolutePath().normalize();
         } catch (InvalidPathException e) {
             return null;
         }

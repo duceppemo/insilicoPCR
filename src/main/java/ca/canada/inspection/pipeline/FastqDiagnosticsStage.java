@@ -59,7 +59,7 @@ public final class FastqDiagnosticsStage {
             }
             lines.add("FASTQ mode Tadpole settings: " + String.join(" ", tadpole.arguments()));
             lines.add("FASTQ mode read-level calls need at least " + ReadLevelCaller.MIN_SUPPORTING_READS
-                    + " reads and " + Math.round(100 * readMinFraction) + "% of informative reads"
+                    + " reads or read pairs and " + Math.round(100 * readMinFraction) + "% of informative reads"
                     + " (--read-min-fraction " + readMinFraction + ")");
             lines.add("FASTQ mode diagnostics: " + file);
             List<Finding> called = withStatus(Status.CALLED_FROM_READS);

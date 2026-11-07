@@ -9,6 +9,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.List;
 
 public final class LogFiles {
     private LogFiles() {}
@@ -18,6 +19,24 @@ public final class LogFiles {
         if (!Files.exists(qaFile)) {
             Methods.makeQALog(qaFile, Dispatcher.VERSION, outDir, inputFile, primerFile,
                     dependencies.bbtoolsLocation(), dependencies.blastLocation());
+        }
+    }
+
+    /** Appends run-specific lines (e.g. FASTQ-mode diagnostics) to QAlog.txt. */
+    public static void appendQaLog(Path outDir, List<String> lines) {
+        if (lines.isEmpty()) {
+            return;
+        }
+        var qaFile = outDir.resolve("QAlog.txt");
+        try (var writer = Files.newBufferedWriter(qaFile, StandardCharsets.UTF_8,
+                StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
+            writer.newLine();
+            for (var line : lines) {
+                writer.write(line);
+                writer.newLine();
+            }
+        } catch (IOException e) {
+            throw new IllegalStateException("Unable to append to QA log: " + qaFile, e);
         }
     }
 

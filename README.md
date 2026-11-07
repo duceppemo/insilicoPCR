@@ -104,6 +104,17 @@ Typical CLI run:
 | `--3p-penalty <score>` | 0 | Maximum tolerated 3'-end penalty (see below) |
 | `--5p-truncation <n>` | 5 | Primer bases allowed unaligned at the harmless 5' end |
 | `-g, --gel` | off | Also write the synthetic gel image as PNG |
+| `--tadpole-k <n>` | 31 | FASTQ mode: Tadpole k-mer length |
+| `--tadpole-min-seed <n>` | 2 | FASTQ mode: minimum k-mer count to seed a contig |
+| `--tadpole-min-cov <n>` | 1 | FASTQ mode: minimum average contig coverage |
+| `--tadpole-min-contig <bp>` | 60 | FASTQ mode: minimum contig length kept |
+
+> **FASTQ input:** amplicons are called on a small Tadpole assembly of the baited reads, and on the baited
+> reads themselves when the assembly misses a target (rows marked `FASTQ read-level call`). A FASTQ-mode
+> negative is still weaker evidence than one from a genome assembly. Assays whose oligos were found in the
+> reads but that the assembly missed are listed in `consolidated_report/report_fastq_diagnostics.tsv` and
+> summarized in `QAlog.txt`; see
+> [Reports](https://github.com/duceppemo/insilicoPCR/wiki/Reports#fastq-mode-and-false-negatives).
 
 See the [Command-line Interface Wiki page](https://github.com/duceppemo/insilicoPCR/wiki/Command-line-Interface) for the full reference.
 

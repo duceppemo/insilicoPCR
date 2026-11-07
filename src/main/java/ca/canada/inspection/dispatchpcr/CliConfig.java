@@ -1,6 +1,7 @@
 package ca.canada.inspection.dispatchpcr;
 
 import ca.canada.inspection.pcr.AmpliconOptions;
+import ca.canada.inspection.pipeline.TadpoleOptions;
 import org.apache.commons.cli.CommandLine;
 
 import java.nio.file.Files;
@@ -14,7 +15,8 @@ public record CliConfig(
         int threads,
         double evalue,
         AmpliconOptions ampliconOptions,
-        boolean gel
+        boolean gel,
+        TadpoleOptions tadpole
 ) {
     public static final double DEFAULT_EVALUE = 1e5;
 
@@ -60,8 +62,22 @@ public record CliConfig(
                 parseThreads(cmd.getOptionValue("threads")),
                 parseEvalue(cmd.getOptionValue("evalue")),
                 options,
-                cmd.hasOption("gel")
+                cmd.hasOption("gel"),
+                tadpoleOptions(cmd)
         );
+    }
+
+    private static TadpoleOptions tadpoleOptions(CommandLine cmd) {
+        try {
+            return new TadpoleOptions(
+                    parseNonNegative(cmd, "tadpole-k", TadpoleOptions.DEFAULT_K),
+                    parseNonNegative(cmd, "tadpole-min-seed", TadpoleOptions.DEFAULT_MIN_COUNT_SEED),
+                    parseNonNegative(cmd, "tadpole-min-cov", TadpoleOptions.DEFAULT_MIN_COVERAGE),
+                    parseNonNegative(cmd, "tadpole-min-contig", TadpoleOptions.DEFAULT_MIN_CONTIG)
+            );
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Invalid Tadpole setting: " + e.getMessage(), e);
+        }
     }
 
     private static Path requiredPath(CommandLine cmd, String option) {

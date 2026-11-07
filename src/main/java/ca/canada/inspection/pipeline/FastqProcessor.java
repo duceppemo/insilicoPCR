@@ -4,7 +4,6 @@ import ca.canada.inspection.insilicopcr.Sample;
 import ca.canada.inspection.util.ProcessRunner;
 
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
@@ -18,13 +17,25 @@ public final class FastqProcessor {
         System.out.println("FastQ files identified, conducting baiting and assembly");
         int kLength = context.primers().values().stream().mapToInt(String::length).min()
                 .orElseThrow(() -> new PipelineException("Primer dictionary is empty"));
+        BbtoolsCommands commands = new BbtoolsCommands(context.dependencies().javaCommand(),
+                context.dependencies().bbtoolsJar(), context.childJavaMemoryGiB(), context.config().threads());
 
         ParallelStageRunner.run("First BBDuk baiting", samples, context.config().threads(),
-                sample -> bait(context, sample, kLength));
+                sample -> bait(context, commands, sample, kLength));
         ParallelStageRunner.run("Second BBDuk baiting", samples, context.config().threads(),
-                sample -> secondBait(context, sample));
+                sample -> secondBait(context, commands, sample));
         ParallelStageRunner.run("Tadpole assembly", samples, context.config().threads(),
-                sample -> assemble(context, sample));
+                sample -> assemble(context, commands, sample));
+        List<Sample> paired = samples.stream().filter(sample -> sample.files().size() == 2).toList();
+        ParallelStageRunner.run("BBMerge of baited pairs", paired, context.config().threads(),
+                sample -> merge(context, commands, sample));
+    }
+
+    private static void merge(PipelineContext context, BbtoolsCommands commands, Sample sample) {
+        Path sampleDir = sampleDirectory(context, sample);
+        run(context, commands.mergePairs(BbtoolsCommands.targetMatches(sampleDir, sample.getName()),
+                BbtoolsCommands.mergedReads(sampleDir, sample.getName()),
+                BbtoolsCommands.unmergedReads(sampleDir, sample.getName())));
     }
 
     private static List<Sample> fastqSamples(PipelineContext context) {
@@ -34,70 +45,40 @@ public final class FastqProcessor {
                 .toList();
     }
 
-    private static void bait(PipelineContext context, Sample sample, int kLength) {
-        Path sampleDir = context.directories().detailed().resolve(sample.getName());
+    private static void bait(PipelineContext context, BbtoolsCommands commands, Sample sample, int kLength) {
         context.directories().createSampleDirectory(sample.getName());
-        List<String> command = bbdukCommand(
-                context,
-                sample,
+        Path sampleDir = sampleDirectory(context, sample);
+        run(context, commands.firstBait(
                 context.directories().primerDatabase(),
-                sampleDir.resolve(sample.getName() + "_targetMatches.fastq.gz"),
-                kLength
-        );
-        ProcessRunner.run(context.dependencies().bbmapDirectory(), command.toArray(String[]::new));
-    }
-
-    private static void secondBait(PipelineContext context, Sample sample) {
-        Path sampleDir = context.directories().detailed().resolve(sample.getName());
-        List<String> command = bbdukCommand(
-                context,
-                sample,
-                sampleDir.resolve(sample.getName() + "_targetMatches.fastq.gz"),
-                sampleDir.resolve(sample.getName() + "_doubleTargetMatches.fastq.gz"),
-                null,
-                0
-        );
-        ProcessRunner.run(context.dependencies().bbmapDirectory(), command.toArray(String[]::new));
-    }
-
-    private static void assemble(PipelineContext context, Sample sample) {
-        Path sampleDir = context.directories().detailed().resolve(sample.getName());
-        Path input = sampleDir.resolve(sample.getName() + "_doubleTargetMatches.fastq.gz");
-        Path output = sampleDir.resolve(sample.getName() + "_assembly.fasta");
-        sample.setAssemblyFile(output);
-        ProcessRunner.run(context.dependencies().bbmapDirectory(),
-                context.dependencies().javaCommand(), "-ea", "-Xmx" + context.childJavaMemoryGiB() + "g",
-                "-cp", context.dependencies().bbtoolsJar().toString(), "assemble.Tadpole",
-                "in=" + input, "out=" + output, "overwrite=t", "threads=" + context.config().threads());
-    }
-
-    private static List<String> bbdukCommand(PipelineContext context, Sample sample, Path ref, Path output, Integer kLength) {
-        return bbdukCommand(context, sample, ref, output, kLength, context.config().mismatches());
-    }
-
-    // The second baiting pass recruits reads that overlap already-matched reads, so exact k-mer
-    // matching suffices; expanding its reference by hdist grows the k-mer table by ~hdist^k-fold
-    // (tens of billions of entries at hdist=2 on a large match set) and exhausts the child heap.
-    private static List<String> bbdukCommand(PipelineContext context, Sample sample, Path ref, Path output, Integer kLength, int hdist) {
-        ArrayList<String> command = new ArrayList<>(List.of(
-                context.dependencies().javaCommand(), "-ea", "-Xmx" + context.childJavaMemoryGiB() + "g",
-                "-cp", context.dependencies().bbtoolsJar().toString(), "jgi.BBDuk",
-                "ref=" + ref,
-                "hdist=" + hdist,
-                "threads=" + context.config().threads(),
-                "overwrite=t",
-                "interleaved=t"
+                sample.files(),
+                BbtoolsCommands.targetMatches(sampleDir, sample.getName()),
+                kLength,
+                context.config().mismatches()
         ));
-        if (kLength != null) {
-            command.add("k=" + kLength);
-        }
-        if (sample.getFiles().size() == 2) {
-            command.add("in1=" + sample.getFiles().getFirst());
-            command.add("in2=" + sample.getFiles().get(1));
-        } else {
-            command.add("in=" + sample.getFiles().getFirst());
-        }
-        command.add("outm=" + output);
-        return command;
+    }
+
+    private static void secondBait(PipelineContext context, BbtoolsCommands commands, Sample sample) {
+        Path sampleDir = sampleDirectory(context, sample);
+        run(context, commands.secondBait(
+                BbtoolsCommands.targetMatches(sampleDir, sample.getName()),
+                sample.files(),
+                BbtoolsCommands.doubleTargetMatches(sampleDir, sample.getName())
+        ));
+    }
+
+    private static void assemble(PipelineContext context, BbtoolsCommands commands, Sample sample) {
+        Path sampleDir = sampleDirectory(context, sample);
+        Path output = BbtoolsCommands.assembly(sampleDir, sample.getName());
+        sample.setAssemblyFile(output);
+        run(context, commands.assemble(BbtoolsCommands.doubleTargetMatches(sampleDir, sample.getName()), output,
+                context.config().tadpole()));
+    }
+
+    private static Path sampleDirectory(PipelineContext context, Sample sample) {
+        return context.directories().detailed().resolve(sample.getName());
+    }
+
+    private static void run(PipelineContext context, List<String> command) {
+        ProcessRunner.run(context.dependencies().bbmapDirectory(), command.toArray(String[]::new));
     }
 }

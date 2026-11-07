@@ -28,7 +28,8 @@ public final class CommandMain {
 				config.threads(),
 				config.evalue(),
 				config.ampliconOptions(),
-				config.gel()
+				config.gel(),
+				config.tadpole()
 		));
 	}
 

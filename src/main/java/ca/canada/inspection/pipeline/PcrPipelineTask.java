@@ -1,9 +1,11 @@
 package ca.canada.inspection.pipeline;
 
+import ca.canada.inspection.dispatchpcr.AppPaths;
 import ca.canada.inspection.insilicopcr.Methods;
 import ca.canada.inspection.insilicopcr.Sample;
 import ca.canada.inspection.pcr.BlastReports;
 import ca.canada.inspection.pcr.ConsolidatedReport;
+import ca.canada.inspection.pcr.ReadLevelCaller.ReadEvidence;
 import javafx.concurrent.Task;
 
 import java.io.IOException;
@@ -11,6 +13,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.stream.Stream;
 
 public final class PcrPipelineTask extends Task<Void> {
@@ -54,7 +57,7 @@ public final class PcrPipelineTask extends Task<Void> {
             var fastqPresent = sampleDict.values().stream().anyMatch(sample -> "fastq".equals(sample.getFileType()));
             if (fastqPresent) {
                 Methods.logMessage(config.outputField(), "FastQ files identified, conducting baiting and assembly");
-                var bbmap = new BbmapPipeline(config, directories, dependencies, processTracker, primerDict, sampleDict);
+                var bbmap = new BbmapPipeline(config, directories, dependencies, processTracker, primerDict, sampleDict, cleanedPrimers);
                 bbmap.runFirstBait(this);
                 Methods.logMessage(config.outputField(), "Completed First Baiting");
                 updateProgress(6, 13);
@@ -78,6 +81,16 @@ public final class PcrPipelineTask extends Task<Void> {
             Methods.logMessage(config.outputField(), "Completed BLAST");
             updateProgress(10, 13);
 
+            // Read-level search needs the primer BLAST database, which lives in the temp directory.
+            Map<String, ReadEvidence> readEvidence = Map.of();
+            if (fastqPresent) {
+                readEvidence = ReadLevelStage.run(new ReadLevelStage.Settings(
+                                AppPaths.executable(dependencies.blastLocation(), "blastn"), cleanedPrimers,
+                                config.evalue(), config.threads()),
+                        directories.detailedDir(), sampleDict, primerDict, config.ampliconOptions());
+                Methods.logMessage(config.outputField(), "Completed read-level amplicon search");
+            }
+
             cleanupTempDirectory(directories.tempDir(), config.outputField());
 
             Methods.addContigDict(sampleDict);
@@ -86,11 +99,17 @@ public final class PcrPipelineTask extends Task<Void> {
             Methods.logMessage(config.outputField(), "Parsed BLAST output");
             updateProgress(11, 13);
 
-            ConsolidatedReport.write(directories.consolidatedDir(), sampleDict, primerDict, config.ampliconOptions());
+            Path report = ConsolidatedReport.write(directories.consolidatedDir(), sampleDict, primerDict,
+                    config.ampliconOptions(), FastqDiagnosticsStage.readLevelRows(sampleDict, primerDict,
+                            config.ampliconOptions(), readEvidence));
             Methods.logMessage(config.outputField(), "Created Consolidated Report");
+            var diagnostics = FastqDiagnosticsStage.run(report, sampleDict, primerDict, config.ampliconOptions(),
+                    readEvidence);
+            diagnostics.logLines().forEach(line -> Methods.logMessage(config.outputField(), line));
             updateProgress(12, 13);
 
             LogFiles.ensureQaLog(config.outDir(), config.inputFile(), config.primerFile(), dependencies);
+            LogFiles.appendQaLog(config.outDir(), diagnostics.qaLogLines(TadpoleOptions.DEFAULTS));
             var seconds = (System.nanoTime() - startTime) / 1_000_000_000L;
             Methods.logMessage(config.outputField(), "Done in " + seconds + " seconds");
             updateProgress(13, 13);

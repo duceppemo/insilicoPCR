@@ -1,5 +1,60 @@
 # Changelog
 
+## Unreleased
+
+### FASTQ mode: targets the mini-assembly misses are called from reads (#7)
+
+An assay could be reported negative in FASTQ mode although its oligos were in
+the baited reads, because the Tadpole mini-assembly omitted the target region
+or broke inside the amplicon. Nothing in the reports told this apart from
+"target absent". On the two read sets in #7 (SRR642185, ERR2938678), FASTQ
+mode now reports the same assays as a SKESA assembly of the same reads.
+
+- The first-pass baited reads are searched directly: pairs are merged with
+  BBMerge, and each read or merged pair goes through the same hit filters and
+  amplicon/probe rules as a contig, counting only reads that hold the whole
+  product. An assay the assembly missed is reported from reads when at least 2
+  reads, and at least 30% of the reads that could have shown it, hold a
+  complete amplicon. Such rows are marked `FASTQ read-level call` in
+  `report.tsv`, with their support.
+- Every assay the assembly missed whose oligos are in the reads is listed in
+  `consolidated_report/report_fastq_diagnostics.tsv`: `CALLED_FROM_READS`,
+  `WEAK_READ_SUPPORT` (amplicon in too few reads: contamination or index
+  hopping? not reported, warned about), `NOT_IN_READS` (with the longest
+  amplicon the reads could have held) or `PARTIAL_BAIT`, plus why the assembly
+  missed it (`NOT_ASSEMBLED`, `SPLIT_ACROSS_CONTIGS` with each primer's contig
+  and distance to the contig end, `NO_VALID_PAIR`). Summarized in `QAlog.txt`
+  and on the console/GUI log; per-oligo read counts are exact.
+- The bundled BBTools now includes `networks/bbmerge.bbnet.gz`: BBMerge 40.04
+  loads it at startup and crashed without it (the 40.04 update synced only
+  `config/` and `resources/`). The release layout checks require it.
+- Tadpole defaults are now `mincountseed=2 mincontig=60` (Tadpole's own are
+  3 and 500; a contig over a short amplicon is often under 500 bp), and
+  `--tadpole-k`, `--tadpole-min-seed`, `--tadpole-min-cov` and
+  `--tadpole-min-contig` expose the settings on the command line. The
+  settings used are recorded in `QAlog.txt`. **FASTQ-mode results can change
+  versus 0.9.0**: more of the baited region is now assembled.
+- The docs now state that a FASTQ-mode negative is weaker evidence than an
+  assembly-mode negative.
+
+### GUI FASTQ mode now baits and assembles exactly like the command line
+
+The GUI ran its own copy of the BBDuk/Tadpole commands, which had drifted
+from the command-line pipeline:
+
+- The first baiting pass pointed at `<output>/primer_tmp.fasta`, a file only
+  the command-line pipeline writes; the GUI writes its primers to
+  `<output>/.tmp/primer_tmp.fasta`. GUI FASTQ runs therefore failed in BBDuk,
+  or silently baited with a previous command-line run's primers when one had
+  used the same output folder. The GUI now baits with the primers of the run.
+- The second baiting pass still used `-m` as `hdist` (the 0.9.0 out-of-memory
+  fix only reached the command line); it now runs with `hdist=0`.
+- Children were started with a fixed `-Xmx7g` instead of the heap-scaled
+  value the command line uses, and without `overwrite=t`.
+
+Both pipelines now build these commands from one shared class
+(`BbtoolsCommands`), so they cannot diverge again.
+
 ## 0.9.0 (2026-11-03)
 
 ### Bundled BBTools updated to 40.04 (fixes silent truncation of bcl-convert FASTQs)

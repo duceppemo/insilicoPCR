@@ -7,13 +7,15 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.stream.Stream;
 
 /** Writes a reproducibility log for one pipeline run. */
 final class QaLogWriter {
     private static final DateTimeFormatter QA_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss");
 
-    void write(PipelineContext context, String version) {
+    /** @param extraLines run-specific lines appended after the input list (e.g. FASTQ-mode diagnostics) */
+    void write(PipelineContext context, String version, List<String> extraLines) {
         Path qLog = context.directories().output().resolve("QAlog.txt");
         try (BufferedWriter writer = Files.newBufferedWriter(qLog, StandardCharsets.UTF_8)) {
             writeLine(writer, "In Silico PCR version: " + version);
@@ -34,6 +36,9 @@ final class QaLogWriter {
                 }
             } else {
                 writeLine(writer, input.toAbsolutePath().toString());
+            }
+            for (String line : extraLines) {
+                writeLine(writer, line);
             }
         } catch (IOException e) {
             throw new PipelineException("Could not write QA log: " + qLog, e);

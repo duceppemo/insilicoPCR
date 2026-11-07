@@ -5,6 +5,7 @@ import ca.canada.inspection.insilicopcr.Methods;
 import ca.canada.inspection.insilicopcr.Sample;
 import ca.canada.inspection.pcr.BlastReports;
 import ca.canada.inspection.pcr.ConsolidatedReport;
+import ca.canada.inspection.pcr.ReadLevelCaller;
 import ca.canada.inspection.pcr.ReadLevelCaller.ReadEvidence;
 import javafx.concurrent.Task;
 
@@ -86,7 +87,7 @@ public final class PcrPipelineTask extends Task<Void> {
             if (fastqPresent) {
                 readEvidence = ReadLevelStage.run(new ReadLevelStage.Settings(
                                 AppPaths.executable(dependencies.blastLocation(), "blastn"), cleanedPrimers,
-                                config.evalue(), config.threads()),
+                                config.evalue(), config.threads(), ReadLevelCaller.DEFAULT_MIN_SUPPORT_FRACTION),
                         directories.detailedDir(), sampleDict, primerDict, config.ampliconOptions());
                 Methods.logMessage(config.outputField(), "Completed read-level amplicon search");
             }
@@ -109,7 +110,8 @@ public final class PcrPipelineTask extends Task<Void> {
             updateProgress(12, 13);
 
             LogFiles.ensureQaLog(config.outDir(), config.inputFile(), config.primerFile(), dependencies);
-            LogFiles.appendQaLog(config.outDir(), diagnostics.qaLogLines(TadpoleOptions.DEFAULTS));
+            LogFiles.appendQaLog(config.outDir(), diagnostics.qaLogLines(TadpoleOptions.DEFAULTS,
+                    ReadLevelCaller.DEFAULT_MIN_SUPPORT_FRACTION));
             var seconds = (System.nanoTime() - startTime) / 1_000_000_000L;
             Methods.logMessage(config.outputField(), "Done in " + seconds + " seconds");
             updateProgress(13, 13);

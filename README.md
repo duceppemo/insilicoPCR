@@ -108,6 +108,7 @@ Typical CLI run:
 | `--tadpole-min-seed <n>` | 2 | FASTQ mode: minimum k-mer count to seed a contig |
 | `--tadpole-min-cov <n>` | 1 | FASTQ mode: minimum average contig coverage |
 | `--tadpole-min-contig <bp>` | 60 | FASTQ mode: minimum contig length kept |
+| `--read-min-fraction <0-1>` | 0.3 | FASTQ mode: share of informative reads that must hold a complete amplicon for a read-level call |
 
 > **FASTQ input:** amplicons are called on a small Tadpole assembly of the baited reads, and on the baited
 > reads themselves when the assembly misses a target (rows marked `FASTQ read-level call`). A FASTQ-mode

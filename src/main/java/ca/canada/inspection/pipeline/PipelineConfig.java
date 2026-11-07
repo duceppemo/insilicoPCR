@@ -1,6 +1,7 @@
 package ca.canada.inspection.pipeline;
 
 import ca.canada.inspection.pcr.AmpliconOptions;
+import ca.canada.inspection.pcr.ReadLevelCaller;
 
 import java.nio.file.Path;
 import java.util.Objects;
@@ -14,7 +15,8 @@ public record PipelineConfig(
         double evalue,
         AmpliconOptions ampliconOptions,
         boolean gel,
-        TadpoleOptions tadpole
+        TadpoleOptions tadpole,
+        double readMinFraction
 ) {
     public PipelineConfig {
         input = Objects.requireNonNull(input, "input").toAbsolutePath().normalize();
@@ -22,6 +24,7 @@ public record PipelineConfig(
         primers = Objects.requireNonNull(primers, "primers").toAbsolutePath().normalize();
         Objects.requireNonNull(ampliconOptions, "ampliconOptions");
         Objects.requireNonNull(tadpole, "tadpole");
+        ReadLevelCaller.requireFraction(readMinFraction);
         if (threads < 1) {
             throw new IllegalArgumentException("threads must be >= 1");
         }
@@ -33,7 +36,8 @@ public record PipelineConfig(
     /** Configuration with the default Tadpole settings. */
     public PipelineConfig(Path input, Path output, Path primers, int threads, double evalue,
                           AmpliconOptions ampliconOptions, boolean gel) {
-        this(input, output, primers, threads, evalue, ampliconOptions, gel, TadpoleOptions.DEFAULTS);
+        this(input, output, primers, threads, evalue, ampliconOptions, gel, TadpoleOptions.DEFAULTS,
+                ReadLevelCaller.DEFAULT_MIN_SUPPORT_FRACTION);
     }
 
     /** Allowed primer mismatches; also used as BBDuk {@code hdist} when baiting reads. */

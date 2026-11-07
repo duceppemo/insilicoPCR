@@ -11,6 +11,7 @@ import java.util.Set;
 
 import static ca.canada.inspection.pcr.TestHits.PRIMER_20;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ReadLevelCallerTest {
@@ -78,6 +79,13 @@ class ReadLevelCallerTest {
         assertEquals(2, call.supportingReads());
         assertEquals(10, call.informativeReads());
         assertTrue(!call.isReportable());
+
+        // The same 20% support passes a lower --read-min-fraction.
+        ReadCall lenient = ReadLevelCaller.evaluate(reads, lengths, PRIMERS, DEFAULTS, 0.2).calls().get("assay");
+        assertTrue(lenient.isReportable());
+        assertEquals("at least 2 reads and 20% of informative reads", lenient.thresholdSummary());
+        assertThrows(IllegalArgumentException.class,
+                () -> ReadLevelCaller.evaluate(reads, lengths, PRIMERS, DEFAULTS, 1.1));
     }
 
     @Test

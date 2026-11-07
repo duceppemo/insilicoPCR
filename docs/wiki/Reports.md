@@ -67,7 +67,11 @@ An assay the assembly did not report is reported from reads when at least **2 re
 **and** they make up at least **30% of the informative reads**: reads that carry the assay's forward or reverse
 primer and reach far enough from it to have shown the amplicon. A real target shows in most informative reads
 (not all: a sequencing error in a primer or probe disqualifies a read under a strict `-m`), while a few
-contaminating or index-hopped reads from another library show in few of them.
+contaminating or index-hopped reads from another library show in few of them. The 30% default comes from the
+two read sets in [#7](https://github.com/duceppemo/insilicoPCR/issues/7) (real targets at 61% and 83%, a
+contaminant signal at 18%); change it with `--read-min-fraction` (0–1, command line only). Raise it for
+exclusivity work on runs that may carry contamination, lower it for noisy reads under a strict `-m`. The value
+used is recorded in `QAlog.txt`.
 
 Read-level rows appear in `report.tsv` like any other amplicon, with the representative read as `Contig` (its
 coordinates are on that read) and a `Contig Description` starting with `FASTQ read-level call:` and giving the
@@ -98,7 +102,7 @@ summarized in `QAlog.txt`, and noted on the console or in the GUI log. Files kep
 | Status | Meaning |
 |---|---|
 | `CALLED_FROM_READS` | Reported in `report.tsv` from reads |
-| `WEAK_READ_SUPPORT` | Complete amplicons in reads, but fewer than 2 or under 30% of informative reads. **Not reported, and warned about**: contamination, index hopping, a mixed sample, or a primer site repeated elsewhere in the genome. Inspect the reads before trusting either answer |
+| `WEAK_READ_SUPPORT` | Complete amplicons in reads, but fewer than 2 or under `--read-min-fraction` (default 30%) of informative reads. **Not reported, and warned about**: contamination, index hopping, a mixed sample, or a primer site repeated elsewhere in the genome. Inspect the reads before trusting either answer |
 | `NOT_IN_READS` | Both primers are in the reads, but no read holds a complete amplicon. Conclusive only for amplicons up to `CheckableLength`; a longer amplicon cannot be ruled out |
 | `PARTIAL_BAIT` | Only some of the assay's primers are in the reads (e.g. one primer site diverged beyond `-m`); usually a true negative |
 

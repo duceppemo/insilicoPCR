@@ -10,11 +10,18 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.LinkedBlockingQueue;
 
+/**
+ * GUI counterpart of {@link FastqProcessor}: same BBDuk/Tadpole commands (from
+ * {@link BbtoolsCommands}), run one sample at a time with cancellation support
+ * and output streamed to the GUI log.
+ */
 public final class BbmapPipeline {
     private final PcrRunConfig config;
     private final RunDirectories directories;
@@ -22,94 +29,68 @@ public final class BbmapPipeline {
     private final ExternalProcessTracker processTracker;
     private final Map<String, String> primerDict;
     private final Map<String, Sample> sampleDict;
+    private final Path primerDatabase;
+    private final BbtoolsCommands commands;
 
+    /**
+     * @param primerDict     expanded primers (as returned by primer processing)
+     * @param primerDatabase primer FASTA written for this run, used as the first-pass bait
+     */
     public BbmapPipeline(PcrRunConfig config,
                          RunDirectories directories,
                          DependencyContext dependencies,
                          ExternalProcessTracker processTracker,
                          Map<String, String> primerDict,
-                         Map<String, Sample> sampleDict) {
+                         Map<String, Sample> sampleDict,
+                         Path primerDatabase) {
         this.config = config;
         this.directories = directories;
         this.dependencies = dependencies;
         this.processTracker = processTracker;
         this.primerDict = primerDict;
         this.sampleDict = sampleDict;
+        this.primerDatabase = primerDatabase;
+        this.commands = new BbtoolsCommands(dependencies.javaCommand(), dependencies.bbtoolsJar(),
+                ChildJavaMemory.recommendedGiB(), config.threads());
     }
 
     public void runFirstBait(Task<?> owner) {
         var kLength = shortestPrimerLength();
-        var ref = config.outDir().resolve("primer_tmp.fasta").toString();
-
-        for (var sample : sampleDict.values()) {
+        for (var sample : fastqSamples()) {
             stopIfCancelled(owner);
-            if (!"fastq".equals(sample.getFileType())) {
-                continue;
-            }
-
             var sampleDir = sampleDirectory(sample);
-            var files = sample.getFiles();
-            String[] command;
-            if (files.size() == 2) {
-                command = new String[]{dependencies.javaCommand(), "-ea", "-Xmx7g", "-cp", dependencies.bbtoolsJar().toString(), "jgi.BBDuk",
-                        "ref=" + ref, "k=" + kLength,
-                        "in1=" + files.get(0), "in2=" + files.get(1), "hdist=" + config.mismatches(),
-                        "threads=" + config.threads(), "interleaved=t",
-                        "outm=" + sampleDir.resolve(sample.getName() + "_targetMatches.fastq.gz")};
-            } else {
-                command = new String[]{dependencies.javaCommand(), "-ea", "-Xmx7g", "-cp", dependencies.bbtoolsJar().toString(), "jgi.BBDuk",
-                        "ref=" + ref, "k=" + kLength,
-                        "in=" + files.getFirst(), "hdist=" + config.mismatches(), "threads=" + config.threads(),
-                        "interleaved=t", "outm=" + sampleDir.resolve(sample.getName() + "_targetMatches.fastq.gz")};
-            }
-            runProcess(command, dependencies.bbtoolsLocation(), owner);
+            runProcess(commands.firstBait(primerDatabase, sample.files(),
+                    BbtoolsCommands.targetMatches(sampleDir, sample.getName()), kLength, config.mismatches()), owner);
         }
         processTracker.clear();
     }
 
     public void runSecondBait(Task<?> owner) {
-        for (var sample : sampleDict.values()) {
+        for (var sample : fastqSamples()) {
             stopIfCancelled(owner);
-            if (!"fastq".equals(sample.getFileType())) {
-                continue;
-            }
-
             var sampleDir = sampleDirectory(sample);
-            var ref = sampleDir.resolve(sample.getName() + "_targetMatches.fastq.gz").toString();
-            var files = sample.getFiles();
-            String[] command;
-            if (files.size() == 2) {
-                command = new String[]{dependencies.javaCommand(), "-ea", "-Xmx7g", "-cp", dependencies.bbtoolsJar().toString(), "jgi.BBDuk",
-                        "ref=" + ref, "in1=" + files.get(0), "in2=" + files.get(1),
-                        "hdist=" + config.mismatches(), "threads=" + config.threads(), "interleaved=t",
-                        "outm=" + sampleDir.resolve(sample.getName() + "_doubleTargetMatches.fastq.gz")};
-            } else {
-                command = new String[]{dependencies.javaCommand(), "-ea", "-Xmx7g", "-cp", dependencies.bbtoolsJar().toString(), "jgi.BBDuk",
-                        "ref=" + ref, "in=" + files.getFirst(), "hdist=" + config.mismatches(),
-                        "threads=" + config.threads(), "interleaved=t",
-                        "outm=" + sampleDir.resolve(sample.getName() + "_doubleTargetMatches.fastq.gz")};
-            }
-            runProcess(command, dependencies.bbtoolsLocation(), owner);
+            runProcess(commands.secondBait(BbtoolsCommands.targetMatches(sampleDir, sample.getName()), sample.files(),
+                    BbtoolsCommands.doubleTargetMatches(sampleDir, sample.getName())), owner);
         }
         processTracker.clear();
     }
 
     public void runAssembly(Task<?> owner) {
-        for (var sample : sampleDict.values()) {
+        for (var sample : fastqSamples()) {
             stopIfCancelled(owner);
-            if (!"fastq".equals(sample.getFileType())) {
-                continue;
-            }
-
             var sampleDir = sampleDirectory(sample);
-            var in = sampleDir.resolve(sample.getName() + "_doubleTargetMatches.fastq.gz");
-            var out = sampleDir.resolve(sample.getName() + "_assembly.fasta");
+            var out = BbtoolsCommands.assembly(sampleDir, sample.getName());
             sample.setAssemblyFile(out);
-            var command = new String[]{dependencies.javaCommand(), "-ea", "-Xmx7g", "-cp", dependencies.bbtoolsJar().toString(), "assemble.Tadpole",
-                    "in=" + in, "out=" + out, "threads=" + config.threads()};
-            runProcess(command, dependencies.bbtoolsLocation(), owner);
+            runProcess(commands.assemble(BbtoolsCommands.doubleTargetMatches(sampleDir, sample.getName()), out), owner);
         }
         processTracker.clear();
+    }
+
+    private List<Sample> fastqSamples() {
+        return sampleDict.values().stream()
+                .filter(Sample::isFastq)
+                .sorted(Comparator.comparing(Sample::getName))
+                .toList();
     }
 
     private int shortestPrimerLength() {
@@ -126,8 +107,9 @@ public final class BbmapPipeline {
         return sampleDir;
     }
 
-    private void runProcess(String[] command, Path workingDirectory, Task<?> owner) {
+    private void runProcess(List<String> command, Task<?> owner) {
         stopIfCancelled(owner);
+        var workingDirectory = dependencies.bbtoolsLocation();
 
         var messageQueue = new LinkedBlockingQueue<String>();
         var consumer = new MessageConsumer(messageQueue, config.outputField());

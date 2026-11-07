@@ -1,5 +1,25 @@
 # Changelog
 
+## Unreleased
+
+### GUI FASTQ mode now baits and assembles exactly like the command line
+
+The GUI ran its own copy of the BBDuk/Tadpole commands, which had drifted
+from the command-line pipeline:
+
+- The first baiting pass pointed at `<output>/primer_tmp.fasta`, a file only
+  the command-line pipeline writes; the GUI writes its primers to
+  `<output>/.tmp/primer_tmp.fasta`. GUI FASTQ runs therefore failed in BBDuk,
+  or silently baited with a previous command-line run's primers when one had
+  used the same output folder. The GUI now baits with the primers of the run.
+- The second baiting pass still used `-m` as `hdist` (the 0.9.0 out-of-memory
+  fix only reached the command line); it now runs with `hdist=0`.
+- Children were started with a fixed `-Xmx7g` instead of the heap-scaled
+  value the command line uses, and without `overwrite=t`.
+
+Both pipelines now build these commands from one shared class
+(`BbtoolsCommands`), so they cannot diverge again.
+
 ## 0.9.0 (2026-11-03)
 
 ### Bundled BBTools updated to 40.04 (fixes silent truncation of bcl-convert FASTQs)

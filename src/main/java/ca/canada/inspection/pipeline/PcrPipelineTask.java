@@ -54,7 +54,7 @@ public final class PcrPipelineTask extends Task<Void> {
             var fastqPresent = sampleDict.values().stream().anyMatch(sample -> "fastq".equals(sample.getFileType()));
             if (fastqPresent) {
                 Methods.logMessage(config.outputField(), "FastQ files identified, conducting baiting and assembly");
-                var bbmap = new BbmapPipeline(config, directories, dependencies, processTracker, primerDict, sampleDict);
+                var bbmap = new BbmapPipeline(config, directories, dependencies, processTracker, primerDict, sampleDict, cleanedPrimers);
                 bbmap.runFirstBait(this);
                 Methods.logMessage(config.outputField(), "Completed First Baiting");
                 updateProgress(6, 13);

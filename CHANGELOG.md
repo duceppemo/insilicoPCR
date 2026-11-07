@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.10.0 (2026-11-06)
 
 ### FASTQ mode: targets the mini-assembly misses are called from reads (#7)
 

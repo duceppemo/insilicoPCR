@@ -69,7 +69,7 @@ primer and reach far enough from it to have shown the amplicon. A real target sh
 (not all: a sequencing error in a primer or probe disqualifies a read under a strict `-m`), while a few
 contaminating or index-hopped reads from another library show in few of them. The 30% default comes from the
 two read sets in [#7](https://github.com/duceppemo/insilicoPCR/issues/7) (real targets at 61% and 83%, a
-contaminant signal at 18%); change it with `--read-min-fraction` (0–1, command line only). Raise it for
+contaminant signal at 18%); change it with `--read-min-fraction` (0–1), or in the GUI under **FASTQ settings…**. Raise it for
 exclusivity work on runs that may carry contamination, lower it for noisy reads under a strict `-m`. The value
 used is recorded in `QAlog.txt`.
 

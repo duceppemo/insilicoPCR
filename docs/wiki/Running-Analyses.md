@@ -60,9 +60,10 @@ Standard PCR assays and qPCR/probe assays can be mixed in the same primer FASTA 
 | Threads | Number of worker threads |
 | Mismatches | Allowed mismatches + indels per primer (unaligned 3' bases count) |
 | E-value | BLASTN e-value threshold |
-| Max amplicon (bp) | Maximum amplicon length; 0 disables the limit (default 5000) |
+| Amplicon settings… | Probe mismatches, 3'-end check, 5' truncation, min/max amplicon length (default max 5000; 0 disables the limit) |
+| FASTQ settings… | Tadpole mini-assembly settings and the read-level call threshold |
 
-The CLI additionally exposes `--min-length`, `--3p-window`, and `--3p-penalty`; see [Amplicon Calling](Amplicon-Calling).
+Every GUI setting has a command-line equivalent; see [Command-line Interface](Command-line-Interface), [Amplicon Calling](Amplicon-Calling) and [GUI Overview](GUI-Overview).
 
 ## Outputs
 

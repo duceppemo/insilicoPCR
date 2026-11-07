@@ -94,7 +94,7 @@ usage: java -jar insilicoPCR.jar -i <input> -o <output> -p <primers> [-t
 | `-v`, `--version` | | Print version |
 | `-h`, `--help` | | Print help |
 
-The `--read-min-fraction` and `--tadpole-*` options only affect FASTQ input, where reads are baited and micro-assembled before BLAST; see [FASTQ mode and false negatives](Reports#fastq-mode-and-false-negatives). The GUI always uses the defaults.
+The `--read-min-fraction` and `--tadpole-*` options only affect FASTQ input, where reads are baited and micro-assembled before BLAST; see [FASTQ mode and false negatives](Reports#fastq-mode-and-false-negatives). In the GUI they are under **FASTQ settings…**.
 
 See [Amplicon Calling](Amplicon-Calling) for exactly how the mismatch budget, the 3'-end penalty, and the size limits decide which amplicons are reported.
 

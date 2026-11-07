@@ -6,15 +6,21 @@ The graphical interface is intended for interactive analysis and result review.
 
 The GUI lets users select:
 
-- input FASTA/FASTQ file or directory
-- output directory
+- input FASTA/FASTQ file or directory (**Select ▾** → **File…** or **Folder…**, or drag it onto the field; files and folders are told apart automatically)
 - primer FASTA file
+- output directory
 - number of worker threads
 - allowed primer mismatches
 - BLAST e-value
-- maximum amplicon length in bp (default 5000; 0 disables the limit)
 
-The GUI uses the default 3'-end strictness (perfect match over the last 5 primer bases). The additional `--3p-window`/`--3p-penalty` and `--min-length` knobs are available through the [command-line interface](Command-line-Interface).
+Two buttons above the log open the remaining settings. Each dialog has **Defaults**, checks values on **OK**, and a ` *` on the button means a value differs from the default; hover the button for a summary.
+
+| Dialog | Settings | Command-line equivalents |
+|---|---|---|
+| **Amplicon settings…** | probe mismatches (blank = same as primers), 3' window, max 3' penalty, max 5' unaligned bases, min and max amplicon length | `--probe-mismatches`, `--3p-window`, `--3p-penalty`, `--5p-truncation`, `--min-length`, `--max-length` |
+| **FASTQ settings…** | Tadpole k-mer length, min k-mer count to seed, min contig coverage, min contig length; min share of informative reads for read-level calls | `--tadpole-k`, `--tadpole-min-seed`, `--tadpole-min-cov`, `--tadpole-min-contig`, `--read-min-fraction` |
+
+See [Amplicon Calling](Amplicon-Calling) and [FASTQ mode and false negatives](Reports#fastq-mode-and-false-negatives) for what they do.
 
 After the inputs are selected, click **Run** to start the analysis.
 

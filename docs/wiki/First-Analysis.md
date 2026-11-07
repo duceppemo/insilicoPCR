@@ -24,10 +24,10 @@ TCGATCGATACGCGTACGTA
 ## GUI workflow
 
 1. Start the graphical application.
-2. Select the input file or directory.
-3. Select the output directory.
-4. Select the primer FASTA file.
-5. Choose the number of threads, mismatches, and BLAST e-value if needed.
+2. Select the input file or directory (**Select ▾** → **File…** or **Folder…**).
+3. Select the primer FASTA file.
+4. Select the output directory.
+5. Choose the number of threads, mismatches, and BLAST e-value if needed; **Amplicon settings…** and **FASTQ settings…** hold the rest.
 6. Click **Run**.
 7. Review logs and reports when the run finishes.
 8. Open the synthetic gel visualizer if desired.

@@ -3,6 +3,10 @@ package ca.canada.inspection.insilicopcr;
 import ca.canada.inspection.dispatchpcr.Dispatcher;
 import ca.canada.inspection.insilicopcr.gel.PaginatedGelViewer;
 import ca.canada.inspection.pcr.AmpliconOptions;
+import ca.canada.inspection.insilicopcr.ui.AmpliconSettingsDialog;
+import ca.canada.inspection.insilicopcr.ui.AmpliconSettingsDialog.AmpliconSettings;
+import ca.canada.inspection.insilicopcr.ui.FastqSettingsDialog;
+import ca.canada.inspection.insilicopcr.ui.FastqSettingsDialog.FastqSettings;
 import ca.canada.inspection.insilicopcr.ui.PathFieldBinder;
 import ca.canada.inspection.pipeline.DependencyContext;
 import ca.canada.inspection.pipeline.ExternalProcessTracker;
@@ -13,12 +17,14 @@ import ca.canada.inspection.pipeline.PcrRunConfig;
 import ca.canada.inspection.util.SequenceFileUtils;
 import javafx.application.Application;
 import javafx.application.Platform;
+import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.MenuButton;
+import javafx.scene.control.MenuItem;
 import javafx.scene.control.ProgressBar;
-import javafx.scene.control.RadioButton;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.control.Tooltip;
@@ -68,6 +74,8 @@ public class MainRun extends Application {
     private final AtomicBoolean currentlyRunning = new AtomicBoolean(false);
     private PcrPipelineTask runningTask;
     private DependencyContext dependencies;
+    private FastqSettings fastqSettings = FastqSettings.DEFAULTS;
+    private AmpliconSettings ampliconSettings = AmpliconSettings.DEFAULTS;
 
     @Override
     public void start(Stage primaryStage) {
@@ -86,9 +94,9 @@ public class MainRun extends Application {
         var threadField = addThreadControls(pane);
         var mismatchField = addMismatchControls(pane);
         var evalueField = addEvalueControls(pane);
-        var maxLengthField = addMaxLengthControls(pane);
+        addSettingsButtons(primaryStage, pane);
         addOutputLog(pane);
-        addBottomControls(pane, alertText, threadField, mismatchField, evalueField, maxLengthField);
+        addBottomControls(pane, alertText, threadField, mismatchField, evalueField);
 
         scene = new Scene(pane, 800, 500);
         primaryStage.setScene(scene);
@@ -125,42 +133,44 @@ public class MainRun extends Application {
         pane.add(inputField, 2, 4, 28, 2);
         PathFieldBinder.bindDropTarget(inputField, path -> inputFile = path);
 
-        var isDirectory = new RadioButton("Input is a directory");
-        isDirectory.setSelected(false);
-        isDirectory.setAlignment(Pos.CENTER);
-        pane.add(isDirectory, 3, 7, 10, 2);
-
-        var browse = new Button("Select");
+        // Files and directories are told apart when the run starts; only the chooser
+        // dialog has to be one or the other, so "Select" offers both.
+        var selectFile = new MenuItem("File…");
+        selectFile.setOnAction(event -> PathFieldBinder.chooseFile(stage, inputField, path -> inputFile = path));
+        var selectFolder = new MenuItem("Folder…");
+        selectFolder.setOnAction(event -> PathFieldBinder.chooseDirectory(stage, inputField, path -> inputFile = path));
+        var browse = new MenuButton("Select", null, selectFile, selectFolder);
+        browse.setTooltip(new Tooltip("Choose one sequence file, or a folder of FASTA/FASTQ files. "
+                + "You can also drag a file or folder onto the field."));
         browse.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
-        browse.setOnAction(event -> PathFieldBinder.chooseFileOrDirectory(stage, inputField, isDirectory::isSelected, path -> inputFile = path));
-        pane.add(browse, 31, 4, 4, 2);
+        pane.add(browse, 31, 4, 5, 2);
     }
 
     private void addPrimerControls(Stage stage, GridPane pane, TextField primerField) {
-        addPrompt(pane, "Input a primer reference file in fasta format", 2, 10, 20, 2);
+        addPrompt(pane, "Input a primer reference file in fasta format", 2, 7, 20, 2);
         primerField.setTooltip(new Tooltip("Please refer to the custom_primer_guide.txt for instructions on how to create a valid primer file"));
         primerField.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
         primerField.setEditable(true);
-        pane.add(primerField, 2, 12, 28, 2);
+        pane.add(primerField, 2, 9, 28, 2);
         PathFieldBinder.bindDropTarget(primerField, path -> primerFile = path);
 
         var browse = new Button("Select");
         browse.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
         browse.setOnAction(event -> PathFieldBinder.chooseFile(stage, primerField, path -> primerFile = path));
-        pane.add(browse, 31, 12, 4, 2);
+        pane.add(browse, 31, 9, 5, 2);
     }
 
     private void addOutputControls(Stage stage, GridPane pane, TextField outputDirField) {
-        addPrompt(pane, "Output directory. Path MUST NOT contain spaces", 2, 15, 20, 2);
+        addPrompt(pane, "Output directory. Path MUST NOT contain spaces", 2, 12, 20, 2);
         outputDirField.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
         outputDirField.setEditable(false);
-        pane.add(outputDirField, 2, 17, 28, 2);
+        pane.add(outputDirField, 2, 14, 28, 2);
         PathFieldBinder.bindDropTarget(outputDirField, path -> outDir = path);
 
         var browse = new Button("Select");
         browse.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
         browse.setOnAction(event -> PathFieldBinder.chooseDirectory(stage, outputDirField, path -> outDir = path));
-        pane.add(browse, 31, 17, 4, 2);
+        pane.add(browse, 31, 14, 5, 2);
     }
 
     private ComboBox<Integer> addThreadControls(GridPane pane) {
@@ -191,8 +201,8 @@ public class MainRun extends Application {
 
         var field = new ComboBox<Integer>();
         field.setTooltip(new Tooltip("Allowed mismatches + indels per primer. Bases BLAST leaves unaligned at the "
-                + "primer 3' end also count. Independently, the last 5 bases of each primer must match perfectly "
-                + "(adjustable with --3p-window/--3p-penalty on the command line)."));
+                + "primer 3' end also count. Independently, the primer 3' end is checked separately "
+                + "(see Amplicon settings)."));
         field.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
         field.getItems().addAll(0, 1, 2, 3);
         field.getSelectionModel().selectFirst();
@@ -214,19 +224,31 @@ public class MainRun extends Application {
         return field;
     }
 
-    private TextField addMaxLengthControls(GridPane pane) {
-        var prompt = promptText("Max amplicon (bp)");
-        prompt.setTextAlignment(TextAlignment.LEFT);
-        var box = new HBox(10, prompt);
-        box.setAlignment(Pos.TOP_LEFT);
-        pane.add(box, 38, 19, 6, 1);
+    /** Amplicon and FASTQ settings buttons, side by side above the log under the parameter column. */
+    private void addSettingsButtons(Stage stage, GridPane pane) {
+        var amplicon = new Button(AmpliconSettingsDialog.buttonLabel(ampliconSettings));
+        amplicon.setTooltip(new Tooltip(AmpliconSettingsDialog.summary(ampliconSettings)));
+        amplicon.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
+        amplicon.setOnAction(event -> AmpliconSettingsDialog.show(stage, ampliconSettings).ifPresent(settings -> {
+            ampliconSettings = settings;
+            amplicon.setText(AmpliconSettingsDialog.buttonLabel(settings));
+            amplicon.setTooltip(new Tooltip(AmpliconSettingsDialog.summary(settings)));
+        }));
 
-        var field = new TextField(String.valueOf(AmpliconOptions.DEFAULT_MAX_AMPLICON_LENGTH));
-        field.setTooltip(new Tooltip("Primer pairs farther apart than this are not reported. Use 0 to disable the limit."));
-        field.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
-        field.setEditable(true);
-        pane.add(field, 44, 18, 4, 3);
-        return field;
+        var fastq = new Button(FastqSettingsDialog.buttonLabel(fastqSettings));
+        fastq.setTooltip(new Tooltip(FastqSettingsDialog.summary(fastqSettings)));
+        fastq.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
+        fastq.setOnAction(event -> FastqSettingsDialog.show(stage, fastqSettings).ifPresent(settings -> {
+            fastqSettings = settings;
+            fastq.setText(FastqSettingsDialog.buttonLabel(settings));
+            fastq.setTooltip(new Tooltip(FastqSettingsDialog.summary(settings)));
+        }));
+
+        // Vertical margins keep the buttons off the Evalue field above and the log below.
+        GridPane.setMargin(amplicon, new Insets(6, 3, 6, 0));
+        GridPane.setMargin(fastq, new Insets(6, 0, 6, 3));
+        pane.add(amplicon, 29, 17, 10, 4);
+        pane.add(fastq, 39, 17, 9, 4);
     }
 
     private void addOutputLog(GridPane pane) {
@@ -239,8 +261,7 @@ public class MainRun extends Application {
                                    Text alertText,
                                    ComboBox<Integer> threadField,
                                    ComboBox<Integer> mismatchField,
-                                   TextField evalueField,
-                                   TextField maxLengthField) {
+                                   TextField evalueField) {
         alertText.setStyle("-fx-fill: red;");
 
         mainProgress = new ProgressBar();
@@ -264,7 +285,7 @@ public class MainRun extends Application {
 
         var runButton = new Button("Run");
         runButton.setMaxWidth(Double.MAX_VALUE);
-        runButton.setOnAction(event -> startRun(alertText, threadField, mismatchField, evalueField, maxLengthField));
+        runButton.setOnAction(event -> startRun(alertText, threadField, mismatchField, evalueField));
 
         var reportButton = new Button("Open Report TSV");
         reportButton.setMaxWidth(Double.MAX_VALUE);
@@ -287,8 +308,7 @@ public class MainRun extends Application {
     private void startRun(Text alertText,
                           ComboBox<Integer> threadField,
                           ComboBox<Integer> mismatchField,
-                          TextField evalueField,
-                          TextField maxLengthField) {
+                          TextField evalueField) {
         var validationMessage = InputValidator.validate(inputFile, outDir, primerFile);
         if (!validationMessage.isBlank()) {
             alertText.setText(validationMessage);
@@ -308,23 +328,8 @@ public class MainRun extends Application {
             return;
         }
 
-        AmpliconOptions ampliconOptions;
-        try {
-            int maxLength = Integer.parseInt(maxLengthField.getText().trim());
-            int mismatches = mismatchField.getSelectionModel().getSelectedItem();
-            ampliconOptions = new AmpliconOptions(
-                    mismatches,
-                    mismatches,
-                    AmpliconOptions.DEFAULT_THREE_PRIME_WINDOW,
-                    AmpliconOptions.DEFAULT_THREE_PRIME_PENALTY,
-                    AmpliconOptions.DEFAULT_FIVE_PRIME_TRUNCATION,
-                    AmpliconOptions.DEFAULT_MIN_AMPLICON_LENGTH,
-                    maxLength
-            );
-        } catch (IllegalArgumentException e) {
-            alertText.setText("Max amplicon length must be a whole number >= 0 (0 disables the limit).");
-            return;
-        }
+        // The Amplicon settings dialog only accepts valid values, so this cannot fail.
+        AmpliconOptions ampliconOptions = ampliconSettings.toOptions(mismatchField.getSelectionModel().getSelectedItem());
 
         alertText.setText("");
         outputField.clear();
@@ -343,7 +348,9 @@ public class MainRun extends Application {
                 evalue,
                 ampliconOptions,
                 outputField,
-                blastProgress
+                blastProgress,
+                fastqSettings.tadpole(),
+                fastqSettings.readMinFraction()
         );
 
         runningTask = new PcrPipelineTask(config, processTracker);

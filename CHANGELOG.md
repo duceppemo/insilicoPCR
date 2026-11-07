@@ -4,8 +4,17 @@
 
 - FASTQ mode: `--read-min-fraction <0-1>` sets the share of informative reads
   that must hold a complete amplicon for a read-level call (default 0.3, as
-  in 0.10.0). The value used is recorded in `QAlog.txt`. The GUI keeps the
-  default.
+  in 0.10.0). The value used is recorded in `QAlog.txt`.
+- GUI: every command-line setting is now available. **Amplicon settings…**
+  holds probe mismatches, the 3'-end window and penalty, the 5'-truncation
+  allowance and the min/max amplicon length (max moved off the main window);
+  **FASTQ settings…** holds the Tadpole settings and the read-level call
+  threshold. A ` *` marks a button whose settings differ from the defaults.
+- GUI: the "Input is a directory" radio button is gone. Input type was
+  already detected automatically; **Select ▾** now offers **File…** or
+  **Folder…**. The primer and output rows moved up to make room.
+- GUI: the "Max amplicon (bp)" label no longer overlaps its field at the
+  default window width.
 
 ## 0.10.0 (2026-11-06)
 

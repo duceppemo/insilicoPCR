@@ -14,7 +14,9 @@ public record PcrRunConfig(
         double evalue,
         AmpliconOptions ampliconOptions,
         TextArea outputField,
-        ProgressBar blastProgress
+        ProgressBar blastProgress,
+        TadpoleOptions tadpole,
+        double readMinFraction
 ) {
     /** Allowed primer mismatches; also used as BBDuk {@code hdist} when baiting reads. */
     public int mismatches() {

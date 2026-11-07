@@ -10,7 +10,6 @@ import java.io.File;
 import java.nio.file.Path;
 import java.util.Optional;
 import java.util.function.Consumer;
-import java.util.function.Supplier;
 
 /** Utility methods that isolate JavaFX FileChooser/File drag APIs from Path-based application code. */
 public final class PathFieldBinder {
@@ -46,14 +45,6 @@ public final class PathFieldBinder {
     public static void chooseDirectory(Window owner, TextField field, Consumer<Path> onPathSelected) {
         var chooser = new DirectoryChooser();
         select(chooser.showDialog(owner), field, onPathSelected);
-    }
-
-    public static void chooseFileOrDirectory(Window owner, TextField field, Supplier<Boolean> directoryMode, Consumer<Path> onPathSelected) {
-        if (directoryMode.get()) {
-            chooseDirectory(owner, field, onPathSelected);
-        } else {
-            chooseFile(owner, field, onPathSelected);
-        }
     }
 
     private static void select(File selected, TextField field, Consumer<Path> onPathSelected) {

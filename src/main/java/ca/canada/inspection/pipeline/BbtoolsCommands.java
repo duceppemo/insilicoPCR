@@ -40,13 +40,20 @@ record BbtoolsCommands(String javaCommand, Path bbtoolsJar, int childMemoryGiB, 
         return sampleDir.resolve(sampleName + "_assembly.fasta");
     }
 
+    /** Reads matched per oligo in the first pass (BBDuk {@code stats=}), used to flag unsupported negatives. */
+    static Path baitStats(Path sampleDir, String sampleName) {
+        return sampleDir.resolve(sampleName + "_baitStats.txt");
+    }
+
     /**
      * First pass: keep reads sharing a k-mer with any primer, allowing
      * {@code hdist} mismatches so primers with tolerated mismatches still bait.
+     * {@code stats} receives the reads matched per oligo.
      */
-    List<String> firstBait(Path primerDatabase, List<Path> reads, Path output, int kLength, int hdist) {
+    List<String> firstBait(Path primerDatabase, List<Path> reads, Path output, Path stats, int kLength, int hdist) {
         List<String> command = bbduk(primerDatabase, reads, output, hdist);
         command.add("k=" + kLength);
+        command.add("stats=" + stats);
         return command;
     }
 
@@ -60,8 +67,8 @@ record BbtoolsCommands(String javaCommand, Path bbtoolsJar, int childMemoryGiB, 
         return bbduk(firstPassMatches, reads, output, 0);
     }
 
-    List<String> assemble(Path reads, Path output) {
-        return new ArrayList<>(List.of(
+    List<String> assemble(Path reads, Path output, TadpoleOptions tadpole) {
+        List<String> command = new ArrayList<>(List.of(
                 javaCommand, "-ea", "-Xmx" + childMemoryGiB + "g",
                 "-cp", bbtoolsJar.toString(), "assemble.Tadpole",
                 "in=" + reads,
@@ -69,6 +76,8 @@ record BbtoolsCommands(String javaCommand, Path bbtoolsJar, int childMemoryGiB, 
                 "overwrite=t",
                 "threads=" + threads
         ));
+        command.addAll(tadpole.arguments());
+        return command;
     }
 
     private List<String> bbduk(Path ref, List<Path> reads, Path output, int hdist) {

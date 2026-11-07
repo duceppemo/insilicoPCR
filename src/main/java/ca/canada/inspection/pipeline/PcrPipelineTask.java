@@ -86,11 +86,17 @@ public final class PcrPipelineTask extends Task<Void> {
             Methods.logMessage(config.outputField(), "Parsed BLAST output");
             updateProgress(11, 13);
 
-            ConsolidatedReport.write(directories.consolidatedDir(), sampleDict, primerDict, config.ampliconOptions());
+            Path report = ConsolidatedReport.write(directories.consolidatedDir(), sampleDict, primerDict, config.ampliconOptions());
             Methods.logMessage(config.outputField(), "Created Consolidated Report");
+            var diagnostics = FastqDiagnosticsStage.run(report, directories.detailedDir(), sampleDict, primerDict,
+                    config.ampliconOptions());
+            diagnostics.warnings().forEach(finding ->
+                    Methods.logMessage(config.outputField(), "WARNING: " + finding.message()));
+            diagnostics.notes().forEach(note -> Methods.logMessage(config.outputField(), "WARNING: " + note));
             updateProgress(12, 13);
 
             LogFiles.ensureQaLog(config.outDir(), config.inputFile(), config.primerFile(), dependencies);
+            LogFiles.appendQaLog(config.outDir(), diagnostics.qaLogLines(TadpoleOptions.DEFAULTS));
             var seconds = (System.nanoTime() - startTime) / 1_000_000_000L;
             Methods.logMessage(config.outputField(), "Done in " + seconds + " seconds");
             updateProgress(13, 13);

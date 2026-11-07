@@ -1,6 +1,7 @@
 package ca.canada.inspection.dispatchpcr;
 
 import ca.canada.inspection.pcr.AmpliconOptions;
+import ca.canada.inspection.pipeline.TadpoleOptions;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.ParseException;
@@ -51,6 +52,16 @@ class CliConfigTest {
         assertEquals(CliConfig.DEFAULT_EVALUE, config.evalue());
         assertTrue(config.threads() >= 1);
         assertFalse(config.gel());
+    }
+
+    @Test
+    void tadpoleSettingsDefaultAndParse() throws Exception {
+        assertEquals(TadpoleOptions.DEFAULTS, parse().tadpole());
+        CliConfig config = parse("--tadpole-k", "25", "--tadpole-min-seed", "3",
+                "--tadpole-min-cov", "2", "--tadpole-min-contig", "100");
+        assertEquals(new TadpoleOptions(25, 3, 2, 100), config.tadpole());
+        assertThrows(IllegalArgumentException.class, () -> parse("--tadpole-k", "0"));
+        assertThrows(IllegalArgumentException.class, () -> parse("--tadpole-min-contig", "-1"));
     }
 
     @Test

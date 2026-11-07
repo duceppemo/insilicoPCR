@@ -18,36 +18,45 @@ Expected help output:
 ```text
 usage: java -jar insilicoPCR.jar -i <input> -o <output> -p <primers> [-t
             n] [-m n] [-e value] [-l bp]
-    --3p-penalty <score>     Maximum weighted 3'-end penalty (mismatch: 3
-                             at terminus, 2 at -1/-2, 1 beyond; +1 if a
-                             G/C pair is broken near the terminus; +1 for
-                             indels); default: 0
-    --3p-window <n>          Bases at the primer 3' end checked with the
-                             weighted 3' penalty; default: 5
-    --5p-truncation <n>      Maximum primer bases allowed to be unaligned
-                             at the harmless 5' end (one 5'-proximal
-                             mismatch makes BLAST trim the whole tail);
-                             default: 5
- -e,--evalue <value>         blastn e-value; default: 1e5
- -g,--gel                    Also write the synthetic gel image as PNG
-                             (requires a graphical environment)
- -h,--help                   Print help and usage
- -i,--input <path>           Input file/directory containing .fasta/.fastq
-                             sequence(s)
- -l,--max-length <bp>        Maximum amplicon length in bp, 0 = unlimited;
-                             default: 5000
- -m,--mismatches <n>         Allowed mismatches+indels per primer
-                             (unaligned 3' bases count); default: 0
-    --min-length <bp>        Minimum amplicon length in bp; default: 0
- -o,--output <dir>           Directory for output files
- -p,--primers <file>         Primer FASTA file
-    --probe-mismatches <n>   Allowed mismatches+indels per hydrolysis
-                             probe; probes bind hotter than primers and
-                             tolerate roughly one more mismatch; default:
-                             same as -m
- -t,--threads <n>            Number of worker threads; default: available
-                             processors
- -v,--version                Print version
+    --3p-penalty <score>        Maximum weighted 3'-end penalty (mismatch:
+                                3 at terminus, 2 at -1/-2, 1 beyond; +1 if
+                                a G/C pair is broken near the terminus; +1
+                                for indels); default: 0
+    --3p-window <n>             Bases at the primer 3' end checked with
+                                the weighted 3' penalty; default: 5
+    --5p-truncation <n>         Maximum primer bases allowed to be
+                                unaligned at the harmless 5' end (one
+                                5'-proximal mismatch makes BLAST trim the
+                                whole tail); default: 5
+ -e,--evalue <value>            blastn e-value; default: 1e5
+ -g,--gel                       Also write the synthetic gel image as PNG
+                                (requires a graphical environment)
+ -h,--help                      Print help and usage
+ -i,--input <path>              Input file/directory containing
+                                .fasta/.fastq sequence(s)
+ -l,--max-length <bp>           Maximum amplicon length in bp, 0 =
+                                unlimited; default: 5000
+ -m,--mismatches <n>            Allowed mismatches+indels per primer
+                                (unaligned 3' bases count); default: 0
+    --min-length <bp>           Minimum amplicon length in bp; default: 0
+ -o,--output <dir>              Directory for output files
+ -p,--primers <file>            Primer FASTA file
+    --probe-mismatches <n>      Allowed mismatches+indels per hydrolysis
+                                probe; probes bind hotter than primers and
+                                tolerate roughly one more mismatch;
+                                default: same as -m
+ -t,--threads <n>               Number of worker threads; default:
+                                available processors
+    --tadpole-k <n>             FASTQ mode: Tadpole k-mer length; default:
+                                31
+    --tadpole-min-contig <bp>   FASTQ mode: minimum contig length kept
+                                (Tadpole mincontig); must not exceed the
+                                amplicons you expect; default: 60
+    --tadpole-min-cov <n>       FASTQ mode: minimum average contig
+                                coverage (Tadpole mincov); default: 1
+    --tadpole-min-seed <n>      FASTQ mode: minimum k-mer count to seed a
+                                contig (Tadpole mincountseed); default: 2
+ -v,--version                   Print version
 ```
 
 ## Required options
@@ -72,8 +81,14 @@ usage: java -jar insilicoPCR.jar -i <input> -o <output> -p <primers> [-t
 | `--3p-penalty` | `0` | Maximum tolerated weighted 3'-end penalty |
 | `--5p-truncation` | `5` | Maximum primer bases allowed unaligned at the 5' end |
 | `-g`, `--gel` | off | Also write the synthetic gel image as PNG (needs a graphical environment) |
+| `--tadpole-k` | `31` | FASTQ mode: Tadpole k-mer length |
+| `--tadpole-min-seed` | `2` | FASTQ mode: minimum k-mer count to seed a contig (Tadpole `mincountseed`) |
+| `--tadpole-min-cov` | `1` | FASTQ mode: minimum average contig coverage (Tadpole `mincov`) |
+| `--tadpole-min-contig` | `60` | FASTQ mode: minimum contig length kept (Tadpole `mincontig`); keep it below the shortest amplicon you expect |
 | `-v`, `--version` | | Print version |
 | `-h`, `--help` | | Print help |
+
+The `--tadpole-*` options only affect FASTQ input, where reads are baited and micro-assembled before BLAST; see [FASTQ mode and false negatives](Reports#fastq-mode-and-false-negatives). The GUI always uses the defaults.
 
 See [Amplicon Calling](Amplicon-Calling) for exactly how the mismatch budget, the 3'-end penalty, and the size limits decide which amplicons are reported.
 

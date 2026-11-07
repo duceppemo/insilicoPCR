@@ -2,6 +2,28 @@
 
 ## Unreleased
 
+### FASTQ mode: negatives the reads do not support are now flagged (#7)
+
+An assay could be reported negative in FASTQ mode although its oligos were in
+the baited reads, because the Tadpole mini-assembly omitted the target region
+or broke inside the amplicon. Nothing in the reports told this apart from
+"target absent".
+
+- The first baiting pass now writes reads matched per oligo
+  (`<sample>_baitStats.txt`). Every negative assay whose oligos matched reads
+  is listed in `consolidated_report/report_fastq_diagnostics.tsv` with a
+  status — `NOT_ASSEMBLED`, `SPLIT_ACROSS_CONTIGS` (with each primer's contig
+  and distance to the contig end), `NO_VALID_PAIR`, or `PARTIAL_BAIT` — and
+  the first three are warned about on the console/GUI log and in `QAlog.txt`.
+- Tadpole defaults are now `mincountseed=2 mincontig=60` (Tadpole's own are
+  3 and 500; a contig over a short amplicon is often under 500 bp), and
+  `--tadpole-k`, `--tadpole-min-seed`, `--tadpole-min-cov` and
+  `--tadpole-min-contig` expose the settings on the command line. The
+  settings used are recorded in `QAlog.txt`. **FASTQ-mode results can change
+  versus 0.9.0**: more of the baited region is now assembled.
+- The docs now state that a FASTQ-mode negative is weaker evidence than an
+  assembly-mode negative.
+
 ### GUI FASTQ mode now baits and assembles exactly like the command line
 
 The GUI ran its own copy of the BBDuk/Tadpole commands, which had drifted

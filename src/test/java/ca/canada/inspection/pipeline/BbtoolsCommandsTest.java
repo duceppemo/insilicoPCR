@@ -16,7 +16,8 @@ class BbtoolsCommandsTest {
 
     @Test
     void firstBaitUsesPrimerDatabaseShortestPrimerAndMismatchBudget() {
-        List<String> command = commands.firstBait(Path.of("primers.fasta"), paired, Path.of("out.fq.gz"), 17, 2);
+        List<String> command = commands.firstBait(Path.of("primers.fasta"), paired, Path.of("out.fq.gz"),
+                Path.of("stats.txt"), 17, 2);
 
         assertTrue(command.contains("jgi.BBDuk"));
         assertTrue(command.contains("ref=primers.fasta"));
@@ -25,6 +26,7 @@ class BbtoolsCommandsTest {
         assertTrue(command.contains("in1=s_R1.fastq.gz"));
         assertTrue(command.contains("in2=s_R2.fastq.gz"));
         assertTrue(command.contains("outm=out.fq.gz"));
+        assertTrue(command.contains("stats=stats.txt"));
         assertTrue(command.contains("overwrite=t"));
         assertTrue(command.contains("-Xmx6g"));
         assertTrue(command.contains("threads=4"));
@@ -49,11 +51,23 @@ class BbtoolsCommandsTest {
     }
 
     @Test
-    void assemblyRunsTadpoleWithOverwrite() {
-        List<String> command = commands.assemble(Path.of("second.fq.gz"), Path.of("asm.fasta"));
+    void assemblyRunsTadpoleWithOverwriteAndGivenSettings() {
+        List<String> command = commands.assemble(Path.of("second.fq.gz"), Path.of("asm.fasta"),
+                new TadpoleOptions(25, 2, 1, 80));
 
         assertEquals(List.of("java", "-ea", "-Xmx6g", "-cp", "bbtools.jar", "assemble.Tadpole",
-                "in=second.fq.gz", "out=asm.fasta", "overwrite=t", "threads=4"), command);
+                "in=second.fq.gz", "out=asm.fasta", "overwrite=t", "threads=4",
+                "k=25", "mincountseed=2", "mincov=1", "mincontig=80"), command);
+    }
+
+    @Test
+    void defaultTadpoleSettingsKeepShortContigs() {
+        // Tadpole's own mincontig=500 drops contigs spanning short amplicons (#7).
+        assertEquals(List.of("k=31", "mincountseed=2", "mincov=1", "mincontig=60"),
+                TadpoleOptions.DEFAULTS.arguments());
+        assertThrows(IllegalArgumentException.class, () -> new TadpoleOptions(0, 2, 1, 60));
+        assertThrows(IllegalArgumentException.class, () -> new TadpoleOptions(31, 0, 1, 60));
+        assertThrows(IllegalArgumentException.class, () -> new TadpoleOptions(31, 2, 1, 0));
     }
 
     @Test
@@ -69,5 +83,6 @@ class BbtoolsCommandsTest {
         assertEquals(dir.resolve("s_targetMatches.fastq.gz"), BbtoolsCommands.targetMatches(dir, "s"));
         assertEquals(dir.resolve("s_doubleTargetMatches.fastq.gz"), BbtoolsCommands.doubleTargetMatches(dir, "s"));
         assertEquals(dir.resolve("s_assembly.fasta"), BbtoolsCommands.assembly(dir, "s"));
+        assertEquals(dir.resolve("s_baitStats.txt"), BbtoolsCommands.baitStats(dir, "s"));
     }
 }

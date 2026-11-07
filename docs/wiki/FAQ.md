@@ -18,7 +18,10 @@ Yes. Use the bundled Java runtime:
 
 ## Can I use FASTQ reads?
 
-Yes. insilicoPCR supports FASTA assemblies and FASTQ reads.
+Yes. insilicoPCR supports FASTA assemblies and FASTQ reads. Reads are baited and micro-assembled before the
+search, so a FASTQ-mode negative is weaker evidence than one on a genome assembly; negatives whose oligos were
+found in the reads are flagged in `report_fastq_diagnostics.tsv` and `QAlog.txt`. See
+[FASTQ mode and false negatives](Reports#fastq-mode-and-false-negatives).
 
 ## Can I use a folder as input?
 

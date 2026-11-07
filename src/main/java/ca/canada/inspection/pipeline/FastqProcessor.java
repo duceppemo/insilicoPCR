@@ -42,6 +42,7 @@ public final class FastqProcessor {
                 context.directories().primerDatabase(),
                 sample.files(),
                 BbtoolsCommands.targetMatches(sampleDir, sample.getName()),
+                BbtoolsCommands.baitStats(sampleDir, sample.getName()),
                 kLength,
                 context.config().mismatches()
         ));
@@ -60,7 +61,8 @@ public final class FastqProcessor {
         Path sampleDir = sampleDirectory(context, sample);
         Path output = BbtoolsCommands.assembly(sampleDir, sample.getName());
         sample.setAssemblyFile(output);
-        run(context, commands.assemble(BbtoolsCommands.doubleTargetMatches(sampleDir, sample.getName()), output));
+        run(context, commands.assemble(BbtoolsCommands.doubleTargetMatches(sampleDir, sample.getName()), output,
+                context.config().tadpole()));
     }
 
     private static Path sampleDirectory(PipelineContext context, Sample sample) {

@@ -17,6 +17,15 @@ public final class ReportGenerator {
             GelImageWriter.write(report, context.config().output().resolve("synthetic_gel_" + baseName + ".png"),
                     context.samples().keySet());
         }
-        qaLog.write(context, Dispatcher.VERSION);
+        FastqDiagnosticsStage.Result diagnostics = FastqDiagnosticsStage.run(report,
+                context.directories().detailed(), context.samples(), context.primers(),
+                context.config().ampliconOptions());
+        diagnostics.warnings().forEach(finding -> System.err.println("Warning: " + finding.message()));
+        if (!diagnostics.warnings().isEmpty()) {
+            System.err.println("Warning: " + diagnostics.warnings().size() + " FASTQ-mode negative(s) are not supported"
+                    + " by the reads; see " + diagnostics.file());
+        }
+        diagnostics.notes().forEach(note -> System.err.println("Warning: " + note));
+        qaLog.write(context, Dispatcher.VERSION, diagnostics.qaLogLines(context.config().tadpole()));
     }
 }

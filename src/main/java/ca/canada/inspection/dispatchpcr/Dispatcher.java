@@ -2,6 +2,7 @@ package ca.canada.inspection.dispatchpcr;
 
 import ca.canada.inspection.commandpcr.CommandMain;
 import ca.canada.inspection.insilicopcr.MainRun;
+import ca.canada.inspection.pipeline.TadpoleOptions;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -85,6 +86,17 @@ public final class Dispatcher {
         options.addOption(Option.builder().longOpt("5p-truncation").hasArg().argName("n")
                 .desc("Maximum primer bases allowed to be unaligned at the harmless 5' end"
                         + " (one 5'-proximal mismatch makes BLAST trim the whole tail); default: 5").build());
+        options.addOption(Option.builder().longOpt("tadpole-k").hasArg().argName("n")
+                .desc("FASTQ mode: Tadpole k-mer length; default: " + TadpoleOptions.DEFAULT_K).build());
+        options.addOption(Option.builder().longOpt("tadpole-min-seed").hasArg().argName("n")
+                .desc("FASTQ mode: minimum k-mer count to seed a contig (Tadpole mincountseed); default: "
+                        + TadpoleOptions.DEFAULT_MIN_COUNT_SEED).build());
+        options.addOption(Option.builder().longOpt("tadpole-min-cov").hasArg().argName("n")
+                .desc("FASTQ mode: minimum average contig coverage (Tadpole mincov); default: "
+                        + TadpoleOptions.DEFAULT_MIN_COVERAGE).build());
+        options.addOption(Option.builder().longOpt("tadpole-min-contig").hasArg().argName("bp")
+                .desc("FASTQ mode: minimum contig length kept (Tadpole mincontig); must not exceed the"
+                        + " amplicons you expect; default: " + TadpoleOptions.DEFAULT_MIN_CONTIG).build());
         options.addOption(Option.builder("g").longOpt("gel").desc("Also write the synthetic gel image as PNG"
                 + " (requires a graphical environment)").build());
         options.addOption(Option.builder("h").longOpt("help").desc("Print help and usage").build());

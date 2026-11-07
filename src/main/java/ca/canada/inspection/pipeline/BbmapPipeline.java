@@ -60,7 +60,8 @@ public final class BbmapPipeline {
             stopIfCancelled(owner);
             var sampleDir = sampleDirectory(sample);
             runProcess(commands.firstBait(primerDatabase, sample.files(),
-                    BbtoolsCommands.targetMatches(sampleDir, sample.getName()), kLength, config.mismatches()), owner);
+                    BbtoolsCommands.targetMatches(sampleDir, sample.getName()),
+                    BbtoolsCommands.baitStats(sampleDir, sample.getName()), kLength, config.mismatches()), owner);
         }
         processTracker.clear();
     }
@@ -81,7 +82,9 @@ public final class BbmapPipeline {
             var sampleDir = sampleDirectory(sample);
             var out = BbtoolsCommands.assembly(sampleDir, sample.getName());
             sample.setAssemblyFile(out);
-            runProcess(commands.assemble(BbtoolsCommands.doubleTargetMatches(sampleDir, sample.getName()), out), owner);
+            // The GUI has no Tadpole controls yet, so it uses the defaults.
+            runProcess(commands.assemble(BbtoolsCommands.doubleTargetMatches(sampleDir, sample.getName()), out,
+                    TadpoleOptions.DEFAULTS), owner);
         }
         processTracker.clear();
     }

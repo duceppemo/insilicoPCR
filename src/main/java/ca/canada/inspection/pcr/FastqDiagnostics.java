@@ -36,7 +36,7 @@ public final class FastqDiagnostics {
          * shown it: possibly contamination, index hopping, a mixed sample, or a primer
          * site repeated elsewhere in the genome. Not reported.
          */
-        WEAK_READ_SUPPORT("complete amplicon in a minority of informative reads; not reported"),
+        WEAK_READ_SUPPORT("complete amplicon in too few of the informative reads; not reported"),
         /** Both primers are in the reads, but no read holds a complete amplicon. */
         NOT_IN_READS("primers found in reads, but no read holds a complete amplicon"),
         /** Only some of the assay's primers are in the reads. */
@@ -126,9 +126,7 @@ public final class FastqDiagnostics {
                 status = call.isReportable() ? Status.CALLED_FROM_READS : Status.WEAK_READ_SUPPORT;
                 readDetail = "complete amplicon in " + call.supportSummary() + ", size(s) "
                         + call.sizes().stream().map(String::valueOf).reduce((a, b) -> a + "," + b).orElse("") + " bp"
-                        + (call.isReportable() ? "" : "; a read-level call needs at least "
-                        + ReadLevelCaller.MIN_SUPPORTING_READS + " reads and "
-                        + Math.round(100 * ReadLevelCaller.MIN_SUPPORT_FRACTION) + "% of informative reads");
+                        + (call.isReportable() ? "" : "; a read-level call needs " + call.thresholdSummary());
             } else if (counts.forward() == 0 || counts.reverse() == 0) {
                 status = Status.PARTIAL_BAIT;
                 readDetail = "no read carries the " + (counts.forward() == 0 ? "forward" : "reverse") + " primer";

@@ -1,6 +1,7 @@
 package ca.canada.inspection.dispatchpcr;
 
 import ca.canada.inspection.pcr.AmpliconOptions;
+import ca.canada.inspection.pcr.ReadLevelCaller;
 import ca.canada.inspection.pipeline.TadpoleOptions;
 import org.apache.commons.cli.CommandLine;
 
@@ -16,7 +17,8 @@ public record CliConfig(
         double evalue,
         AmpliconOptions ampliconOptions,
         boolean gel,
-        TadpoleOptions tadpole
+        TadpoleOptions tadpole,
+        double readMinFraction
 ) {
     public static final double DEFAULT_EVALUE = 1e5;
 
@@ -63,8 +65,26 @@ public record CliConfig(
                 parseEvalue(cmd.getOptionValue("evalue")),
                 options,
                 cmd.hasOption("gel"),
-                tadpoleOptions(cmd)
+                tadpoleOptions(cmd),
+                parseFraction(cmd, "read-min-fraction", ReadLevelCaller.DEFAULT_MIN_SUPPORT_FRACTION)
         );
+    }
+
+    private static double parseFraction(CommandLine cmd, String option, double defaultValue) {
+        String value = cmd.getOptionValue(option);
+        if (value == null) {
+            return defaultValue;
+        }
+        double parsed;
+        try {
+            parsed = Double.parseDouble(value);
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("--" + option + " must be a number between 0 and 1, got: " + value);
+        }
+        if (!(parsed >= 0.0 && parsed <= 1.0)) {
+            throw new IllegalArgumentException("--" + option + " must be between 0 and 1, got: " + value);
+        }
+        return parsed;
     }
 
     private static TadpoleOptions tadpoleOptions(CommandLine cmd) {

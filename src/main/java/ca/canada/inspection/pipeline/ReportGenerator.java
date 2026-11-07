@@ -18,7 +18,8 @@ public final class ReportGenerator {
 
         Map<String, ReadEvidence> readEvidence = context.hasFastqSamples()
                 ? ReadLevelStage.run(new ReadLevelStage.Settings(context.dependencies().blastn(),
-                        context.directories().primerDatabase(), context.config().evalue(), context.config().threads()),
+                        context.directories().primerDatabase(), context.config().evalue(), context.config().threads(),
+                        context.config().readMinFraction()),
                         context.directories().detailed(), context.samples(), context.primers(),
                         context.config().ampliconOptions())
                 : Map.of();
@@ -33,6 +34,7 @@ public final class ReportGenerator {
         FastqDiagnosticsStage.Result diagnostics = FastqDiagnosticsStage.run(report, context.samples(),
                 context.primers(), context.config().ampliconOptions(), readEvidence);
         diagnostics.logLines().forEach(System.err::println);
-        qaLog.write(context, Dispatcher.VERSION, diagnostics.qaLogLines(context.config().tadpole()));
+        qaLog.write(context, Dispatcher.VERSION,
+                diagnostics.qaLogLines(context.config().tadpole(), context.config().readMinFraction()));
     }
 }

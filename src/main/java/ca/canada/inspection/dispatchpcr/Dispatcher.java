@@ -2,6 +2,7 @@ package ca.canada.inspection.dispatchpcr;
 
 import ca.canada.inspection.commandpcr.CommandMain;
 import ca.canada.inspection.insilicopcr.MainRun;
+import ca.canada.inspection.pcr.ReadLevelCaller;
 import ca.canada.inspection.pipeline.TadpoleOptions;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -97,6 +98,10 @@ public final class Dispatcher {
         options.addOption(Option.builder().longOpt("tadpole-min-contig").hasArg().argName("bp")
                 .desc("FASTQ mode: minimum contig length kept (Tadpole mincontig); must not exceed the"
                         + " amplicons you expect; default: " + TadpoleOptions.DEFAULT_MIN_CONTIG).build());
+        options.addOption(Option.builder().longOpt("read-min-fraction").hasArg().argName("0-1")
+                .desc("FASTQ mode: share of informative reads (carrying a primer and long enough) that must"
+                        + " hold a complete amplicon to call an assay the mini-assembly missed from reads;"
+                        + " default: " + ReadLevelCaller.DEFAULT_MIN_SUPPORT_FRACTION).build());
         options.addOption(Option.builder("g").longOpt("gel").desc("Also write the synthetic gel image as PNG"
                 + " (requires a graphical environment)").build());
         options.addOption(Option.builder("h").longOpt("help").desc("Print help and usage").build());

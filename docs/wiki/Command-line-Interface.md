@@ -45,6 +45,11 @@ usage: java -jar insilicoPCR.jar -i <input> -o <output> -p <primers> [-t
                                 probe; probes bind hotter than primers and
                                 tolerate roughly one more mismatch;
                                 default: same as -m
+    --read-min-fraction <0-1>   FASTQ mode: share of informative reads
+                                (carrying a primer and long enough) that
+                                must hold a complete amplicon to call an
+                                assay the mini-assembly missed from reads;
+                                default: 0.3
  -t,--threads <n>               Number of worker threads; default:
                                 available processors
     --tadpole-k <n>             FASTQ mode: Tadpole k-mer length; default:
@@ -84,11 +89,12 @@ usage: java -jar insilicoPCR.jar -i <input> -o <output> -p <primers> [-t
 | `--tadpole-k` | `31` | FASTQ mode: Tadpole k-mer length |
 | `--tadpole-min-seed` | `2` | FASTQ mode: minimum k-mer count to seed a contig (Tadpole `mincountseed`) |
 | `--tadpole-min-cov` | `1` | FASTQ mode: minimum average contig coverage (Tadpole `mincov`) |
+| `--read-min-fraction` | `0.3` | FASTQ mode: share (0–1) of informative reads that must hold a complete amplicon for a read-level call; see [Read-level calls](Reports#read-level-calls) |
 | `--tadpole-min-contig` | `60` | FASTQ mode: minimum contig length kept (Tadpole `mincontig`); keep it below the shortest amplicon you expect |
 | `-v`, `--version` | | Print version |
 | `-h`, `--help` | | Print help |
 
-The `--tadpole-*` options only affect FASTQ input, where reads are baited and micro-assembled before BLAST; see [FASTQ mode and false negatives](Reports#fastq-mode-and-false-negatives). The GUI always uses the defaults.
+The `--read-min-fraction` and `--tadpole-*` options only affect FASTQ input, where reads are baited and micro-assembled before BLAST; see [FASTQ mode and false negatives](Reports#fastq-mode-and-false-negatives). The GUI always uses the defaults.
 
 See [Amplicon Calling](Amplicon-Calling) for exactly how the mismatch budget, the 3'-end penalty, and the size limits decide which amplicons are reported.
 

@@ -28,13 +28,13 @@ import java.util.TreeSet;
 public final class ReadLevelCaller {
 
     /**
-     * Minimum share of informative reads that must hold the amplicon for a read-level
-     * call. A real target shows in most reads that carry a primer and are long enough,
+     * Default minimum share of informative reads that must hold the amplicon for a
+     * read-level call (command line: {@code --read-min-fraction}). A real target shows in most reads that carry a primer and are long enough,
      * though not all: a sequencing error in a primer or probe disqualifies a read under a
      * strict mismatch budget (61% on a 2x250 MiSeq run in #7). A few contaminating or
      * index-hopped reads show in few of them (18% in the same issue).
      */
-    public static final double MIN_SUPPORT_FRACTION = 0.3;
+    public static final double DEFAULT_MIN_SUPPORT_FRACTION = 0.3;
 
     /** Minimum reads holding the amplicon for a read-level call. */
     public static final int MIN_SUPPORTING_READS = 2;
@@ -45,21 +45,28 @@ public final class ReadLevelCaller {
      *                         that extend far enough to have held the amplicon
      * @param row              report row on the best-matching representative read
      * @param sizes            amplicon sizes observed across the supporting reads
+     * @param minSupportFraction share of informative reads required to report the call
      */
     public record ReadCall(String assay, int supportingReads, int informativeReads, List<String> row,
-                           Set<Integer> sizes) {
+                           Set<Integer> sizes, double minSupportFraction) {
         public double supportFraction() {
             return informativeReads == 0 ? 0.0 : (double) supportingReads / informativeReads;
         }
 
         /** Whether the support is strong enough to report the assay from reads. */
         public boolean isReportable() {
-            return supportingReads >= MIN_SUPPORTING_READS && supportFraction() >= MIN_SUPPORT_FRACTION;
+            return supportingReads >= MIN_SUPPORTING_READS && supportFraction() >= minSupportFraction;
+        }
+
+        /** The reporting threshold, for messages. */
+        public String thresholdSummary() {
+            return "at least " + MIN_SUPPORTING_READS + " reads and " + percent(minSupportFraction)
+                    + " of informative reads";
         }
 
         public String supportSummary() {
             return supportingReads + " of " + informativeReads + " informative read(s) ("
-                    + Math.round(100 * supportFraction()) + "%)";
+                    + percent(supportFraction()) + ")";
         }
     }
 
@@ -92,6 +99,17 @@ public final class ReadLevelCaller {
      */
     public static ReadEvidence evaluate(Sample reads, Map<String, Integer> readLengths,
                                         Map<String, String> primers, AmpliconOptions options) {
+        return evaluate(reads, readLengths, primers, options, DEFAULT_MIN_SUPPORT_FRACTION);
+    }
+
+    /**
+     * @param minSupportFraction share of informative reads (0 to 1) that must hold the
+     *                           amplicon for the call to be reported
+     */
+    public static ReadEvidence evaluate(Sample reads, Map<String, Integer> readLengths,
+                                        Map<String, String> primers, AmpliconOptions options,
+                                        double minSupportFraction) {
+        requireFraction(minSupportFraction);
         reads = withContainedHits(reads, readLengths);
         Map<String, List<BlastResult>> hits = reads.blastResults();
 
@@ -106,7 +124,8 @@ public final class ReadLevelCaller {
         Map<String, PrimerGroup> groups = ConsolidatedReport.groupByAssay(primers.keySet());
         Map<String, ReadCall> calls = new LinkedHashMap<>();
         rowsByAssay.forEach((assay, rows) ->
-                calls.put(assay, call(assay, rows, pcrPrimerHits(hits, groups.get(assay)), readLengths)));
+                calls.put(assay, call(assay, rows, pcrPrimerHits(hits, groups.get(assay)), readLengths,
+                        minSupportFraction)));
 
         Map<String, Integer> checkable = new HashMap<>();
         for (Map.Entry<String, PrimerGroup> entry : groups.entrySet()) {
@@ -168,8 +187,20 @@ public final class ReadLevelCaller {
         return result;
     }
 
+    /** Rejects a support fraction outside 0 to 1. */
+    public static double requireFraction(double fraction) {
+        if (!(fraction >= 0.0 && fraction <= 1.0)) {
+            throw new IllegalArgumentException("read support fraction must be between 0 and 1, got: " + fraction);
+        }
+        return fraction;
+    }
+
+    static String percent(double fraction) {
+        return Math.round(100 * fraction) + "%";
+    }
+
     private static ReadCall call(String assay, List<List<String>> rows, List<BlastResult> primerHits,
-                                 Map<String, Integer> readLengths) {
+                                 Map<String, Integer> readLengths, double minSupportFraction) {
         Set<String> reads = new HashSet<>();
         Set<Integer> sizes = new TreeSet<>();
         for (List<String> row : rows) {
@@ -192,7 +223,7 @@ public final class ReadLevelCaller {
                                         + Integer.parseInt(row.get(ConsolidatedReport.REVERSE_MISMATCHES_COLUMN)))
                         .thenComparing(row -> row.get(ConsolidatedReport.CONTIG_COLUMN)))
                 .orElseThrow();
-        return new ReadCall(assay, reads.size(), informative.size(), best, sizes);
+        return new ReadCall(assay, reads.size(), informative.size(), best, sizes, minSupportFraction);
     }
 
     /** Longest amplicon starting at this primer's 5' end that fits in the read. */

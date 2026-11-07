@@ -1,6 +1,7 @@
 package ca.canada.inspection.dispatchpcr;
 
 import ca.canada.inspection.pcr.AmpliconOptions;
+import ca.canada.inspection.pcr.ReadLevelCaller;
 import ca.canada.inspection.pipeline.TadpoleOptions;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.DefaultParser;
@@ -52,6 +53,17 @@ class CliConfigTest {
         assertEquals(CliConfig.DEFAULT_EVALUE, config.evalue());
         assertTrue(config.threads() >= 1);
         assertFalse(config.gel());
+    }
+
+    @Test
+    void readMinFractionDefaultsAndParses() throws Exception {
+        assertEquals(ReadLevelCaller.DEFAULT_MIN_SUPPORT_FRACTION, parse().readMinFraction());
+        assertEquals(0.5, parse("--read-min-fraction", "0.5").readMinFraction());
+        assertEquals(0.0, parse("--read-min-fraction", "0").readMinFraction());
+        assertEquals(1.0, parse("--read-min-fraction", "1").readMinFraction());
+        assertThrows(IllegalArgumentException.class, () -> parse("--read-min-fraction", "1.5"));
+        assertThrows(IllegalArgumentException.class, () -> parse("--read-min-fraction", "-0.1"));
+        assertThrows(IllegalArgumentException.class, () -> parse("--read-min-fraction", "30%"));
     }
 
     @Test

@@ -52,12 +52,15 @@ public final class FastqDiagnosticsStage {
         }
 
         /** Lines for QAlog.txt. */
-        public List<String> qaLogLines(TadpoleOptions tadpole) {
+        public List<String> qaLogLines(TadpoleOptions tadpole, double readMinFraction) {
             List<String> lines = new ArrayList<>();
             if (file == null) {
                 return lines;
             }
             lines.add("FASTQ mode Tadpole settings: " + String.join(" ", tadpole.arguments()));
+            lines.add("FASTQ mode read-level calls need at least " + ReadLevelCaller.MIN_SUPPORTING_READS
+                    + " reads and " + Math.round(100 * readMinFraction) + "% of informative reads"
+                    + " (--read-min-fraction " + readMinFraction + ")");
             lines.add("FASTQ mode diagnostics: " + file);
             List<Finding> called = withStatus(Status.CALLED_FROM_READS);
             if (!called.isEmpty()) {
@@ -67,8 +70,8 @@ public final class FastqDiagnosticsStage {
             }
             List<Finding> weak = withStatus(Status.WEAK_READ_SUPPORT);
             if (!weak.isEmpty()) {
-                lines.add("FASTQ mode WARNING: " + weak.size() + " assay(s) have a complete amplicon in only a minority"
-                        + " of informative reads and are NOT reported (contamination, mixed sample or repeated primer"
+                lines.add("FASTQ mode WARNING: " + weak.size() + " assay(s) have a complete amplicon in too few"
+                        + " of the informative reads and are NOT reported (contamination, mixed sample or repeated primer"
                         + " site?):");
                 weak.forEach(finding -> lines.add("  " + finding.message()));
             }

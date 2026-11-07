@@ -33,8 +33,12 @@ public final class ReadLevelStage {
      * @param primerDatabase  primer FASTA with its BLAST database
      * @param evalue          blastn e-value, as for contigs
      * @param threads         samples searched in parallel
+     * @param minSupportFraction share of informative reads required for a read-level call
      */
-    public record Settings(Path blastn, Path primerDatabase, double evalue, int threads) {
+    public record Settings(Path blastn, Path primerDatabase, double evalue, int threads, double minSupportFraction) {
+        public Settings {
+            ReadLevelCaller.requireFraction(minSupportFraction);
+        }
     }
 
     private ReadLevelStage() {
@@ -94,7 +98,7 @@ public final class ReadLevelStage {
         } catch (IOException e) {
             throw new PipelineException("Could not parse read-level BLAST output: " + hitsFile, e);
         }
-        return ReadLevelCaller.evaluate(reads, lengths, primers, options);
+        return ReadLevelCaller.evaluate(reads, lengths, primers, options, settings.minSupportFraction());
     }
 
     /** Merged pairs plus unmerged mates when BBMerge ran (paired input), else the first-pass reads. */

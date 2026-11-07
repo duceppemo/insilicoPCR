@@ -29,7 +29,8 @@ public final class CommandMain {
 				config.evalue(),
 				config.ampliconOptions(),
 				config.gel(),
-				config.tadpole()
+				config.tadpole(),
+				config.readMinFraction()
 		));
 	}
 

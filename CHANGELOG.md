@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- FASTQ mode: `--read-min-fraction <0-1>` sets the share of informative reads
+  that must hold a complete amplicon for a read-level call (default 0.3, as
+  in 0.10.0). The value used is recorded in `QAlog.txt`. The GUI keeps the
+  default.
+
 ## 0.10.0 (2026-11-06)
 
 ### FASTQ mode: targets the mini-assembly misses are called from reads (#7)

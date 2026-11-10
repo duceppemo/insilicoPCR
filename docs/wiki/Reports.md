@@ -7,10 +7,44 @@ insilicoPCR produces report files that summarize primer hits, predicted amplicon
 - runtime and quality logs (`QAlog.txt`)
 - detailed per-sample BLAST hit tables (`detailed_report/<sample>/<sample>.tsv`)
 - consolidated TSV report (`consolidated_report/report.tsv`)
+- HTML report (`consolidated_report/report.html`): the same results as a page to read; see [HTML report](#html-report)
 - FASTQ-mode diagnostics (`consolidated_report/report_fastq_diagnostics.tsv`), when any input is FASTQ
 - synthetic gel images rendered from the consolidated report
 
 If a `report.tsv` already exists in the output folder, a new run writes `report(1).tsv`, `report(2).tsv`, and so on instead of overwriting it.
+
+## HTML report
+
+Every run writes `report.html` next to `report.tsv` (`report(1).html` next to `report(1).tsv`, and so on). It
+is one self-contained file: open it in any browser, offline, or send it to a colleague. It follows the
+browser's light or dark theme and prints. It shows exactly the rows of the TSV and hides none.
+
+| Section | What it shows |
+|---|---|
+| Summary | Number of samples, assays and amplicons, and how many sample/assay pairs fall in each outcome below |
+| Samples by assay | One row per sample, one column per assay, and in each cell the outcome with the product size in bp. Samples without any product are listed too. Each column head gives the number of positive samples. Click a cell to list its amplicons |
+| By assay | Per assay: the sizes it declares, how many samples are positive, and their names |
+| All amplicons | Every row of the TSV, with a filter box |
+| Read-level evidence | FASTQ input only: products called from reads and products seen in too few reads to be reported |
+| Run details | Version, date, input, primer file and the amplicon settings used |
+
+The outcome of a sample for an assay uses the [product sizes declared in the primer file](Primer-FASTA-Format#declaring-product-sizes-optional), when there are any:
+
+| Mark | Outcome | Meaning |
+|---|---|---|
+| Solid green, `✓` | Target size | A product of the size the assay is designed to give (`size=`). This is the positive test |
+| Solid blue | Amplified | A product of an assay that declares no size: the PCR is positive, and the size is for you to check |
+| Amber outline, `≈` | Other known product | Only a product declared as another known size (`other=`) |
+| Red dashed outline, `!` | Unexpected size | Only a product of a size the primer file does not declare |
+| Dotted outline, `?` | Seen in too few reads | FASTQ input: a complete amplicon is in some reads, too few to report (`WEAK_READ_SUPPORT`) |
+| `○` | Not checkable from reads | FASTQ input: both primers are in the reads, no product was found, and a product of the declared size is longer than a read or merged pair could hold. Not a reliable negative; confirm on an assembly |
+| `·` | No product | |
+
+A positive PCR is not always a positive test: only a product of the target size is counted as positive for
+an assay that declares one. Products of other sizes are never hidden. They are marked, they show as `+1` on a
+cell whose main product is the target, and they are all in the amplicon table. Outcomes are told apart by
+shape and symbol as well as colour. A small dot on a mark means the product was called from reads rather
+than from the mini-assembly.
 
 ## Consolidated report
 
@@ -43,6 +77,16 @@ When at least one assay in the primer file defines a `-P` probe, the report appe
 | `ProbeMismatches` | Mismatches + indels in the probe alignment |
 
 For an assay that defines a probe, a row is only written when the probe lies entirely within the amplicon. Probe-less assays in the same run keep these columns empty.
+
+### Size label column
+
+When at least one assay in the primer file [declares product sizes](Primer-FASTA-Format#declaring-product-sizes-optional), the report ends with:
+
+| Column | Meaning |
+|---|---|
+| `SizeCheck` | `target`: the product the assay is designed to give (`size=`). `other`: another product it is known to give (`other=`). `unexpected`: a size the primer file does not declare. Empty for an assay that declares nothing |
+
+The label is information only. Every product is reported whatever its size, with or without a declaration; an `unexpected` row is a product a real PCR would amplify too.
 
 ## Detailed per-sample reports
 
@@ -93,7 +137,8 @@ and gets its own row, like separate bands on a gel. Sizes within 10 bp of each o
 variants of a single locus. A product the mini-assembly already reports is not repeated; a product it lacks is
 added even when the assembly reports the same assay at another size. As everywhere in insilicoPCR, every
 product a real PCR would amplify is reported, whatever its size: check `AmpliconSize` against the size the
-assay is designed for before calling a test positive.
+assay is designed for before calling a test positive (the optional [`SizeCheck` column](#size-label-column)
+does that comparison for you).
 
 Read-level rows appear in `report.tsv` like any other amplicon, with the representative read as `Contig` (its
 coordinates are on that read) and a `Contig Description` starting with `FASTQ read-level call:` and giving the

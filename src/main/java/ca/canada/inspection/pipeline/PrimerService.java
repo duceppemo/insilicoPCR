@@ -1,5 +1,7 @@
 package ca.canada.inspection.pipeline;
 
+import ca.canada.inspection.pcr.ExpectedSizes;
+
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -31,11 +33,29 @@ public final class PrimerService {
 
     private static final Pattern VALID_PRIMER_SEQUENCE = Pattern.compile("^[ATCGRYSWKMBDHVN]+$");
 
-    public Map<String, String> loadAndPrepare(PipelineConfig config, PipelineDirectories directories) {
-        Map<String, String> rawPrimers = readFasta(config.primers());
-        Map<String, String> preparedPrimers = expandPrimers(rawPrimers);
+    /**
+     * A primer FASTA file as written by the user.
+     *
+     * @param sequences     primer sequences by primer ID (the header up to the first blank), in file order
+     * @param expectedSizes product sizes the headers declare ({@code size=}, {@code other=})
+     */
+    public record PrimerFile(Map<String, String> sequences, ExpectedSizes expectedSizes) {
+    }
+
+    /**
+     * The primers of a run, ready for BLAST.
+     *
+     * @param primers       validated primers with degenerate bases expanded, by expanded ID
+     * @param expectedSizes product sizes the primer file declares
+     */
+    public record PreparedPrimers(Map<String, String> primers, ExpectedSizes expectedSizes) {
+    }
+
+    public PreparedPrimers loadAndPrepare(PipelineConfig config, PipelineDirectories directories) {
+        PrimerFile file = read(config.primers());
+        Map<String, String> preparedPrimers = expandPrimers(file.sequences());
         writePrimerDatabase(directories.primerDatabase(), preparedPrimers);
-        return preparedPrimers;
+        return new PreparedPrimers(preparedPrimers, file.expectedSizes());
     }
 
     /** Validates and expands degenerate primers; shared with the GUI pipeline. */
@@ -48,9 +68,15 @@ public final class PrimerService {
         writePrimerDatabase(output, primers);
     }
 
-    private static Map<String, String> readFasta(Path file) {
+    /**
+     * Reads a primer FASTA file; shared with the GUI pipeline. The primer ID is the
+     * header up to the first blank, as BLAST names the sequence; what follows is a
+     * description, read for product size declarations and otherwise ignored.
+     */
+    public static PrimerFile read(Path file) {
         Objects.requireNonNull(file, "file");
         Map<String, String> fasta = new LinkedHashMap<>();
+        Map<String, String> descriptions = new LinkedHashMap<>();
 
         try (BufferedReader reader = Files.newBufferedReader(file, StandardCharsets.UTF_8)) {
             String currentId = null;
@@ -64,7 +90,9 @@ public final class PrimerService {
                 }
                 if (line.startsWith(">")) {
                     putFastaEntry(fasta, currentId, sequence);
-                    currentId = line.substring(1).trim();
+                    String[] header = line.substring(1).trim().split("\\s+", 2);
+                    currentId = header[0];
+                    descriptions.put(currentId, header.length > 1 ? header[1] : "");
                     sequence.setLength(0);
                 } else {
                     sequence.append(line);
@@ -74,7 +102,12 @@ public final class PrimerService {
         } catch (IOException e) {
             throw new PipelineException("Could not parse primer FASTA file: " + file, e);
         }
-        return fasta;
+        descriptions.keySet().retainAll(fasta.keySet());
+        try {
+            return new PrimerFile(fasta, ExpectedSizes.fromHeaders(descriptions));
+        } catch (IllegalArgumentException e) {
+            throw new PipelineException(e.getMessage() + " (primer file " + file + ")", e);
+        }
     }
 
     private static void putFastaEntry(Map<String, String> fasta, String id, StringBuilder sequence) {

@@ -14,7 +14,8 @@ final class ConsolidatedReportWriter {
                 context.samples(),
                 context.primers(),
                 context.config().ampliconOptions(),
-                extraRows
+                extraRows,
+                context.expectedSizes()
         );
     }
 }

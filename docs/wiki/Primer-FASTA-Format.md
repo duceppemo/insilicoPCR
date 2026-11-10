@@ -106,7 +106,7 @@ ACTG...
 CAGT...
 ```
 
-Avoid spaces in FASTA IDs. If needed, use underscores or hyphens inside the assay name, but keep the final role suffix as the last part of the ID.
+The ID ends at the first blank (space or tab); anything after it on the header line is a description. Use underscores or hyphens inside the assay name, and keep the final role suffix as the last part of the ID.
 
 Good:
 
@@ -115,9 +115,65 @@ Good:
 >speciesA_toxA-R
 ```
 
+Also good, with a description:
+
+```text
+>speciesA_toxA-F forward primer, Smith 2010
+```
+
 Avoid:
 
 ```text
 >speciesA toxA forward
 >speciesA-toxA-forward
 ```
+
+The first is read as the ID `speciesA`, which has no role suffix; the second ends in `-forward` instead of `-F`.
+
+## Declaring product sizes (optional)
+
+insilicoPCR reports **every** product a primer pair would amplify, whatever its size, as a real PCR does. An
+assay that gives a product of the wrong size is still a positive PCR; whether the *test* is positive is for
+you to decide from `AmpliconSize`. To make that reading easier, a header can say which sizes the assay is
+known to give. The report then gets a `SizeCheck` column that labels each row. **Nothing is filtered or
+hidden**: the rows are the same with or without the declaration.
+
+```fasta
+>BMros-F size=434
+GGAAGTAAAAGTCGTAACAAGG
+>BMros-R
+AGCGCAGACATGCCGCAA
+
+>NakhlaRosPCR-F size=103 other=453,960-980
+TCTGTGCGTCGTTGAGC
+>NakhlaRosPCR-R
+CGCAGACATGCCGCAA
+```
+
+| Header word | Meaning | `SizeCheck` of a matching row |
+|---|---|---|
+| `size=` | Size of the product the assay is designed to give | `target` |
+| `other=` | Sizes of other products the assay is known to give | `other` |
+| | A size that matches neither | `unexpected` |
+| | The assay declares nothing | *(empty)* |
+
+Values are in bp:
+
+| Form | Matches |
+|---|---|
+| `size=434` | 424 to 444 bp: the size give or take 10 bp, to take in length variants of one locus |
+| `size=420-450` | exactly 420 to 450 bp; use a range when you want another tolerance |
+| `size=159,163` | either size (each give or take 10 bp); sizes and ranges can be mixed, without spaces |
+
+Rules:
+
+- Put the words on the header of any one primer of the assay (`-F`, `-R` or `-P`), after the ID. Other words
+  on the header are free text and are ignored.
+- `size=` and `other=` can sit on different primers of the same assay. Giving the same word twice for one
+  assay is accepted only when the values agree.
+- A size that matches both `size=` and `other=` is labelled `target`.
+- A value that cannot be read (`size=434bp`, `size=450-420`) stops the run with a message naming the primer.
+- The column appears only when at least one assay declares a size, so reports of primer files without
+  declarations are unchanged. The ranges used are recorded in `QAlog.txt`.
+- The declaration does not change `--min-length`/`--max-length`: a product outside those limits is still not
+  reported, declared or not.

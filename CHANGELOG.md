@@ -45,6 +45,36 @@ the 48 *Brucella* read sets behind #7 (default settings), no call changes.
   did at the other contig end, and `--min-length`/`--max-length` apply to that
   size. `GenomeLocation` is unchanged. Affects FASTA input too, for contigs
   ending inside a primer site.
+- A primer FASTA header with text after the ID (`>assay-F forward primer`)
+  made the assay silently negative: the whole line was used as the primer ID,
+  which no BLAST hit matched. The ID now ends at the first blank and the rest
+  is a description. The GUI reads the primer file with the same code as the
+  command line.
+
+### Added
+
+- HTML report: every run writes `consolidated_report/report.html` next to the
+  TSV, one self-contained file (no network needed, light and dark themes,
+  printable). A sample-by-assay grid shows which samples are positive for
+  which assay, with the product size in each cell and samples without a
+  product included; then a summary per assay with the names of the positive
+  samples, every amplicon of the TSV with a filter, the read-level evidence
+  for FASTQ input, and the run settings. When the primer file declares
+  product sizes, only a product of the target size counts as positive; a
+  product of another size is marked as such and never hidden. For FASTQ
+  input, a negative for an assay whose declared product is longer than the
+  reads could hold is marked "not checkable from reads" instead of negative.
+  Command line and GUI; in the GUI, **View HTML Report** opens the page of
+  the last run in the web browser.
+- Primer file: an assay can declare the product sizes it is known to give, on
+  the header of any of its primers: `>assay-F size=434 other=575,960-980`
+  (`size=` the product it is designed for, `other=` other known products; a
+  single size matches give or take 10 bp, a range exactly). The report then
+  ends with a `SizeCheck` column: `target`, `other`, `unexpected`, or empty for
+  an assay that declares nothing. **It labels rows and removes none**: every
+  product is reported whatever its size, as before. The column is absent when
+  no assay declares a size, and the ranges used are recorded in `QAlog.txt`.
+  Command line and GUI.
 
 ### Changed
 

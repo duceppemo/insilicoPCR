@@ -82,7 +82,9 @@ public class Methods {
 					continue;
 				}
 				if(line.startsWith(">")) {
-					String[] primerSections = line.split(">")[1].split("-");
+					// The ID ends at the first blank; the rest is a description (it may
+					// declare product sizes, e.g. size=420-450, which holds a dash too).
+					String[] primerSections = line.substring(1).trim().split("\\s+", 2)[0].split("-");
 					String[] primerNameSections = Arrays.copyOfRange(primerSections, 0, primerSections.length - 1);
 					String primerName = String.join("", primerNameSections);
 					String primerType = primerSections[primerSections.length - 1];

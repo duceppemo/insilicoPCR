@@ -43,6 +43,17 @@ public final class ConsolidatedReport {
     public static Path write(Path consolidatedDir, Map<String, Sample> samples,
                              Map<String, String> primers, AmpliconOptions options,
                              Map<String, List<List<String>>> extraRows) {
+        return write(consolidatedDir, samples, primers, options, extraRows, ExpectedSizes.NONE);
+    }
+
+    /**
+     * As {@link #write(Path, Map, Map, AmpliconOptions, Map)}, labelling each row with what
+     * its amplicon size is for the assay when the primer file declares product sizes
+     * (last column, {@link ExpectedSizes#COLUMN}). The label never removes a row.
+     */
+    public static Path write(Path consolidatedDir, Map<String, Sample> samples,
+                             Map<String, String> primers, AmpliconOptions options,
+                             Map<String, List<List<String>>> extraRows, ExpectedSizes expectedSizes) {
         // Probe requirement is decided per assay from the primer FILE, so standard
         // PCR and qPCR assays can be mixed in one run: an assay whose probe is
         // defined but never hits must stay negative, while a probe-less assay is
@@ -50,14 +61,19 @@ public final class ConsolidatedReport {
         // whenever at least one assay defines a probe.
         Set<String> assaysWithProbe = assaysWithProbe(primers.keySet());
         boolean probeColumns = !assaysWithProbe.isEmpty();
+        boolean sizeColumn = !expectedSizes.isEmpty();
         Path report = nextAvailableReportFile(consolidatedDir);
 
         try (BufferedWriter writer = Files.newBufferedWriter(report, StandardCharsets.UTF_8)) {
-            writer.write(header(probeColumns));
+            writer.write(header(probeColumns, sizeColumn));
             writer.newLine();
             // TreeMap keeps samples in a stable, alphabetical order.
             RowSink sink = columns -> {
                 writer.write(String.join("\t", columns));
+                if (sizeColumn) {
+                    writer.write("\t" + expectedSizes.labelText(columns.get(GENE_COLUMN),
+                            Integer.parseInt(columns.get(AMPLICON_SIZE_COLUMN))));
+                }
                 writer.newLine();
             };
             for (Map.Entry<String, Sample> sampleEntry : new TreeMap<>(samples).entrySet()) {
@@ -131,7 +147,7 @@ public final class ConsolidatedReport {
         return report;
     }
 
-    private static String header(boolean probeColumns) {
+    private static String header(boolean probeColumns, boolean sizeColumn) {
         List<String> columns = new ArrayList<>(List.of(
                 "Sample", "Gene", "GenomeLocation", "AmpliconSize", "Contig", "Contig Description",
                 "ForwardPrimers", "ReversePrimers", "ForwardMismatches", "ReverseMismatches",
@@ -139,6 +155,9 @@ public final class ConsolidatedReport {
         ));
         if (probeColumns) {
             columns.addAll(List.of("Probe", "ProbeLocation", "ProbeSize", "ProbeMismatches"));
+        }
+        if (sizeColumn) {
+            columns.add(ExpectedSizes.COLUMN);
         }
         return String.join("\t", columns);
     }

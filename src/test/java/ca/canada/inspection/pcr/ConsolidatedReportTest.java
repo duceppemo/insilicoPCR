@@ -185,4 +185,58 @@ class ConsolidatedReportTest {
         assertTrue(lines.get(1).startsWith("sampleA\t"));
     }
 
+    @Test
+    void declaredProductSizesLabelEveryRowAndRemoveNone() throws IOException {
+        // "assay" gives its 500 bp target and a 60 bp product nobody declared; "plain"
+        // declares nothing. All three rows stay; only the label tells them apart.
+        Sample sample = sampleWithHits();
+        sample.addBlastResult("assay-R", TestHits.minusHit("assay-R", "contig1", 141));
+        sample.addBlastResult("plain-F", TestHits.plusHit("plain-F", "contig1", 2001));
+        sample.addBlastResult("plain-R", TestHits.minusHit("plain-R", "contig1", 2181));
+        Map<String, Sample> samples = new HashMap<>(Map.of("sampleA", sample));
+        Map<String, String> primers = Map.of(
+                "assay-F", PRIMER_20, "assay-R", PRIMER_20, "plain-F", PRIMER_20, "plain-R", PRIMER_20);
+        ExpectedSizes sizes = ExpectedSizes.fromHeaders(Map.of("assay-F", "size=500"));
+
+        List<String> lines = Files.readAllLines(
+                ConsolidatedReport.write(tempDir, samples, primers, DEFAULTS, Map.of(), sizes));
+
+        assertEquals(4, lines.size(), "header + three rows expected, got: " + lines);
+        assertTrue(lines.get(0).endsWith("Strand\tSizeCheck"), lines.get(0));
+        Map<String, String> labelBySize = new HashMap<>();
+        for (String line : lines.subList(1, lines.size())) {
+            String[] row = line.split("\t", -1);
+            assertEquals(14, row.length, line);
+            labelBySize.put(row[1] + ":" + row[3], row[13]);
+        }
+        assertEquals(Map.of("assay:500", "target", "assay:60", "unexpected", "plain:200", ""), labelBySize);
+
+        // Without a declaration the report is as before: same rows, no extra column.
+        List<String> plain = Files.readAllLines(ConsolidatedReport.write(tempDir, samples, primers, DEFAULTS));
+        assertEquals(4, plain.size());
+        assertTrue(plain.get(0).endsWith("\tStrand"), plain.get(0));
+        for (int i = 1; i < lines.size(); i++) {
+            assertEquals(plain.get(i), lines.get(i).substring(0, lines.get(i).lastIndexOf('\t')));
+        }
+    }
+
+    @Test
+    void sizeLabelFollowsTheProbeColumnsAndCoversRowsAddedFromReads() throws IOException {
+        Sample sample = sampleWithHits();
+        sample.addBlastResult("assay-P", TestHits.plusHit("assay-P", "contig1", 300));
+        Map<String, Sample> samples = new HashMap<>(Map.of("sampleA", sample));
+        Map<String, String> primers = Map.of("assay-F", PRIMER_20, "assay-R", PRIMER_20, "assay-P", PRIMER_20);
+        ExpectedSizes sizes = ExpectedSizes.fromHeaders(Map.of("assay-F", "size=70 other=500"));
+        // A read-level row, as FASTQ mode adds them: already in report column order.
+        List<String> readRow = List.of("sampleA", "assay", "11-80", "70", "read_1", "FASTQ read-level call: ...",
+                "assay-F", "assay-R", "0", "0", "0", "0", "+", "assay-P", "35-54", "20", "0");
+
+        List<String> lines = Files.readAllLines(ConsolidatedReport.write(tempDir, samples, primers, DEFAULTS,
+                Map.of("sampleA", List.of(readRow)), sizes));
+
+        assertTrue(lines.get(0).endsWith("ProbeMismatches\tSizeCheck"), lines.get(0));
+        assertEquals(3, lines.size());
+        assertTrue(lines.get(1).endsWith("\tassay-P\t300-319\t20\t0\tother"), lines.get(1));
+        assertTrue(lines.get(2).endsWith("\tassay-P\t35-54\t20\t0\ttarget"), lines.get(2));
+    }
 }

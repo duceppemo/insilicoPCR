@@ -159,13 +159,17 @@ Standard PCR assays and qPCR/probe assays **can be mixed in the same primer FAST
 
 Primer files in this convention can also be generated rather than written by hand: [primer-finder](https://github.com/duceppemo/primer-finder) designs selective (q)PCR assays against a group of genomes, writes insilicoPCR-ready primer files, and can run insilicoPCR itself (release 0.8.0 or newer) through its `--insilico-pcr` option.
 
+A header may carry a description after the ID, and can declare the product sizes an assay is known to give (`>assay-F size=434 other=575`). Every product is reported whatever its size; the declaration only labels the rows.
+
 See the [Primer FASTA Format Wiki page](https://github.com/duceppemo/insilicoPCR/wiki/Primer-FASTA-Format) for detailed examples and limitations.
 
 ## Output
 
+Each run also writes `consolidated_report/report.html`, a self-contained page with a sample-by-assay grid that shows at a glance which samples are positive for which assay (at the declared target size, when the primer file declares one), a summary per assay, and every amplicon.
+
 The consolidated `report.tsv` contains one row per predicted amplicon:
 
-`Sample, Gene, GenomeLocation, AmpliconSize, Contig, Contig Description, ForwardPrimers, ReversePrimers, ForwardMismatches, ReverseMismatches, Forward3PrimeMismatches, Reverse3PrimeMismatches, Strand` — plus `Probe, ProbeLocation, ProbeSize, ProbeMismatches` when any assay defines a probe (left empty on probe-less rows).
+`Sample, Gene, GenomeLocation, AmpliconSize, Contig, Contig Description, ForwardPrimers, ReversePrimers, ForwardMismatches, ReverseMismatches, Forward3PrimeMismatches, Reverse3PrimeMismatches, Strand` — plus `Probe, ProbeLocation, ProbeSize, ProbeMismatches` when any assay defines a probe (left empty on probe-less rows). A last `SizeCheck` column (`target`, `other` or `unexpected`) is added when the primer file declares product sizes; it labels rows and never removes one.
 
 The synthetic gel visualizer displays these results as gel-like bands for quick review of amplicon size patterns across samples. See the [Synthetic Gel Visualizer Wiki page](https://github.com/duceppemo/insilicoPCR/wiki/Synthetic-Gel-Visualizer).
 

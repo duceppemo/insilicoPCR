@@ -26,14 +26,15 @@ public final class InSilicoPcrPipeline {
         RuntimeDependencies dependencies = RuntimeDependencies.discover();
         PipelineDirectories directories = PipelineDirectories.create(config.output());
         Map<String, Sample> sampleMap = samples.load(config);
-        Map<String, String> primerMap = primers.loadAndPrepare(config, directories);
+        PrimerService.PreparedPrimers prepared = primers.loadAndPrepare(config, directories);
 
         PipelineContext context = new PipelineContext(
                 config,
                 dependencies,
                 directories,
                 sampleMap,
-                primerMap,
+                prepared.primers(),
+                prepared.expectedSizes(),
                 ChildJavaMemory.recommendedGiB()
         );
 

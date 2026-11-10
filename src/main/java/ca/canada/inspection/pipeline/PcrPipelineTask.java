@@ -116,7 +116,7 @@ public final class PcrPipelineTask extends Task<Void> {
                     readEvidence);
             diagnostics.logLines().forEach(line -> Methods.logMessage(config.outputField(), line));
             Path html = HtmlReport.write(report, sampleDict.keySet(), RunDetails.fastqSampleNames(sampleDict),
-                    primerDict.keySet(), primerFile.expectedSizes(), diagnostics.findings(),
+                    primerDict, primerFile.expectedSizes(), diagnostics.findings(),
                     RunDetails.of(Dispatcher.VERSION, config.inputFile(), config.primerFile(), config.outDir(),
                             config.ampliconOptions(), fastqPresent ? config.readMinFraction() : null));
             Methods.logMessage(config.outputField(), "Created HTML Report: " + html);

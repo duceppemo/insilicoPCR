@@ -38,7 +38,7 @@ public final class ReportGenerator {
                 context.primers(), context.config().ampliconOptions(), readEvidence);
         diagnostics.logLines().forEach(System.err::println);
         Path html = HtmlReport.write(report, context.samples().keySet(), RunDetails.fastqSampleNames(context.samples()),
-                context.primers().keySet(), context.expectedSizes(), diagnostics.findings(),
+                context.primers(), context.expectedSizes(), diagnostics.findings(),
                 RunDetails.of(Dispatcher.VERSION, context.config().input(), context.config().primers(),
                         context.config().output(), context.config().ampliconOptions(),
                         context.hasFastqSamples() ? context.config().readMinFraction() : null));

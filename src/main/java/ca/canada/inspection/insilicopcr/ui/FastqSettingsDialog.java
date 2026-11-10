@@ -45,10 +45,10 @@ public final class FastqSettingsDialog {
         dialog.section("Read-level calls");
         TextField readFraction = dialog.field("Min share of informative reads (0-1)",
                 String.valueOf(current.readMinFraction()),
-                "An assay the mini-assembly missed is reported from reads when at least "
+                "A product the mini-assembly missed is reported from reads when at least "
                         + ReadLevelCaller.MIN_SUPPORTING_READS + " reads (the two reads of a pair count once), and at "
                         + "least this share of the reads that "
-                        + "carry one of its primers and are long enough, hold a complete amplicon "
+                        + "carry one of its primers at the same locus and are long enough, hold a complete amplicon "
                         + "(--read-min-fraction). Default " + ReadLevelCaller.DEFAULT_MIN_SUPPORT_FRACTION + ".");
 
         return dialog.show(owner, "FASTQ settings", "Settings used only for FASTQ (read) input",

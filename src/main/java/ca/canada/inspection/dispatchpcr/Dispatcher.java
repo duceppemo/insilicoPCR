@@ -99,8 +99,9 @@ public final class Dispatcher {
                 .desc("FASTQ mode: minimum contig length kept (Tadpole mincontig); must not exceed the"
                         + " amplicons you expect; default: " + TadpoleOptions.DEFAULT_MIN_CONTIG).build());
         options.addOption(Option.builder().longOpt("read-min-fraction").hasArg().argName("0-1")
-                .desc("FASTQ mode: share of informative reads (carrying a primer and long enough) that must"
-                        + " hold a complete amplicon to call an assay the mini-assembly missed from reads;"
+                .desc("FASTQ mode: share of informative reads (carrying a primer at the product's locus and long"
+                        + " enough) that must hold a complete amplicon to call a product the mini-assembly"
+                        + " missed from reads;"
                         + " default: " + ReadLevelCaller.DEFAULT_MIN_SUPPORT_FRACTION).build());
         options.addOption(Option.builder("g").longOpt("gel").desc("Also write the synthetic gel image as PNG"
                 + " (requires a graphical environment)").build());

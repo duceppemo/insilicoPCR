@@ -10,6 +10,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -73,15 +74,18 @@ public final class ConsolidatedReport {
     }
 
     /**
-     * Assays that {@link #write} reports at least one row for in {@code sample}:
-     * the same pairing, size and probe rules, without writing anything.
+     * Amplicon sizes {@link #write} reports in {@code sample}, per assay: the same
+     * pairing, size and probe rules, without writing anything. An assay with no row is
+     * absent.
      */
-    public static Set<String> reportedAssays(Sample sample, Map<String, String> primers, AmpliconOptions options) {
-        Set<String> reported = new TreeSet<>();
+    public static Map<String, Set<Integer>> reportedSizes(Sample sample, Map<String, String> primers,
+                                                          AmpliconOptions options) {
+        Map<String, Set<Integer>> sizes = new TreeMap<>();
         for (List<String> row : rows(sample, primers, options)) {
-            reported.add(row.get(GENE_COLUMN));
+            sizes.computeIfAbsent(row.get(GENE_COLUMN), ignored -> new TreeSet<>())
+                    .add(Integer.parseInt(row.get(AMPLICON_SIZE_COLUMN)));
         }
-        return reported;
+        return sizes;
     }
 
     /** The rows {@link #write} would write for {@code sample}, in report column order. */
@@ -99,6 +103,7 @@ public final class ConsolidatedReport {
 
     /** Report column indexes used by callers that post-process rows. */
     public static final int GENE_COLUMN = 1;
+    public static final int LOCATION_COLUMN = 2;
     public static final int CONTIG_COLUMN = 4;
     public static final int CONTIG_DESCRIPTION_COLUMN = 5;
     public static final int FORWARD_MISMATCHES_COLUMN = 8;
@@ -146,6 +151,10 @@ public final class ConsolidatedReport {
             return;
         }
 
+        // Fetched once: both accessors copy, and a FASTQ sample searched at read level
+        // has one "contig" per read.
+        Map<String, String> contigs = sample.contigs();
+        HitIndex hits = new HitIndex(blastResults);
         Map<String, PrimerGroup> assays = groupByAssay(blastResults.keySet());
         for (Map.Entry<String, PrimerGroup> assayEntry : assays.entrySet()) {
             String assayName = assayEntry.getKey();
@@ -156,26 +165,56 @@ public final class ConsolidatedReport {
             boolean probeRequired = assaysWithProbe.contains(assayName);
             for (String forwardPrimer : group.forward) {
                 for (String reversePrimer : group.reverse) {
-                    writePrimerPairResults(writer, sampleName, sample, blastResults, assayName, group,
+                    writePrimerPairResults(writer, sampleName, contigs, hits, assayName, group,
                             forwardPrimer, reversePrimer, options, probeRequired, probeColumns);
                 }
             }
         }
     }
 
-    private static void writePrimerPairResults(RowSink writer, String sampleName, Sample sample,
-                                               Map<String, List<BlastResult>> blastResults,
+    /**
+     * Accepted hits of one sample, by oligo and by the contig they sit on. Primers only
+     * pair, and probes only count, on one contig, so looking hits up per contig keeps the
+     * work proportional to the hits rather than to every forward/reverse combination in
+     * the sample (millions of reads each carry a hit or two in a read-level search).
+     */
+    private static final class HitIndex {
+        private final Map<String, List<BlastResult>> byOligo;
+        private final Map<String, Map<String, List<BlastResult>>> byOligoAndContig = new HashMap<>();
+
+        HitIndex(Map<String, List<BlastResult>> byOligo) {
+            this.byOligo = byOligo;
+        }
+
+        List<BlastResult> of(String oligoId) {
+            return byOligo.getOrDefault(oligoId, List.of());
+        }
+
+        /** Hits of {@code oligoId} on {@code contig}, in the order BLAST reported them. */
+        List<BlastResult> on(String oligoId, String contig) {
+            return byOligoAndContig.computeIfAbsent(oligoId, id -> {
+                Map<String, List<BlastResult>> byContig = new HashMap<>();
+                for (BlastResult hit : of(id)) {
+                    byContig.computeIfAbsent(hit.queryID(), ignored -> new ArrayList<>()).add(hit);
+                }
+                return byContig;
+            }).getOrDefault(contig, List.of());
+        }
+    }
+
+    private static void writePrimerPairResults(RowSink writer, String sampleName, Map<String, String> contigs,
+                                               HitIndex hits,
                                                String assayName, PrimerGroup group, String forwardPrimer,
                                                String reversePrimer, AmpliconOptions options,
                                                boolean probeRequired, boolean probeColumns)
             throws IOException {
-        for (BlastResult forwardHit : blastResults.getOrDefault(forwardPrimer, List.of())) {
-            for (BlastResult reverseHit : blastResults.getOrDefault(reversePrimer, List.of())) {
+        for (BlastResult forwardHit : hits.of(forwardPrimer)) {
+            for (BlastResult reverseHit : hits.on(reversePrimer, forwardHit.queryID())) {
                 Amplicon amplicon = AmpliconCaller.call(forwardHit, reverseHit, options).orElse(null);
                 if (amplicon == null) {
                     continue;
                 }
-                String contigDescription = sample.contigs().getOrDefault(amplicon.contig(), "");
+                String contigDescription = contigs.getOrDefault(amplicon.contig(), "");
                 List<String> baseColumns = List.of(
                         sampleName,
                         assayName,
@@ -193,7 +232,7 @@ public final class ConsolidatedReport {
                 );
 
                 if (probeRequired) {
-                    writeProbeRows(writer, blastResults, group, amplicon, baseColumns);
+                    writeProbeRows(writer, hits, group, amplicon, baseColumns);
                 } else {
                     List<String> columns = new ArrayList<>(baseColumns);
                     if (probeColumns) {
@@ -211,14 +250,11 @@ public final class ConsolidatedReport {
         return hit.mismatch() + hit.gaps() + hit.threePrimeUncovered();
     }
 
-    private static void writeProbeRows(RowSink writer, Map<String, List<BlastResult>> blastResults,
+    private static void writeProbeRows(RowSink writer, HitIndex hits,
                                        PrimerGroup group, Amplicon amplicon, List<String> baseColumns)
             throws IOException {
         for (String probeId : group.probe) {
-            for (BlastResult probeHit : blastResults.getOrDefault(probeId, List.of())) {
-                if (!probeHit.queryID().equals(amplicon.contig())) {
-                    continue;
-                }
+            for (BlastResult probeHit : hits.on(probeId, amplicon.contig())) {
                 int probeStart = Math.min(probeHit.qstart(), probeHit.qend());
                 int probeEnd = Math.max(probeHit.qstart(), probeHit.qend());
                 // The probe must anneal within the amplified product.

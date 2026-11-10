@@ -1,5 +1,65 @@
 # Changelog
 
+## Unreleased
+
+Four FASTQ-mode problems found on a 16-assay, 46-oligo *Globodera* panel run over
+2 x 300 bp reads with permissive settings (`-m 1 --5p-truncation 8`). Replayed on
+the 48 *Brucella* read sets behind #7 (default settings), no call changes.
+
+### Fixed
+
+- FASTQ mode: the read-level search could take hours after BLAST had finished.
+  For every amplicon found on a read, the report code copied the table of all
+  baited reads, and it compared every forward hit of the sample with every
+  reverse hit. Hits are now looked up per read (or contig). On a sample with
+  940,000 baited reads and 27 million BLAST hits this step went from 2 h 05 min
+  to 19 s, with identical output. Assembly input with very many contigs gains
+  from the same change.
+- FASTQ mode: reads carrying a primer somewhere else in the genome no longer
+  count against a read-level call. The share of informative reads was taken over
+  every read holding one of the assay's primers, wherever it matched; a primer
+  that also lands at many unrelated places (hundreds, under permissive settings)
+  drowned a real product: a *G. pallida*-specific assay had 16 supporting reads
+  out of 617 "informative" ones (3%) in a *G. pallida* reference sample. A read
+  is now informative only when the bases following the primer resemble those of
+  a read holding the product (up to 30 bases, at most 20% different), so the
+  reads of a related organism at the same locus still count. The same assay is
+  now at 16 of 63 (25%) and 13 of 42 (31%) in two reference samples; what is
+  left is real variation at the reverse primer and probe sites, and is reported
+  as such. The diagnostics give the reads set aside
+  (`N more read(s) carry a primer elsewhere in the genome`).
+- FASTQ mode: an assay with amplicons of several sizes in the reads was called
+  as one, on pooled support, with the size of whichever read matched best. The
+  smallest size also set which reads were long enough to count, so a product
+  was diluted by reads too short to hold it (a 266 bp product at 22% because of
+  three reads holding a 119 bp one; it is now called at 86%). Each product
+  (sizes within 10 bp of each other) is now called on its own support and gets
+  its own row.
+- FASTQ mode: a product called from reads is added even when the mini-assembly
+  reports the same assay at another size; before, any assembly row for the
+  assay, including one where both primers land elsewhere, hid it. The
+  diagnostics list it with `Assembly` = `OTHER_PRODUCT_ONLY`.
+- Amplicon size on a contig that starts inside a primer was too small by the
+  primer bases lying before the contig (a 72 bp product on a 61 bp contig was
+  reported as 66 bp). The size now counts both primers in full, as it already
+  did at the other contig end, and `--min-length`/`--max-length` apply to that
+  size. `GenomeLocation` is unchanged. Affects FASTA input too, for contigs
+  ending inside a primer site.
+
+### Changed
+
+- `report_fastq_diagnostics.tsv`: `ReadDetail` lists each product seen in reads,
+  strongest first (`…; also complete amplicon in 3 of 3924 informative read(s)
+  (0%), size(s) 119 bp, not reported`). The first product keeps the 0.10
+  wording.
+- **FASTQ-mode results can change versus 0.10.1**: products that the old
+  counting left at `WEAK_READ_SUPPORT` can now be called, including products of
+  unexpected size where both primers of a probe-less assay land elsewhere under
+  permissive settings. Check `AmpliconSize`.
+- Docs: Reports explains which reads are informative, how several products of
+  one assay are handled, and the size limit of read-level calls (an amplicon
+  must fit in a read or merged pair).
+
 ## 0.10.1 (2026-11-07)
 
 ### Fixed

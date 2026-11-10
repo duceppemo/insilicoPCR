@@ -114,8 +114,25 @@ class AmpliconCallerTest {
     }
 
     @Test
+    void primerHangingOffTheContigStartStillCountsInFullTowardTheSize() {
+        // The contig starts at primer base 7: six primer bases lie before it. The product
+        // is as long as on a complete template (500 bp), although only 494 bp of it are on
+        // the contig. A contig that ends inside the other primer is already sized that way.
+        BlastResult forward = TestHits.truncatedPlusHit("assay-F", "contig1", 1, 7, 20, TestHits.PRIMER_20);
+        BlastResult reverse = TestHits.minusHit("assay-R", "contig1", 475);
+
+        AmpliconCaller.Amplicon amplicon = AmpliconCaller.call(forward, reverse, DEFAULTS).orElseThrow();
+        assertEquals(500, amplicon.size());
+        assertEquals("1-494", amplicon.location());
+
+        // Both size limits see the full product, not the part on the contig.
+        assertTrue(AmpliconCaller.call(forward, reverse, new AmpliconOptions(0, 0, 5, 0, 8, 0, 499)).isEmpty());
+        assertTrue(AmpliconCaller.call(forward, reverse, new AmpliconOptions(0, 0, 5, 0, 8, 500, 500)).isPresent());
+    }
+
+    @Test
     void probeInsideAmpliconIsContained() {
-        Amplicon amplicon = new Amplicon("contig1", 101, 600, '+');
+        Amplicon amplicon = new Amplicon("contig1", 101, 600, 500, '+');
         assertTrue(amplicon.contains(150, 170));
         assertTrue(amplicon.contains(101, 600));
         assertTrue(!amplicon.contains(90, 110));

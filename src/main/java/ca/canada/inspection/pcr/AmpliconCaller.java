@@ -40,13 +40,15 @@ public final class AmpliconCaller {
             return Optional.empty();
         }
 
-        // The full primer is incorporated into the product, so extend the alignment
-        // bounds by any 5' bases BLAST left unaligned (clamped at the contig start;
-        // the contig end is unknown here, which only matters for a primer hanging
-        // off the final bases of a contig).
-        int start = Math.max(1, rightExtending.qstart() - rightExtending.fivePrimeUncovered());
+        // The full primer is incorporated into the product, so the product runs from one
+        // primer's 5' terminus to the other's, including any 5' bases BLAST left
+        // unaligned. Those bases can lie beyond the contig (a primer hanging off a contig
+        // end): the size still counts them, since the product does not depend on where
+        // the assembly stopped. Only the reported location is clamped at the contig start
+        // (the contig end is unknown here).
+        int productStart = rightExtending.qstart() - rightExtending.fivePrimeUncovered();
         int end = leftExtending.qend() + leftExtending.fivePrimeUncovered();
-        int size = end - start + 1;
+        int size = end - productStart + 1;
 
         if (size < options.minAmpliconLength()) {
             return Optional.empty();
@@ -55,7 +57,8 @@ public final class AmpliconCaller {
             return Optional.empty();
         }
 
-        return Optional.of(new Amplicon(forward.queryID(), start, end, forward.isPlusStrand() ? '+' : '-'));
+        return Optional.of(new Amplicon(forward.queryID(), Math.max(1, productStart), end, size,
+                forward.isPlusStrand() ? '+' : '-'));
     }
 
     /**
@@ -63,18 +66,17 @@ public final class AmpliconCaller {
      *
      * @param contig        contig/sequence the product sits on
      * @param start         1-based leftmost template position (5' terminus of the plus-strand
-     *                      primer, including any 5' bases BLAST left unaligned)
+     *                      primer, including any 5' bases BLAST left unaligned), clamped at
+     *                      the contig start
      * @param end           1-based rightmost template position (5' terminus of the minus-strand
      *                      primer, including any 5' bases BLAST left unaligned)
+     * @param size          product length in bp, both primers counted in full; larger than
+     *                      {@code end - start + 1} when a primer hangs off the contig start
      * @param forwardStrand '+' when the forward primer matches the plus strand, '-' otherwise
      */
-    public record Amplicon(String contig, int start, int end, char forwardStrand) {
+    public record Amplicon(String contig, int start, int end, int size, char forwardStrand) {
         public String location() {
             return start + "-" + end;
-        }
-
-        public int size() {
-            return end - start + 1;
         }
 
         public boolean contains(int positionStart, int positionEnd) {

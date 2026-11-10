@@ -25,7 +25,7 @@ Both the GUI pipeline (`PcrPipelineTask`) and the CLI pipeline (`InSilicoPcrPipe
 | `BlastReports` | Walks per-sample BLAST reports and attaches accepted hits to samples |
 | `AmpliconCaller` | Pairs forward/reverse hits: same contig, opposite strands, convergent orientation, size limits |
 | `ConsolidatedReport` | Writes the consolidated TSV (standard and qPCR modes); also exposes its rows for read-level calling |
-| `ReadLevelCaller` | FASTQ mode: calls amplicons on baited reads treated as tiny contigs, with the support rules (≥ 2 fragments, `--read-min-fraction` of informative ones) |
+| `ReadLevelCaller` | FASTQ mode: calls amplicons on baited reads treated as tiny contigs, one call per product size, with the support rules (≥ 2 fragments, `--read-min-fraction` of the informative ones: reads carrying a primer at the product's locus) |
 | `FastqDiagnostics` | FASTQ mode: explains assays the mini-assembly did not report though their oligos are in the reads |
 
 `BlastResult` (in `insilicopcr`) carries full alignment context (strand, subject coordinates, aligned sequences) and computes the 3'-end mismatch counts and weighted penalties. The rules themselves are documented on the [Amplicon Calling](Amplicon-Calling) page, and covered by unit tests under `src/test/java`.

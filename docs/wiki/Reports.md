@@ -63,9 +63,9 @@ merged with BBMerge, and each read or merged pair is treated as a tiny contig: t
 and the same hit filters, amplicon rules and probe requirement apply. A read only counts when it holds the
 **whole** product, both primers included.
 
-An assay the assembly did not report is reported from reads when at least **2 reads** (the two reads of one pair count once) hold a complete amplicon
+A product the assembly did not report is reported from reads when at least **2 reads** (the two reads of one pair count once) hold a complete amplicon
 **and** they make up at least **30% of the informative reads**: reads that carry the assay's forward or reverse
-primer and reach far enough from it to have shown the amplicon. A real target shows in most informative reads
+primer **at the product's locus** and reach far enough from it to have shown the amplicon. A real target shows in most informative reads
 (not all: a sequencing error in a primer or probe disqualifies a read under a strict `-m`), while a few
 contaminating or index-hopped reads from another library show in few of them. The 30% default comes from the
 two read sets in [#7](https://github.com/duceppemo/insilicoPCR/issues/7) (real targets at 68% and 83%, a
@@ -73,18 +73,45 @@ contaminant signal at 18%); change it with `--read-min-fraction` (0–1), or in 
 exclusivity work on runs that may carry contamination, lower it for noisy reads under a strict `-m`. The value
 used is recorded in `QAlog.txt`.
 
+**Which reads are informative.** A primer can match other places in the genome, all the more under permissive
+settings (`-m 1 --5p-truncation 8` accepts a 12-base match of a 20-mer, which a 100 Mb genome holds hundreds of
+times by chance). A read carrying the primer at such a place would never have shown the product, so it says
+nothing about it. A read is therefore informative only when the bases that follow the primer (up to 30, inside
+the product) resemble those of a read holding the product: at most 20% of them may differ. That threshold is
+deliberately loose: the reads of a related organism at the same locus still count, and they are what
+separates a contaminant from the sample itself. Reads carrying the primer elsewhere are counted apart and
+shown in the diagnostics (`… more read(s) carry a primer elsewhere in the genome`). When too few bases lie
+between the primers to compare (under 10), every read carrying a primer counts as informative.
+
+A low share can also be real biology rather than contamination: in a pooled or outbred sample, or for a
+multi-copy gene, only some copies of the locus may match the primers and probe within the mismatch budget. Such an assay
+stays at `WEAK_READ_SUPPORT` under the default; its `ReadDetail` gives the counts to judge by.
+
+**One assay, several products.** When the primers of an assay give amplicons of different sizes in the reads
+(the target, and another place where both primers happen to land), each product is called on its own support
+and gets its own row, like separate bands on a gel. Sizes within 10 bp of each other are one product: length
+variants of a single locus. A product the mini-assembly already reports is not repeated; a product it lacks is
+added even when the assembly reports the same assay at another size. As everywhere in insilicoPCR, every
+product a real PCR would amplify is reported, whatever its size: check `AmpliconSize` against the size the
+assay is designed for before calling a test positive.
+
 Read-level rows appear in `report.tsv` like any other amplicon, with the representative read as `Contig` (its
 coordinates are on that read) and a `Contig Description` starting with `FASTQ read-level call:` and giving the
 support, e.g. `complete amplicon in 17 of 25 informative read(s) (68%)`. Reads are counted per DNA fragment:
 the two unmerged reads of one pair count once, whether supporting or informative.
 
-Read-level calling only works when an amplicon fits in a read or a merged pair. **A FASTQ-mode negative is weaker
-evidence than a negative on a genome assembly**; for exclusivity or diagnostic work, confirm negatives on an
-assembly of the reads.
+Read-level calling only works when an amplicon fits in a read or a merged pair: at most the fragment length
+of the library, and no more than about twice the read length minus the overlap BBMerge needs (roughly 580 bp
+for 2 x 300 bp reads). A longer amplicon can only come from the mini-assembly, which often breaks inside
+high-copy regions such as rDNA; its `NOT_IN_READS` row states the longest amplicon the reads could have held
+(`CheckableLength`). **A FASTQ-mode negative is weaker
+evidence than a negative on a genome assembly**; for exclusivity or diagnostic work, and for assays with
+amplicons longer than the fragments, confirm negatives on an assembly of the reads.
 
 ### Diagnostics file
 
-Every assay the mini-assembly did not report but whose oligos are in the baited reads is listed in
+Every assay the mini-assembly did not report but whose oligos are in the baited reads, and every assay it
+reports only at another size than a product called from reads, is listed in
 `report_fastq_diagnostics.tsv` (named after the consolidated report, e.g. `report(1)_fastq_diagnostics.tsv`),
 summarized in `QAlog.txt`, and noted on the console or in the GUI log. Files kept per sample under
 `detailed_report/<sample>/`: `_merged.fastq.gz` / `_unmerged.fastq.gz` (BBMerge output, paired-end input only), `_baitedReads.fasta`
@@ -98,12 +125,12 @@ summarized in `QAlog.txt`, and noted on the console or in the GUI log. Files kep
 | `Assembly` | Why the mini-assembly did not report it; see below |
 | `ReadsWithForward` / `ReadsWithReverse` / `ReadsWithProbe` | Baited reads (or merged pairs) holding the whole oligo with an accepted hit; every oligo a read carries is counted, and a read matching several variants of a degenerate primer counts once |
 | `CheckableLength` | Longest amplicon a read carrying one of the primers could have held |
-| `ReadDetail` / `AssemblyDetail` | Details for the two classifications |
+| `ReadDetail` / `AssemblyDetail` | Details for the two classifications. `ReadDetail` lists each product seen in reads with its support and sizes, strongest first, and the reads set aside for carrying a primer elsewhere in the genome |
 
 | Status | Meaning |
 |---|---|
 | `CALLED_FROM_READS` | Reported in `report.tsv` from reads |
-| `WEAK_READ_SUPPORT` | Complete amplicons in reads, but fewer than 2 or under `--read-min-fraction` (default 30%) of informative reads. **Not reported, and warned about**: contamination, index hopping, a mixed sample, or a primer site repeated elsewhere in the genome. Inspect the reads before trusting either answer |
+| `WEAK_READ_SUPPORT` | Complete amplicons in reads, but fewer than 2 or under `--read-min-fraction` (default 30%) of informative reads. **Not reported, and warned about**: contamination, index hopping, a mixed sample, or a locus of which only some copies match the assay. Inspect the reads before trusting either answer |
 | `NOT_IN_READS` | Both primers are in the reads, but no read holds a complete amplicon. Conclusive only for amplicons up to `CheckableLength`; a longer amplicon cannot be ruled out |
 | `PARTIAL_BAIT` | Only some of the assay's primers are in the reads (e.g. one primer site diverged beyond `-m`); usually a true negative |
 
@@ -112,6 +139,7 @@ summarized in `QAlog.txt`, and noted on the console or in the GUI log. Files kep
 | `NOT_ASSEMBLED` | The forward or reverse primer has no accepted hit on any contig (for `PARTIAL_BAIT` rows, typically the primer missing from the reads too) |
 | `SPLIT_ACROSS_CONTIGS` | Both primers hit contigs, never the same one. `AssemblyDetail` lists up to 3 hits per primer (then `+N more`) and each one's distance to the contig end in the primer's extension direction; short distances on both sides mean the assembly broke inside the amplicon |
 | `NO_VALID_PAIR` | Both primers share a contig but form no reportable amplicon (orientation, `--min-length`/`--max-length`, or missing probe) |
+| `OTHER_PRODUCT_ONLY` | The assembly reports the assay, but only at another size (listed in `AssemblyDetail`); the product in `ReadDetail` was added from reads |
 
 `QAlog.txt` also records the Tadpole settings used. The command-line options `--tadpole-k`,
 `--tadpole-min-seed`, `--tadpole-min-cov` and `--tadpole-min-contig`, or **FASTQ settings…** in the GUI, tune

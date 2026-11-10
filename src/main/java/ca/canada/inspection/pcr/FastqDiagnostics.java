@@ -7,10 +7,12 @@ import ca.canada.inspection.pcr.ReadLevelCaller.ReadCall;
 import ca.canada.inspection.pcr.ReadLevelCaller.ReadEvidence;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Explains FASTQ-mode assays that the mini-assembly did not report although their
@@ -32,9 +34,9 @@ public final class FastqDiagnostics {
         /** At least one read holds a complete amplicon; the assay is reported from reads. */
         CALLED_FROM_READS("not in the mini-assembly, called from reads"),
         /**
-         * Some reads hold a complete amplicon, but too few of the reads that could have
-         * shown it: possibly contamination, index hopping, a mixed sample, or a primer
-         * site repeated elsewhere in the genome. Not reported.
+         * Some reads hold a complete amplicon, but too few of the reads that cover the
+         * same locus and could have shown it: possibly contamination, index hopping or
+         * a mixed sample. Not reported.
          */
         WEAK_READ_SUPPORT("complete amplicon in too few of the informative reads; not reported"),
         /** Both primers are in the reads, but no read holds a complete amplicon. */
@@ -60,7 +62,12 @@ public final class FastqDiagnostics {
         /** Forward and reverse primers hit contigs, but never the same contig. */
         SPLIT_ACROSS_CONTIGS,
         /** Primers share a contig, yet no amplicon passed the orientation, size or probe rules. */
-        NO_VALID_PAIR
+        NO_VALID_PAIR,
+        /**
+         * The assembly reports the assay, but only at another size: the product called
+         * from reads is one it lacks.
+         */
+        OTHER_PRODUCT_ONLY
     }
 
     /**
@@ -94,39 +101,65 @@ public final class FastqDiagnostics {
     }
 
     /**
+     * The read-level products to report next to the assembly's own rows: those with
+     * enough support that the assembly does not already report.
+     *
+     * @param products       an assay's products seen in reads
+     * @param assembledSizes amplicon sizes the assembly reports for the assay; {@code null}
+     *                       or empty when it reports none
+     */
+    public static List<ReadCall> missingFromAssembly(List<ReadCall> products, Set<Integer> assembledSizes) {
+        return products.stream()
+                .filter(ReadCall::isReportable)
+                .filter(product -> assembledSizes == null || !product.matchesAny(assembledSizes))
+                .toList();
+    }
+
+    /**
      * @param sample        FASTQ sample with its accepted contig hits attached
      * @param primers       expanded primer IDs and sequences of the run
      * @param reads         read-level evidence for the sample
      * @param contigLengths assembly contig lengths keyed by contig ID as BLAST reports it
-     * @return one finding per assay that the assembly did not report but whose oligos are in the reads
+     * @return one finding per assay that the assembly did not report but whose oligos are in the
+     *         reads, and per assay it reports at another size only than a product called from reads
      */
     public static List<Finding> assess(Sample sample, Map<String, String> primers, AmpliconOptions options,
                                        ReadEvidence reads, Map<String, Integer> contigLengths) {
-        Set<String> reported = ConsolidatedReport.reportedAssays(sample, primers, options);
+        Map<String, Set<Integer>> assembled = ConsolidatedReport.reportedSizes(sample, primers, options);
         Map<String, List<BlastResult>> hits = sample.blastResults();
         List<Finding> findings = new ArrayList<>();
 
         for (Map.Entry<String, PrimerGroup> entry : ConsolidatedReport.groupByAssay(primers.keySet()).entrySet()) {
             String assay = entry.getKey();
             PrimerGroup group = entry.getValue();
-            if (group.forward.isEmpty() || group.reverse.isEmpty() || reported.contains(assay)) {
+            if (group.forward.isEmpty() || group.reverse.isEmpty()) {
                 continue;
             }
             ReadsWithOligo counts = new ReadsWithOligo(reads.readsCarrying(group.forward),
                     reads.readsCarrying(group.reverse), reads.readsCarrying(group.probe));
+            int checkable = reads.checkableLength().getOrDefault(assay, 0);
+            List<ReadCall> products = byStrength(reads.products(assay));
+
+            Set<Integer> assembledSizes = assembled.get(assay);
+            if (assembledSizes != null) {
+                // The assembly reports the assay: only a product it lacks needs explaining.
+                List<ReadCall> missing = missingFromAssembly(products, assembledSizes);
+                if (!missing.isEmpty()) {
+                    findings.add(new Finding(sample.getName(), assay, Status.CALLED_FROM_READS,
+                            Assembly.OTHER_PRODUCT_ONLY, counts, checkable, describe(missing),
+                            "reports " + join(assembledSizes) + " bp only"));
+                }
+                continue;
+            }
             if (counts.total() == 0) {
                 continue; // nothing in the reads: an ordinary negative
             }
-            int checkable = reads.checkableLength().getOrDefault(assay, 0);
-            ReadCall call = reads.calls().get(assay);
 
             Status status;
             String readDetail;
-            if (call != null) {
-                status = call.isReportable() ? Status.CALLED_FROM_READS : Status.WEAK_READ_SUPPORT;
-                readDetail = "complete amplicon in " + call.supportSummary() + ", size(s) "
-                        + call.sizes().stream().map(String::valueOf).reduce((a, b) -> a + "," + b).orElse("") + " bp"
-                        + (call.isReportable() ? "" : "; a read-level call needs " + call.thresholdSummary());
+            if (!products.isEmpty()) {
+                status = products.getFirst().isReportable() ? Status.CALLED_FROM_READS : Status.WEAK_READ_SUPPORT;
+                readDetail = describe(products);
             } else if (counts.forward() == 0 || counts.reverse() == 0) {
                 status = Status.PARTIAL_BAIT;
                 readDetail = "no read carries the " + (counts.forward() == 0 ? "forward" : "reverse") + " primer";
@@ -140,6 +173,43 @@ public final class FastqDiagnostics {
                     readDetail, assembly.detail()));
         }
         return findings;
+    }
+
+    /** Reportable products first, then by decreasing support. */
+    private static List<ReadCall> byStrength(List<ReadCall> products) {
+        return products.stream()
+                .sorted(Comparator.comparing((ReadCall product) -> !product.isReportable())
+                        .thenComparing(Comparator.comparingInt(ReadCall::supportingReads).reversed())
+                        .thenComparing(ReadCall::sizeSummary))
+                .toList();
+    }
+
+    /**
+     * What the reads show, strongest product first, e.g. {@code complete amplicon in 16
+     * of 20 informative read(s) (80%), size(s) 100 bp; 597 more read(s) carry a primer
+     * elsewhere in the genome}.
+     */
+    private static String describe(List<ReadCall> products) {
+        List<String> parts = new ArrayList<>();
+        for (ReadCall product : products) {
+            StringBuilder part = new StringBuilder(parts.isEmpty() ? "" : "also ")
+                    .append("complete amplicon in ").append(product.supportSummary())
+                    .append(", size(s) ").append(product.sizeSummary()).append(" bp");
+            if (!product.isReportable()) {
+                part.append(parts.isEmpty() ? "; a read-level call needs " + product.thresholdSummary()
+                        : ", not reported");
+            }
+            if (product.elsewhereReads() > 0) {
+                part.append("; ").append(product.elsewhereReads())
+                        .append(" more read(s) carry a primer elsewhere in the genome");
+            }
+            parts.add(part.toString());
+        }
+        return String.join("; ", parts);
+    }
+
+    private static String join(Set<Integer> sizes) {
+        return sizes.stream().map(String::valueOf).collect(Collectors.joining(","));
     }
 
     private record AssemblyFinding(Assembly kind, String detail) {

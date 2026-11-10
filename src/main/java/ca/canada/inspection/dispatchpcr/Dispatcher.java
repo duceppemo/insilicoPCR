@@ -52,7 +52,13 @@ public final class Dispatcher {
             printHelp(formatter, options);
             System.exit(2);
         } catch (RuntimeException e) {
-            e.printStackTrace(System.err);
+            // A failure the user can act on is its message; anything else is a bug and
+            // keeps the stack trace a report of it needs.
+            if (CliErrors.isForTheUser(e)) {
+                CliErrors.lines(e).forEach(System.err::println);
+            } else {
+                e.printStackTrace(System.err);
+            }
             System.exit(1);
         }
     }

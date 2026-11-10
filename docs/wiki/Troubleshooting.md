@@ -56,6 +56,22 @@ If a tool is reported missing:
 - keep the `runtime/` folder beside the launcher
 - do not move files out of the release folder
 
+BBMerge, used in FASTQ mode for paired reads, also needs `runtime/common/bbmap/networks/bbmerge.bbnet.gz`. In a source checkout, `scripts/dev/verify-runtime-layout.sh` lists anything missing.
+
+## FASTQ run fails with `truncated or corrupt input`
+
+The full message may also say `There appear to be different numbers of reads in the paired input files`, even though the files are intact. This happens with releases before 0.9.0 on multi-member (concatenated) `.fastq.gz` files, which is the default output of Illumina bcl-convert and DRAGEN. The bundled BBTools 39.94 stopped reading at a gzip member boundary whenever BBDuk ran on more than one thread.
+
+Upgrade to 0.9.0 or newer, which bundles BBTools 40.04. The files are then read completely, with no repacking needed.
+
+## FASTQ run aborts with `OutOfMemoryError`
+
+Releases before 0.9.0 ran the second baiting pass with the `-m` mismatch budget as BBDuk's `hdist`, and on large samples with `-m 2` or more its k-mer table outgrew any heap. Since 0.9.0 that pass runs with `hdist=0`, and `-m` still applies to primer baiting and amplicon calling. Upgrade.
+
+## An assay is negative in FASTQ mode but positive on an assembly
+
+A FASTQ-mode negative is weaker evidence than an assembly-mode one: the mini-assembly can miss the target region or break inside the amplicon. Since 0.10.0 such assays are, where the reads support them, called from the reads themselves (`FASTQ read-level call` in `report.tsv`). Every missed assay whose oligos are in the reads is listed in `consolidated_report/report_fastq_diagnostics.tsv`, with the reason. See [FASTQ mode and false negatives](Reports#fastq-mode-and-false-negatives).
+
 ## Primer file errors
 
 Primer FASTA IDs must end with:

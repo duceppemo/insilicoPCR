@@ -3,6 +3,7 @@ package ca.canada.inspection.insilicopcr;
 import ca.canada.inspection.dispatchpcr.Dispatcher;
 import ca.canada.inspection.insilicopcr.gel.PaginatedGelViewer;
 import ca.canada.inspection.pcr.AmpliconOptions;
+import ca.canada.inspection.pcr.HtmlReport;
 import ca.canada.inspection.insilicopcr.ui.AmpliconSettingsDialog;
 import ca.canada.inspection.insilicopcr.ui.AmpliconSettingsDialog.AmpliconSettings;
 import ca.canada.inspection.insilicopcr.ui.FastqSettingsDialog;
@@ -67,6 +68,7 @@ public class MainRun extends Application {
     private ProgressBar mainProgress;
     private ProgressBar blastProgress;
     private Button gelButton;
+    private Button htmlButton;
     private Button runButton;
     private Scene scene;
     private Stage primaryStage;
@@ -293,6 +295,11 @@ public class MainRun extends Application {
         gelButton.setDisable(true);
         gelButton.setOnAction(event -> displayGelImage());
 
+        htmlButton = new Button("View HTML Report");
+        htmlButton.setMaxWidth(Double.MAX_VALUE);
+        htmlButton.setDisable(true);
+        htmlButton.setOnAction(event -> viewHtmlReport());
+
         var previousRunButton = new Button("Open Previous Run");
         previousRunButton.setMaxWidth(Double.MAX_VALUE);
         previousRunButton.setOnAction(event -> openPreviousRun());
@@ -305,10 +312,11 @@ public class MainRun extends Application {
         reportButton.setMaxWidth(Double.MAX_VALUE);
         reportButton.setOnAction(event -> openReportOnly());
 
-        HBox buttons = new HBox(8, gelButton, previousRunButton, runButton, reportButton);
+        HBox buttons = new HBox(8, gelButton, htmlButton, previousRunButton, runButton, reportButton);
         buttons.setAlignment(Pos.CENTER);
         buttons.setPrefHeight(34);
         HBox.setHgrow(gelButton, Priority.ALWAYS);
+        HBox.setHgrow(htmlButton, Priority.ALWAYS);
         HBox.setHgrow(previousRunButton, Priority.ALWAYS);
         HBox.setHgrow(runButton, Priority.ALWAYS);
         HBox.setHgrow(reportButton, Priority.ALWAYS);
@@ -353,6 +361,7 @@ public class MainRun extends Application {
         currentlyRunning.set(true);
         runButton.setDisable(true);
         gelButton.setDisable(true);
+        htmlButton.setDisable(true);
         showProgressBars(true);
         mainProgress.progressProperty().unbind();
         mainProgress.setProgress(ProgressBar.INDETERMINATE_PROGRESS);
@@ -386,12 +395,14 @@ public class MainRun extends Application {
             currentlyRunning.set(false);
             dependencies = runningTask.dependencies();
             gelButton.setDisable(false);
+            htmlButton.setDisable(false);
             showProgressBars(false);
         });
         runningTask.setOnFailed(event -> {
             runButton.setDisable(false);
             currentlyRunning.set(false);
             gelButton.setDisable(true);
+            htmlButton.setDisable(true);
             showProgressBars(false);
 
             Throwable error = runningTask.getException();
@@ -473,6 +484,19 @@ public class MainRun extends Application {
             PaginatedGelViewer.show(scene, latestConsolidatedReport(), new HashMap<>());
         } catch (Exception e) {
             JOptionPane.showMessageDialog(null, "Unable to create gel image:\n" + e.getMessage());
+        }
+    }
+
+    /** Opens the last run's HTML report in the system browser. */
+    private void viewHtmlReport() {
+        try {
+            Path html = HtmlReport.pathFor(latestConsolidatedReport());
+            if (!Files.isRegularFile(html)) {
+                throw new IllegalStateException("HTML report not found: " + html);
+            }
+            getHostServices().showDocument(html.toUri().toString());
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(null, "Unable to open the HTML report:\n" + e.getMessage());
         }
     }
 

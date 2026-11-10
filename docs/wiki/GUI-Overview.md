@@ -39,6 +39,7 @@ On Linux, starting the launcher from a terminal is recommended because startup m
 | Button | What it does |
 |---|---|
 | **View Gel Image** | Shows the synthetic gel of the last run started in this window, whatever the output field holds by then |
+| **View HTML Report** | Opens the [HTML report](Reports#html-report) of the last run started in this window in your web browser. Enabled once a run has finished; the report of an earlier run is `consolidated_report/report.html` in its output folder |
 | **Open Previous Run** | Asks for an earlier run's output folder and shows the gel of its latest consolidated report. The lanes come from the run's own input list in `QAlog.txt`, one per sample: paired FASTQ mates form a single lane and non-sequence files are left out, even if the inputs have since been moved |
 | **Open Report TSV** | Asks for any consolidated report `.tsv` and shows it as a gel; lanes are only the samples the report has rows for |
 

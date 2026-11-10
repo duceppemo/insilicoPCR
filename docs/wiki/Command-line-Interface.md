@@ -50,10 +50,11 @@ usage: java -jar insilicoPCR.jar -i <input> -o <output> -p <primers> [-t
                                 tolerate roughly one more mismatch;
                                 default: same as -m
     --read-min-fraction <0-1>   FASTQ mode: share of informative reads
-                                (carrying a primer and long enough) that
-                                must hold a complete amplicon to call an
-                                assay the mini-assembly missed from reads;
-                                default: 0.3
+                                (carrying a primer at the product's locus
+                                and long enough) that must hold a complete
+                                amplicon to call a product the
+                                mini-assembly missed from reads; default:
+                                0.3
  -t,--threads <n>               Number of worker threads; default:
                                 available processors
     --tadpole-k <n>             FASTQ mode: Tadpole k-mer length; default:

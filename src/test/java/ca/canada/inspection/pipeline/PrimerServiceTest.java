@@ -64,7 +64,10 @@ class PrimerServiceTest {
                 ca.canada.inspection.pcr.AmpliconOptions.withMismatches(0), false);
         var directories = PipelineDirectories.create(out);
 
-        Map<String, String> primers = new PrimerService().loadAndPrepare(config, directories);
+        PrimerService.PreparedPrimers prepared = new PrimerService().loadAndPrepare(config, directories);
+        Map<String, String> primers = prepared.primers();
+
+        assertTrue(prepared.expectedSizes().isEmpty());
 
         assertEquals("ACGTACGT", primers.get("assay-F")); // lines joined, uppercased
         assertEquals("ACAT", primers.get("assay-R_0"));   // R expanded to A/G
@@ -93,6 +96,50 @@ class PrimerServiceTest {
     @Test
     void blankSequencesAreRejected() {
         assertThrows(RuntimeException.class, () -> PrimerService.expand(map("x-F", "   ")));
+    }
+
+    @Test
+    void headerDescriptionIsNotPartOfThePrimerId() throws java.io.IOException {
+        // Before, the whole header was the ID: BLAST named the primer "assay-F", no hit
+        // matched "assay-F forward primer", and the assay was silently never reported.
+        java.nio.file.Path primerFile = java.nio.file.Files.writeString(dir.resolve("described.fasta"),
+                ">assay-F forward primer, Smith 2010\nACGT\n>assay-R\treverse\nACGT\n");
+
+        PrimerService.PrimerFile file = PrimerService.read(primerFile);
+
+        assertEquals(java.util.List.of("assay-F", "assay-R"), java.util.List.copyOf(file.sequences().keySet()));
+        assertTrue(file.expectedSizes().isEmpty());
+        assertEquals(Map.of("assay-F", "ACGT", "assay-R", "ACGT"), PrimerService.expand(file.sequences()));
+    }
+
+    @Test
+    void productSizesDeclaredInHeadersAreRead() throws java.io.IOException {
+        java.nio.file.Path primerFile = java.nio.file.Files.writeString(dir.resolve("sized.fasta"),
+                ">its-F size=420-450 other=575\nACGT\n>its-R\nACRT\n>plain-F\nACGT\n>plain-R\nACGT\n");
+        java.nio.file.Path input = java.nio.file.Files.writeString(dir.resolve("in2.fasta"), ">c\nACGT\n");
+        var config = new PipelineConfig(input, dir.resolve("out2"), primerFile, 1, 1e5,
+                ca.canada.inspection.pcr.AmpliconOptions.withMismatches(0), false);
+
+        PrimerService.PreparedPrimers prepared = new PrimerService().loadAndPrepare(config,
+                PipelineDirectories.create(dir.resolve("out2")));
+
+        assertEquals(java.util.Set.of("its-F", "its-R_0", "its-R_1", "plain-F", "plain-R"), prepared.primers().keySet());
+        assertEquals("target", prepared.expectedSizes().labelText("its", 420));
+        assertEquals("other", prepared.expectedSizes().labelText("its", 580));
+        assertEquals("unexpected", prepared.expectedSizes().labelText("its", 100));
+        assertEquals("", prepared.expectedSizes().labelText("plain", 100));
+    }
+
+    @Test
+    void unreadableProductSizeNamesThePrimerAndTheFile() throws java.io.IOException {
+        java.nio.file.Path primerFile = java.nio.file.Files.writeString(dir.resolve("bad.fasta"),
+                ">assay-F size=big\nACGT\n>assay-R\nACGT\n");
+
+        PipelineException error = assertThrows(PipelineException.class, () -> PrimerService.read(primerFile));
+
+        assertTrue(error.getMessage().startsWith("Primer assay-F: cannot read the product size 'big' in 'size=big'."),
+                error.getMessage());
+        assertTrue(error.getMessage().endsWith("(primer file " + primerFile + ")"), error.getMessage());
     }
 
 }

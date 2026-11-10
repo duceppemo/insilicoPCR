@@ -1,18 +1,22 @@
 package ca.canada.inspection.pipeline;
 
 import ca.canada.inspection.dispatchpcr.AppPaths;
+import ca.canada.inspection.dispatchpcr.Dispatcher;
 import ca.canada.inspection.insilicopcr.Methods;
 import ca.canada.inspection.insilicopcr.Sample;
 import ca.canada.inspection.pcr.BlastReports;
 import ca.canada.inspection.pcr.ConsolidatedReport;
+import ca.canada.inspection.pcr.HtmlReport;
 import ca.canada.inspection.pcr.ReadLevelCaller.ReadEvidence;
 import javafx.concurrent.Task;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
@@ -46,7 +50,10 @@ public final class PcrPipelineTask extends Task<Void> {
             Methods.logMessage(config.outputField(), "Created Sample Dictionary");
             updateProgress(3, 13);
 
-            HashMap<String, String> primerDict = Methods.parseFastaToDictionary(config.primerFile());
+            // Same reader as the command line: IDs end at the first blank, and the rest of
+            // the header can declare product sizes.
+            PrimerService.PrimerFile primerFile = PrimerService.read(config.primerFile());
+            HashMap<String, String> primerDict = new HashMap<>(primerFile.sequences());
             Methods.logMessage(config.outputField(), "Created Primer Dictionary");
             updateProgress(4, 13);
 
@@ -103,18 +110,24 @@ public final class PcrPipelineTask extends Task<Void> {
 
             Path report = ConsolidatedReport.write(directories.consolidatedDir(), sampleDict, primerDict,
                     config.ampliconOptions(), FastqDiagnosticsStage.readLevelRows(sampleDict, primerDict,
-                            config.ampliconOptions(), readEvidence));
+                            config.ampliconOptions(), readEvidence), primerFile.expectedSizes());
             Methods.logMessage(config.outputField(), "Created Consolidated Report");
             var diagnostics = FastqDiagnosticsStage.run(report, sampleDict, primerDict, config.ampliconOptions(),
                     readEvidence);
             diagnostics.logLines().forEach(line -> Methods.logMessage(config.outputField(), line));
+            Path html = HtmlReport.write(report, sampleDict.keySet(), RunDetails.fastqSampleNames(sampleDict),
+                    primerDict.keySet(), primerFile.expectedSizes(), diagnostics.findings(),
+                    RunDetails.of(Dispatcher.VERSION, config.inputFile(), config.primerFile(), config.outDir(),
+                            config.ampliconOptions(), fastqPresent ? config.readMinFraction() : null));
+            Methods.logMessage(config.outputField(), "Created HTML Report: " + html);
             updateProgress(12, 13);
 
             // Rewritten each run, like the command line: an output folder reused by several
             // runs must not keep the first run's header with every later run's FASTQ lines.
             LogFiles.writeQaLog(config.outDir(), config.inputFile(), config.primerFile(), dependencies);
-            LogFiles.appendQaLog(config.outDir(), diagnostics.qaLogLines(config.tadpole(),
-                    config.readMinFraction()));
+            List<String> qaLines = new ArrayList<>(primerFile.expectedSizes().qaLogLines());
+            qaLines.addAll(diagnostics.qaLogLines(config.tadpole(), config.readMinFraction()));
+            LogFiles.appendQaLog(config.outDir(), qaLines);
             var seconds = (System.nanoTime() - startTime) / 1_000_000_000L;
             Methods.logMessage(config.outputField(), "Done in " + seconds + " seconds");
             updateProgress(13, 13);

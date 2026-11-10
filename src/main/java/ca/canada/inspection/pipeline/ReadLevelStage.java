@@ -19,6 +19,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BooleanSupplier;
@@ -100,7 +101,18 @@ public final class ReadLevelStage {
         }
         runBlast(settings, blastThreads, fasta, hitsFile);
         BlastTsv.prependHeader(hitsFile);
+        return callFromHits(name, hitsFile, fasta, reads, primers, options, settings.minSupportFraction());
+    }
 
+    /**
+     * Calls amplicons from the primer hits on a sample's baited reads.
+     *
+     * @param hitsFile BLAST hits of the primers on the reads of {@code fasta}
+     * @param fasta    the reads searched, as written by {@link #writeReadsFasta}
+     */
+    static ReadEvidence callFromHits(String name, Path hitsFile, Path fasta, ReadSet reads,
+                                     Map<String, String> primers, AmpliconOptions options,
+                                     double minSupportFraction) {
         Sample readSample = new Sample();
         readSample.setName(name);
         readSample.setFileType("reads");
@@ -118,7 +130,33 @@ public final class ReadLevelStage {
             throw new PipelineException("Could not parse read-level BLAST output: " + hitsFile, e);
         }
         return ReadLevelCaller.evaluate(readSample, reads.lengths(), reads.fragments(), primers, options,
-                settings.minSupportFraction());
+                minSupportFraction, readIds -> readSequences(fasta, readIds));
+    }
+
+    /**
+     * Sequences of the given reads from the FASTA written by {@link #writeReadsFasta}
+     * (one sequence line per record). Read on demand, for the few reads that carry a
+     * primer, rather than kept in memory for every baited read.
+     */
+    static Map<String, String> readSequences(Path fasta, Set<String> readIds) {
+        Map<String, String> sequences = new HashMap<>();
+        try (BufferedReader reader = Files.newBufferedReader(fasta, StandardCharsets.UTF_8)) {
+            String header;
+            while ((header = reader.readLine()) != null && sequences.size() < readIds.size()) {
+                String sequence = reader.readLine();
+                if (!header.startsWith(">") || sequence == null) {
+                    throw new PipelineException("Malformed baited reads FASTA: " + fasta + " near: " + header);
+                }
+                int space = header.indexOf(' ');
+                String id = header.substring(1, space < 0 ? header.length() : space);
+                if (readIds.contains(id)) {
+                    sequences.put(id, sequence);
+                }
+            }
+        } catch (IOException e) {
+            throw new PipelineException("Could not read baited reads FASTA: " + fasta, e);
+        }
+        return sequences;
     }
 
     private static void runBlast(Settings settings, int blastThreads, Path fasta, Path hitsFile) {

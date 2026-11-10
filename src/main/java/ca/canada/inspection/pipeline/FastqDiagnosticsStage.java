@@ -71,8 +71,7 @@ public final class FastqDiagnosticsStage {
             List<Finding> weak = withStatus(Status.WEAK_READ_SUPPORT);
             if (!weak.isEmpty()) {
                 lines.add("FASTQ mode WARNING: " + weak.size() + " assay(s) have a complete amplicon in too few"
-                        + " of the informative reads and are NOT reported (contamination, mixed sample or repeated primer"
-                        + " site?):");
+                        + " of the informative reads and are NOT reported (contamination or mixed sample?):");
                 weak.forEach(finding -> lines.add("  " + finding.message()));
             }
             List<Finding> notInReads = withStatus(Status.NOT_IN_READS);
@@ -98,8 +97,11 @@ public final class FastqDiagnosticsStage {
     }
 
     /**
-     * Report rows for assays the mini-assembly did not report but reads hold, keyed
+     * Report rows for products the mini-assembly did not report but reads hold, keyed
      * by sample name; pass them to {@link ConsolidatedReport#write(Path, Map, Map, AmpliconOptions, Map)}.
+     * A product the assembly reports is not repeated, but an assay the assembly reports
+     * at another size only (both primers landing elsewhere) still gets its read-level
+     * product.
      */
     public static Map<String, List<List<String>>> readLevelRows(Map<String, Sample> samples,
                                                                 Map<String, String> primers,
@@ -111,11 +113,12 @@ public final class FastqDiagnosticsStage {
             if (sample == null) {
                 return;
             }
-            Set<String> reported = ConsolidatedReport.reportedAssays(sample, primers, options);
-            List<List<String>> sampleRows = new TreeMap<>(reads.calls()).values().stream()
-                    .filter(call -> !reported.contains(call.assay()) && call.isReportable())
-                    .map(ReadLevelCaller::reportRow)
-                    .toList();
+            Map<String, Set<Integer>> assembled = ConsolidatedReport.reportedSizes(sample, primers, options);
+            List<List<String>> sampleRows = new ArrayList<>();
+            new TreeMap<>(reads.calls()).forEach((assay, products) ->
+                    FastqDiagnostics.missingFromAssembly(products, assembled.get(assay)).stream()
+                            .map(ReadLevelCaller::reportRow)
+                            .forEach(sampleRows::add));
             if (!sampleRows.isEmpty()) {
                 rows.put(sampleName, sampleRows);
             }

@@ -5,6 +5,7 @@ import ca.canada.inspection.pcr.FastqDiagnostics.Assembly;
 import ca.canada.inspection.pcr.FastqDiagnostics.Finding;
 import ca.canada.inspection.pcr.FastqDiagnostics.ReadsWithOligo;
 import ca.canada.inspection.pcr.FastqDiagnostics.Status;
+import ca.canada.inspection.pcr.ReadLevelCaller.ReadCall;
 import ca.canada.inspection.pcr.ReadLevelCaller.ReadEvidence;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -100,6 +101,76 @@ class FastqDiagnosticsTest {
 
         assertEquals(Status.WEAK_READ_SUPPORT, finding.status());
         assertTrue(finding.readDetail().contains("needs at least 2 reads"), finding.readDetail());
+    }
+
+    @Test
+    void productTheAssemblyReportsAtAnotherSizeOnlyIsStillCalledFromReads() {
+        // The assembly holds the assay only where both primers land elsewhere (181 bp);
+        // the reads hold the 70 bp product. Both belong in the report.
+        Sample sample = fastqSample();
+        sample.addBlastResult("assay-F", TestHits.plusHit("assay-F", "contig_0", 101));
+        sample.addBlastResult("assay-R", TestHits.minusHit("assay-R", "contig_0", 262));
+        sample.addBlastResult("assay-P", TestHits.plusHit("assay-P", "contig_0", 200));
+        ReadEvidence evidence = readsWithAmplicon(3);
+
+        Finding finding = assess(sample, evidence, Map.of()).getFirst();
+
+        assertEquals(Status.CALLED_FROM_READS, finding.status());
+        assertEquals(Assembly.OTHER_PRODUCT_ONLY, finding.assembly());
+        assertEquals("reports 181 bp only", finding.assemblyDetail());
+        assertTrue(finding.readDetail().startsWith("complete amplicon in 3 of 3 informative read(s) (100%), size(s) 70 bp"),
+                finding.readDetail());
+        assertEquals(1, FastqDiagnostics.missingFromAssembly(evidence.products("assay"), Set.of(181)).size());
+    }
+
+    @Test
+    void productTheAssemblyAlreadyReportsIsNotRepeated() {
+        // 72 bp on a contig, 70 bp in reads: one product, give or take a length variant.
+        Sample sample = fastqSample();
+        sample.addBlastResult("assay-F", TestHits.plusHit("assay-F", "contig_0", 101));
+        sample.addBlastResult("assay-R", TestHits.minusHit("assay-R", "contig_0", 153));
+        sample.addBlastResult("assay-P", TestHits.plusHit("assay-P", "contig_0", 125));
+        ReadEvidence evidence = readsWithAmplicon(3);
+
+        assertTrue(assess(sample, evidence, Map.of()).isEmpty());
+        assertTrue(FastqDiagnostics.missingFromAssembly(evidence.products("assay"), Set.of(72)).isEmpty());
+    }
+
+    @Test
+    void weakProductIsNotAddedToAnAssayTheAssemblyReports() {
+        Sample sample = fastqSample();
+        sample.addBlastResult("assay-F", TestHits.plusHit("assay-F", "contig_0", 101));
+        sample.addBlastResult("assay-R", TestHits.minusHit("assay-R", "contig_0", 262));
+        sample.addBlastResult("assay-P", TestHits.plusHit("assay-P", "contig_0", 200));
+
+        assertTrue(assess(sample, readsWithAmplicon(1), Map.of()).isEmpty(), "one read is not a call");
+    }
+
+    @Test
+    void detailListsEachProductAndTheReadsCarryingAPrimerElsewhere() {
+        ReadCall weak = new ReadCall("assay", 16, 63, 554, List.of(), Set.of(100), 0.3);
+        ReadEvidence evidence = new ReadEvidence(Map.of("assay-F", Set.of("read_1"), "assay-R", Set.of("read_2")),
+                Map.of("assay", List.of(weak)), Map.of("assay", 240));
+
+        Finding finding = assess(fastqSample(), evidence, Map.of()).getFirst();
+
+        assertEquals(Status.WEAK_READ_SUPPORT, finding.status());
+        assertEquals("complete amplicon in 16 of 63 informative read(s) (25%), size(s) 100 bp;"
+                + " a read-level call needs at least 2 reads or read pairs and 30% of informative reads;"
+                + " 554 more read(s) carry a primer elsewhere in the genome", finding.readDetail());
+
+        // A reportable product comes first; a weak one is listed after it.
+        ReadCall strong = new ReadCall("assay", 1553, 1799, 0, List.of(), Set.of(258, 266, 267), 0.3);
+        ReadCall offTarget = new ReadCall("assay", 3, 3924, 0, List.of(), Set.of(119), 0.3);
+        evidence = new ReadEvidence(Map.of("assay-F", Set.of("read_1"), "assay-R", Set.of("read_2")),
+                Map.of("assay", List.of(offTarget, strong)), Map.of("assay", 240));
+
+        finding = assess(fastqSample(), evidence, Map.of()).getFirst();
+
+        assertEquals(Status.CALLED_FROM_READS, finding.status());
+        assertEquals("complete amplicon in 1553 of 1799 informative read(s) (86%), size(s) 258,266,267 bp;"
+                + " also complete amplicon in 3 of 3924 informative read(s) (0%), size(s) 119 bp, not reported",
+                finding.readDetail());
     }
 
     @Test

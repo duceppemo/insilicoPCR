@@ -6,15 +6,19 @@ import ca.canada.inspection.pcr.ConsolidatedReport.PrimerGroup;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.stream.Collectors;
 
 /**
  * Calls amplicons directly on baited reads (FASTQ mode).
@@ -25,6 +29,10 @@ import java.util.TreeSet;
  * the same hit filters and amplicon/probe rules as the assembly
  * ({@link ConsolidatedReport#rows}), so a read-level call means exactly what a
  * contig-level call means.</p>
+ *
+ * <p>An assay can give more than one product in a sample (the target, and another
+ * place where both primers happen to land). Each product is called on its own
+ * support, like bands on a gel: see {@link #PRODUCT_SIZE_GAP}.</p>
  */
 public final class ReadLevelCaller {
 
@@ -41,23 +49,82 @@ public final class ReadLevelCaller {
     public static final int MIN_SUPPORTING_READS = 2;
 
     /**
+     * Amplicon sizes at most this many bp apart are one product: length variants of one
+     * locus (indels between gene copies or individuals, a homopolymer miscounted by the
+     * sequencer). Sizes further apart are separate products with their own support.
+     */
+    public static final int PRODUCT_SIZE_GAP = 10;
+
+    /**
+     * Bases next to a primer's 3' end, inside the product, compared to tell whether a
+     * read carrying the primer comes from the product's locus.
+     */
+    static final int LOCUS_WINDOW = 30;
+
+    /** Below this many comparable bases a read's locus cannot be judged; it counts as informative. */
+    static final int MIN_LOCUS_WINDOW = 10;
+
+    /**
+     * Share of the compared bases that may differ (edit distance) from a supporting read
+     * for a read to count as coming from the same locus. Generous on purpose: the reads
+     * of a related organism at the homologous locus must still count, since they are
+     * what tells a minor contaminant from the sample itself; a primer matching an
+     * unrelated place in the genome differs in about half of the bases.
+     */
+    static final double MAX_LOCUS_DIVERGENCE = 0.2;
+
+    /** Most frequent distinct flanks of the supporting reads that a read is compared to. */
+    private static final int MAX_REFERENCE_WINDOWS = 20;
+
+    /** Looks up the sequences of baited reads by read ID. */
+    @FunctionalInterface
+    public interface ReadSequences {
+        /** No sequences: every read carrying a primer counts as coming from the product's locus. */
+        ReadSequences NONE = readIds -> Map.of();
+
+        /** @return sequence per read ID; reads that cannot be found are left out */
+        Map<String, String> fetch(Set<String> readIds);
+    }
+
+    /**
+     * One product of an assay, as the reads show it.
+     *
      * @param supportingReads  distinct reads (mates of one unmerged pair count once) holding a
      *                         complete, reportable amplicon
-     * @param informativeReads distinct reads (likewise) carrying the assay's forward or reverse
-     *                         primer that extend far enough to have held the amplicon
+     * @param informativeReads distinct reads (likewise) that would have shown the product had
+     *                         every one of them carried it: they carry the assay's forward or
+     *                         reverse primer at the product's locus and extend far enough to
+     *                         hold the amplicon. The supporting reads are among them.
+     * @param elsewhereReads   distinct reads (likewise) long enough too, but carrying the primer
+     *                         at another place in the genome; they say nothing about this product
      * @param row              report row on the best-matching representative read
      * @param sizes            amplicon sizes observed across the supporting reads
      * @param minSupportFraction share of informative reads required to report the call
      */
-    public record ReadCall(String assay, int supportingReads, int informativeReads, List<String> row,
-                           Set<Integer> sizes, double minSupportFraction) {
+    public record ReadCall(String assay, int supportingReads, int informativeReads, int elsewhereReads,
+                           List<String> row, Set<Integer> sizes, double minSupportFraction) {
+        public ReadCall {
+            sizes = Collections.unmodifiableSortedSet(new TreeSet<>(sizes));
+        }
+
         public double supportFraction() {
             return informativeReads == 0 ? 0.0 : (double) supportingReads / informativeReads;
         }
 
-        /** Whether the support is strong enough to report the assay from reads. */
+        /** Whether the support is strong enough to report the product from reads. */
         public boolean isReportable() {
             return supportingReads >= MIN_SUPPORTING_READS && supportFraction() >= minSupportFraction;
+        }
+
+        /** Whether an amplicon of {@code size} bp is this product, give or take a length variant. */
+        public boolean matches(int size) {
+            SortedSet<Integer> sorted = (SortedSet<Integer>) sizes;
+            return size >= sorted.first() - PRODUCT_SIZE_GAP && size <= sorted.last() + PRODUCT_SIZE_GAP;
+        }
+
+        /** Whether any of {@code otherSizes} is this product. */
+        public boolean matchesAny(Collection<Integer> otherSizes) {
+            return otherSizes.stream().anyMatch(this::matches);
         }
 
         /** The reporting threshold, for messages. */
@@ -70,6 +137,11 @@ public final class ReadLevelCaller {
             return supportingReads + " of " + informativeReads + " informative read(s) ("
                     + percent(supportFraction()) + ")";
         }
+
+        /** The observed sizes, e.g. {@code 131,132}. */
+        public String sizeSummary() {
+            return sizes.stream().map(String::valueOf).collect(Collectors.joining(","));
+        }
     }
 
     /**
@@ -77,19 +149,27 @@ public final class ReadLevelCaller {
      *
      * @param readsWithOligo   IDs of the reads holding the whole oligo with an accepted hit,
      *                         per expanded oligo ID (every oligo a read carries is counted)
-     * @param calls            assays with at least one read holding a complete amplicon
+     * @param calls            per assay with at least one read holding a complete amplicon,
+     *                         its products by increasing size
      * @param checkableLength  per assay, the longest amplicon a read carrying one of
      *                         its primers could have held: from the primer's 5' end to
      *                         the read end in the primer's extension direction
      */
-    public record ReadEvidence(Map<String, Set<String>> readsWithOligo, Map<String, ReadCall> calls,
+    public record ReadEvidence(Map<String, Set<String>> readsWithOligo, Map<String, List<ReadCall>> calls,
                                Map<String, Integer> checkableLength) {
         public ReadEvidence {
             Map<String, Set<String>> copy = new HashMap<>();
             readsWithOligo.forEach((oligo, ids) -> copy.put(oligo, Set.copyOf(ids)));
             readsWithOligo = Map.copyOf(copy);
-            calls = Map.copyOf(calls);
+            Map<String, List<ReadCall>> callsCopy = new HashMap<>();
+            calls.forEach((assay, products) -> callsCopy.put(assay, List.copyOf(products)));
+            calls = Map.copyOf(callsCopy);
             checkableLength = Map.copyOf(checkableLength);
+        }
+
+        /** The products of {@code assay} seen in reads; empty when no read holds a complete amplicon. */
+        public List<ReadCall> products(String assay) {
+            return calls.getOrDefault(assay, List.of());
         }
 
         /**
@@ -109,20 +189,31 @@ public final class ReadLevelCaller {
     }
 
     /**
+     * As {@link #evaluate(Sample, Map, Map, Map, AmpliconOptions, double, ReadSequences)} with every
+     * read its own fragment, the default support fraction and no read sequences.
+     *
      * @param reads       pseudo-sample whose "contigs" are the baited reads: accepted
      *                    primer hits attached, read descriptions as contig descriptions
      * @param readLengths read lengths keyed by read ID
      */
     public static ReadEvidence evaluate(Sample reads, Map<String, Integer> readLengths,
                                         Map<String, String> primers, AmpliconOptions options) {
-        return evaluate(reads, readLengths, Map.of(), primers, options, DEFAULT_MIN_SUPPORT_FRACTION);
+        return evaluate(reads, readLengths, Map.of(), primers, options, DEFAULT_MIN_SUPPORT_FRACTION,
+                ReadSequences.NONE);
     }
 
-    /** As {@link #evaluate(Sample, Map, Map, Map, AmpliconOptions, double)} with every read its own fragment. */
+    /** As the full {@code evaluate} with every read its own fragment and no read sequences. */
     public static ReadEvidence evaluate(Sample reads, Map<String, Integer> readLengths,
                                         Map<String, String> primers, AmpliconOptions options,
                                         double minSupportFraction) {
-        return evaluate(reads, readLengths, Map.of(), primers, options, minSupportFraction);
+        return evaluate(reads, readLengths, Map.of(), primers, options, minSupportFraction, ReadSequences.NONE);
+    }
+
+    /** As the full {@code evaluate} with no read sequences. */
+    public static ReadEvidence evaluate(Sample reads, Map<String, Integer> readLengths,
+                                        Map<String, String> fragments, Map<String, String> primers,
+                                        AmpliconOptions options, double minSupportFraction) {
+        return evaluate(reads, readLengths, fragments, primers, options, minSupportFraction, ReadSequences.NONE);
     }
 
     /**
@@ -131,10 +222,13 @@ public final class ReadLevelCaller {
      *                           not listed are their own fragment
      * @param minSupportFraction share of informative fragments (0 to 1) that must hold the
      *                           amplicon for the call to be reported
+     * @param sequences          read sequences, used to tell reads at a product's locus from
+     *                           reads carrying a primer elsewhere in the genome
      */
     public static ReadEvidence evaluate(Sample reads, Map<String, Integer> readLengths,
                                         Map<String, String> fragments, Map<String, String> primers,
-                                        AmpliconOptions options, double minSupportFraction) {
+                                        AmpliconOptions options, double minSupportFraction,
+                                        ReadSequences sequences) {
         requireFraction(minSupportFraction);
         reads = withContainedHits(reads, readLengths);
         Map<String, List<BlastResult>> hits = reads.blastResults();
@@ -151,10 +245,24 @@ public final class ReadLevelCaller {
             rowsByAssay.computeIfAbsent(row.get(ConsolidatedReport.GENE_COLUMN), ignored -> new ArrayList<>()).add(row);
         }
         Map<String, PrimerGroup> groups = ConsolidatedReport.groupByAssay(primers.keySet());
-        Map<String, ReadCall> calls = new LinkedHashMap<>();
-        rowsByAssay.forEach((assay, rows) ->
-                calls.put(assay, call(assay, rows, pcrPrimerHits(hits, groups.get(assay)), readLengths, fragments,
-                        minSupportFraction)));
+
+        // Only reads carrying a primer of an assay with a product are compared by sequence.
+        Set<String> wanted = new HashSet<>();
+        for (String assay : rowsByAssay.keySet()) {
+            pcrPrimerHits(hits, groups.get(assay)).forEach(hit -> wanted.add(hit.queryID()));
+        }
+        Map<String, String> readSequences = wanted.isEmpty() ? Map.of() : sequences.fetch(wanted);
+
+        Map<String, List<ReadCall>> calls = new LinkedHashMap<>();
+        rowsByAssay.forEach((assay, rows) -> {
+            Evidence evidence = new Evidence(pcrPrimerHits(hits, groups.get(assay)), readLengths, fragments,
+                    readSequences, minSupportFraction);
+            List<ReadCall> products = new ArrayList<>();
+            for (List<List<String>> productRows : splitBySize(rows)) {
+                products.add(call(assay, productRows, evidence));
+            }
+            calls.put(assay, products);
+        });
 
         Map<String, Integer> checkable = new HashMap<>();
         for (Map.Entry<String, PrimerGroup> entry : groups.entrySet()) {
@@ -167,6 +275,38 @@ public final class ReadLevelCaller {
             }
         }
         return new ReadEvidence(readsWithOligo, calls, checkable);
+    }
+
+    /** Everything about one assay's reads that calling a product needs. */
+    private record Evidence(List<BlastResult> primerHits, Map<String, Integer> readLengths,
+                            Map<String, String> fragments, Map<String, String> sequences,
+                            double minSupportFraction) {
+        String fragment(String read) {
+            return fragments.getOrDefault(read, read);
+        }
+    }
+
+    /**
+     * Splits an assay's amplicons into products: runs of sizes with no gap above
+     * {@link #PRODUCT_SIZE_GAP}, by increasing size.
+     */
+    static List<List<List<String>>> splitBySize(List<List<String>> rows) {
+        List<List<String>> sorted = new ArrayList<>(rows);
+        sorted.sort(Comparator.comparingInt(ReadLevelCaller::size));
+        List<List<List<String>>> products = new ArrayList<>();
+        int previous = Integer.MIN_VALUE;
+        for (List<String> row : sorted) {
+            if (products.isEmpty() || size(row) - previous > PRODUCT_SIZE_GAP) {
+                products.add(new ArrayList<>());
+            }
+            products.getLast().add(row);
+            previous = size(row);
+        }
+        return products;
+    }
+
+    private static int size(List<String> row) {
+        return Integer.parseInt(row.get(ConsolidatedReport.AMPLICON_SIZE_COLUMN));
     }
 
     /**
@@ -228,26 +368,42 @@ public final class ReadLevelCaller {
         return Math.round(100 * fraction) + "%";
     }
 
-    private static ReadCall call(String assay, List<List<String>> rows, List<BlastResult> primerHits,
-                                 Map<String, Integer> readLengths, Map<String, String> fragments,
-                                 double minSupportFraction) {
+    private static ReadCall call(String assay, List<List<String>> rows, Evidence evidence) {
         // Evidence is counted per fragment: two unmerged mates of one pair are one molecule.
         Set<String> supporting = new HashSet<>();
         Set<Integer> sizes = new TreeSet<>();
+        Map<String, int[]> spans = new HashMap<>();
         for (List<String> row : rows) {
             String read = row.get(ConsolidatedReport.CONTIG_COLUMN);
-            supporting.add(fragments.getOrDefault(read, read));
-            sizes.add(Integer.parseInt(row.get(ConsolidatedReport.AMPLICON_SIZE_COLUMN)));
+            supporting.add(evidence.fragment(read));
+            sizes.add(size(row));
+            String[] location = row.get(ConsolidatedReport.LOCATION_COLUMN).split("-");
+            spans.putIfAbsent(read, new int[]{Integer.parseInt(location[0]), Integer.parseInt(location[1])});
         }
-        // Fragments that would have shown the amplicon had the target been there: a read
-        // carries a primer and reaches far enough from its 5' end. Supporting ones are among them.
-        int shortest = sizes.stream().mapToInt(Integer::intValue).min().orElseThrow();
+        int shortest = sizes.iterator().next();
+        Map<Character, List<String>> flanks = productFlanks(spans, evidence, shortest);
+
+        // Fragments that would have shown the product had they carried it: a read carries a
+        // primer at the product's locus and reaches far enough from the primer's 5' end.
+        // A read carrying the primer somewhere else in the genome says nothing about the
+        // product, however many such places the primer matches. Supporting fragments are
+        // informative by definition.
         Set<String> informative = new HashSet<>(supporting);
-        for (BlastResult hit : primerHits) {
-            if (containableLength(hit, readLengths.get(hit.queryID())) >= shortest) {
-                informative.add(fragments.getOrDefault(hit.queryID(), hit.queryID()));
+        Set<String> elsewhere = new HashSet<>();
+        for (BlastResult hit : evidence.primerHits()) {
+            String fragment = evidence.fragment(hit.queryID());
+            if (informative.contains(fragment)
+                    || containableLength(hit, evidence.readLengths().get(hit.queryID())) < shortest) {
+                continue;
+            }
+            if (atProductLocus(hit, evidence.sequences().get(hit.queryID()), shortest, flanks.get(role(hit)))) {
+                informative.add(fragment);
+            } else {
+                elsewhere.add(fragment);
             }
         }
+        elsewhere.removeAll(informative);
+
         // Representative: fewest primer mismatches, then a stable read order.
         List<String> best = rows.stream()
                 .min(Comparator.<List<String>>comparingInt(row ->
@@ -255,7 +411,125 @@ public final class ReadLevelCaller {
                                         + Integer.parseInt(row.get(ConsolidatedReport.REVERSE_MISMATCHES_COLUMN)))
                         .thenComparing(row -> row.get(ConsolidatedReport.CONTIG_COLUMN)))
                 .orElseThrow();
-        return new ReadCall(assay, supporting.size(), informative.size(), best, sizes, minSupportFraction);
+        return new ReadCall(assay, supporting.size(), informative.size(), elsewhere.size(), best, sizes,
+                evidence.minSupportFraction());
+    }
+
+    /**
+     * The sequence next to each primer inside the product, as the supporting reads show
+     * it: per primer role ({@code F}/{@code R}), the most frequent distinct flanks.
+     *
+     * @param spans amplicon start and end per supporting read
+     */
+    private static Map<Character, List<String>> productFlanks(Map<String, int[]> spans, Evidence evidence,
+                                                              int shortest) {
+        Map<Character, Map<String, Integer>> counts = new HashMap<>();
+        for (BlastResult hit : evidence.primerHits()) {
+            int[] span = spans.get(hit.queryID());
+            String sequence = evidence.sequences().get(hit.queryID());
+            if (span == null || sequence == null) {
+                continue;
+            }
+            // The hit that bounds the amplicon, not another copy of the primer on the read.
+            boolean bounds = hit.isPlusStrand() ? primerStart(hit) == span[0] : primerEnd(hit) == span[1];
+            String flank = bounds ? flank(sequence, hit, flankLength(hit, shortest)) : null;
+            if (flank != null) {
+                counts.computeIfAbsent(role(hit), ignored -> new HashMap<>()).merge(flank, 1, Integer::sum);
+            }
+        }
+        Map<Character, List<String>> flanks = new HashMap<>();
+        counts.forEach((role, byFlank) -> flanks.put(role, byFlank.entrySet().stream()
+                .sorted(Map.Entry.<String, Integer>comparingByValue().reversed().thenComparing(Map.Entry.comparingByKey()))
+                .limit(MAX_REFERENCE_WINDOWS)
+                .map(Map.Entry::getKey)
+                .toList()));
+        return flanks;
+    }
+
+    /**
+     * Whether the read carries the primer at the product's locus: the bases following
+     * the primer resemble those of a supporting read. A read that cannot be judged (no
+     * sequence, nothing to compare with, too few bases between the primers) counts as
+     * being at the locus, which is the cautious side: it can only lower the support.
+     */
+    private static boolean atProductLocus(BlastResult hit, String sequence, int shortest, List<String> flanks) {
+        if (sequence == null || flanks == null || flanks.isEmpty()) {
+            return true;
+        }
+        String flank = flank(sequence, hit, flankLength(hit, shortest));
+        if (flank == null) {
+            return true;
+        }
+        for (String reference : flanks) {
+            int length = Math.min(flank.length(), reference.length());
+            if (editDistance(flank, reference, length) <= (int) (MAX_LOCUS_DIVERGENCE * length)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Bases compared after a primer: up to {@link #LOCUS_WINDOW}, within the shortest product. */
+    private static int flankLength(BlastResult hit, int shortest) {
+        return Math.min(LOCUS_WINDOW, shortest - hit.slen());
+    }
+
+    /**
+     * The {@code length} bases following the primer's 3' end, read in the primer's
+     * direction, or {@code null} when there are too few to judge by or the read ends first.
+     */
+    static String flank(String sequence, BlastResult hit, int length) {
+        if (length < MIN_LOCUS_WINDOW) {
+            return null;
+        }
+        if (hit.isPlusStrand()) {
+            int from = primerEnd(hit);
+            return from + length > sequence.length() ? null
+                    : sequence.substring(from, from + length).toUpperCase(Locale.ROOT);
+        }
+        int to = primerStart(hit) - 1;
+        return to - length < 0 || to > sequence.length() ? null
+                : reverseComplement(sequence.substring(to - length, to).toUpperCase(Locale.ROOT));
+    }
+
+    private static String reverseComplement(String sequence) {
+        StringBuilder result = new StringBuilder(sequence.length());
+        for (int i = sequence.length() - 1; i >= 0; i--) {
+            result.append(switch (sequence.charAt(i)) {
+                case 'A' -> 'T';
+                case 'C' -> 'G';
+                case 'G' -> 'C';
+                case 'T' -> 'A';
+                default -> 'N';
+            });
+        }
+        return result.toString();
+    }
+
+    /** Edit distance between the first {@code length} bases of two sequences. */
+    static int editDistance(String a, String b, int length) {
+        int[] previous = new int[length + 1];
+        int[] current = new int[length + 1];
+        for (int j = 0; j <= length; j++) {
+            previous[j] = j;
+        }
+        for (int i = 1; i <= length; i++) {
+            current[0] = i;
+            for (int j = 1; j <= length; j++) {
+                int substitution = previous[j - 1] + (a.charAt(i - 1) == b.charAt(j - 1) ? 0 : 1);
+                current[j] = Math.min(substitution, Math.min(previous[j], current[j - 1]) + 1);
+            }
+            int[] swap = previous;
+            previous = current;
+            current = swap;
+        }
+        return previous[length];
+    }
+
+    /** {@code F} or {@code R}: the role letter of the primer a hit belongs to. */
+    private static char role(BlastResult hit) {
+        String id = hit.subjectID();
+        return id.charAt(id.lastIndexOf('-') + 1);
     }
 
     /**

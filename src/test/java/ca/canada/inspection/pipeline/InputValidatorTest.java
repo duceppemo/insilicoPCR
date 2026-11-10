@@ -71,4 +71,13 @@ class InputValidatorTest {
         Path primers = fasta("primers.fasta");
         assertTrue(InputValidator.validate(inputDir, dir, primers).contains("non-fastq/fasta"));
     }
+
+    @Test
+    void primerHeadersWithDescriptionsAndSizeRangesPass() throws IOException {
+        // "size=420-450" holds a dash: the role must still be read from the ID alone.
+        Path input = fasta("genome2.fasta");
+        Path primers = Files.writeString(dir.resolve("sized.fasta"),
+                ">a-F size=420-450 other=575\nACGT\n>a-R reverse primer\nACGT\n>a-P\tFAM-BHQ1\nACGT\n");
+        assertEquals("", InputValidator.validate(input, dir.resolve("out2"), primers));
+    }
 }

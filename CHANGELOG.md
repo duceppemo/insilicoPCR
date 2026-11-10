@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.11.0 (2026-11-10)
 
 Four FASTQ-mode problems found on a 16-assay, 46-oligo *Globodera* panel run over
 2 x 300 bp reads with permissive settings (`-m 1 --5p-truncation 8`). Replayed on

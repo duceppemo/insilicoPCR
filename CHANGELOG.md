@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- Command line: a mistake in the input is reported as its message instead of a
+  Java stack trace. A primer file that declares two different sizes for one
+  assay, a size that cannot be read, a primer ID without `-F`/`-R`/`-P` or a
+  sequence with characters that are not bases now ends the run with one
+  `Error:` line (and a `Cause:` line when the underlying error says more),
+  exit code 1 as before. A failure inside the program keeps its stack trace.
+
 ## 0.11.0 (2026-11-10)
 
 Four FASTQ-mode problems found on a 16-assay, 46-oligo *Globodera* panel run over

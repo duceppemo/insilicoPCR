@@ -103,6 +103,8 @@ How to read it:
 - Neither *L. innocua* sample produces a row: the primers have no acceptable binding sites. **An empty result for the negative control is the expected outcome.** (You may notice a harmless `Warning: [blastn] Query is Empty!` in the console: baiting the *L. innocua* reads with *hly* primers catches nothing, so there is no assembly to search.)
 - Bonus insight: this *L. monocytogenes* strain carries a single SNP at position 4 (from the 5' end) of `hly702-R`, visible in `detailed_report/SRR17090570/SRR17090570.tsv` as a 5'-trimmed alignment. 5'-proximal mismatches barely affect priming, so the hit is accepted (`--5p-truncation`, default 5) — exactly what a real PCR would do.
 
+The same folder holds `report.html`, the same results as a page: a grid with one row per sample and one column per assay, in which the two *L. monocytogenes* samples show a product for both assays and the two *L. innocua* samples show none. See [HTML report](Reports#html-report).
+
 ## 5. The synthetic gel
 
 `--gel` wrote `tutorial_results/synthetic_gel_report.png`:
@@ -115,5 +117,6 @@ Each positive lane shows the two bands you would expect on a real gel — the 70
 
 - Re-run with `-m 2` and watch the report stay identical — the assays match their target perfectly, and near-neighbor sites still fail the 3'-end rules.
 - Re-run with `-l 100`: the 112 bp qPCR product now exceeds the maximum length and disappears; `--min-length 200` would drop it too.
+- Declare the product sizes in the primer file (`>hly702-F size=702` and `>hlyQ-F size=112` on the header lines) and re-run: `report.tsv` gains a `SizeCheck` column and the HTML report marks products of the declared size as the positive result. See [Declaring product sizes](Primer-FASTA-Format#declaring-product-sizes-optional).
 - Add your own assay for a different gene to the primer FASTA — mixed files are fine as long as every ID ends in `-F`, `-R`, or `-P`.
 - Open `tutorial_results/detailed_report/<sample>/<sample>.tsv` to audit the raw BLAST hits behind every call.

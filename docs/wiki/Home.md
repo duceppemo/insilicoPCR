@@ -53,6 +53,8 @@ The application supports both:
 
 Reported amplicons are restricted to primer pairs that could plausibly amplify in a real reaction: convergent orientation on opposite strands, a configurable product size limit, and a weighted 3'-end mismatch check. See [Amplicon Calling](Amplicon-Calling).
 
+Every such product is reported, whatever its size, as a real PCR would amplify it. Results come as a TSV table and as a self-contained [HTML report](Reports#html-report) whose sample-by-assay grid shows which samples are positive for which assay. When the primer file [declares the product size](Primer-FASTA-Format#declaring-product-sizes-optional) an assay is designed to give, products of that size are told apart from products of any other size.
+
 Portable releases include Java, JavaFX, BBMap, and NCBI BLAST+, so end users do not need to install these tools separately.
 
 ## Works with primer-finder

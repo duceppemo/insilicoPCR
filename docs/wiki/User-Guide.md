@@ -80,10 +80,14 @@ See [Standard PCR vs qPCR](Standard-PCR-vs-qPCR) and [Amplicon Calling](Amplicon
 
 A typical run creates output files such as:
 
-- quality/runtime logs
-- detailed per-sample results
-- consolidated reports
-- files used by the synthetic gel visualizer
+- `consolidated_report/report.html`: a page to read, with a sample-by-assay grid showing which samples are positive for which assay
+- `consolidated_report/report.tsv`: the same results as a table, one row per amplicon
+- `consolidated_report/report_fastq_diagnostics.tsv`, for FASTQ input
+- detailed per-sample results under `detailed_report/`
+- `QAlog.txt`, the quality/runtime log
+
+Every product a PCR would amplify is reported, whatever its size. To have the reports say whether a product
+has the size the assay is designed to give, [declare it in the primer file](Primer-FASTA-Format#declaring-product-sizes-optional). See [Reports](Reports).
 
 ## Synthetic gel visualizer
 

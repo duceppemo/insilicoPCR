@@ -40,7 +40,10 @@
   - primers must face each other on opposite strands of the same contig
   - product size limits (`--max-length`, default 5000 bp) suppress fragments too long to amplify
   - weighted 3'-end mismatch assessment — mismatches near the primer terminus weigh more, and breaking a G/C pair near the 3' end weighs extra
+- Every product a PCR would amplify is reported, whatever its size; declare the size an assay is designed for in the primer file and each product is labelled `target`, `other` or `unexpected`
+- FASTQ input: products the read mini-assembly misses are called from the reads themselves, with diagnostics for every negative whose primers are in the reads
 - Consolidated TSV reports with per-primer mismatch and 3'-end diagnostics
+- A self-contained HTML report with a sample-by-assay grid: see at a glance which samples are positive for which assay
 - View results as a synthetic gel image (GUI viewer, or `--gel` PNG export from the CLI)
 - Graphical desktop app and CLI in the same portable ZIP (Windows and Linux) with bundled Java, JavaFX, BBMap, and BLAST+
 
@@ -114,7 +117,7 @@ Typical CLI run:
 > reads themselves when the assembly misses a target (rows marked `FASTQ read-level call`). A FASTQ-mode
 > negative is still weaker evidence than one from a genome assembly. Assays whose oligos were found in the
 > reads but that the assembly missed are listed in `consolidated_report/report_fastq_diagnostics.tsv` and
-> summarized in `QAlog.txt`; see
+> summarized in `QAlog.txt`. Read-level calls only reach amplicons that fit in a read or merged pair; see
 > [Reports](https://github.com/duceppemo/insilicoPCR/wiki/Reports#fastq-mode-and-false-negatives).
 
 See the [Command-line Interface Wiki page](https://github.com/duceppemo/insilicoPCR/wiki/Command-line-Interface) for the full reference.

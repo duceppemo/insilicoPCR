@@ -17,7 +17,7 @@ The release process creates deterministic portable ZIP archives for Linux and Wi
 
 ```bash
 export JAVA_HOME=/path/to/jdk-26
-scripts/release/package-linux-portable.sh 0.10.1
+scripts/release/package-linux-portable.sh 0.11.0
 ```
 
 Expected artifacts:

@@ -27,6 +27,8 @@ Both the GUI pipeline (`PcrPipelineTask`) and the CLI pipeline (`InSilicoPcrPipe
 | `ConsolidatedReport` | Writes the consolidated TSV (standard and qPCR modes); also exposes its rows for read-level calling |
 | `ReadLevelCaller` | FASTQ mode: calls amplicons on baited reads treated as tiny contigs, one call per product size, with the support rules (≥ 2 fragments, `--read-min-fraction` of the informative ones: reads carrying a primer at the product's locus) |
 | `FastqDiagnostics` | FASTQ mode: explains assays the mini-assembly did not report though their oligos are in the reads |
+| `ExpectedSizes` | Product sizes declared in primer FASTA headers (`size=`, `other=`); labels report rows `target` / `other` / `unexpected` and never filters |
+| `HtmlReport` | Writes the self-contained HTML report from the consolidated TSV: sample-by-assay grid, per-assay summary, amplicon table |
 
 `BlastResult` (in `insilicopcr`) carries full alignment context (strand, subject coordinates, aligned sequences) and computes the 3'-end mismatch counts and weighted penalties. The rules themselves are documented on the [Amplicon Calling](Amplicon-Calling) page, and covered by unit tests under `src/test/java`.
 

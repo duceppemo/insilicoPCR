@@ -30,7 +30,24 @@ Yes. The input can be a single sequence file or a directory containing sequence 
 
 ## What primer format is required?
 
-The primer file must be FASTA. Primer IDs must end with `-F`, `-R`, or `-P`.
+The primer file must be FASTA. Primer IDs must end with `-F`, `-R`, or `-P`. Text after the ID on the header
+line is a description (since 0.11.0; earlier releases silently reported nothing for such an assay). See
+[Primer FASTA Format](Primer-FASTA-Format).
+
+## How do I see which samples are positive?
+
+Open `consolidated_report/report.html` in the output folder (in the GUI: **View HTML Report**). Its grid has
+one row per sample and one column per assay; each column head counts the positive samples, and the **By
+assay** section names them. See [HTML report](Reports#html-report).
+
+## Why is a product of the wrong size reported?
+
+Because a real PCR would amplify it. insilicoPCR reports every product that passes the
+[amplicon rules](Amplicon-Calling), whatever its size; an assay that gives a band of the wrong size is a
+positive PCR, not necessarily a positive test. Check `AmpliconSize`, or declare the size the assay is
+designed to give in the primer file (`>assay-F size=434`): the reports then label each product `target`,
+`other` or `unexpected`, and the HTML report counts only the target size as positive. Nothing is removed
+either way. See [Declaring product sizes](Primer-FASTA-Format#declaring-product-sizes-optional).
 
 ## Can another tool design the primers and write these files?
 

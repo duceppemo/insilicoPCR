@@ -67,4 +67,12 @@ Every GUI setting has a command-line equivalent; see [Command-line Interface](Co
 
 ## Outputs
 
-Outputs vary by run, but typically include logs, detailed report files, consolidated reports, and files used by the synthetic gel visualizer.
+| In the output folder | What it is |
+|---|---|
+| `consolidated_report/report.html` | [HTML report](Reports#html-report): which samples are positive for which assay, then every amplicon |
+| `consolidated_report/report.tsv` | One row per amplicon; the source of the HTML report and of the synthetic gel |
+| `consolidated_report/report_fastq_diagnostics.tsv` | FASTQ input only: why an assay was not reported although its primers are in the reads |
+| `detailed_report/<sample>/` | Raw BLAST hits per sample and, for FASTQ input, the baited reads and mini-assembly |
+| `QAlog.txt` | Version, inputs and the settings that decide calls |
+
+A run into a folder that already holds a report writes `report(1).tsv` and `report(1).html`, and so on. See [Reports](Reports).

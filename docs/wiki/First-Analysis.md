@@ -48,11 +48,17 @@ Linux portable release example:
 
 ## After the run
 
-Review:
+Start with `consolidated_report/report.html` in the output folder (in the GUI: **View HTML Report**). Its
+grid has one row per sample and one column per assay, and shows which samples are positive, with the product
+size in each cell. Then review, as needed:
 
-- console or GUI log output
-- detailed per-sample report files
-- consolidated report
-- synthetic gel view
+- `consolidated_report/report.tsv`: the same results as a table, one row per amplicon
+- the synthetic gel view
+- detailed per-sample report files (the raw BLAST hits)
+- console or GUI log output, and `QAlog.txt`
+
+A product of the wrong size is still reported: check `AmpliconSize` before calling a test positive, or
+[declare the expected size](Primer-FASTA-Format#declaring-product-sizes-optional) in the primer file and let
+the reports label it. See [Reports](Reports).
 
 For primer naming requirements, see [Primer FASTA Format](Primer-FASTA-Format).

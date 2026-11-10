@@ -19,5 +19,6 @@ abstract: >-
   Portable desktop and command-line application for in silico PCR against
   genome assemblies (FASTA) and sequencing reads (FASTQ), with realistic
   amplicon calling (primer orientation, product size limits, and weighted
-  3'-end mismatch assessment), qPCR probe support, consolidated reports,
-  and a synthetic gel visualizer.
+  3'-end mismatch assessment), qPCR probe support, read-level calling for
+  FASTQ input, consolidated TSV and HTML reports, and a synthetic gel
+  visualizer.

@@ -38,6 +38,8 @@ The visualizer is not a replacement for reviewing the detailed reports. It is a 
 
 Always confirm important results in the detailed or consolidated report tables.
 
+For a view that names the positive samples and compares each product with the size the assay is designed to give, open the [HTML report](Reports#html-report) of the run (**View HTML Report**).
+
 ## Standard PCR vs qPCR mode
 
 The gel visualizer depends on the consolidated report.

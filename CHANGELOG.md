@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+### Added
+
+- The report says how much of each primer is bound. `report.tsv` gains two
+  columns, `Forward5PrimeUnaligned` and `Reverse5PrimeUnaligned`: the bases at
+  the 5' end of each primer that BLAST left out of its alignment. They are
+  allowed up to `--5p-truncation` and were not shown anywhere: the mismatch
+  columns do not count them, so a 17-base primer held by its last 9 bases
+  (`--5p-truncation 8`) read as a perfect match, `0` mismatches. The columns
+  come after the probe columns; `SizeCheck` stays last. Read columns by name.
+- HTML report: the amplicon table has a `5′ unaligned F/R` column, with the
+  aligned length of each primer as a tooltip (`forward primer 9 of 17 bases`).
+  A product whose primer binds only partly carries a `◐` mark there, and a
+  grid cell carries it when every product that decides its outcome is bound
+  that way, so a "target size" resting on primers that may not anneal is
+  visible at a glance. Nothing is hidden or reclassified by it.
+
 ### Fixed
 
 - Command line: a mistake in the input is reported as its message instead of a

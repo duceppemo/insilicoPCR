@@ -19,7 +19,7 @@ For every primer hit, insilicoPCR checks:
 
 BLAST mismatches + insertions/deletions + primer bases BLAST left unaligned at the 3' end must not exceed the budget. Unaligned 3' bases count because BLAST trims terminal mismatches from local alignments — a primer whose last base does not pair shows up as a shortened alignment, not as a reported mismatch.
 
-Unaligned bases at the harmless 5' end are tolerated without consuming the budget, up to `--5p-truncation` (default 5). BLAST trims terminal mismatches from local alignments, so a single SNP near a primer's 5' end shows up as several unaligned 5' bases — and 5'-proximal mismatches barely affect priming in a real reaction, so the allowance is generous. See the [tutorial](Tutorial-Mixed-PCR-qPCR) for a real-data example.
+Unaligned bases at the harmless 5' end are tolerated without consuming the budget, up to `--5p-truncation` (default 5). BLAST trims terminal mismatches from local alignments, so a single SNP near a primer's 5' end shows up as several unaligned 5' bases — and 5'-proximal mismatches barely affect priming in a real reaction, so the allowance is generous. The allowance is a number of bases, whatever the primer's length: raising it for one long primer (say to 8) also lets a 17-base primer through on a 9-base match. The report gives the unaligned bases of each primer (`Forward5PrimeUnaligned` / `Reverse5PrimeUnaligned`, see [Reports](Reports#primer-binding-columns)), so such products can be told from fully bound ones. See the [tutorial](Tutorial-Mixed-PCR-qPCR) for a real-data example.
 
 ### Weighted 3'-end check (`--3p-window`, `--3p-penalty`)
 

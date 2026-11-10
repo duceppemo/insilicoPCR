@@ -126,6 +126,16 @@ public final class ConsolidatedReport {
     public static final int REVERSE_MISMATCHES_COLUMN = 9;
     public static final int AMPLICON_SIZE_COLUMN = 3;
 
+    /**
+     * Columns giving, per primer, the bases at its 5' end that BLAST left out of the
+     * alignment: bases that do not pair with the template. The mismatch columns do not
+     * count them (the run's {@code --5p-truncation} allows them), so without these a
+     * primer held by its last few bases reads as a perfect match. They follow the probe
+     * columns; {@link ExpectedSizes#COLUMN} stays last.
+     */
+    public static final String FORWARD_UNALIGNED_COLUMN = "Forward5PrimeUnaligned";
+    public static final String REVERSE_UNALIGNED_COLUMN = "Reverse5PrimeUnaligned";
+
     /** Assay names that define at least one -P probe in the primer file. */
     private static Set<String> assaysWithProbe(Iterable<String> primerIds) {
         Set<String> assays = new TreeSet<>();
@@ -156,6 +166,7 @@ public final class ConsolidatedReport {
         if (probeColumns) {
             columns.addAll(List.of("Probe", "ProbeLocation", "ProbeSize", "ProbeMismatches"));
         }
+        columns.addAll(List.of(FORWARD_UNALIGNED_COLUMN, REVERSE_UNALIGNED_COLUMN));
         if (sizeColumn) {
             columns.add(ExpectedSizes.COLUMN);
         }
@@ -250,14 +261,19 @@ public final class ConsolidatedReport {
                         String.valueOf(amplicon.forwardStrand())
                 );
 
+                List<String> unaligned = List.of(
+                        String.valueOf(forwardHit.fivePrimeUncovered()),
+                        String.valueOf(reverseHit.fivePrimeUncovered()));
+
                 if (probeRequired) {
-                    writeProbeRows(writer, hits, group, amplicon, baseColumns);
+                    writeProbeRows(writer, hits, group, amplicon, baseColumns, unaligned);
                 } else {
                     List<String> columns = new ArrayList<>(baseColumns);
                     if (probeColumns) {
                         // Probe-less assay in a mixed run: pad the probe columns.
                         columns.addAll(List.of("", "", "", ""));
                     }
+                    columns.addAll(unaligned);
                     writer.accept(columns);
                 }
             }
@@ -270,7 +286,8 @@ public final class ConsolidatedReport {
     }
 
     private static void writeProbeRows(RowSink writer, HitIndex hits,
-                                       PrimerGroup group, Amplicon amplicon, List<String> baseColumns)
+                                       PrimerGroup group, Amplicon amplicon, List<String> baseColumns,
+                                       List<String> unaligned)
             throws IOException {
         for (String probeId : group.probe) {
             for (BlastResult probeHit : hits.on(probeId, amplicon.contig())) {
@@ -285,6 +302,7 @@ public final class ConsolidatedReport {
                 columns.add(probeStart + "-" + probeEnd);
                 columns.add(String.valueOf(probeEnd - probeStart + 1));
                 columns.add(String.valueOf(probeHit.mismatch() + probeHit.gaps()));
+                columns.addAll(unaligned);
                 writer.accept(columns);
             }
         }

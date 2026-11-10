@@ -81,7 +81,46 @@ public final class HtmlReport {
         String field(String name) {
             return fields.getOrDefault(name, "");
         }
+
+        /** Bases at the 5' end of the forward or reverse primer left out of its alignment. */
+        int unaligned(boolean forward) {
+            return number(forward ? ConsolidatedReport.FORWARD_UNALIGNED_COLUMN
+                    : ConsolidatedReport.REVERSE_UNALIGNED_COLUMN);
+        }
+
+        /** Whether a primer is held by part of its length only: its 5' end does not pair with the template. */
+        boolean partlyBound() {
+            return unaligned(true) > 0 || unaligned(false) > 0;
+        }
+
+        /** How much of each primer is aligned, e.g. {@code forward primer 9 of 17 bases, reverse primer 17 of 17}. */
+        String binding() {
+            return "forward primer " + binding(true) + ", reverse primer " + binding(false);
+        }
+
+        private String binding(boolean forward) {
+            int length = number(forward ? FORWARD_LENGTH : REVERSE_LENGTH);
+            int unaligned = unaligned(forward);
+            return length > 0 ? (length - unaligned) + " of " + length + " bases"
+                    : unaligned + " of its 5′ bases unaligned";
+        }
+
+        private int number(String name) {
+            try {
+                return Integer.parseInt(field(name));
+            } catch (NumberFormatException e) {
+                return 0;
+            }
+        }
     }
+
+    /** Fields added to a product next to the report's own columns: the length of each primer of the row. */
+    private static final String FORWARD_LENGTH = "#ForwardPrimerLength";
+    private static final String REVERSE_LENGTH = "#ReversePrimerLength";
+
+    /** Marks a product whose primer is held by part of its length only. */
+    private static final String PARTLY_BOUND = "\u25d0";
+    private static final String PARTLY_BOUND_LABEL = "A primer binds only partly (5′ bases unaligned)";
 
     /** One cell of the grid. */
     record Cell(State state, List<Product> products, String note) {
@@ -97,6 +136,17 @@ public final class HtmlReport {
                     .filter(product -> state == State.AMPLIFIED || product.label() == wanted)
                     .map(Product::size)
                     .collect(Collectors.toCollection(TreeSet::new)));
+        }
+
+        /**
+         * Whether every product that decides the state has a primer held by part of its
+         * length only: the state then rests on primers that may not anneal in a reaction.
+         */
+        boolean partlyBound() {
+            List<Integer> deciding = sizes();
+            return !deciding.isEmpty() && products.stream()
+                    .filter(product -> deciding.contains(product.size()))
+                    .allMatch(Product::partlyBound);
         }
     }
 
@@ -121,9 +171,25 @@ public final class HtmlReport {
     public static Path write(Path reportTsv, Collection<String> sampleNames, Set<String> fastqSamples,
                              Collection<String> primerIds, ExpectedSizes sizes, List<Finding> findings,
                              Map<String, String> runDetails) {
+        Map<String, String> primers = new HashMap<>();
+        primerIds.forEach(id -> primers.put(id, ""));
+        return write(reportTsv, sampleNames, fastqSamples, primers, sizes, findings, runDetails);
+    }
+
+    /**
+     * As {@link #write(Path, Collection, Set, Collection, ExpectedSizes, List, Map)}, with the
+     * primer sequences: the page then says how many bases of each primer are aligned, of its length.
+     *
+     * @param primers expanded primer IDs of the run and their sequences
+     */
+    public static Path write(Path reportTsv, Collection<String> sampleNames, Set<String> fastqSamples,
+                             Map<String, String> primers, ExpectedSizes sizes, List<Finding> findings,
+                             Map<String, String> runDetails) {
         Path html = pathFor(reportTsv);
+        Collection<String> primerIds = primers.keySet();
         try {
-            String page = render(reportTsv.getFileName().toString(), readProducts(reportTsv, sizes), sampleNames,
+            String page = render(reportTsv.getFileName().toString(), readProducts(reportTsv, sizes, primers),
+                    sampleNames,
                     fastqSamples, ConsolidatedReport.groupByAssay(primerIds).entrySet().stream()
                             .filter(entry -> !entry.getValue().forward.isEmpty() && !entry.getValue().reverse.isEmpty())
                             .map(Map.Entry::getKey).toList(),
@@ -152,7 +218,8 @@ public final class HtmlReport {
         return details;
     }
 
-    static List<Product> readProducts(Path reportTsv, ExpectedSizes sizes) throws IOException {
+    static List<Product> readProducts(Path reportTsv, ExpectedSizes sizes, Map<String, String> primers)
+            throws IOException {
         List<Product> products = new ArrayList<>();
         try (BufferedReader reader = Files.newBufferedReader(reportTsv, StandardCharsets.UTF_8)) {
             String headerLine = reader.readLine();
@@ -177,6 +244,10 @@ public final class HtmlReport {
                     continue;
                 }
                 String assay = fields.getOrDefault("Gene", "");
+                fields.put(FORWARD_LENGTH,
+                        String.valueOf(primers.getOrDefault(fields.getOrDefault("ForwardPrimers", ""), "").length()));
+                fields.put(REVERSE_LENGTH,
+                        String.valueOf(primers.getOrDefault(fields.getOrDefault("ReversePrimers", ""), "").length()));
                 products.add(new Product(fields.getOrDefault("Sample", ""), assay, size, fields,
                         sizes.label(assay, size)));
             }
@@ -318,7 +389,15 @@ public final class HtmlReport {
             }
         }
         html.append("<span class=\"key\"><span class=\"tag\">reads</span>FASTQ input, or a product called from reads")
-                .append("</span></div>\n");
+                .append("</span>");
+        if (grid.values().stream().flatMap(row -> row.values().stream())
+                .flatMap(cell -> cell.products().stream()).anyMatch(Product::partlyBound)) {
+            html.append("<span class=\"key\" title=\"The product is reported, but a primer pairs with the template")
+                    .append(" over part of its length only; see the 5′ unaligned column of the amplicons\">")
+                    .append("<span class=\"part\">").append(PARTLY_BOUND).append("</span>")
+                    .append(escape(PARTLY_BOUND_LABEL)).append("</span>");
+        }
+        html.append("</div>\n");
         if (grid.size() > 12) {
             html.append("<div class=\"tools\"><input type=\"search\" id=\"sampleFilter\" placeholder=\"Filter samples…\"")
                     .append(" aria-label=\"Filter samples\"><label><input type=\"checkbox\" id=\"onlyProducts\">")
@@ -374,6 +453,9 @@ public final class HtmlReport {
                 tip.append(" (").append(product.label().text()).append(")");
             }
             tip.append(product.fromReads() ? ", from reads" : "");
+            if (product.partlyBound()) {
+                tip.append("; ").append(product.binding());
+            }
         }
         if (!cell.note().isEmpty()) {
             tip.append("\n").append(cell.note());
@@ -385,6 +467,8 @@ public final class HtmlReport {
                 ? " data-s=\"" + escape(sample) + "\" data-a=\"" + escape(assay) + "\"" : "")
                 + ">" + escape(text.toString())
                 + (others > 0 ? "<sup>+" + others + "</sup>" : "")
+                + (cell.partlyBound() ? "<span class=\"part\" aria-label=\"" + escape(PARTLY_BOUND_LABEL) + "\">"
+                + PARTLY_BOUND + "</span>" : "")
                 + (reads ? "<span class=\"dot\" aria-label=\"from reads\"></span>" : "")
                 + "</" + element + ">";
     }
@@ -425,6 +509,10 @@ public final class HtmlReport {
                         html.append(" <span class=\"bp\">").append(found.stream().map(String::valueOf)
                                 .collect(Collectors.joining(", "))).append(" bp</span>");
                     }
+                    if (cell.partlyBound()) {
+                        html.append(" <span class=\"part\" title=\"").append(escape(PARTLY_BOUND_LABEL))
+                                .append("\">").append(PARTLY_BOUND).append("</span>");
+                    }
                     html.append("</li>");
                 }
                 html.append("</ul>\n");
@@ -459,7 +547,8 @@ public final class HtmlReport {
                 .append("<th class=\"num\">Size (bp)</th>").append(labels ? "<th>Size check</th>" : "")
                 .append("<th>Found on</th><th>Location</th><th class=\"num\" title=\"Forward / reverse primer mismatches\">")
                 .append("Mismatches F/R</th><th class=\"num\" title=\"Imperfections in the 3' window, forward / reverse\">")
-                .append("3′ F/R</th><th>Strand</th>")
+                .append("3′ F/R</th><th class=\"num\" title=\"Bases at the 5' end of each primer left out of its alignment,")
+                .append(" forward / reverse; the mismatch columns do not count them\">5′ unaligned F/R</th><th>Strand</th>")
                 .append(probes ? "<th>Probe</th><th class=\"num\">Probe mismatches</th>" : "").append("</tr></thead>\n<tbody>\n");
         for (Product product : products) {
             String contig = product.field("Contig");
@@ -494,6 +583,9 @@ public final class HtmlReport {
                     .append(escape(product.field("ForwardMismatches") + " / " + product.field("ReverseMismatches")))
                     .append("</td><td class=\"num\">").append(escape(product.field("Forward3PrimeMismatches") + " / "
                             + product.field("Reverse3PrimeMismatches")))
+                    .append("</td><td class=\"num\" title=\"").append(escape(product.binding())).append("\">")
+                    .append(product.partlyBound() ? "<span class=\"part\">" + PARTLY_BOUND + "</span> " : "")
+                    .append(product.unaligned(true)).append(" / ").append(product.unaligned(false))
                     .append("</td><td>").append(escape(product.field("Strand"))).append("</td>");
             if (probes) {
                 html.append("<td>").append(escape(product.field("Probe"))).append("</td><td class=\"num\">")
@@ -641,6 +733,8 @@ public final class HtmlReport {
             .chip.unchecked { color: var(--ink-3); min-width: 0; padding: 0; font-weight: 400; }
             .chip.none { color: var(--line-2); min-width: 0; padding: 0; font-weight: 400; }
             .chip sup { font-size: 10px; line-height: 1; margin-left: 1px; }
+            .part { font-size: 12px; line-height: 1; } .key .part, .rows td .part, li .part { color: var(--ink-2); }
+            .key .part { display: inline-block; min-width: 30px; text-align: center; font-size: 15px; }
             .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: .85;
               box-shadow: 0 0 0 2px var(--surface); position: absolute; top: -3px; right: -3px; }
             .chip.target .dot, .chip.amplified .dot { background: var(--ink); }

@@ -46,6 +46,7 @@ The outcome of a sample for an assay uses the [product sizes declared in the pri
 | Dotted outline, `?` | Seen in too few reads | FASTQ input: a complete amplicon is in some reads, too few to report (`WEAK_READ_SUPPORT`) |
 | `○` | Not checkable from reads | FASTQ input: both primers are in the reads, no product was found, and a product of the declared size is longer than a read or merged pair could hold. Not a reliable negative; confirm on an assembly |
 | `·` | No product | |
+| `◐` beside the size | A primer binds only partly | Added to any of the outcomes above when every product that decides it has a primer with unaligned 5' bases. The product is reported as usual; whether such a primer anneals in a reaction is for you to judge from the [primer binding columns](#primer-binding-columns) |
 
 A positive PCR is not always a positive test: only a product of the target size is counted as positive for
 an assay that declares one. Products of other sizes are never hidden. They are marked, they show as `+1` on a
@@ -84,6 +85,27 @@ When at least one assay in the primer file defines a `-P` probe, the report appe
 | `ProbeMismatches` | Mismatches + indels in the probe alignment |
 
 For an assay that defines a probe, a row is only written when the probe lies entirely within the amplicon. Probe-less assays in the same run keep these columns empty.
+
+### Primer binding columns
+
+After the columns above (and the probe columns, when present):
+
+| Column | Meaning |
+|---|---|
+| `Forward5PrimeUnaligned` / `Reverse5PrimeUnaligned` | Bases at the 5' end of the primer that BLAST left out of its alignment: bases that do not pair with the template |
+
+These bases are allowed up to `--5p-truncation` (default 5) and are **not** counted in the mismatch columns.
+A row can therefore show `0` mismatches for a primer that is held by its 3' end only. With
+`--5p-truncation 8`, a 17-base primer is accepted on a 9-base match:
+
+```text
+ForwardPrimers  ForwardMismatches  Forward3PrimeMismatches  Forward5PrimeUnaligned
+assay-F         0                  0                        8
+```
+
+Compare the number with the primer's length. Six unaligned bases of a 22-mer leave 16 bound, which a
+reaction tolerates; eight of a 17-mer leave 9, which will not anneal at a normal annealing temperature. The
+HTML report gives both numbers (`9 of 17 bases`) and marks such products with `◐`.
 
 ### Size label column
 

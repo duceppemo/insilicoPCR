@@ -138,6 +138,47 @@ class HtmlReportTest {
     }
 
     @Test
+    void aProductWhosePrimerBindsOnlyPartlyIsMarkedAndItsBindingGiven() throws IOException {
+        String header = HEADER + "\tForward5PrimeUnaligned\tReverse5PrimeUnaligned";
+        Path tsv = Files.write(dir.resolve("report.tsv"), List.of(header,
+                // Target size, but each primer is held by its last 9 bases: the state rests on that product.
+                row("weak", "its", 430, "c1", "") + "\t8\t8",
+                // The same weak product next to one whose primers bind in full: the state does not rest on it.
+                row("mixed", "its", 430, "c1", "") + "\t8\t8",
+                row("mixed", "its", 434, "c2", "") + "\t0\t0",
+                row("clean", "its", 434, "c1", "") + "\t0\t0"));
+        Map<String, String> primers = Map.of("its-F", "ACGTACGTACGTACGTA", "its-R", "ACGTACGTACGTACGTA");
+
+        String page = Files.readString(HtmlReport.write(tsv, List.of("weak", "mixed", "clean"), Set.of(), primers,
+                SIZES, List.of(), Map.of()));
+
+        String mark = "<span class=\"part\" aria-label=\"A primer binds only partly (5′ bases unaligned)\">\u25d0</span>";
+        assertEquals(1, count(page, mark), "only the cell whose every target product is weakly bound is marked");
+        assertTrue(page.contains("data-s=\"weak\" data-a=\"its\">✓ 430" + mark), "the weak cell carries the mark");
+        // The tooltip and the table say how much of each primer is aligned, of its length.
+        assertTrue(page.contains("430 bp (target); forward primer 9 of 17 bases, reverse primer 9 of 17 bases"));
+        assertTrue(page.contains("<th class=\"num\" title=\"Bases at the 5' end of each primer left out of its"
+                + " alignment, forward / reverse; the mismatch columns do not count them\">5′ unaligned F/R</th>"));
+        assertEquals(2, count(page, "<span class=\"part\">\u25d0</span> 8 / 8</td>"), "both weak rows are marked");
+        assertEquals(2, count(page, ">0 / 0</td><td>+</td>"), "rows bound in full show zeros and no mark");
+        // The legend explains the mark, and the assay card repeats it beside the sample it concerns.
+        assertTrue(page.contains("<span class=\"part\">\u25d0</span>A primer binds only partly (5′ bases unaligned)</span>"));
+        assertTrue(page.contains(">weak <span class=\"bp\">430 bp</span> <span class=\"part\" title="));
+        assertFalse(page.contains(">clean <span class=\"bp\">434 bp</span> <span class=\"part\""));
+    }
+
+    @Test
+    void aReportWithoutTheUnalignedColumnsOrFullyBoundPrimersShowsNoMark() throws IOException {
+        Path tsv = Files.write(dir.resolve("report.tsv"), List.of(HEADER, row("a", "its", 434, "c1", "")));
+
+        String page = Files.readString(HtmlReport.write(tsv, List.of("a"), Set.of(), PRIMERS, SIZES, List.of(),
+                Map.of()));
+
+        assertFalse(page.contains("class=\"part\""));
+        assertFalse(page.contains("A primer binds only partly"));
+    }
+
+    @Test
     void withoutDeclaredSizesProductsAreShownAsAmplifiedAndTheHintSaysHowToDeclare() throws IOException {
         Path tsv = Files.write(dir.resolve("report.tsv"), List.of(HEADER, row("a", "plain", 200, "c1", "")));
 

@@ -6,7 +6,7 @@ This tutorial walks through a complete, realistic insilicoPCR run using **public
 - a **genome assembly** (FASTA) and **raw Illumina reads** (FASTQ) as inputs,
 - a **positive control** (*Listeria monocytogenes*) and a **negative control** (*Listeria innocua*, the classic *hly*-negative near-neighbor used for exclusivity testing).
 
-Everything below uses the command line from an extracted portable release; the same inputs work in the GUI.
+The steps below use the command line from an extracted portable release; [section 7](#7-the-same-run-in-the-gui) does the same run in the GUI. Every table and picture on this page comes from running exactly these steps with version 0.11.0, and the primer file and the reports of that run are in the repository under [`docs/examples/tutorial/`](https://github.com/duceppemo/insilicoPCR/tree/master/docs/examples/tutorial).
 
 ## 1. The assays
 
@@ -22,11 +22,11 @@ The `hlyQ` primers and probe are the *hlyA*-177 5'-nuclease assay of [Nogva et a
 Save this as `listeria_assays.fasta`:
 
 ```fasta
->hly702-F
+>hly702-F size=702
 CCTAAGACGCCAATCGAA
 >hly702-R
 AAGCGCTTGCAACTGCTC
->hlyQ-F
+>hlyQ-F size=112
 TGCAAGTCCTAAGACGCCA
 >hlyQ-R
 CACTGCATCTCCGTGGTATACTAA
@@ -35,6 +35,8 @@ CGATTTCATCCGCGTGTTTCTTTTCG
 ```
 
 Note the naming convention: `-F`/`-R`/`-P` suffixes group primers into assays, and the probe-less `hly702` assay can share the file with the probe-based `hlyQ` assay — the probe requirement is applied per assay (see [Standard PCR vs qPCR](Standard-PCR-vs-qPCR)).
+
+The `size=` words on two of the headers are optional. They declare the product each assay is designed to give, so the reports can say whether a product has that size. insilicoPCR reports every product either way (see [Declaring product sizes](Primer-FASTA-Format#declaring-product-sizes-optional)).
 
 ## 2. Download the public data (~100 MB total)
 
@@ -81,31 +83,55 @@ What happens, per sample:
 - accepted hits are paired into amplicons (convergent orientation, ≤ 5000 bp by default, perfect 3' ends — see [Amplicon Calling](Amplicon-Calling));
 - `--gel` additionally renders the synthetic gel image (requires a graphical environment).
 
-The run takes well under a minute on a desktop machine.
+The run takes well under a minute on a desktop machine (12 seconds here). It writes, under `tutorial_results/`:
 
-## 4. The consolidated report
+| File | What it is |
+|---|---|
+| `consolidated_report/report.html` | The results as a page to read: start here |
+| `consolidated_report/report.tsv` | The same results as a table, one row per amplicon |
+| `consolidated_report/report_fastq_diagnostics.tsv` | For the read sets: assays not reported although their primers are in the reads (none in this run) |
+| `synthetic_gel_report.png` | The gel image asked for with `--gel` |
+| `detailed_report/<sample>/` | Raw BLAST hits per sample; for the read sets, also the baited reads and the mini-assembly |
+| `QAlog.txt` | Version, inputs and settings |
 
-`tutorial_results/consolidated_report/report.tsv` (columns abridged):
+## 4. The HTML report
 
-| Sample | Gene | GenomeLocation | AmpliconSize | Contig | Fwd/Rev mismatches | Strand | Probe | ProbeMismatches |
-|---|---|---|---|---|---|---|---|---|
-| SRR17090570 | hly702 | 660-1361 | **702** | contig_0 (Tadpole) | 0 / 0 | - | | |
-| SRR17090570 | hlyQ | 1257-1368 | **112** | contig_0 (Tadpole) | 0 / 0 | - | hlyQ-P | 0 |
-| lmono_EGDe | hly702 | 205963-206664 | **702** | NC_003210.1 | 0 / 0 | + | | |
-| lmono_EGDe | hlyQ | 205956-206067 | **112** | NC_003210.1 | 0 / 0 | + | hlyQ-P | 0 |
+Open `tutorial_results/consolidated_report/report.html` in a web browser ([the file from this run](https://github.com/duceppemo/insilicoPCR/blob/master/docs/examples/tutorial/report.html): download it and open it, GitHub only shows its source):
+
+![HTML report of the tutorial run](https://raw.githubusercontent.com/duceppemo/insilicoPCR/master/docs/assets/tutorial/html_report_tutorial.png)
+
+How to read it:
+
+- **Samples by assay** answers the question of the run. Each row is a sample, each column an assay. The two *L. monocytogenes* samples, the assembly `lmono_EGDe` and the read set `SRR17090570`, have a green cell for both assays with the product size in it: 702 bp and 112 bp. The two *L. innocua* samples have none.
+- The cells are green with a check mark because the products have the size declared in the primer file (`size=702`, `size=112`). Without the declaration they would be blue, "amplified", and the size would be yours to check; a product of another size would be outlined in red and not counted as positive.
+- The `reads` tag marks the two samples given as FASTQ.
+- **By assay** counts the positive samples for each assay (2 of 4) and names them.
+- **All amplicons** lists every row of `report.tsv`; clicking a cell of the grid filters it to that sample and assay.
+
+See [HTML report](Reports#html-report) for every mark the page can show.
+
+## 5. The consolidated report
+
+`tutorial_results/consolidated_report/report.tsv` holds the same four amplicons as a table ([the file from this run](https://github.com/duceppemo/insilicoPCR/blob/master/docs/examples/tutorial/report.tsv); columns abridged here):
+
+| Sample | Gene | GenomeLocation | AmpliconSize | Contig | Fwd/Rev mismatches | Strand | Probe | ProbeMismatches | SizeCheck |
+|---|---|---|---|---|---|---|---|---|---|
+| SRR17090570 | hly702 | 660-1361 | **702** | contig_0 (Tadpole) | 0 / 0 | - | | | target |
+| SRR17090570 | hlyQ | 1257-1368 | **112** | contig_0 (Tadpole) | 0 / 0 | - | hlyQ-P | 0 | target |
+| lmono_EGDe | hly702 | 205963-206664 | **702** | NC_003210.1 | 0 / 0 | + | | | target |
+| lmono_EGDe | hlyQ | 205956-206067 | **112** | NC_003210.1 | 0 / 0 | + | hlyQ-P | 0 | target |
 
 How to read it:
 
 - Both *L. monocytogenes* samples (assembly **and** reads) are positive for **both assays**, with the expected product sizes (702 bp and 112 bp) and zero mismatches.
+- `SizeCheck` is `target` on every row: each product has the size declared for its assay. The column only exists because the primer file declares sizes; it labels rows and never removes one.
 - The `hlyQ` rows carry the probe columns — the probe was found **inside** the amplicon, which is required for a qPCR assay to be called positive. The conventional `hly702` rows leave the probe columns empty.
 - The *hly* coordinates from the read samples differ from the EGD-e coordinates because they are positions on the Tadpole-assembled contig, not on a reference genome.
 - `Strand` is `-` for the read sample: Tadpole happened to assemble the *hly* region in the opposite orientation, so the assay matched the reverse strand — a reminder that assays are detected on either strand.
 - Neither *L. innocua* sample produces a row: the primers have no acceptable binding sites. **An empty result for the negative control is the expected outcome.** (You may notice a harmless `Warning: [blastn] Query is Empty!` in the console: baiting the *L. innocua* reads with *hly* primers catches nothing, so there is no assembly to search.)
 - Bonus insight: this *L. monocytogenes* strain carries a single SNP at position 4 (from the 5' end) of `hly702-R`, visible in `detailed_report/SRR17090570/SRR17090570.tsv` as a 5'-trimmed alignment. 5'-proximal mismatches barely affect priming, so the hit is accepted (`--5p-truncation`, default 5) — exactly what a real PCR would do.
 
-The same folder holds `report.html`, the same results as a page: a grid with one row per sample and one column per assay, in which the two *L. monocytogenes* samples show a product for both assays and the two *L. innocua* samples show none. See [HTML report](Reports#html-report).
-
-## 5. The synthetic gel
+## 6. The synthetic gel
 
 `--gel` wrote `tutorial_results/synthetic_gel_report.png`:
 
@@ -113,10 +139,24 @@ The same folder holds `report.html`, the same results as a page: a grid with one
 
 Each positive lane shows the two bands you would expect on a real gel — the 702 bp conventional product and the 112 bp qPCR product — while the negative-control lanes are loaded but empty, exactly like a wet-lab exclusivity control. Bands are colored by assay with a gene legend, matching the "Color by gene" option of the interactive GUI viewer (**View Gel Image**), which additionally offers hover tooltips, pagination, and SVG/PDF export.
 
-## 6. Things to try next
+## 7. The same run in the GUI
+
+Start the application with `./run-insilicoPCR.sh` (Linux) or `run-insilicoPCR.bat` (Windows). Choose the `tutorial_input` folder as input, `listeria_assays.fasta` as primer file and an output folder, leave **Mismatches** at 0, and click **Run**:
+
+![The insilicoPCR window after the tutorial run](https://raw.githubusercontent.com/duceppemo/insilicoPCR/master/docs/assets/tutorial/gui_tutorial.png)
+
+The log shows each step and ends with the path of the HTML report and the run time. The reports are the same as from the command line. When the run ends:
+
+- **View HTML Report** opens the page of section 4 in your web browser;
+- **View Gel Image** opens the interactive gel viewer on the same results.
+
+See [GUI Overview](GUI-Overview) for the other buttons and the settings dialogs.
+
+## 8. Things to try next
 
 - Re-run with `-m 2` and watch the report stay identical — the assays match their target perfectly, and near-neighbor sites still fail the 3'-end rules.
 - Re-run with `-l 100`: the 112 bp qPCR product now exceeds the maximum length and disappears; `--min-length 200` would drop it too.
-- Declare the product sizes in the primer file (`>hly702-F size=702` and `>hlyQ-F size=112` on the header lines) and re-run: `report.tsv` gains a `SizeCheck` column and the HTML report marks products of the declared size as the positive result. See [Declaring product sizes](Primer-FASTA-Format#declaring-product-sizes-optional).
+- Remove the two `size=` words from the primer file and re-run: `report.tsv` loses its `SizeCheck` column and the HTML report shows the same four products in blue, as amplified with no size to compare with.
+- Declare a wrong size instead (`>hly702-F size=500`) and re-run: the 702 bp products are still reported, now labelled `unexpected`, and the HTML report no longer counts them as positive. Nothing is hidden; the label only tells the reader what the size means.
 - Add your own assay for a different gene to the primer FASTA — mixed files are fine as long as every ID ends in `-F`, `-R`, or `-P`.
 - Open `tutorial_results/detailed_report/<sample>/<sample>.tsv` to audit the raw BLAST hits behind every call.

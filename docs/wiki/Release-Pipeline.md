@@ -2,6 +2,10 @@
 
 The release process creates deterministic portable ZIP archives for Linux and Windows.
 
+![insilicoPCR release pipeline](https://raw.githubusercontent.com/duceppemo/insilicoPCR/master/docs/assets/release-pipeline.svg)
+
+Releases are fully automated: pushing a `v*` tag builds the Linux and Windows portable ZIPs in parallel and publishes them, with their SHA256 checksums, as a GitHub Release, which Zenodo archives with a DOI. Pushes to `master` and pull requests run the same build and tests without publishing.
+
 ## CI release flow
 
 1. Check out the repository.

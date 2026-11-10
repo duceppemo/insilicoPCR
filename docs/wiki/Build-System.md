@@ -10,8 +10,13 @@ insilicoPCR uses Maven with the Maven wrapper.
 ## Build
 
 ```bash
+git clone https://github.com/duceppemo/insilicoPCR.git
+cd insilicoPCR
+./mvnw test            # unit tests (JUnit 5) with JaCoCo coverage
 ./mvnw clean package
 ```
+
+Development requires Java 26. End users should normally use the portable releases, which bundle their own Java.
 
 ## Output
 

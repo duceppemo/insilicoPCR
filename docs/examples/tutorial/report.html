@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>insilicoPCR report</title>
+<style>
+:root {
+  color-scheme: light dark;
+  --page: #f6f5f1; --surface: #fcfcfb; --ink: #0b0b0b; --ink-2: #52514e; --ink-3: #807f79;
+  --line: #e1e0d9; --line-2: #c3c2b7; --wash: rgba(11,11,11,.04);
+  --target: #008300; --amplified: #2a78d6; --other: #fab219; --unexpected: #d03b3b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #111110; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --ink-3: #8f8e87;
+    --line: #2c2c2a; --line-2: #383835; --wash: rgba(255,255,255,.05);
+    --amplified: #3987e5;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--ink);
+  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+main { max-width: 1240px; margin: 0 auto; padding: 32px 20px 64px; }
+h1 { font-size: 26px; margin: 0; letter-spacing: -.01em; }
+h2 { font-size: 18px; margin: 0 0 6px; }
+h3 { font-size: 16px; margin: 0; overflow-wrap: anywhere; }
+.sub, .hint, .decl { color: var(--ink-2); margin: 4px 0 0; }
+.hint { font-size: 13.5px; max-width: 78ch; }
+code { font: 13px ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+section { margin-top: 36px; }
+.tiles { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 24px; }
+.tile { background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+  padding: 12px 16px; min-width: 132px; flex: 1 1 132px; border-top: 3px solid var(--line-2); }
+.tile .n { display: block; font-size: 28px; font-weight: 650; line-height: 1.15; }
+.tile .l { display: block; font-size: 13px; color: var(--ink-2); }
+.t-target { border-top-color: var(--target); } .t-amplified { border-top-color: var(--amplified); }
+.t-unexpected { border-top-color: var(--unexpected); } .t-inconclusive { border-top-color: var(--ink-3); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 12px 0; font-size: 13.5px; color: var(--ink-2); }
+.key { display: inline-flex; align-items: center; gap: 6px; }
+.tools { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin: 10px 0; font-size: 13.5px; }
+#showAll { font: inherit; padding: 5px 12px; border: 1px solid var(--line-2); border-radius: 8px;
+  background: var(--surface); color: var(--ink); cursor: pointer; }
+input[type=search] { font: inherit; padding: 6px 10px; border: 1px solid var(--line-2); border-radius: 8px;
+  background: var(--surface); color: var(--ink); min-width: 240px; }
+.scroll { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+th, td { padding: 6px 10px; text-align: left; border-bottom: 1px solid var(--line); white-space: nowrap; }
+tbody tr:last-child > * { border-bottom: 0; }
+thead th { font-size: 12.5px; font-weight: 600; color: var(--ink-2); background: var(--surface);
+  border-bottom: 1px solid var(--line-2); position: sticky; top: 0; vertical-align: bottom; }
+.grid td, .grid thead th:not(.corner) { text-align: center; }
+.grid tbody th { font-weight: 500; position: sticky; left: 0; background: var(--surface);
+  border-right: 1px solid var(--line); max-width: 300px; overflow: hidden; text-overflow: ellipsis; }
+.grid .corner { position: sticky; left: 0; z-index: 2; border-right: 1px solid var(--line); }
+.grid .an { display: block; color: var(--ink); }
+.grid .as { display: block; font-weight: 400; color: var(--ink-3); }
+.grid.many thead th:not(.corner) { padding: 8px 4px; }
+.grid.many .an { writing-mode: vertical-rl; transform: rotate(180deg); margin: 0 auto 4px; max-height: 150px;
+  overflow: hidden; text-overflow: ellipsis; }
+.grid.many td { padding: 6px 4px; }
+tbody tr:hover > * { background: var(--wash); }
+.num { text-align: right; } .wrap { white-space: normal; min-width: 320px; }
+.chip { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-width: 30px;
+  padding: 1px 8px; border-radius: 999px; font: 600 12.5px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+  border: 2px solid transparent; color: var(--ink); background: none; position: relative; }
+button.chip { cursor: pointer; } button.chip:hover, button.chip:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
+.chip.target { background: var(--target); color: #fff; }
+.chip.amplified { background: var(--amplified); color: #fff; }
+.chip.other { border-color: var(--other); }
+.chip.unexpected { border-color: var(--unexpected); border-style: dashed; }
+.chip.inconclusive { border: 2px dotted var(--ink-3); color: var(--ink-2); }
+.chip.unchecked { color: var(--ink-3); min-width: 0; padding: 0; font-weight: 400; }
+.chip.none { color: var(--line-2); min-width: 0; padding: 0; font-weight: 400; }
+.chip sup { font-size: 10px; line-height: 1; margin-left: 1px; }
+.dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: .85;
+  box-shadow: 0 0 0 2px var(--surface); position: absolute; top: -3px; right: -3px; }
+.chip.target .dot, .chip.amplified .dot { background: var(--ink); }
+.tag { display: inline-block; font-size: 11px; font-weight: 600; letter-spacing: .02em; color: var(--ink-2);
+  border: 1px solid var(--line-2); border-radius: 4px; padding: 0 5px; vertical-align: 1px; }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; margin-top: 12px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+.card .decl { font-size: 13px; } .card .count { margin: 10px 0 6px; color: var(--ink-2); }
+.card .count .n { font-size: 22px; font-weight: 650; color: var(--ink); }
+.meter { height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.meter span { display: block; height: 100%; border-radius: 3px; }
+.meter .target { background: var(--target); } .meter .amplified { background: var(--amplified); }
+.group { margin: 12px 0 4px; font-size: 13.5px; font-weight: 600; }
+.names { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 6px; font-size: 13.5px; }
+.names li { background: var(--wash); border-radius: 6px; padding: 1px 8px; overflow-wrap: anywhere; }
+.names .bp { color: var(--ink-2); font-size: 12px; } .muted li { color: var(--ink-2); }
+details { margin-top: 10px; font-size: 13.5px; } summary { cursor: pointer; color: var(--ink-2); }
+details .names { margin-top: 6px; }
+.details { display: grid; grid-template-columns: max-content 1fr; gap: 4px 20px; margin: 10px 0; font-size: 14px; }
+.details dt { color: var(--ink-2); } .details dd { margin: 0; overflow-wrap: anywhere; }
+[hidden] { display: none !important; }
+@media print { body { background: #fff; } .tools { display: none; } .scroll { overflow: visible; border: 0; }
+  thead th, .grid tbody th { position: static; } section { break-inside: avoid-page; } }
+</style>
+</head>
+<body>
+<main>
+<header>
+<h1>insilicoPCR report</h1>
+<p class="sub">2026-11-10 12:33 · version 0.11.0 · report.tsv</p>
+</header>
+<section class="tiles" aria-label="Summary">
+<div class="tile"><span class="n">4</span><span class="l">samples</span></div>
+<div class="tile"><span class="n">2</span><span class="l">assays</span></div>
+<div class="tile t-target"><span class="n">4</span><span class="l">positive at target size</span></div>
+<div class="tile"><span class="n">0</span><span class="l">product of another size only</span></div>
+<div class="tile"><span class="n">4</span><span class="l">amplicons in the report</span></div>
+</section>
+<section>
+<h2>Samples by assay</h2>
+<p class="hint">Each cell is one sample tested with one assay; the number is the product size in bp. Every product is listed, whatever its size. Click a cell to see its amplicons.</p>
+<div class="legend" aria-label="Legend"><span class="key" title="Product of the size the assay is designed to give"><span class="chip target">✓</span>Target size</span><span class="key" title="No product"><span class="chip none">·</span>No product</span><span class="key"><span class="tag">reads</span>FASTQ input, or a product called from reads</span></div>
+<div class="scroll"><table class="grid" id="grid">
+<thead><tr><th class="corner">Sample</th><th scope="col" title="hly702: target 692-712 bp"><span class="an">hly702</span><span class="as">2/4</span></th><th scope="col" title="hlyQ: target 102-122 bp"><span class="an">hlyQ</span><span class="as">2/4</span></th></tr></thead>
+<tbody>
+<tr data-sample="ERR6501878" data-any="0"><th scope="row">ERR6501878 <span class="tag">reads</span></th><td><span class="chip none" title="ERR6501878 · hly702: No product">·</span></td><td><span class="chip none" title="ERR6501878 · hlyQ: No product">·</span></td></tr>
+<tr data-sample="SRR17090570" data-any="1"><th scope="row">SRR17090570 <span class="tag">reads</span></th><td><button type="button" class="chip target" title="SRR17090570 · hly702: Target size&#10;702 bp (target)" data-s="SRR17090570" data-a="hly702">✓ 702</button></td><td><button type="button" class="chip target" title="SRR17090570 · hlyQ: Target size&#10;112 bp (target)" data-s="SRR17090570" data-a="hlyQ">✓ 112</button></td></tr>
+<tr data-sample="linnocua_CLIP11262" data-any="0"><th scope="row">linnocua_CLIP11262</th><td><span class="chip none" title="linnocua_CLIP11262 · hly702: No product">·</span></td><td><span class="chip none" title="linnocua_CLIP11262 · hlyQ: No product">·</span></td></tr>
+<tr data-sample="lmono_EGDe" data-any="1"><th scope="row">lmono_EGDe</th><td><button type="button" class="chip target" title="lmono_EGDe · hly702: Target size&#10;702 bp (target)" data-s="lmono_EGDe" data-a="hly702">✓ 702</button></td><td><button type="button" class="chip target" title="lmono_EGDe · hlyQ: Target size&#10;112 bp (target)" data-s="lmono_EGDe" data-a="hlyQ">✓ 112</button></td></tr>
+</tbody></table></div>
+</section>
+<section>
+<h2>By assay</h2>
+<div class="cards">
+<article class="card">
+<h3>hly702</h3>
+<p class="decl">target 692-712 bp</p>
+<p class="count"><span class="n">2</span> of 4 samples positive at the target size</p>
+<div class="meter" role="img" aria-label="2 of 4"><span class="target" style="width:50.0%"></span></div>
+<p class="group"><span class="chip target">✓</span> Target size (2)</p>
+<ul class="names"><li title="">SRR17090570 <span class="bp">702 bp</span></li><li title="">lmono_EGDe <span class="bp">702 bp</span></li></ul>
+<details><summary>2 with no product</summary><ul class="names muted"><li>ERR6501878</li><li>linnocua_CLIP11262</li></ul></details>
+</article>
+<article class="card">
+<h3>hlyQ</h3>
+<p class="decl">target 102-122 bp</p>
+<p class="count"><span class="n">2</span> of 4 samples positive at the target size</p>
+<div class="meter" role="img" aria-label="2 of 4"><span class="target" style="width:50.0%"></span></div>
+<p class="group"><span class="chip target">✓</span> Target size (2)</p>
+<ul class="names"><li title="">SRR17090570 <span class="bp">112 bp</span></li><li title="">lmono_EGDe <span class="bp">112 bp</span></li></ul>
+<details><summary>2 with no product</summary><ul class="names muted"><li>ERR6501878</li><li>linnocua_CLIP11262</li></ul></details>
+</article>
+</div>
+</section>
+<section id="amplicons">
+<h2>All amplicons</h2>
+<div class="tools"><input type="search" id="rowFilter" placeholder="Filter by sample, assay, size…" aria-label="Filter amplicons"><button type="button" id="showAll" hidden>Show all</button><span id="rowCount" class="hint"></span></div>
+<div class="scroll"><table class="rows" id="rows">
+<thead><tr><th>Sample</th><th>Assay</th><th class="num">Size (bp)</th><th>Size check</th><th>Found on</th><th>Location</th><th class="num" title="Forward / reverse primer mismatches">Mismatches F/R</th><th class="num" title="Imperfections in the 3' window, forward / reverse">3′ F/R</th><th>Strand</th><th>Probe</th><th class="num">Probe mismatches</th></tr></thead>
+<tbody>
+<tr data-s="SRR17090570" data-a="hly702"><td>SRR17090570</td><td>hly702</td><td class="num">702</td><td><span class="chip target">✓ target</span></td><td title="contig_0,len=2492,cov=19.8,gc=0.360,class=long/medium/unanchored,min=2,max=51,hh=0.552,caga=0.523">contig_0</td><td>660-1361</td><td class="num">0 / 0</td><td class="num">0 / 0</td><td>-</td><td></td><td class="num"></td></tr>
+<tr data-s="SRR17090570" data-a="hlyQ"><td>SRR17090570</td><td>hlyQ</td><td class="num">112</td><td><span class="chip target">✓ target</span></td><td title="contig_0,len=2492,cov=19.8,gc=0.360,class=long/medium/unanchored,min=2,max=51,hh=0.552,caga=0.523">contig_0</td><td>1257-1368</td><td class="num">0 / 0</td><td class="num">0 / 0</td><td>-</td><td>hlyQ-P</td><td class="num">0</td></tr>
+<tr data-s="lmono_EGDe" data-a="hly702"><td>lmono_EGDe</td><td>hly702</td><td class="num">702</td><td><span class="chip target">✓ target</span></td><td title="NC_003210.1 — Listeria monocytogenes EGD-e chromosome, complete genome">NC_003210.1</td><td>205963-206664</td><td class="num">0 / 0</td><td class="num">0 / 0</td><td>+</td><td></td><td class="num"></td></tr>
+<tr data-s="lmono_EGDe" data-a="hlyQ"><td>lmono_EGDe</td><td>hlyQ</td><td class="num">112</td><td><span class="chip target">✓ target</span></td><td title="NC_003210.1 — Listeria monocytogenes EGD-e chromosome, complete genome">NC_003210.1</td><td>205956-206067</td><td class="num">0 / 0</td><td class="num">0 / 0</td><td>+</td><td>hlyQ-P</td><td class="num">0</td></tr>
+</tbody></table></div>
+</section>
+<section>
+<h2>Run details</h2>
+<dl class="details">
+<dt>Date</dt><dd>2026-11-10 12:33</dd>
+<dt>insilicoPCR version</dt><dd>0.11.0</dd>
+<dt>Input</dt><dd>/home/bioinfo/prog/insilicoPCR/target/tutorial/tutorial_input</dd>
+<dt>Primer file</dt><dd>/home/bioinfo/prog/insilicoPCR/target/tutorial/listeria_assays.fasta</dd>
+<dt>Output folder</dt><dd>/home/bioinfo/prog/insilicoPCR/target/tutorial/tutorial_results</dd>
+<dt>Primer mismatches (-m)</dt><dd>0</dd>
+<dt>Probe mismatches</dt><dd>0</dd>
+<dt>3&#39; window / max penalty</dt><dd>5 / 0</dd>
+<dt>5&#39; truncation allowed</dt><dd>5</dd>
+<dt>Product length</dt><dd>0 to 5000 bp</dd>
+<dt>Read-level calls (FASTQ)</dt><dd>at least 2 reads or read pairs and 30% of informative reads</dd>
+</dl>
+<p class="hint">This page shows the rows of <code>report.tsv</code>, in the same folder. insilicoPCR reports every product a PCR would amplify, whatever its size; the size check compares each product with the sizes declared in the primer file and removes nothing.</p>
+</section>
+</main>
+<script>
+(function () {
+  var rows = Array.prototype.slice.call(document.querySelectorAll('#rows tbody tr'));
+  var rowFilter = document.getElementById('rowFilter'), rowCount = document.getElementById('rowCount');
+  var showAll = document.getElementById('showAll');
+  function filterRows() {
+    if (!rowFilter) return;
+    var words = rowFilter.value.toLowerCase().split(/\s+/).filter(Boolean), shown = 0;
+    rows.forEach(function (tr) {
+      var text = tr.textContent.toLowerCase();
+      var keep = words.every(function (w) { return text.indexOf(w) >= 0; });
+      tr.hidden = !keep; shown += keep ? 1 : 0;
+    });
+    showAll.hidden = true;
+    rowCount.textContent = words.length ? shown + ' of ' + rows.length + ' shown' : rows.length + ' amplicons';
+  }
+  if (rowFilter) {
+    rowFilter.addEventListener('input', filterRows);
+    showAll.addEventListener('click', function () { rowFilter.value = ''; filterRows(); });
+    filterRows();
+  }
+  document.querySelectorAll('#grid button.chip').forEach(function (chip) {
+    chip.addEventListener('click', function () {
+      var shown = 0;
+      rows.forEach(function (tr) {
+        tr.hidden = !(tr.dataset.s === chip.dataset.s && tr.dataset.a === chip.dataset.a);
+        shown += tr.hidden ? 0 : 1;
+      });
+      rowFilter.value = '';
+      showAll.hidden = false;
+      rowCount.textContent = chip.dataset.s + ' \u00b7 ' + chip.dataset.a + ': ' + shown + ' of ' + rows.length + ' shown';
+      document.getElementById('amplicons').scrollIntoView({ behavior: 'smooth' });
+    });
+  });
+  var sampleFilter = document.getElementById('sampleFilter'), only = document.getElementById('onlyProducts');
+  function filterSamples() {
+    var word = sampleFilter.value.toLowerCase();
+    document.querySelectorAll('#grid tbody tr').forEach(function (tr) {
+      tr.hidden = tr.dataset.sample.toLowerCase().indexOf(word) < 0 || (only.checked && tr.dataset.any !== '1');
+    });
+  }
+  if (sampleFilter) { sampleFilter.addEventListener('input', filterSamples); only.addEventListener('change', filterSamples); }
+})();
+</script>
+</body>
+</html>

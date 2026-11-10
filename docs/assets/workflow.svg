@@ -83,7 +83,7 @@
       <text x="740" y="287" class="num">6</text>
       <text x="740" y="322" class="label">Hit filtering</text>
       <text x="740" y="346" class="small">mismatch + indel budget</text>
-      <text x="740" y="365" class="small">weighted 3'-end check (G/C-aware)</text>
+      <text x="740" y="365" class="small">weighted 3'-end check</text>
     </g>
 
     <g filter="url(#shadow)">

@@ -1,73 +1,112 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="680" viewBox="0 0 1100 680" role="img" aria-labelledby="title desc">
-  <title id="title">insilicoPCR application architecture</title>
-  <desc id="desc">Layered architecture showing GUI and CLI entry points, pipeline services, external tools, reporting, synthetic gel visualization, and portable runtime assets.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="1180" height="760" viewBox="0 0 1180 760" role="img" aria-labelledby="title desc">
+  <title id="title">insilicoPCR architecture</title>
+  <desc id="desc">One dispatcher starts either the desktop GUI or the command line. Both run the same pipeline, which calls the bundled external tools, the shared analysis core and the report writers. Everything runs from the portable runtime shipped in the release.</desc>
   <defs>
-    <filter id="shadow" x="-20%" y="-20%" width="140%" height="160%"><feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#0F172A" flood-opacity="0.16"/></filter>
-    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M2 2 L10 6 L2 10 Z" fill="#334155"/></marker>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#0F172A" flood-opacity="0.15"/>
+    </filter>
+    <marker id="arrow" markerWidth="11" markerHeight="11" refX="8.5" refY="5.5" orient="auto">
+      <path d="M1 1.2 L9.5 5.5 L1 9.8 Z" fill="#0F766E"/>
+    </marker>
     <style>
-      .title{font:800 34px Inter,Segoe UI,Arial,sans-serif;fill:#0F172A}.sub{font:17px Inter,Segoe UI,Arial,sans-serif;fill:#475569}.label{font:800 20px Inter,Segoe UI,Arial,sans-serif;fill:#0F172A}.small{font:14px Inter,Segoe UI,Arial,sans-serif;fill:#475569}.card{fill:#fff;stroke:#CBD5E1;stroke-width:1.4}.blue{fill:#E0F2FE;stroke:#38BDF8}.green{fill:#DCFCE7;stroke:#22C55E}.amber{fill:#FEF3C7;stroke:#F59E0B}.rose{fill:#FCE7F3;stroke:#F472B6}.violet{fill:#EDE9FE;stroke:#8B5CF6}.line{stroke:#334155;stroke-width:3;fill:none}
+      .title{font:800 32px Inter,Segoe UI,Arial,sans-serif;fill:#0F172A}
+      .sub{font:16px Inter,Segoe UI,Arial,sans-serif;fill:#475569}
+      .label{font:800 19px Inter,Segoe UI,Arial,sans-serif;fill:#0F172A}
+      .small{font:13.5px Inter,Segoe UI,Arial,sans-serif;fill:#475569}
+      .num{font:800 19px Inter,Segoe UI,Arial,sans-serif;fill:#fff}
+      .edge{font:700 13px Inter,Segoe UI,Arial,sans-serif;fill:#0F766E}
+      .card{fill:#fff;stroke:#CBD5E1;stroke-width:1.4}
+      .blue{fill:#E0F2FE;stroke:#38BDF8}
+      .green{fill:#DCFCE7;stroke:#22C55E}
+      .amber{fill:#FEF3C7;stroke:#F59E0B}
+      .rose{fill:#FCE7F3;stroke:#F472B6}
+      .ink{stroke:#0F766E;stroke-width:3.5;fill:none;stroke-linecap:round;stroke-linejoin:round}
     </style>
   </defs>
 
-  <rect width="1100" height="680" rx="28" fill="#F8FAFC"/>
-  <text x="550" y="58" text-anchor="middle" class="title">Application Architecture</text>
-  <text x="550" y="91" text-anchor="middle" class="sub">GUI and CLI front ends over a shared, portable PCR analysis pipeline</text>
+  <rect width="1180" height="760" rx="28" fill="#F8FAFC"/>
+  <text x="590" y="54" text-anchor="middle" class="title">Application architecture</text>
+  <text x="590" y="85" text-anchor="middle" class="sub">Two interfaces, one pipeline: the GUI and the command line run the same stages and the same analysis code.</text>
 
-  <g text-anchor="middle" font-family="Inter, Segoe UI, Arial, sans-serif">
+  <g text-anchor="middle">
     <g filter="url(#shadow)">
-      <rect x="250" y="125" width="250" height="82" rx="20" class="blue"/>
-      <text x="375" y="160" class="label">JavaFX GUI</text>
-      <text x="375" y="186" class="small">MainRun • controls • progress • gel viewer</text>
+      <rect x="450" y="130" width="280" height="100" rx="20" class="blue"/>
+      <circle cx="590" cy="130" r="17" fill="#0EA5E9"/>
+      <text x="590" y="137" class="num">1</text>
+      <text x="590" y="172" class="label">Dispatcher</text>
+      <text x="590" y="196" class="small">one launcher, one JAR</text>
+      <text x="590" y="215" class="small">picks the interface</text>
     </g>
     <g filter="url(#shadow)">
-      <rect x="600" y="125" width="250" height="82" rx="20" class="blue"/>
-      <text x="725" y="160" class="label">Command-line Interface</text>
-      <text x="725" y="186" class="small">Dispatcher • CliConfig • batch runs</text>
-    </g>
-
-    <path d="M375 207 C375 250 485 250 485 286" class="line" marker-end="url(#arrow)"/>
-    <path d="M725 207 C725 250 615 250 615 286" class="line" marker-end="url(#arrow)"/>
-
-    <g filter="url(#shadow)">
-      <rect x="360" y="290" width="380" height="88" rx="22" class="green"/>
-      <text x="550" y="326" class="label">Shared Pipeline</text>
-      <text x="550" y="352" class="small">InSilicoPcrPipeline • config • validation • orchestration</text>
-    </g>
-
-    <line x1="550" y1="378" x2="550" y2="426" class="line" marker-end="url(#arrow)"/>
-
-    <g filter="url(#shadow)">
-      <rect x="70" y="430" width="210" height="88" rx="20" class="card"/>
-      <text x="175" y="465" class="label">Input Services</text>
-      <text x="175" y="491" class="small">samples • FASTA • FASTQ • primers</text>
+      <rect x="50" y="130" width="280" height="100" rx="20" class="blue"/>
+      <circle cx="190" cy="130" r="17" fill="#0284C7"/>
+      <text x="190" y="137" class="num">2</text>
+      <text x="190" y="172" class="label">Desktop GUI</text>
+      <text x="190" y="196" class="small">JavaFX window and settings dialogs</text>
+      <text x="190" y="215" class="small">gel viewer, HTML report button</text>
     </g>
     <g filter="url(#shadow)">
-      <rect x="310" y="430" width="210" height="88" rx="20" class="card"/>
-      <text x="415" y="465" class="label">Tool Runners</text>
-      <text x="415" y="491" class="small">BBMap • BLAST+ • child Java</text>
+      <rect x="850" y="130" width="280" height="100" rx="20" class="blue"/>
+      <circle cx="990" cy="130" r="17" fill="#0284C7"/>
+      <text x="990" y="137" class="num">3</text>
+      <text x="990" y="172" class="label">Command line</text>
+      <text x="990" y="196" class="small">options for every setting</text>
+      <text x="990" y="215" class="small">batch runs, --gel image export</text>
     </g>
     <g filter="url(#shadow)">
-      <rect x="550" y="430" width="210" height="88" rx="20" class="card"/>
-      <text x="655" y="465" class="label">Domain Model</text>
-      <text x="655" y="491" class="small">samples • primers • hits • amplicons</text>
+      <rect x="50" y="290" width="1080" height="100" rx="20" class="green"/>
+      <circle cx="590" cy="290" r="17" fill="#22C55E"/>
+      <text x="590" y="297" class="num">4</text>
+      <text x="590" y="332" class="label">Shared pipeline</text>
+      <text x="590" y="356" class="small">read inputs and primers  →  bait and micro-assemble reads (FASTQ)  →  BLAST the primers  →  call amplicons  →  write reports</text>
+      <text x="590" y="375" class="small">the same stage classes behind both interfaces, so their results cannot drift apart</text>
     </g>
     <g filter="url(#shadow)">
-      <rect x="790" y="430" width="240" height="88" rx="20" class="card"/>
-      <text x="910" y="465" class="label">Reports and Gel</text>
-      <text x="910" y="491" class="small">TSV • HTML report • synthetic gel</text>
+      <rect x="50" y="450" width="280" height="100" rx="20" class="card"/>
+      <circle cx="190" cy="450" r="17" fill="#64748B"/>
+      <text x="190" y="457" class="num">5</text>
+      <text x="190" y="492" class="label">External tools</text>
+      <text x="190" y="516" class="small">BBTools: BBDuk, Tadpole, BBMerge</text>
+      <text x="190" y="535" class="small">BLAST+: makeblastdb, blastn</text>
     </g>
-
-    <path d="M550 378 C550 408 175 408 175 430" class="line" marker-end="url(#arrow)"/>
-    <path d="M550 378 C550 408 415 408 415 430" class="line" marker-end="url(#arrow)"/>
-    <path d="M550 378 C550 408 655 408 655 430" class="line" marker-end="url(#arrow)"/>
-    <path d="M550 378 C550 408 910 408 910 430" class="line" marker-end="url(#arrow)"/>
-
     <g filter="url(#shadow)">
-      <rect x="145" y="575" width="810" height="62" rx="20" class="amber"/>
-      <text x="550" y="601" class="label">Portable Runtime Assets</text>
-      <text x="550" y="625" class="small">bundled OpenJDK 26 • JavaFX 26.0.1 • curated BBMap • curated NCBI BLAST+</text>
+      <rect x="450" y="450" width="280" height="100" rx="20" class="amber"/>
+      <circle cx="590" cy="450" r="17" fill="#F59E0B"/>
+      <text x="590" y="457" class="num">6</text>
+      <text x="590" y="492" class="label">Analysis core</text>
+      <text x="590" y="516" class="small">hit filtering, amplicon calling</text>
+      <text x="590" y="535" class="small">read-level calls, size labels</text>
     </g>
-    <path d="M415 518 C415 548 550 548 550 575" class="line" marker-end="url(#arrow)"/>
-    <path d="M910 518 C910 548 550 548 550 575" class="line" marker-end="url(#arrow)"/>
+    <g filter="url(#shadow)">
+      <rect x="850" y="450" width="280" height="100" rx="20" class="rose"/>
+      <circle cx="990" cy="450" r="17" fill="#DB2777"/>
+      <text x="990" y="457" class="num">7</text>
+      <text x="990" y="492" class="label">Reports</text>
+      <text x="990" y="516" class="small">report.tsv, HTML report</text>
+      <text x="990" y="535" class="small">FASTQ diagnostics, synthetic gel</text>
+    </g>
+    <g filter="url(#shadow)">
+      <rect x="50" y="620" width="1080" height="90" rx="20" class="card"/>
+      <circle cx="590" cy="620" r="17" fill="#64748B"/>
+      <text x="590" y="627" class="num">8</text>
+      <text x="590" y="662" class="label">Portable runtime</text>
+      <text x="590" y="686" class="small">bundled OpenJDK 26 with JavaFX, BBTools and NCBI BLAST+: nothing to install, same folder layout on Windows and Linux</text>
+    </g>
+    <!-- edges: straight, grid-aligned -->
+    <line x1="450" y1="180" x2="336" y2="180" class="ink" marker-end="url(#arrow)"/>
+    <text x="402" y="158" class="edge" text-anchor="middle">no arguments</text>
+    <line x1="730" y1="180" x2="844" y2="180" class="ink" marker-end="url(#arrow)"/>
+    <text x="778" y="158" class="edge" text-anchor="middle">arguments</text>
+    <line x1="190" y1="230" x2="190" y2="267" class="ink" marker-end="url(#arrow)"/>
+    <line x1="990" y1="230" x2="990" y2="267" class="ink" marker-end="url(#arrow)"/>
+    <line x1="190" y1="390" x2="190" y2="427" class="ink" marker-end="url(#arrow)"/>
+    <line x1="590" y1="390" x2="590" y2="427" class="ink" marker-end="url(#arrow)"/>
+    <line x1="990" y1="390" x2="990" y2="427" class="ink" marker-end="url(#arrow)"/>
+    <line x1="330" y1="500" x2="444" y2="500" class="ink" marker-end="url(#arrow)"/>
+    <text x="378" y="478" class="edge" text-anchor="middle">BLAST hits</text>
+    <line x1="730" y1="500" x2="844" y2="500" class="ink" marker-end="url(#arrow)"/>
+    <text x="778" y="478" class="edge" text-anchor="middle">amplicons</text>
+    <line x1="190" y1="550" x2="190" y2="597" class="ink" marker-end="url(#arrow)"/>
+    <text x="216" y="572" class="edge" text-anchor="start">run from</text>
   </g>
 </svg>

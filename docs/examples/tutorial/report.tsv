@@ -1,0 +1,5 @@
+Sample	Gene	GenomeLocation	AmpliconSize	Contig	Contig Description	ForwardPrimers	ReversePrimers	ForwardMismatches	ReverseMismatches	Forward3PrimeMismatches	Reverse3PrimeMismatches	Strand	Probe	ProbeLocation	ProbeSize	ProbeMismatches	SizeCheck
+SRR17090570	hly702	660-1361	702	contig_0,len=2492,cov=19.8,gc=0.360,class=long/medium/unanchored,min=2,max=51,hh=0.552,caga=0.523		hly702-F	hly702-R	0	0	0	0	-					target
+SRR17090570	hlyQ	1257-1368	112	contig_0,len=2492,cov=19.8,gc=0.360,class=long/medium/unanchored,min=2,max=51,hh=0.552,caga=0.523		hlyQ-F	hlyQ-R	0	0	0	0	-	hlyQ-P	1322-1347	26	0	target
+lmono_EGDe	hly702	205963-206664	702	NC_003210.1	Listeria monocytogenes EGD-e chromosome, complete genome	hly702-F	hly702-R	0	0	0	0	+					target
+lmono_EGDe	hlyQ	205956-206067	112	NC_003210.1	Listeria monocytogenes EGD-e chromosome, complete genome	hlyQ-F	hlyQ-R	0	0	0	0	+	hlyQ-P	205977-206002	26	0	target

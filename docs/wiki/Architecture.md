@@ -2,6 +2,10 @@
 
 insilicoPCR uses a shared pipeline behind both the graphical interface and command-line interface.
 
+![insilicoPCR architecture](https://raw.githubusercontent.com/duceppemo/insilicoPCR/master/docs/assets/architecture.svg)
+
+One dispatcher starts the desktop GUI when it is given no arguments and the command line otherwise. Both run the same pipeline stages, which call the bundled external tools (BBTools and BLAST+), pass the BLAST hits to the shared analysis core, and write the reports from the amplicons it calls. Everything runs from the portable runtime shipped in the release ZIP.
+
 ## Entry points
 
 | Area | Entry point |

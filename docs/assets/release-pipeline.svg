@@ -1,48 +1,88 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="500" viewBox="0 0 1100 500" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" width="1180" height="470" viewBox="0 0 1180 470" role="img" aria-labelledby="title desc">
   <title id="title">insilicoPCR release pipeline</title>
-  <desc id="desc">Deterministic GitHub Actions release pipeline validating committed runtime assets, building with Maven, staging bundled JDK and tools, and publishing portable ZIP archives.</desc>
+  <desc id="desc">Pushing a version tag validates the bundled tools, builds and tests with Maven, packages the Linux and Windows portable ZIPs with their checksums, and publishes them as a GitHub Release that Zenodo archives.</desc>
   <defs>
-    <filter id="shadow" x="-20%" y="-20%" width="140%" height="160%"><feDropShadow dx="0" dy="8" stdDeviation="9" flood-color="#0F172A" flood-opacity="0.16"/></filter>
-    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M2 2 L10 6 L2 10 Z" fill="#0284C7"/></marker>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#0F172A" flood-opacity="0.15"/>
+    </filter>
+    <marker id="arrow" markerWidth="11" markerHeight="11" refX="8.5" refY="5.5" orient="auto">
+      <path d="M1 1.2 L9.5 5.5 L1 9.8 Z" fill="#0F766E"/>
+    </marker>
     <style>
-      .title{font:800 34px Inter,Segoe UI,Arial,sans-serif;fill:#0F172A}.sub{font:17px Inter,Segoe UI,Arial,sans-serif;fill:#475569}.label{font:800 19px Inter,Segoe UI,Arial,sans-serif;fill:#0F172A}.small{font:14px Inter,Segoe UI,Arial,sans-serif;fill:#475569}.blue{fill:#E0F2FE;stroke:#38BDF8}.green{fill:#DCFCE7;stroke:#22C55E}.amber{fill:#FEF3C7;stroke:#F59E0B}.rose{fill:#FCE7F3;stroke:#F472B6}.violet{fill:#EDE9FE;stroke:#8B5CF6}.line{stroke:#0284C7;stroke-width:4;fill:none}
+      .title{font:800 32px Inter,Segoe UI,Arial,sans-serif;fill:#0F172A}
+      .sub{font:16px Inter,Segoe UI,Arial,sans-serif;fill:#475569}
+      .label{font:800 19px Inter,Segoe UI,Arial,sans-serif;fill:#0F172A}
+      .small{font:13.5px Inter,Segoe UI,Arial,sans-serif;fill:#475569}
+      .num{font:800 19px Inter,Segoe UI,Arial,sans-serif;fill:#fff}
+      .edge{font:700 13px Inter,Segoe UI,Arial,sans-serif;fill:#0F766E}
+      .card{fill:#fff;stroke:#CBD5E1;stroke-width:1.4}
+      .blue{fill:#E0F2FE;stroke:#38BDF8}
+      .green{fill:#DCFCE7;stroke:#22C55E}
+      .amber{fill:#FEF3C7;stroke:#F59E0B}
+      .rose{fill:#FCE7F3;stroke:#F472B6}
+      .ink{stroke:#0F766E;stroke-width:3.5;fill:none;stroke-linecap:round;stroke-linejoin:round}
     </style>
   </defs>
 
-  <rect width="1100" height="500" rx="28" fill="#F8FAFC"/>
-  <text x="550" y="58" text-anchor="middle" class="title">Portable Release Pipeline</text>
-  <text x="550" y="91" text-anchor="middle" class="sub">Deterministic Windows and Linux ZIP releases without downloading BBMap or BLAST+ during CI</text>
+  <rect width="1180" height="470" rx="28" fill="#F8FAFC"/>
+  <text x="590" y="54" text-anchor="middle" class="title">Release pipeline</text>
+  <text x="590" y="85" text-anchor="middle" class="sub">One version tag builds both portable ZIPs. Nothing is downloaded from tool mirrors during the build.</text>
 
-  <g text-anchor="middle" font-family="Inter, Segoe UI, Arial, sans-serif" filter="url(#shadow)">
-    <rect x="50" y="170" width="145" height="92" rx="20" class="blue"/>
-    <text x="122.5" y="207" class="label">Tag</text>
-    <text x="122.5" y="234" class="small">v* release</text>
-
-    <rect x="250" y="170" width="145" height="92" rx="20" class="violet"/>
-    <text x="322.5" y="207" class="label">Validate</text>
-    <text x="322.5" y="234" class="small">runtime assets</text>
-
-    <rect x="450" y="170" width="145" height="92" rx="20" class="green"/>
-    <text x="522.5" y="207" class="label">Build</text>
-    <text x="522.5" y="234" class="small">Maven + tests</text>
-
-    <rect x="650" y="170" width="145" height="92" rx="20" class="amber"/>
-    <text x="722.5" y="207" class="label">Stage</text>
-    <text x="722.5" y="234" class="small">JDK + tools</text>
-
-    <rect x="850" y="170" width="200" height="92" rx="20" class="rose"/>
-    <text x="950" y="207" class="label">Publish ZIPs</text>
-    <text x="950" y="234" class="small">Linux + Windows + SHA256</text>
-  </g>
-
-  <line x1="195" y1="216" x2="232" y2="216" class="line" marker-end="url(#arrow)"/>
-  <line x1="395" y1="216" x2="432" y2="216" class="line" marker-end="url(#arrow)"/>
-  <line x1="595" y1="216" x2="632" y2="216" class="line" marker-end="url(#arrow)"/>
-  <line x1="795" y1="216" x2="832" y2="216" class="line" marker-end="url(#arrow)"/>
-
-  <g font-family="Inter, Segoe UI, Arial, sans-serif" font-size="15" fill="#475569">
-    <rect x="120" y="330" width="860" height="88" rx="22" fill="#FFFFFF" stroke="#CBD5E1"/>
-    <text x="150" y="361" font-weight="800" fill="#0F172A">Portable release contents</text>
-    <text x="150" y="388">Application JAR • dependency libraries • bundled OpenJDK 26 • JavaFX runtime • curated BBMap • curated NCBI BLAST+ • run-insilicoPCR launchers</text>
+  <g text-anchor="middle">
+    <g filter="url(#shadow)">
+      <rect x="50" y="130" width="180" height="100" rx="20" class="blue"/>
+      <circle cx="140" cy="130" r="17" fill="#0EA5E9"/>
+      <text x="140" y="137" class="num">1</text>
+      <text x="140" y="172" class="label">Version tag</text>
+      <text x="140" y="196" class="small">push a v* tag</text>
+      <text x="140" y="215" class="small">from master</text>
+    </g>
+    <g filter="url(#shadow)">
+      <rect x="275" y="130" width="180" height="100" rx="20" class="card"/>
+      <circle cx="365" cy="130" r="17" fill="#64748B"/>
+      <text x="365" y="137" class="num">2</text>
+      <text x="365" y="172" class="label">Validate</text>
+      <text x="365" y="196" class="small">bundled BBTools and</text>
+      <text x="365" y="215" class="small">BLAST+ are in the repo</text>
+    </g>
+    <g filter="url(#shadow)">
+      <rect x="500" y="130" width="180" height="100" rx="20" class="green"/>
+      <circle cx="590" cy="130" r="17" fill="#22C55E"/>
+      <text x="590" y="137" class="num">3</text>
+      <text x="590" y="172" class="label">Build</text>
+      <text x="590" y="196" class="small">Maven on JDK 26</text>
+      <text x="590" y="215" class="small">unit tests, coverage</text>
+    </g>
+    <g filter="url(#shadow)">
+      <rect x="725" y="130" width="180" height="100" rx="20" class="amber"/>
+      <circle cx="815" cy="130" r="17" fill="#F59E0B"/>
+      <text x="815" y="137" class="num">4</text>
+      <text x="815" y="172" class="label">Package</text>
+      <text x="815" y="196" class="small">Linux + Windows ZIPs</text>
+      <text x="815" y="215" class="small">SHA256 checksums</text>
+    </g>
+    <g filter="url(#shadow)">
+      <rect x="950" y="130" width="180" height="100" rx="20" class="rose"/>
+      <circle cx="1040" cy="130" r="17" fill="#DB2777"/>
+      <text x="1040" y="137" class="num">5</text>
+      <text x="1040" y="172" class="label">Publish</text>
+      <text x="1040" y="196" class="small">GitHub Release</text>
+      <text x="1040" y="215" class="small">Zenodo archive, DOI</text>
+    </g>
+    <g filter="url(#shadow)">
+      <rect x="50" y="310" width="1080" height="110" rx="20" class="card"/>
+      <circle cx="590" cy="310" r="17" fill="#64748B"/>
+      <text x="590" y="317" class="num">6</text>
+      <text x="590" y="352" class="label">Inside each ZIP</text>
+      <text x="590" y="376" class="small">application JAR and libraries  •  OpenJDK 26 with JavaFX  •  BBTools  •  NCBI BLAST+  •  launcher script</text>
+      <text x="590" y="395" class="small">extract and run: no Java, BBTools or BLAST+ installation needed</text>
+    </g>
+    <!-- edges: straight, grid-aligned -->
+    <line x1="230" y1="180" x2="269" y2="180" class="ink" marker-end="url(#arrow)"/>
+    <line x1="455" y1="180" x2="494" y2="180" class="ink" marker-end="url(#arrow)"/>
+    <line x1="680" y1="180" x2="719" y2="180" class="ink" marker-end="url(#arrow)"/>
+    <line x1="905" y1="180" x2="944" y2="180" class="ink" marker-end="url(#arrow)"/>
+    <line x1="815" y1="230" x2="815" y2="287" class="ink" marker-end="url(#arrow)"/>
+    <text x="841" y="256" class="edge" text-anchor="start">both platforms</text>
   </g>
 </svg>

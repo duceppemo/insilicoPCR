@@ -2,6 +2,10 @@
 
 The graphical interface is intended for interactive analysis and result review.
 
+![The insilicoPCR window after a run](https://raw.githubusercontent.com/duceppemo/insilicoPCR/master/docs/assets/gui/main-window.png)
+
+The window of version 0.11.0 after a run on a folder of five FASTA files: the three path fields with their **Select** buttons, the run parameters on the right, the two settings buttons, the log, and the action buttons along the bottom.
+
 ## Main workflow
 
 The GUI lets users select:

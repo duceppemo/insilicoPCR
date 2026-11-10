@@ -4,6 +4,10 @@ The synthetic gel visualizer displays consolidated PCR results as gel-like bands
 
 It is intended as a quick visual review tool for expected amplicon size patterns across samples and targets.
 
+![Synthetic gel of five samples and two assays](https://raw.githubusercontent.com/duceppemo/insilicoPCR/master/docs/assets/gel/synthetic-gel.png)
+
+Each lane is a sample and each band an amplicon of the consolidated report, coloured by assay, next to a size ladder. In this example (five FASTA files, two assays, exported with `--gel`), `isolate_01` to `isolate_03` give the `toxA` product at 312 bp, `isolate_04` gives it at 583 bp, a product of another size that the report lists like any other, and `isolate_05` gives no product: its lane is loaded but empty.
+
 ## What it uses
 
 The visualizer reads consolidated report data produced by an insilicoPCR run.

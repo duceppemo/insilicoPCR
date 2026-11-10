@@ -73,6 +73,12 @@ Extract the ZIP, open the extracted folder, and double-click `run-insilicoPCR.ba
 
 The portable launchers configure the bundled Java runtime, JavaFX runtime, BBMap, and BLAST+ automatically — no separate installation required.
 
+<p align="center">
+  <img src="docs/assets/gui/main-window.png" alt="The insilicoPCR window after a run: input, primer and output paths, threads, mismatches and e-value, the settings buttons, the run log, and the buttons to view the gel image and the HTML report" width="720">
+</p>
+
+Choose the input (a FASTA/FASTQ file or a folder of them), the primer FASTA file and an output folder, then click **Run**. When the run ends, **View HTML Report** opens the results in your web browser and **View Gel Image** shows them as a synthetic gel. See the [GUI Overview](https://github.com/duceppemo/insilicoPCR/wiki/GUI-Overview).
+
 ## Command-line Usage
 
 ```bash
@@ -170,11 +176,23 @@ See the [Primer FASTA Format Wiki page](https://github.com/duceppemo/insilicoPCR
 
 Each run also writes `consolidated_report/report.html`, a self-contained page with a sample-by-assay grid that shows at a glance which samples are positive for which assay (at the declared target size, when the primer file declares one), a summary per assay, and every amplicon.
 
+<p align="center">
+  <img src="docs/assets/report/html-report.png" alt="HTML report of five samples and two assays: summary tiles, a sample-by-assay grid with the product size in each cell, a card per assay naming the positive samples, and the table of all amplicons" width="720">
+</p>
+
+In this example both assays declare their product size. Green cells are products of that size; `isolate_04` gives the `toxA` product at 583 bp, which is reported and marked as an unexpected size rather than counted as positive.
+
 The consolidated `report.tsv` contains one row per predicted amplicon:
 
 `Sample, Gene, GenomeLocation, AmpliconSize, Contig, Contig Description, ForwardPrimers, ReversePrimers, ForwardMismatches, ReverseMismatches, Forward3PrimeMismatches, Reverse3PrimeMismatches, Strand` — plus `Probe, ProbeLocation, ProbeSize, ProbeMismatches` when any assay defines a probe (left empty on probe-less rows). A last `SizeCheck` column (`target`, `other` or `unexpected`) is added when the primer file declares product sizes; it labels rows and never removes one.
 
 The synthetic gel visualizer displays these results as gel-like bands for quick review of amplicon size patterns across samples. See the [Synthetic Gel Visualizer Wiki page](https://github.com/duceppemo/insilicoPCR/wiki/Synthetic-Gel-Visualizer).
+
+<p align="center">
+  <img src="docs/assets/gel/synthetic-gel.png" alt="Synthetic gel of five samples and two assays: a size ladder, then one lane per sample with a band per amplicon, coloured by assay" width="720">
+</p>
+
+One lane per sample and one band per amplicon, coloured by assay, next to a size ladder. In this example `isolate_04` gives the `toxA` product at 583 bp instead of the 312 bp seen in the other isolates, and `isolate_05` gives no product: its lane is loaded but empty.
 
 ## Documentation
 

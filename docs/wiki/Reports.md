@@ -19,6 +19,13 @@ Every run writes `report.html` next to `report.tsv` (`report(1).html` next to `r
 is one self-contained file: open it in any browser, offline, or send it to a colleague. It follows the
 browser's light or dark theme and prints. It shows exactly the rows of the TSV and hides none.
 
+![HTML report of five samples and two assays](https://raw.githubusercontent.com/duceppemo/insilicoPCR/master/docs/assets/report/html-report.png)
+
+The report of a run on five FASTA files with two assays that both declare their product size (the **Run
+details** section at the bottom is not shown). `isolate_04` gives the `toxA` product at 583 bp instead of
+312 bp: the product is reported and marked as an unexpected size, and the sample is not counted as positive
+for that assay.
+
 | Section | What it shows |
 |---|---|
 | Summary | Number of samples, assays and amplicons, and how many sample/assay pairs fall in each outcome below |

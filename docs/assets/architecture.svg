@@ -54,7 +54,7 @@
     <g filter="url(#shadow)">
       <rect x="790" y="430" width="240" height="88" rx="20" class="card"/>
       <text x="910" y="465" class="label">Reports and Gel</text>
-      <text x="910" y="491" class="small">TSV reports • synthetic gel</text>
+      <text x="910" y="491" class="small">TSV • HTML report • synthetic gel</text>
     </g>
 
     <path d="M550 378 C550 408 175 408 175 430" class="line" marker-end="url(#arrow)"/>

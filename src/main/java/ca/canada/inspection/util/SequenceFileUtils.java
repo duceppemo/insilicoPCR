@@ -153,4 +153,23 @@ public final class SequenceFileUtils {
     public static BufferedReader openMaybeGzip(java.io.File file) throws IOException {
         return openMaybeGzip(file.toPath());
     }
+
+    /**
+     * The ID of a FASTA header line: the text after {@code >} up to the first
+     * whitespace, which is what BLAST reports as {@code qseqid}.
+     */
+    public static String fastaId(String headerLine) {
+        String header = headerLine.substring(1).strip();
+        int space = firstWhitespace(header);
+        return space < 0 ? header : header.substring(0, space);
+    }
+
+    private static int firstWhitespace(String text) {
+        for (int i = 0; i < text.length(); i++) {
+            if (Character.isWhitespace(text.charAt(i))) {
+                return i;
+            }
+        }
+        return -1;
+    }
 }

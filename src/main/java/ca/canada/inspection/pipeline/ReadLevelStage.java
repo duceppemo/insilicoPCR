@@ -4,6 +4,7 @@ import ca.canada.inspection.insilicopcr.Sample;
 import ca.canada.inspection.pcr.AmpliconOptions;
 import ca.canada.inspection.pcr.BlastHitParser;
 import ca.canada.inspection.pcr.ReadLevelCaller;
+import ca.canada.inspection.pcr.QueryTemplates;
 import ca.canada.inspection.pcr.ReadLevelCaller.ReadEvidence;
 import ca.canada.inspection.util.SequenceFileUtils;
 
@@ -117,13 +118,16 @@ public final class ReadLevelStage {
         readSample.setName(name);
         readSample.setFileType("reads");
         reads.descriptions().forEach(readSample::addContig);
-        try (BufferedReader reader = Files.newBufferedReader(hitsFile, StandardCharsets.UTF_8)) {
+        // Trimmed hit ends are compared with the reads (see TrimmedEnds), read
+        // alongside the hits one read at a time.
+        try (BufferedReader reader = Files.newBufferedReader(hitsFile, StandardCharsets.UTF_8);
+             QueryTemplates templates = new QueryTemplates(List.of(fasta))) {
             String line;
             while ((line = reader.readLine()) != null) {
                 if (line.isBlank() || line.startsWith("qseqid")) {
                     continue;
                 }
-                BlastHitParser.parse(line, name, primers, options)
+                BlastHitParser.parse(line, name, primers, options, templates)
                         .ifPresent(hit -> readSample.addBlastResult(hit.subjectID(), hit));
             }
         } catch (IOException e) {

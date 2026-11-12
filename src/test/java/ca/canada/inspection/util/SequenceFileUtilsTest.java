@@ -119,4 +119,11 @@ class SequenceFileUtilsTest {
         return Files.writeString(dir.resolve(name), content);
     }
 
+
+    @org.junit.jupiter.api.Test
+    void fastaIdIsTheHeaderUpToTheFirstWhitespace() {
+        org.junit.jupiter.api.Assertions.assertEquals("c1", SequenceFileUtils.fastaId(">c1 some description"));
+        org.junit.jupiter.api.Assertions.assertEquals("c3", SequenceFileUtils.fastaId(">c3\tx"));
+        org.junit.jupiter.api.Assertions.assertEquals("c4", SequenceFileUtils.fastaId(">c4"));
+    }
 }

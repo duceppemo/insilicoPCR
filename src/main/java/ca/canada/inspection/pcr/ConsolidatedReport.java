@@ -127,10 +127,11 @@ public final class ConsolidatedReport {
     public static final int AMPLICON_SIZE_COLUMN = 3;
 
     /**
-     * Columns giving, per primer, the bases at its 5' end that BLAST left out of the
-     * alignment: bases that do not pair with the template. The mismatch columns do not
-     * count them (the run's {@code --5p-truncation} allows them), so without these a
-     * primer held by its last few bases reads as a perfect match. They follow the probe
+     * Columns giving, per primer, the bases at its 5' end that do not pair with the
+     * template: of the bases BLAST left out of the alignment, those that differ from the
+     * template (or lie beyond its end). The mismatch columns do not count them (the
+     * run's {@code --5p-truncation} allows them), so without these a primer held by its
+     * last few bases reads as a perfect match. They follow the probe
      * columns; {@link ExpectedSizes#COLUMN} stays last.
      */
     public static final String FORWARD_UNALIGNED_COLUMN = "Forward5PrimeUnaligned";
@@ -262,8 +263,8 @@ public final class ConsolidatedReport {
                 );
 
                 List<String> unaligned = List.of(
-                        String.valueOf(forwardHit.fivePrimeUncovered()),
-                        String.valueOf(reverseHit.fivePrimeUncovered()));
+                        String.valueOf(forwardHit.fivePrimeUnpairedBases()),
+                        String.valueOf(reverseHit.fivePrimeUnpairedBases()));
 
                 if (probeRequired) {
                     writeProbeRows(writer, hits, group, amplicon, baseColumns, unaligned);

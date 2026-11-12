@@ -48,17 +48,34 @@ public final class BlastReports {
 
     private static void parseSingleReport(Path report, String sampleName, Sample sample,
                                           Map<String, String> primers, AmpliconOptions options) {
-        try (BufferedReader reader = Files.newBufferedReader(report, StandardCharsets.UTF_8)) {
+        // Trimmed hit ends are compared with the sequences the sample was searched in
+        // (TrimmedEnds), read alongside the report one query at a time.
+        List<Path> searched = searchedFiles(sample);
+        try (BufferedReader reader = Files.newBufferedReader(report, StandardCharsets.UTF_8);
+             QueryTemplates templates = new QueryTemplates(searched)) {
             String line;
             while ((line = reader.readLine()) != null) {
                 if (line.isBlank() || line.startsWith("qseqid")) {
                     continue;
                 }
-                BlastHitParser.parse(line, sampleName, primers, options)
+                BlastHitParser.parse(line, sampleName, primers, options, templates)
                         .ifPresent(hit -> sample.addBlastResult(hit.subjectID(), hit));
+            }
+            if (!templates.missing().isEmpty()) {
+                System.err.println("Warning: " + templates.missing().size() + " sequences with a trimmed primer or"
+                        + " probe hit were not found in " + searched + " (e.g. " + templates.missing().iterator().next()
+                        + "); the trimmed bases of their hits are not compared.");
             }
         } catch (IOException e) {
             throw new IllegalStateException("Unable to parse BLAST report: " + report, e);
         }
+    }
+
+    /** The FASTA files BLAST searched for this sample (see the BLAST stage). */
+    private static List<Path> searchedFiles(Sample sample) {
+        if (sample.isFastq()) {
+            return sample.getAssemblyFile() == null ? List.of() : List.of(sample.getAssemblyFile());
+        }
+        return sample.files().stream().filter(Files::isRegularFile).toList();
     }
 }

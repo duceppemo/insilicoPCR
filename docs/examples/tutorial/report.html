@@ -73,6 +73,8 @@ button.chip { cursor: pointer; } button.chip:hover, button.chip:focus-visible { 
 .chip.unchecked { color: var(--ink-3); min-width: 0; padding: 0; font-weight: 400; }
 .chip.none { color: var(--line-2); min-width: 0; padding: 0; font-weight: 400; }
 .chip sup { font-size: 10px; line-height: 1; margin-left: 1px; }
+.part { font-size: 12px; line-height: 1; } .key .part, .rows td .part, li .part { color: var(--ink-2); }
+.key .part { display: inline-block; min-width: 30px; text-align: center; font-size: 15px; }
 .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: .85;
   box-shadow: 0 0 0 2px var(--surface); position: absolute; top: -3px; right: -3px; }
 .chip.target .dot, .chip.amplified .dot { background: var(--ink); }
@@ -102,7 +104,7 @@ details .names { margin-top: 6px; }
 <main>
 <header>
 <h1>insilicoPCR report</h1>
-<p class="sub">2026-11-10 13:45 · version 0.11.0 · report.tsv</p>
+<p class="sub">2026-11-12 15:15 · version 0.12.0 · report.tsv</p>
 </header>
 <section class="tiles" aria-label="Summary">
 <div class="tile"><span class="n">4</span><span class="l">samples</span></div>
@@ -114,12 +116,12 @@ details .names { margin-top: 6px; }
 <section>
 <h2>Samples by assay</h2>
 <p class="hint">Each cell is one sample tested with one assay; the number is the product size in bp. Every product is listed, whatever its size. Click a cell to see its amplicons.</p>
-<div class="legend" aria-label="Legend"><span class="key" title="Product of the size the assay is designed to give"><span class="chip target">✓</span>Target size</span><span class="key" title="No product"><span class="chip none">·</span>No product</span><span class="key"><span class="tag">reads</span>FASTQ input, or a product called from reads</span></div>
+<div class="legend" aria-label="Legend"><span class="key" title="Product of the size the assay is designed to give"><span class="chip target">✓</span>Target size</span><span class="key" title="No product"><span class="chip none">·</span>No product</span><span class="key"><span class="tag">reads</span>FASTQ input, or a product called from reads</span><span class="key" title="The product is reported, but a primer pairs with the template over part of its length only; see the 5′ unpaired column of the amplicons"><span class="part">◐</span>A primer binds only partly (5′ bases unpaired)</span></div>
 <div class="scroll"><table class="grid" id="grid">
 <thead><tr><th class="corner">Sample</th><th scope="col" title="hly702: target 692-712 bp"><span class="an">hly702</span><span class="as">2/4</span></th><th scope="col" title="hlyQ: target 102-122 bp"><span class="an">hlyQ</span><span class="as">2/4</span></th></tr></thead>
 <tbody>
 <tr data-sample="ERR6501878" data-any="0"><th scope="row">ERR6501878 <span class="tag">reads</span></th><td><span class="chip none" title="ERR6501878 · hly702: No product">·</span></td><td><span class="chip none" title="ERR6501878 · hlyQ: No product">·</span></td></tr>
-<tr data-sample="SRR17090570" data-any="1"><th scope="row">SRR17090570 <span class="tag">reads</span></th><td><button type="button" class="chip target" title="SRR17090570 · hly702: Target size&#10;702 bp (target)" data-s="SRR17090570" data-a="hly702">✓ 702</button></td><td><button type="button" class="chip target" title="SRR17090570 · hlyQ: Target size&#10;112 bp (target)" data-s="SRR17090570" data-a="hlyQ">✓ 112</button></td></tr>
+<tr data-sample="SRR17090570" data-any="1"><th scope="row">SRR17090570 <span class="tag">reads</span></th><td><button type="button" class="chip target" title="SRR17090570 · hly702: Target size&#10;702 bp (target); forward primer 18 of 18 bases, reverse primer 17 of 18 bases" data-s="SRR17090570" data-a="hly702">✓ 702<span class="part" aria-label="A primer binds only partly (5′ bases unpaired)">◐</span></button></td><td><button type="button" class="chip target" title="SRR17090570 · hlyQ: Target size&#10;112 bp (target)" data-s="SRR17090570" data-a="hlyQ">✓ 112</button></td></tr>
 <tr data-sample="linnocua_CLIP11262" data-any="0"><th scope="row">linnocua_CLIP11262</th><td><span class="chip none" title="linnocua_CLIP11262 · hly702: No product">·</span></td><td><span class="chip none" title="linnocua_CLIP11262 · hlyQ: No product">·</span></td></tr>
 <tr data-sample="lmono_EGDe" data-any="1"><th scope="row">lmono_EGDe</th><td><button type="button" class="chip target" title="lmono_EGDe · hly702: Target size&#10;702 bp (target)" data-s="lmono_EGDe" data-a="hly702">✓ 702</button></td><td><button type="button" class="chip target" title="lmono_EGDe · hlyQ: Target size&#10;112 bp (target)" data-s="lmono_EGDe" data-a="hlyQ">✓ 112</button></td></tr>
 </tbody></table></div>
@@ -133,7 +135,7 @@ details .names { margin-top: 6px; }
 <p class="count"><span class="n">2</span> of 4 samples positive at the target size</p>
 <div class="meter" role="img" aria-label="2 of 4"><span class="target" style="width:50.0%"></span></div>
 <p class="group"><span class="chip target">✓</span> Target size (2)</p>
-<ul class="names"><li title="">SRR17090570 <span class="bp">702 bp</span></li><li title="">lmono_EGDe <span class="bp">702 bp</span></li></ul>
+<ul class="names"><li title="">SRR17090570 <span class="bp">702 bp</span> <span class="part" title="A primer binds only partly (5′ bases unpaired)">◐</span></li><li title="">lmono_EGDe <span class="bp">702 bp</span></li></ul>
 <details><summary>2 with no product</summary><ul class="names muted"><li>ERR6501878</li><li>linnocua_CLIP11262</li></ul></details>
 </article>
 <article class="card">
@@ -151,19 +153,19 @@ details .names { margin-top: 6px; }
 <h2>All amplicons</h2>
 <div class="tools"><input type="search" id="rowFilter" placeholder="Filter by sample, assay, size…" aria-label="Filter amplicons"><button type="button" id="showAll" hidden>Show all</button><span id="rowCount" class="hint"></span></div>
 <div class="scroll"><table class="rows" id="rows">
-<thead><tr><th>Sample</th><th>Assay</th><th class="num">Size (bp)</th><th>Size check</th><th>Found on</th><th>Location</th><th class="num" title="Forward / reverse primer mismatches">Mismatches F/R</th><th class="num" title="Imperfections in the 3' window, forward / reverse">3′ F/R</th><th>Strand</th><th>Probe</th><th class="num">Probe mismatches</th></tr></thead>
+<thead><tr><th>Sample</th><th>Assay</th><th class="num">Size (bp)</th><th>Size check</th><th>Found on</th><th>Location</th><th class="num" title="Forward / reverse primer mismatches">Mismatches F/R</th><th class="num" title="Imperfections in the 3' window, forward / reverse">3′ F/R</th><th class="num" title="Bases at the 5' end of each primer that do not pair with the template, forward / reverse; the mismatch columns do not count them">5′ unpaired F/R</th><th>Strand</th><th>Probe</th><th class="num">Probe mismatches</th></tr></thead>
 <tbody>
-<tr data-s="SRR17090570" data-a="hly702"><td>SRR17090570</td><td>hly702</td><td class="num">702</td><td><span class="chip target">✓ target</span></td><td title="contig_0,len=2492,cov=19.8,gc=0.360,class=long/medium/unanchored,min=2,max=51,hh=0.552,caga=0.523">contig_0</td><td>660-1361</td><td class="num">0 / 0</td><td class="num">0 / 0</td><td>-</td><td></td><td class="num"></td></tr>
-<tr data-s="SRR17090570" data-a="hlyQ"><td>SRR17090570</td><td>hlyQ</td><td class="num">112</td><td><span class="chip target">✓ target</span></td><td title="contig_0,len=2492,cov=19.8,gc=0.360,class=long/medium/unanchored,min=2,max=51,hh=0.552,caga=0.523">contig_0</td><td>1257-1368</td><td class="num">0 / 0</td><td class="num">0 / 0</td><td>-</td><td>hlyQ-P</td><td class="num">0</td></tr>
-<tr data-s="lmono_EGDe" data-a="hly702"><td>lmono_EGDe</td><td>hly702</td><td class="num">702</td><td><span class="chip target">✓ target</span></td><td title="NC_003210.1 — Listeria monocytogenes EGD-e chromosome, complete genome">NC_003210.1</td><td>205963-206664</td><td class="num">0 / 0</td><td class="num">0 / 0</td><td>+</td><td></td><td class="num"></td></tr>
-<tr data-s="lmono_EGDe" data-a="hlyQ"><td>lmono_EGDe</td><td>hlyQ</td><td class="num">112</td><td><span class="chip target">✓ target</span></td><td title="NC_003210.1 — Listeria monocytogenes EGD-e chromosome, complete genome">NC_003210.1</td><td>205956-206067</td><td class="num">0 / 0</td><td class="num">0 / 0</td><td>+</td><td>hlyQ-P</td><td class="num">0</td></tr>
+<tr data-s="SRR17090570" data-a="hly702"><td>SRR17090570</td><td>hly702</td><td class="num">702</td><td><span class="chip target">✓ target</span></td><td title="contig_0,len=2492,cov=19.8,gc=0.360,class=long/medium/unanchored,min=2,max=51,hh=0.552,caga=0.523">contig_0</td><td>660-1361</td><td class="num">0 / 0</td><td class="num">0 / 0</td><td class="num" title="forward primer 18 of 18 bases, reverse primer 17 of 18 bases"><span class="part">◐</span> 0 / 1</td><td>-</td><td></td><td class="num"></td></tr>
+<tr data-s="SRR17090570" data-a="hlyQ"><td>SRR17090570</td><td>hlyQ</td><td class="num">112</td><td><span class="chip target">✓ target</span></td><td title="contig_0,len=2492,cov=19.8,gc=0.360,class=long/medium/unanchored,min=2,max=51,hh=0.552,caga=0.523">contig_0</td><td>1257-1368</td><td class="num">0 / 0</td><td class="num">0 / 0</td><td class="num" title="forward primer 19 of 19 bases, reverse primer 24 of 24 bases">0 / 0</td><td>-</td><td>hlyQ-P</td><td class="num">0</td></tr>
+<tr data-s="lmono_EGDe" data-a="hly702"><td>lmono_EGDe</td><td>hly702</td><td class="num">702</td><td><span class="chip target">✓ target</span></td><td title="NC_003210.1 — Listeria monocytogenes EGD-e chromosome, complete genome">NC_003210.1</td><td>205963-206664</td><td class="num">0 / 0</td><td class="num">0 / 0</td><td class="num" title="forward primer 18 of 18 bases, reverse primer 18 of 18 bases">0 / 0</td><td>+</td><td></td><td class="num"></td></tr>
+<tr data-s="lmono_EGDe" data-a="hlyQ"><td>lmono_EGDe</td><td>hlyQ</td><td class="num">112</td><td><span class="chip target">✓ target</span></td><td title="NC_003210.1 — Listeria monocytogenes EGD-e chromosome, complete genome">NC_003210.1</td><td>205956-206067</td><td class="num">0 / 0</td><td class="num">0 / 0</td><td class="num" title="forward primer 19 of 19 bases, reverse primer 24 of 24 bases">0 / 0</td><td>+</td><td>hlyQ-P</td><td class="num">0</td></tr>
 </tbody></table></div>
 </section>
 <section>
 <h2>Run details</h2>
 <dl class="details">
-<dt>Date</dt><dd>2026-11-10 13:45</dd>
-<dt>insilicoPCR version</dt><dd>0.11.0</dd>
+<dt>Date</dt><dd>2026-11-12 15:15</dd>
+<dt>insilicoPCR version</dt><dd>0.12.0</dd>
 <dt>Input</dt><dd>/data/tutorial/tutorial_input</dd>
 <dt>Primer file</dt><dd>/data/tutorial/listeria_assays.fasta</dd>
 <dt>Output folder</dt><dd>/data/tutorial/tutorial_results</dd>

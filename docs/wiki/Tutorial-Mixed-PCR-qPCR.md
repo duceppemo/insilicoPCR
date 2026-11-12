@@ -6,7 +6,7 @@ This tutorial walks through a complete, realistic insilicoPCR run using **public
 - a **genome assembly** (FASTA) and **raw Illumina reads** (FASTQ) as inputs,
 - a **positive control** (*Listeria monocytogenes*) and a **negative control** (*Listeria innocua*, the classic *hly*-negative near-neighbor used for exclusivity testing).
 
-The steps below use the command line from an extracted portable release; [section 7](#7-the-same-run-in-the-gui) does the same run in the GUI. Every table and picture on this page comes from running exactly these steps with version 0.11.0, and the primer file and the reports of that run are in the repository under [`docs/examples/tutorial/`](https://github.com/duceppemo/insilicoPCR/tree/master/docs/examples/tutorial).
+The steps below use the command line from an extracted portable release; [section 7](#7-the-same-run-in-the-gui) does the same run in the GUI. Every table and picture on this page comes from running exactly these steps with version 0.12.0 (the gel and GUI pictures with 0.11.0, which draws them the same), and the primer file and the reports of that run are in the repository under [`docs/examples/tutorial/`](https://github.com/duceppemo/insilicoPCR/tree/master/docs/examples/tutorial).
 
 ## 1. The assays
 
@@ -105,6 +105,7 @@ How to read it:
 - **Samples by assay** answers the question of the run. Each row is a sample, each column an assay. The two *L. monocytogenes* samples, the assembly `lmono_EGDe` and the read set `SRR17090570`, have a green cell for both assays with the product size in it: 702 bp and 112 bp. The two *L. innocua* samples have none.
 - The cells are green with a check mark because the products have the size declared in the primer file (`size=702`, `size=112`). Without the declaration they would be blue, "amplified", and the size would be yours to check; a product of another size would be outlined in red and not counted as positive.
 - The `reads` tag marks the two samples given as FASTQ.
+- The `◐` next to `SRR17090570`'s 702 bp product says a primer of that product binds only partly: in **All amplicons**, `5′ unpaired F/R` reads `0 / 1`, one base at the 5' end of `hly702-R` does not pair with this strain (see the last point of [section 5](#5-the-consolidated-report)). The mark hides nothing; it points at products worth a second look.
 - **By assay** counts the positive samples for each assay (2 of 4) and names them.
 - **All amplicons** lists every row of `report.tsv`; clicking a cell of the grid filters it to that sample and assay.
 
@@ -114,12 +115,12 @@ See [HTML report](Reports#html-report) for every mark the page can show.
 
 `tutorial_results/consolidated_report/report.tsv` holds the same four amplicons as a table ([the file from this run](https://github.com/duceppemo/insilicoPCR/blob/master/docs/examples/tutorial/report.tsv); columns abridged here):
 
-| Sample | Gene | GenomeLocation | AmpliconSize | Contig | Fwd/Rev mismatches | Strand | Probe | ProbeMismatches | SizeCheck |
-|---|---|---|---|---|---|---|---|---|---|
-| SRR17090570 | hly702 | 660-1361 | **702** | contig_0 (Tadpole) | 0 / 0 | - | | | target |
-| SRR17090570 | hlyQ | 1257-1368 | **112** | contig_0 (Tadpole) | 0 / 0 | - | hlyQ-P | 0 | target |
-| lmono_EGDe | hly702 | 205963-206664 | **702** | NC_003210.1 | 0 / 0 | + | | | target |
-| lmono_EGDe | hlyQ | 205956-206067 | **112** | NC_003210.1 | 0 / 0 | + | hlyQ-P | 0 | target |
+| Sample | Gene | GenomeLocation | AmpliconSize | Contig | Fwd/Rev mismatches | Strand | Probe | ProbeMismatches | Fwd/Rev 5' unaligned | SizeCheck |
+|---|---|---|---|---|---|---|---|---|---|---|
+| SRR17090570 | hly702 | 660-1361 | **702** | contig_0 (Tadpole) | 0 / 0 | - | | | 0 / **1** | target |
+| SRR17090570 | hlyQ | 1257-1368 | **112** | contig_0 (Tadpole) | 0 / 0 | - | hlyQ-P | 0 | 0 / 0 | target |
+| lmono_EGDe | hly702 | 205963-206664 | **702** | NC_003210.1 | 0 / 0 | + | | | 0 / 0 | target |
+| lmono_EGDe | hlyQ | 205956-206067 | **112** | NC_003210.1 | 0 / 0 | + | hlyQ-P | 0 | 0 / 0 | target |
 
 How to read it:
 
@@ -129,7 +130,7 @@ How to read it:
 - The *hly* coordinates from the read samples differ from the EGD-e coordinates because they are positions on the Tadpole-assembled contig, not on a reference genome.
 - `Strand` is `-` for the read sample: Tadpole happened to assemble the *hly* region in the opposite orientation, so the assay matched the reverse strand — a reminder that assays are detected on either strand.
 - Neither *L. innocua* sample produces a row: the primers have no acceptable binding sites. **An empty result for the negative control is the expected outcome.** (You may notice a harmless `Warning: [blastn] Query is Empty!` in the console: baiting the *L. innocua* reads with *hly* primers catches nothing, so there is no assembly to search.)
-- Bonus insight: this *L. monocytogenes* strain carries a single SNP at position 4 (from the 5' end) of `hly702-R`, visible in `detailed_report/SRR17090570/SRR17090570.tsv` as a 5'-trimmed alignment. 5'-proximal mismatches barely affect priming, so the hit is accepted (`--5p-truncation`, default 5) — exactly what a real PCR would do.
+- Bonus insight: this *L. monocytogenes* strain carries a single SNP at position 4 (from the 5' end) of `hly702-R`. BLAST leaves the first four bases of the primer out of its alignment (visible in `detailed_report/SRR17090570/SRR17090570.tsv`), and `Reverse5PrimeUnaligned` counts the one of them that does not pair: `1`. 5'-proximal mismatches barely affect priming, so the hit is accepted (`--5p-truncation`, default 5) and the mismatch columns stay at `0` — exactly what a real PCR would do.
 
 ## 6. The synthetic gel
 

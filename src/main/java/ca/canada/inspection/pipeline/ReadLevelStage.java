@@ -17,6 +17,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -117,13 +118,26 @@ public final class ReadLevelStage {
         readSample.setName(name);
         readSample.setFileType("reads");
         reads.descriptions().forEach(readSample::addContig);
+        // Reads carrying a probe hit whose ends BLAST trimmed: their bases are needed
+        // to compare the trimmed probe bases (see ProbeEnds).
+        Set<String> trimmedProbeReads = new HashSet<>();
+        try (BufferedReader reader = Files.newBufferedReader(hitsFile, StandardCharsets.UTF_8)) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                BlastHitParser.templateNeeded(line, primers).ifPresent(trimmedProbeReads::add);
+            }
+        } catch (IOException e) {
+            throw new PipelineException("Could not parse read-level BLAST output: " + hitsFile, e);
+        }
+        Map<String, String> templates = trimmedProbeReads.isEmpty()
+                ? Map.of() : readSequences(fasta, trimmedProbeReads);
         try (BufferedReader reader = Files.newBufferedReader(hitsFile, StandardCharsets.UTF_8)) {
             String line;
             while ((line = reader.readLine()) != null) {
                 if (line.isBlank() || line.startsWith("qseqid")) {
                     continue;
                 }
-                BlastHitParser.parse(line, name, primers, options)
+                BlastHitParser.parse(line, name, primers, options, templates::get)
                         .ifPresent(hit -> readSample.addBlastResult(hit.subjectID(), hit));
             }
         } catch (IOException e) {

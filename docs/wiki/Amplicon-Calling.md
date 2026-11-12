@@ -52,7 +52,8 @@ Remember that any tolerated 3' imperfection also consumes the total budget, so r
 Hydrolysis probes (`-P`) report by 5'→3' exonuclease cleavage while hybridized, not by extension, so the primer 3' rules do not apply to them (their 3' end is blocked anyway). Probes are also typically longer and designed ~8–10 °C hotter than the primers, which makes them more resilient: a single mismatch that would kill a primer's 3' end usually only delays Cq. Mismatch position still matters — central mismatches destabilize the duplex most, the 5' end (the flap Taq cleaves) is the most tolerant — but insilicoPCR models this with a simple separate budget:
 
 - `--probe-mismatches <n>`: mismatches + indels allowed per probe (default: same as `-m`). For inclusivity screens, a probe budget of `-m` + 1 is a reasonable reflection of the higher melting temperature, e.g. `-m 1 --probe-mismatches 2`.
-- The alignment must cover nearly the whole probe (at most 2 unaligned bases across both ends — intentionally independent of the primer `--5p-truncation` setting).
+- Every probe base is compared with the template. BLAST (`blastn-short`, +1/−3) trims a mismatch near an alignment end together with the up to three matching bases beyond it, so insilicoPCR reads the trimmed bases from the sample sequence and counts the ones that differ: one mismatch at probe position 3 counts as 1 mismatch, wherever it sits. Ambiguous template bases (`N`, IUPAC codes) count as mismatches.
+- Probe bases beyond the end of the template (a probe hanging off a contig or read end) cannot be compared; at most 2 such bases are allowed across both ends — intentionally independent of the primer `--5p-truncation` setting.
 - An accepted probe hit must lie entirely within the amplicon.
 
 ## Stage 2: amplicon calling

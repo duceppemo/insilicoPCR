@@ -20,6 +20,19 @@
 
 ### Fixed
 
+- Probes: a single mismatch near either end of a probe was miscounted. BLAST
+  (`blastn-short`, match +1, mismatch -3) trims a mismatch followed by three or
+  fewer matching bases off the end of its local alignment. A mismatch at the
+  first or last two probe bases was therefore left out of the alignment and the
+  hit reported `0` probe mismatches; one at the third or fourth base from
+  either end left 3-4 bases unaligned, more than the 2 a probe may have, so the
+  hit was rejected whatever `--probe-mismatches` allowed (no amplicon at all
+  for a qPCR assay with its probe, with one mismatch). The bases BLAST trimmed
+  are now read from the sample sequence (contig, assembly or read) and
+  compared, and the ones that differ count as probe mismatches; `ProbeLocation`
+  and `ProbeMismatches` describe the whole probe. Only bases beyond the end of
+  the sequence stay unaligned (at most 2, as before). Primer hits are
+  unchanged.
 - Command line: a mistake in the input is reported as its message instead of a
   Java stack trace. A primer file that declares two different sizes for one
   assay, a size that cannot be read, a primer ID without `-F`/`-R`/`-P` or a

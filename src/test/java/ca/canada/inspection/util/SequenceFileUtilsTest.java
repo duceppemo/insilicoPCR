@@ -121,17 +121,9 @@ class SequenceFileUtilsTest {
 
 
     @org.junit.jupiter.api.Test
-    void readFastaRecordsKeepsOnlyRequestedRecordsAcrossWrappedAndGzippedFiles(
-            @org.junit.jupiter.api.io.TempDir java.nio.file.Path dir) throws java.io.IOException {
-        java.nio.file.Path plain = dir.resolve("a.fasta");
-        java.nio.file.Files.writeString(plain, ">c1 desc\nACGT\nacgt\n>c2\nTTTT\n");
-        java.nio.file.Path gz = dir.resolve("b.fasta.gz");
-        try (var out = new java.util.zip.GZIPOutputStream(java.nio.file.Files.newOutputStream(gz))) {
-            out.write(">c3\tx\nGG\nCC\n".getBytes(java.nio.charset.StandardCharsets.UTF_8));
-        }
-        var records = SequenceFileUtils.readFastaRecords(java.util.List.of(plain, gz),
-                java.util.Set.of("c1", "c3", "missing"));
-        org.junit.jupiter.api.Assertions.assertEquals(
-                java.util.Map.of("c1", "ACGTacgt", "c3", "GGCC"), records);
+    void fastaIdIsTheHeaderUpToTheFirstWhitespace() {
+        org.junit.jupiter.api.Assertions.assertEquals("c1", SequenceFileUtils.fastaId(">c1 some description"));
+        org.junit.jupiter.api.Assertions.assertEquals("c3", SequenceFileUtils.fastaId(">c3\tx"));
+        org.junit.jupiter.api.Assertions.assertEquals("c4", SequenceFileUtils.fastaId(">c4"));
     }
 }

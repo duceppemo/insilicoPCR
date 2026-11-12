@@ -92,9 +92,9 @@ After the columns above (and the probe columns, when present):
 
 | Column | Meaning |
 |---|---|
-| `Forward5PrimeUnaligned` / `Reverse5PrimeUnaligned` | Bases at the 5' end of the primer that BLAST left out of its alignment: bases that do not pair with the template |
+| `Forward5PrimeUnaligned` / `Reverse5PrimeUnaligned` | Bases at the 5' end of the primer that do not pair with the template: of the bases BLAST left out of its alignment, the ones that differ from the template (bases beyond the end of a contig or read count too) |
 
-These bases are allowed up to `--5p-truncation` (default 5) and are **not** counted in the mismatch columns.
+The bases BLAST left out are allowed up to `--5p-truncation` (default 5), whether they pair or not, and are **not** counted in the mismatch columns.
 A row can therefore show `0` mismatches for a primer that is held by its 3' end only. With
 `--5p-truncation 8`, a 17-base primer is accepted on a 9-base match:
 

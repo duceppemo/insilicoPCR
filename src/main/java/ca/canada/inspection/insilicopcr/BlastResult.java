@@ -7,6 +7,10 @@ package ca.canada.inspection.insilicopcr;
  * Subject coordinates are descending ({@code sstart > send}) when the primer
  * matches the reverse strand of the query. {@code primerSeq} is the full primer
  * sequence, used to assess the unaligned ends BLAST trimmed off.</p>
+ *
+ * <p>{@code fivePrimeUnpaired} is how many of the unaligned 5' bases do not pair
+ * with the template, once they were compared with it ({@code -1}: not compared;
+ * see {@code ca.canada.inspection.pcr.TrimmedEnds}).</p>
  */
 public record BlastResult(
 		String name,
@@ -22,8 +26,17 @@ public record BlastResult(
 		int length,
 		String qseq,
 		String sseq,
-		String primerSeq
+		String primerSeq,
+		int fivePrimeUnpaired
 ) {
+	/** A hit whose unaligned 5' bases were not compared with the template. */
+	public BlastResult(String name, String queryID, String subjectID, int mismatch, int gaps,
+					   int qstart, int qend, int sstart, int send, int slen, int length,
+					   String qseq, String sseq, String primerSeq) {
+		this(name, queryID, subjectID, mismatch, gaps, qstart, qend, sstart, send, slen, length,
+				qseq, sseq, primerSeq, -1);
+	}
+
 	public String getName() { return name; }
 	public String getQueryID() { return queryID; }
 	public String getSubjectID() { return subjectID; }
@@ -54,6 +67,15 @@ public record BlastResult(
 	/** Number of primer bases missing from the alignment on the primer's 5' side. */
 	public int fivePrimeUncovered() {
 		return Math.min(sstart, send) - 1;
+	}
+
+	/**
+	 * Number of 5' primer bases that do not pair with the template: the unaligned
+	 * 5' bases that differ from it, or all of them when they were not compared.
+	 * Bases beyond the end of the template count as unpaired.
+	 */
+	public int fivePrimeUnpairedBases() {
+		return fivePrimeUnpaired >= 0 ? fivePrimeUnpaired : fivePrimeUncovered();
 	}
 
 	/**

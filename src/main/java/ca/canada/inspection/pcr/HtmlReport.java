@@ -82,7 +82,7 @@ public final class HtmlReport {
             return fields.getOrDefault(name, "");
         }
 
-        /** Bases at the 5' end of the forward or reverse primer left out of its alignment. */
+        /** Bases at the 5' end of the forward or reverse primer that do not pair with the template. */
         int unaligned(boolean forward) {
             return number(forward ? ConsolidatedReport.FORWARD_UNALIGNED_COLUMN
                     : ConsolidatedReport.REVERSE_UNALIGNED_COLUMN);
@@ -93,7 +93,7 @@ public final class HtmlReport {
             return unaligned(true) > 0 || unaligned(false) > 0;
         }
 
-        /** How much of each primer is aligned, e.g. {@code forward primer 9 of 17 bases, reverse primer 17 of 17}. */
+        /** How much of each primer pairs, e.g. {@code forward primer 9 of 17 bases, reverse primer 17 of 17}. */
         String binding() {
             return "forward primer " + binding(true) + ", reverse primer " + binding(false);
         }
@@ -102,7 +102,7 @@ public final class HtmlReport {
             int length = number(forward ? FORWARD_LENGTH : REVERSE_LENGTH);
             int unaligned = unaligned(forward);
             return length > 0 ? (length - unaligned) + " of " + length + " bases"
-                    : unaligned + " of its 5′ bases unaligned";
+                    : unaligned + " of its 5′ bases unpaired";
         }
 
         private int number(String name) {
@@ -120,7 +120,7 @@ public final class HtmlReport {
 
     /** Marks a product whose primer is held by part of its length only. */
     private static final String PARTLY_BOUND = "\u25d0";
-    private static final String PARTLY_BOUND_LABEL = "A primer binds only partly (5′ bases unaligned)";
+    private static final String PARTLY_BOUND_LABEL = "A primer binds only partly (5′ bases unpaired)";
 
     /** One cell of the grid. */
     record Cell(State state, List<Product> products, String note) {
@@ -393,7 +393,7 @@ public final class HtmlReport {
         if (grid.values().stream().flatMap(row -> row.values().stream())
                 .flatMap(cell -> cell.products().stream()).anyMatch(Product::partlyBound)) {
             html.append("<span class=\"key\" title=\"The product is reported, but a primer pairs with the template")
-                    .append(" over part of its length only; see the 5′ unaligned column of the amplicons\">")
+                    .append(" over part of its length only; see the 5′ unpaired column of the amplicons\">")
                     .append("<span class=\"part\">").append(PARTLY_BOUND).append("</span>")
                     .append(escape(PARTLY_BOUND_LABEL)).append("</span>");
         }
@@ -547,8 +547,8 @@ public final class HtmlReport {
                 .append("<th class=\"num\">Size (bp)</th>").append(labels ? "<th>Size check</th>" : "")
                 .append("<th>Found on</th><th>Location</th><th class=\"num\" title=\"Forward / reverse primer mismatches\">")
                 .append("Mismatches F/R</th><th class=\"num\" title=\"Imperfections in the 3' window, forward / reverse\">")
-                .append("3′ F/R</th><th class=\"num\" title=\"Bases at the 5' end of each primer left out of its alignment,")
-                .append(" forward / reverse; the mismatch columns do not count them\">5′ unaligned F/R</th><th>Strand</th>")
+                .append("3′ F/R</th><th class=\"num\" title=\"Bases at the 5' end of each primer that do not pair with the template,")
+                .append(" forward / reverse; the mismatch columns do not count them\">5′ unpaired F/R</th><th>Strand</th>")
                 .append(probes ? "<th>Probe</th><th class=\"num\">Probe mismatches</th>" : "").append("</tr></thead>\n<tbody>\n");
         for (Product product : products) {
             String contig = product.field("Contig");

@@ -21,7 +21,7 @@ Releases are fully automated: pushing a `v*` tag builds the Linux and Windows po
 
 ```bash
 export JAVA_HOME=/path/to/jdk-26
-scripts/release/package-linux-portable.sh 0.11.0
+scripts/release/package-linux-portable.sh 0.12.0
 ```
 
 Expected artifacts:

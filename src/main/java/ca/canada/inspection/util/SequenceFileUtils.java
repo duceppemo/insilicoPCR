@@ -8,14 +8,11 @@ import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -158,46 +155,13 @@ public final class SequenceFileUtils {
     }
 
     /**
-     * Sequences of the named records of one or more FASTA files (plain or gzipped,
-     * wrapped or not), keyed by ID: the header up to its first whitespace, which is
-     * what BLAST reports as {@code qseqid}. Only the requested records are kept, so
-     * this can look a few contigs up in a large assembly; IDs not found are absent.
+     * The ID of a FASTA header line: the text after {@code >} up to the first
+     * whitespace, which is what BLAST reports as {@code qseqid}.
      */
-    public static Map<String, String> readFastaRecords(Collection<Path> files, Set<String> ids) throws IOException {
-        Map<String, String> found = new HashMap<>();
-        if (ids.isEmpty()) {
-            return found;
-        }
-        for (Path file : files) {
-            try (BufferedReader reader = openMaybeGzip(file)) {
-                String id = null;
-                StringBuilder sequence = null;
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    if (line.startsWith(">")) {
-                        if (sequence != null) {
-                            found.put(id, sequence.toString());
-                            if (found.size() == ids.size()) {
-                                return found;
-                            }
-                        }
-                        String header = line.substring(1).strip();
-                        int space = firstWhitespace(header);
-                        id = space < 0 ? header : header.substring(0, space);
-                        sequence = ids.contains(id) && !found.containsKey(id) ? new StringBuilder() : null;
-                    } else if (sequence != null) {
-                        sequence.append(line.strip());
-                    }
-                }
-                if (sequence != null) {
-                    found.put(id, sequence.toString());
-                }
-            }
-            if (found.size() == ids.size()) {
-                break;
-            }
-        }
-        return found;
+    public static String fastaId(String headerLine) {
+        String header = headerLine.substring(1).strip();
+        int space = firstWhitespace(header);
+        return space < 0 ? header : header.substring(0, space);
     }
 
     private static int firstWhitespace(String text) {

@@ -21,9 +21,9 @@ import java.util.function.Function;
  * the total mismatch budget and overall coverage are enforced for them.</p>
  *
  * <p>BLAST trims mismatches near the ends of its local alignments together with
- * the matching bases beyond them. For probes, the bases it trimmed are read from
- * the template and counted (see {@link ProbeEnds}) when the caller supplies the
- * template sequences; callers find which ones they need with {@link #templateNeeded}.</p>
+ * the matching bases beyond them. When the caller supplies the template around a
+ * hit, the trimmed bases are compared with it first (see {@link TrimmedEnds}):
+ * trimmed probe bases and primer 3' bases then count only where they do not pair.</p>
  */
 public final class BlastHitParser {
 
@@ -40,37 +40,27 @@ public final class BlastHitParser {
     private BlastHitParser() {
     }
 
-    /** Parses a hit without template sequences: trimmed probe ends stay unaligned. */
+    /** Parses a hit without templates: trimmed bases are judged as BLAST left them. */
     public static Optional<BlastResult> parse(String line, String sampleName,
                                               Map<String, String> primers, AmpliconOptions options) {
-        return parse(line, sampleName, primers, options, queryId -> null);
+        return parse(line, sampleName, primers, options, hit -> null);
     }
 
     /**
      * Parses a hit and applies the acceptance rules.
      *
-     * @param templates sequence of a query (contig or read) by its BLAST {@code qseqid},
-     *                  or {@code null} when unknown; asked only for the IDs
-     *                  {@link #templateNeeded} reports
+     * @param templates the query sequence (contig or read) a hit lies on, or {@code null}
+     *                  when unknown; asked only for hits whose trimmed bases matter
+     *                  ({@link TrimmedEnds#needsTemplate}), in the order of the report
      */
     public static Optional<BlastResult> parse(String line, String sampleName,
                                               Map<String, String> primers, AmpliconOptions options,
-                                              Function<String, String> templates) {
+                                              Function<BlastResult, TrimmedEnds.Template> templates) {
         return toHit(line, sampleName, primers)
-                .map(hit -> ProbeEnds.needsTemplate(hit)
-                        ? ProbeEnds.extend(hit, templates.apply(hit.queryID()))
+                .map(hit -> TrimmedEnds.needsTemplate(hit, options)
+                        ? TrimmedEnds.extend(hit, templates.apply(hit))
                         : hit)
                 .filter(hit -> accepts(hit, options));
-    }
-
-    /**
-     * The query ID whose sequence {@link #parse} needs for this line: present for a
-     * probe hit with bases BLAST left out of the alignment.
-     */
-    public static Optional<String> templateNeeded(String line, Map<String, String> primers) {
-        return toHit(line, "", primers)
-                .filter(ProbeEnds::needsTemplate)
-                .map(BlastResult::queryID);
     }
 
     private static Optional<BlastResult> toHit(String line, String sampleName, Map<String, String> primers) {
@@ -118,8 +108,8 @@ public final class BlastHitParser {
                     && uncovered <= MAX_PROBE_END_UNCOVERED;
         }
 
-        // Unaligned 3' bases are bases that stopped pairing (BLAST trims terminal
-        // mismatches), so they consume the mismatch budget like aligned mismatches.
+        // Unaligned 3' bases left here could not be compared with the template (beyond
+        // its end, or no template given): count them as mismatches, like aligned ones.
         int effectiveMismatches = hit.mismatch() + hit.gaps() + hit.threePrimeUncovered();
         if (effectiveMismatches > options.maxTotalMismatches()) {
             return false;

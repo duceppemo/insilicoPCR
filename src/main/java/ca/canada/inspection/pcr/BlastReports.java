@@ -1,17 +1,14 @@
 package ca.canada.inspection.pcr;
 
 import ca.canada.inspection.insilicopcr.Sample;
-import ca.canada.inspection.util.SequenceFileUtils;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Stream;
 
 /**
@@ -51,50 +48,26 @@ public final class BlastReports {
 
     private static void parseSingleReport(Path report, String sampleName, Sample sample,
                                           Map<String, String> primers, AmpliconOptions options) {
-        Map<String, String> templates = probeTemplates(report, sample, primers);
-        try (BufferedReader reader = Files.newBufferedReader(report, StandardCharsets.UTF_8)) {
+        // Trimmed hit ends are compared with the sequences the sample was searched in
+        // (TrimmedEnds), read alongside the report one query at a time.
+        List<Path> searched = searchedFiles(sample);
+        try (BufferedReader reader = Files.newBufferedReader(report, StandardCharsets.UTF_8);
+             QueryTemplates templates = new QueryTemplates(searched)) {
             String line;
             while ((line = reader.readLine()) != null) {
                 if (line.isBlank() || line.startsWith("qseqid")) {
                     continue;
                 }
-                BlastHitParser.parse(line, sampleName, primers, options, templates::get)
+                BlastHitParser.parse(line, sampleName, primers, options, templates)
                         .ifPresent(hit -> sample.addBlastResult(hit.subjectID(), hit));
             }
-        } catch (IOException e) {
-            throw new IllegalStateException("Unable to parse BLAST report: " + report, e);
-        }
-    }
-
-    /**
-     * Sequences of the contigs carrying a probe hit whose ends BLAST trimmed, read
-     * from the files the sample was searched in, so the trimmed bases can be
-     * compared ({@link ProbeEnds}).
-     */
-    private static Map<String, String> probeTemplates(Path report, Sample sample, Map<String, String> primers) {
-        Set<String> needed = new HashSet<>();
-        try (BufferedReader reader = Files.newBufferedReader(report, StandardCharsets.UTF_8)) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                BlastHitParser.templateNeeded(line, primers).ifPresent(needed::add);
+            if (!templates.missing().isEmpty()) {
+                System.err.println("Warning: " + templates.missing().size() + " sequences with a trimmed primer or"
+                        + " probe hit were not found in " + searched + " (e.g. " + templates.missing().iterator().next()
+                        + "); the trimmed bases of their hits are not compared.");
             }
         } catch (IOException e) {
             throw new IllegalStateException("Unable to parse BLAST report: " + report, e);
-        }
-        if (needed.isEmpty()) {
-            return Map.of();
-        }
-        List<Path> searched = searchedFiles(sample);
-        try {
-            Map<String, String> templates = SequenceFileUtils.readFastaRecords(searched, needed);
-            if (templates.size() < needed.size()) {
-                System.err.println("Warning: " + (needed.size() - templates.size()) + " of " + needed.size()
-                        + " sequences with a trimmed probe hit were not found in " + searched
-                        + "; their unaligned probe ends are not compared.");
-            }
-            return templates;
-        } catch (IOException e) {
-            throw new IllegalStateException("Unable to read the sequences of sample " + sample.getName(), e);
         }
     }
 

@@ -6,13 +6,15 @@
 
 - The report says how much of each primer is bound. `report.tsv` gains two
   columns, `Forward5PrimeUnaligned` and `Reverse5PrimeUnaligned`: the bases at
-  the 5' end of each primer that BLAST left out of its alignment. They are
+  the 5' end of each primer that do not pair with the template (of the bases
+  BLAST left out of its alignment, the ones that differ from the template, so a
+  single SNP at the fourth base counts 1, not 4). The bases BLAST left out are
   allowed up to `--5p-truncation` and were not shown anywhere: the mismatch
   columns do not count them, so a 17-base primer held by its last 9 bases
   (`--5p-truncation 8`) read as a perfect match, `0` mismatches. The columns
   come after the probe columns; `SizeCheck` stays last. Read columns by name.
-- HTML report: the amplicon table has a `5′ unaligned F/R` column, with the
-  aligned length of each primer as a tooltip (`forward primer 9 of 17 bases`).
+- HTML report: the amplicon table has a `5′ unpaired F/R` column, with the
+  paired length of each primer as a tooltip (`forward primer 9 of 17 bases`).
   A product whose primer binds only partly carries a `◐` mark there, and a
   grid cell carries it when every product that decides its outcome is bound
   that way, so a "target size" resting on primers that may not anneal is
@@ -31,8 +33,23 @@
   are now read from the sample sequence (contig, assembly or read) and
   compared, and the ones that differ count as probe mismatches; `ProbeLocation`
   and `ProbeMismatches` describe the whole probe. Only bases beyond the end of
-  the sequence stay unaligned (at most 2, as before). Primer hits are
-  unchanged.
+  the sequence stay unaligned (at most 2, as before).
+- Primers: one mismatch near the 3' end was counted once per base BLAST
+  trimmed, not once. A mismatch at distance 1-3 from the 3' terminus is cut
+  off with the 1-3 matching bases after it, and every trimmed base counted as a
+  mismatch, in the `-m` budget and in the 3' penalty alike: one mismatch two
+  bases from the 3' end weighed 3 mismatches and a penalty of 7-10 instead of 1
+  and 2-3, so `-m 3 --3p-penalty 2` rejected a primer it should accept. The
+  trimmed 3' bases are now compared with the sample sequence and only those
+  that do not pair count; a 3' base beyond the end of a contig or read still
+  counts as a mismatch. Runs with `--3p-penalty 0` (the default) are not
+  affected: BLAST only trims the last four bases, inside the default 3'
+  window. The 5' rule is unchanged: `--5p-truncation` still counts the bases
+  BLAST left out, paired or not.
+- The sequences that trimmed hit ends are compared with are read alongside the
+  BLAST report, one contig or read at a time (BLAST reports the hits of each
+  query together, in file order), not loaded up front, so a primer that hits a
+  large assembly millions of times does not load the assembly into memory.
 - Command line: a mistake in the input is reported as its message instead of a
   Java stack trace. A primer file that declares two different sizes for one
   assay, a size that cannot be read, a primer ID without `-F`/`-R`/`-P` or a

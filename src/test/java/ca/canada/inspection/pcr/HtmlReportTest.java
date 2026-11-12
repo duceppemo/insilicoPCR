@@ -152,17 +152,17 @@ class HtmlReportTest {
         String page = Files.readString(HtmlReport.write(tsv, List.of("weak", "mixed", "clean"), Set.of(), primers,
                 SIZES, List.of(), Map.of()));
 
-        String mark = "<span class=\"part\" aria-label=\"A primer binds only partly (5′ bases unaligned)\">\u25d0</span>";
+        String mark = "<span class=\"part\" aria-label=\"A primer binds only partly (5′ bases unpaired)\">\u25d0</span>";
         assertEquals(1, count(page, mark), "only the cell whose every target product is weakly bound is marked");
         assertTrue(page.contains("data-s=\"weak\" data-a=\"its\">✓ 430" + mark), "the weak cell carries the mark");
-        // The tooltip and the table say how much of each primer is aligned, of its length.
+        // The tooltip and the table say how much of each primer pairs, of its length.
         assertTrue(page.contains("430 bp (target); forward primer 9 of 17 bases, reverse primer 9 of 17 bases"));
-        assertTrue(page.contains("<th class=\"num\" title=\"Bases at the 5' end of each primer left out of its"
-                + " alignment, forward / reverse; the mismatch columns do not count them\">5′ unaligned F/R</th>"));
+        assertTrue(page.contains("<th class=\"num\" title=\"Bases at the 5' end of each primer that do not pair with"
+                + " the template, forward / reverse; the mismatch columns do not count them\">5′ unpaired F/R</th>"));
         assertEquals(2, count(page, "<span class=\"part\">\u25d0</span> 8 / 8</td>"), "both weak rows are marked");
         assertEquals(2, count(page, ">0 / 0</td><td>+</td>"), "rows bound in full show zeros and no mark");
         // The legend explains the mark, and the assay card repeats it beside the sample it concerns.
-        assertTrue(page.contains("<span class=\"part\">\u25d0</span>A primer binds only partly (5′ bases unaligned)</span>"));
+        assertTrue(page.contains("<span class=\"part\">\u25d0</span>A primer binds only partly (5′ bases unpaired)</span>"));
         assertTrue(page.contains(">weak <span class=\"bp\">430 bp</span> <span class=\"part\" title="));
         assertFalse(page.contains(">clean <span class=\"bp\">434 bp</span> <span class=\"part\""));
     }

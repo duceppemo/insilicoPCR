@@ -64,12 +64,22 @@ class InputValidatorTest {
     }
 
     @Test
-    void directoryWithMalformedSequenceFileIsReported() throws IOException {
+    void aFaultyFileAmongGoodOnesDoesNotStopTheRun() throws IOException {
+        // The run names it, leaves its sample out and analyses the others (InputCheck).
         Path inputDir = Files.createDirectories(dir.resolve("mixed"));
         Files.writeString(inputDir.resolve("good.fasta"), ">seq1\nACGT\n");
         Files.writeString(inputDir.resolve("bad.fasta"), "no header here\n");
+        Files.writeString(inputDir.resolve("empty_R1.fastq"), "");
         Path primers = fasta("primers.fasta");
-        assertTrue(InputValidator.validate(inputDir, dir, primers).contains("non-fastq/fasta"));
+        assertEquals("", InputValidator.validate(inputDir, dir, primers));
+    }
+
+    @Test
+    void aFolderOfFaultyFilesOnlyIsReported() throws IOException {
+        Path inputDir = Files.createDirectories(dir.resolve("allbad"));
+        Files.writeString(inputDir.resolve("empty_R1.fastq"), "");
+        Path primers = fasta("primers.fasta");
+        assertTrue(InputValidator.validate(inputDir, dir, primers).contains("at least one"));
     }
 
     @Test

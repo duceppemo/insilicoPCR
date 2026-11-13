@@ -1,5 +1,6 @@
 package ca.canada.inspection.pipeline;
 
+import ca.canada.inspection.util.InputCheck;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -78,5 +79,37 @@ class QaLogInputsTest {
         assertEquals("", lines.get(5));
         assertEquals("FASTQ mode Tadpole settings: k=31", lines.get(6));
         assertEquals(List.of("/data/S_R1.fastq.gz", "/data/S_R2.fastq.gz"), QaLogInputs.read(dir.resolve("QAlog.txt")));
+    }
+
+    @Test
+    void samplesLeftOutForAFaultyFileAreReadBackFromTheLog() throws IOException {
+        // Their files are in the input list, but they are not samples without a product.
+        List<String> section = RunDetails.inputIssueLines(List.of(
+                new InputCheck.Issue("failed", List.of("failed_R1.fastq.gz"), "the file holds no read", "the file is empty"),
+                new InputCheck.Issue("failed", List.of("failed_R2.fastq.gz"), "the file holds no read", "the file is empty"),
+                new InputCheck.Issue("cut short", List.of("cut short.fastq"), "the file is incomplete",
+                        "it ends inside read 2, after 1 complete read")));
+        Path log = Files.writeString(dir.resolve("QAlog.txt"), HEADER + "/data/failed_R1.fastq.gz\n\n"
+                + String.join("\n", section) + "\nFASTQ mode Tadpole settings: k=31\n");
+
+        assertEquals(List.of(
+                "Input not analysed: a file of these samples is faulty, and nothing was run on them.",
+                "Sample not analysed: failed",
+                "  failed_R1.fastq.gz: the file holds no read (the file is empty)",
+                "  failed_R2.fastq.gz: the file holds no read (the file is empty)",
+                "Sample not analysed: cut short",
+                "  cut short.fastq: the file is incomplete (it ends inside read 2, after 1 complete read)",
+                ""), section);
+        assertEquals(java.util.Set.of("failed", "cut short"), QaLogInputs.samplesNotAnalysed(log));
+        assertEquals(List.of("/data/S_R1.fastq.gz", "/data/S_R2.fastq.gz", "/data/failed_R1.fastq.gz"),
+                QaLogInputs.read(log), "the input list still ends at the blank line");
+    }
+
+    @Test
+    void aLogWithoutFaultyInputNamesNoSample() throws IOException {
+        Path log = Files.writeString(dir.resolve("QAlog.txt"), HEADER);
+
+        assertEquals(List.of(), RunDetails.inputIssueLines(List.of()));
+        assertEquals(java.util.Set.of(), QaLogInputs.samplesNotAnalysed(log));
     }
 }

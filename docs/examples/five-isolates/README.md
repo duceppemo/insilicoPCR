@@ -45,5 +45,5 @@ The reads are baited, merged and assembled, and the report has the same two prod
 
 ## Uses
 
-- `scripts/ci/smoke-test.sh` runs every portable ZIP built by CI on these files, on Linux and on Windows: the genomes, compared with [`report.tsv`](report.tsv), and the reads, checked for the two products.
+- `scripts/ci/smoke-test.sh` runs every portable ZIP built by CI on these files, on Linux and on Windows: the genomes, compared with [`report.tsv`](report.tsv), the reads, checked for the two products, and faulty copies of both, checked to be left out with a warning.
 - The picture `docs/assets/report/html-report.png` is the top of `report.html` from this run (a browser window 1000 px wide at twice the pixel density, cut above **Run details**).

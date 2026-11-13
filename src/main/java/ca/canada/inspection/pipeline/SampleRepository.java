@@ -1,14 +1,11 @@
 package ca.canada.inspection.pipeline;
 
-import ca.canada.inspection.insilicopcr.Sample;
-import ca.canada.inspection.util.SequenceFileUtils;
+import ca.canada.inspection.util.InputCheck;
 
-import java.util.LinkedHashMap;
-import java.util.Map;
-
-/** Loads input FASTA/FASTQ files into deterministic sample order. */
+/** Finds the samples of the input, in name order, and checks their files. */
 public final class SampleRepository {
-    public Map<String, Sample> load(PipelineConfig config) {
-        return new LinkedHashMap<>(SequenceFileUtils.createSampleMap(config.input()));
+    /** The samples whose files can be analysed, and what was left out and why. */
+    public InputCheck.Result check(PipelineConfig config) {
+        return InputCheck.scan(config.input(), config.inputCheck(), config.threads());
     }
 }

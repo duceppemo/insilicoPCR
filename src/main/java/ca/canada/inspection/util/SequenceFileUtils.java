@@ -10,6 +10,7 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
@@ -124,6 +125,13 @@ public final class SequenceFileUtils {
         } else if (looksLikeSequenceFile(inputFile)) {
             addSampleFile(samples, inputFile);
         }
+        return samples;
+    }
+
+    /** The samples that {@code files} make, by name, whatever the files hold. */
+    static Map<String, Sample> sampleMapOf(List<Path> files) {
+        Map<String, Sample> samples = new LinkedHashMap<>();
+        files.forEach(file -> addSampleFile(samples, file));
         return samples;
     }
 

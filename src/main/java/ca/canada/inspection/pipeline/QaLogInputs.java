@@ -21,7 +21,29 @@ public final class QaLogInputs {
     /** Lines written after the input list since 0.10.0; logs from 0.10.0 have no blank line before them. */
     private static final String FASTQ_SECTION_PREFIX = "FASTQ mode";
 
+    /** Starts the line that names a sample left out for a faulty input file (since 0.13.0). */
+    static final String NOT_ANALYSED_PREFIX = "Sample not analysed: ";
+
     private QaLogInputs() {
+    }
+
+    /**
+     * @return the samples the run left out because a file of theirs was faulty. Their files
+     *         are in the input list all the same, but nothing was run on them: they are not
+     *         samples without a product.
+     */
+    public static Set<String> samplesNotAnalysed(Path qaLog) {
+        Set<String> samples = new TreeSet<>();
+        try {
+            for (String line : Files.readAllLines(qaLog, StandardCharsets.UTF_8)) {
+                if (line.startsWith(NOT_ANALYSED_PREFIX)) {
+                    samples.add(line.substring(NOT_ANALYSED_PREFIX.length()).strip());
+                }
+            }
+        } catch (IOException e) {
+            throw new PipelineException("Unable to read QAlog: " + qaLog, e);
+        }
+        return samples;
     }
 
     /**

@@ -5,11 +5,14 @@ import ca.canada.inspection.pcr.AmpliconOptions;
 import ca.canada.inspection.pcr.HtmlReport;
 import ca.canada.inspection.pcr.ReadExtensionCaller;
 import ca.canada.inspection.pcr.ReadLevelCaller;
+import ca.canada.inspection.util.InputCheck;
 
 import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
@@ -46,6 +49,24 @@ final class RunDetails {
                     + " read pairs holding every window of it");
         }
         return details;
+    }
+
+    /** What QAlog.txt says about the input that was left out; empty when nothing was. */
+    static List<String> inputIssueLines(List<InputCheck.Issue> issues) {
+        if (issues.isEmpty()) {
+            return List.of();
+        }
+        Map<String, List<String>> bySample = new LinkedHashMap<>();
+        issues.forEach(issue -> bySample.computeIfAbsent(issue.sample(), ignored -> new ArrayList<>())
+                .add(issue.describe()));
+        List<String> lines = new ArrayList<>();
+        lines.add("Input not analysed: a file of these samples is faulty, and nothing was run on them.");
+        bySample.forEach((sample, problems) -> {
+            lines.add(QaLogInputs.NOT_ANALYSED_PREFIX + sample);
+            problems.forEach(problem -> lines.add("  " + problem));
+        });
+        lines.add("");
+        return lines;
     }
 
     /** Names of the samples given as reads. */

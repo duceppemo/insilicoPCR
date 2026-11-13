@@ -11,6 +11,33 @@ Supported sequence inputs include:
 
 The input can be a single file or a directory containing multiple sequence files. Gzipped assemblies (`.fasta.gz`, `.fna.gz` and so on) are read since 0.12.1; with earlier releases, decompress them first.
 
+## Input check
+
+Since 0.13.0 every input file is checked before anything is run on it. A sample with a faulty file is **left out with a warning and the other samples are run**; before, such a file was skipped without a word, run as half of a read pair, or stopped the whole run inside BBDuk.
+
+| Fault | Example of what is reported |
+|---|---|
+| Empty file, or an empty gzip stream (a library that gave no read) | `the file holds no read (the file is empty)` |
+| Not gzip, or a gzip stream that is damaged or cut short (an interrupted download or copy) | `the file cannot be read (the gzip stream ends early, after 331 complete reads: the file is incomplete)` |
+| A file that ends inside a read | `the file is incomplete (it ends inside read 501, after 500 complete reads)` |
+| A read that is not four lines of the expected kind: no `@` header, no `+` line, a quality line of another length, a character that is not a base or a quality score, a blank line between reads | `a read is not well formed (read 10 (line 40): the quality line has 100 characters for 150 bases)` |
+| Not a FASTQ file under a `.fastq` name | `not a FASTQ file` |
+| The two files of a read pair with different numbers of reads | `the two files of the pair hold different numbers of reads (695 and 600)` |
+| An assembly that is empty, holds header lines only, does not start with `>`, or whose gzip stream is cut short | `the file holds no sequence (header lines only)` |
+
+A sample is left out as a whole: when one file of a read pair is faulty, the other is not run as single-end reads.
+
+The faults are reported in four places:
+
+- as `Warning:` lines on the terminal, or in the output area of the application;
+- in `QAlog.txt`, under `Input not analysed`, with one `Sample not analysed: <name>` line per sample;
+- at the top of the HTML report, in a section **Input not analysed** and a count among the summary tiles. The samples are not in the tables of the report: nothing was run on them, so they are neither positive nor negative;
+- such a sample has no lane in the synthetic gel.
+
+The run itself still ends normally (exit code 0), also when no sample is left to analyse: the reports are then empty apart from that section.
+
+Checking every read means reading each FASTQ file once more, which takes about as long as decompressing it (about half a minute for a 1.2 GB `.fastq.gz` of 10 million reads; files are checked in parallel, one per thread). On the command line, `--input-check quick` reads the first read of each file only: it still catches empty files and files of the wrong kind, but not a file that is damaged or cut short further on, and it does not compare the two files of a pair. The application always checks every read.
+
 ## Standard PCR analysis
 
 Use a primer FASTA where each assay has:

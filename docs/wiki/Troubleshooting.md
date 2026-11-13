@@ -109,6 +109,14 @@ In the application, releases before 0.12.1 did not notice a failed `blastn` sear
 
 Up to 0.12.1 the application printed a Java stack trace in its output area when a run failed. Later releases print `Run failed` and an `Error:` line there for a failure you can act on (a tool that failed, a file that cannot be read or written), and keep the stack trace for anything else; the terminal the application was started from always gets the stack trace.
 
+## A sample is missing from the report
+
+Since 0.13.0, look for `Warning:` lines at the start of the run and for the section **Input not analysed** at the top of the HTML report (also in `QAlog.txt`). A sample whose file is empty, damaged, cut short, malformed or not what its extension says is left out, with the file and the fault named, and the other samples are run. See [Input check](Running-Analyses#input-check).
+
+Typical causes: a library that gave no read (an empty `.fastq.gz` of about 20 bytes), a download or copy that was interrupted (`the gzip stream ends early`, or `it ends inside read ...`), and two files of a pair that do not belong together or of which one is incomplete (`different numbers of reads`). Replace the files and run the sample again.
+
+Releases before 0.13.0 did not say anything: an empty file was skipped silently, so the sample was simply absent from the report, and a damaged one stopped the whole run in the first baiting step (`truncated or corrupt input`).
+
 ## Run fails with `BLAST query error` on a gzipped assembly
 
 Releases before 0.12.1 accept a gzipped FASTA file (`.fasta.gz`, `.fna.gz` and so on) as input, then hand it to `blastn`, which does not read gzip and stops. In the application the same input ends with `Unable to read sequence file for sample`. Upgrade to 0.12.1, or decompress the assemblies first (`gunzip *.fasta.gz`). Gzipped FASTQ reads were never affected.

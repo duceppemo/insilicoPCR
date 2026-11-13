@@ -579,6 +579,8 @@ public class MainRun extends Application {
         }
         HashMap<String, Sample> samples = new HashMap<>();
         QaLogInputs.sampleNames(QaLogInputs.read(qaLog)).forEach(name -> samples.put(name, null));
+        // A sample left out for a faulty file is not a lane without a band.
+        samples.keySet().removeAll(QaLogInputs.samplesNotAnalysed(qaLog));
         if (samples.isEmpty()) {
             throw new IllegalStateException("No input samples were found in QAlog.txt: " + qaLog);
         }

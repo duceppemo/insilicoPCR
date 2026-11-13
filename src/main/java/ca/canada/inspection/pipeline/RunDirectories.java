@@ -16,7 +16,7 @@ public record RunDirectories(Path detailedDir, Path consolidatedDir, Path tempDi
             Files.createDirectories(directories.consolidatedDir());
             Files.createDirectories(directories.tempDir());
         } catch (IOException e) {
-            throw new IllegalStateException("Unable to create output directories under " + outputDir, e);
+            throw new PipelineException("Unable to create output directories under " + outputDir, e);
         }
         return directories;
     }

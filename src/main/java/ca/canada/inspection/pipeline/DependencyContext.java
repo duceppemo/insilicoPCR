@@ -38,7 +38,7 @@ public record DependencyContext(
         Path jar = bbtoolsLocation().resolve(BBTOOLS_JAR);
 
         if (!Files.isRegularFile(jar)) {
-            throw new IllegalStateException(
+            throw new PipelineException(
                     "Missing BBMap runtime: " + jar.toAbsolutePath()
             );
         }

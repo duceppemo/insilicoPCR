@@ -95,8 +95,12 @@ public final class BlastPipeline {
             try {
                 search.get();
             } catch (ExecutionException e) {
-                // Under its own message, which names the query.
-                throw new IllegalStateException(String.valueOf(e.getCause().getMessage()), e.getCause());
+                // As it was raised: its message names the query, and a failure meant for the
+                // user (RunFailure) stays one.
+                if (e.getCause() instanceof RuntimeException failure) {
+                    throw failure;
+                }
+                throw new IllegalStateException("BLAST failed", e.getCause());
             }
         }
     }
@@ -140,12 +144,12 @@ public final class BlastPipeline {
                 consumer.stop();
                 var exitCode = process.waitFor();
                 if (exitCode != 0) {
-                    throw new IllegalStateException("BLAST failed with exit code " + exitCode + " for query " + query);
+                    throw new PipelineException("BLAST failed with exit code " + exitCode + " for query " + query);
                 }
             }
             BlastTsv.prependHeader(blastTsv);
         } catch (IOException e) {
-            throw new IllegalStateException("Unable to run BLAST for query: " + query, e);
+            throw new PipelineException("Unable to run BLAST for query: " + query, e);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new IllegalStateException("Interrupted while running BLAST for query: " + query, e);

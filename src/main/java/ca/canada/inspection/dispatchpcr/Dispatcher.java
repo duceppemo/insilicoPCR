@@ -3,6 +3,7 @@ package ca.canada.inspection.dispatchpcr;
 import ca.canada.inspection.commandpcr.CommandMain;
 import ca.canada.inspection.insilicopcr.MainRun;
 import ca.canada.inspection.pcr.ReadLevelCaller;
+import ca.canada.inspection.pipeline.RunFailure;
 import ca.canada.inspection.pipeline.TadpoleOptions;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -54,8 +55,8 @@ public final class Dispatcher {
         } catch (RuntimeException e) {
             // A failure the user can act on is its message; anything else is a bug and
             // keeps the stack trace a report of it needs.
-            if (CliErrors.isForTheUser(e)) {
-                CliErrors.lines(e).forEach(System.err::println);
+            if (RunFailure.isForTheUser(e)) {
+                RunFailure.lines(e).forEach(System.err::println);
             } else {
                 e.printStackTrace(System.err);
             }

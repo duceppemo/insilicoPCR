@@ -16,6 +16,7 @@ import ca.canada.inspection.pipeline.LogFiles;
 import ca.canada.inspection.pipeline.PcrPipelineTask;
 import ca.canada.inspection.pipeline.PcrRunConfig;
 import ca.canada.inspection.pipeline.QaLogInputs;
+import ca.canada.inspection.pipeline.RunFailure;
 import ca.canada.inspection.util.SequenceFileUtils;
 import javafx.application.Application;
 import javafx.application.Platform;
@@ -411,8 +412,14 @@ public class MainRun extends Application {
                 return;
             }
 
+            // The console always gets the stack trace. The window gets the message of a
+            // failure the user can act on, and the stack trace of anything else (a bug).
             error.printStackTrace();
 
+            if (RunFailure.isForTheUser(error)) {
+                Methods.logMessage(outputField, "Run failed\n" + String.join("\n", RunFailure.lines(error)));
+                return;
+            }
             StringWriter sw = new StringWriter();
             error.printStackTrace(new PrintWriter(sw));
             Methods.logMessage(outputField, "Run failed:\n" + sw);

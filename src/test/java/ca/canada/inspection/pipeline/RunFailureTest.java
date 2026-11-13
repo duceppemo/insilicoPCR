@@ -1,6 +1,5 @@
-package ca.canada.inspection.dispatchpcr;
+package ca.canada.inspection.pipeline;
 
-import ca.canada.inspection.pipeline.PipelineException;
 import ca.canada.inspection.util.ProcessRunner;
 import org.junit.jupiter.api.Test;
 
@@ -13,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class CliErrorsTest {
+class RunFailureTest {
 
     @Test
     void aRejectedPrimerFileIsItsMessageOnce() {
@@ -22,9 +21,9 @@ class CliErrorsTest {
                 "Assay stxQ declares size= twice with different values: 118 on stxQ-F, 300 on stxQ-R");
         PipelineException error = new PipelineException(rejected.getMessage() + " (primer file /data/p.fasta)", rejected);
 
-        assertTrue(CliErrors.isForTheUser(error));
+        assertTrue(RunFailure.isForTheUser(error));
         assertEquals(List.of("Error: Assay stxQ declares size= twice with different values: 118 on stxQ-F,"
-                + " 300 on stxQ-R (primer file /data/p.fasta)"), CliErrors.lines(error));
+                + " 300 on stxQ-R (primer file /data/p.fasta)"), RunFailure.lines(error));
     }
 
     @Test
@@ -32,9 +31,9 @@ class CliErrorsTest {
         IOException missing = new NoSuchFileException("/data/missing.fasta");
         PipelineException error = new PipelineException("Could not parse contigs from: sample_1", missing);
 
-        assertTrue(CliErrors.isForTheUser(error));
+        assertTrue(RunFailure.isForTheUser(error));
         assertEquals(List.of("Error: Could not parse contigs from: sample_1", "  Cause: /data/missing.fasta"),
-                CliErrors.lines(error));
+                RunFailure.lines(error));
     }
 
     @Test
@@ -42,7 +41,7 @@ class CliErrorsTest {
         PipelineException error = new PipelineException("Could not write QA log: /data/QAlog.txt", new IOException());
 
         assertEquals(List.of("Error: Could not write QA log: /data/QAlog.txt", "  Cause: IOException"),
-                CliErrors.lines(error));
+                RunFailure.lines(error));
     }
 
     @Test
@@ -54,16 +53,16 @@ class CliErrorsTest {
                 "External command failed: " + result.commandLine() + " (exit 1, 2s)", result);
         PipelineException error = new PipelineException("BLAST failed", failed);
 
-        assertTrue(CliErrors.isForTheUser(error));
+        assertTrue(RunFailure.isForTheUser(error));
         assertEquals(List.of("Error: BLAST failed",
                 "  Cause: External command failed: blastn -query /data/sample.fasta (exit 1, 2s)"),
-                CliErrors.lines(error));
+                RunFailure.lines(error));
     }
 
     @Test
     void aBugKeepsItsStackTrace() {
-        assertFalse(CliErrors.isForTheUser(new NullPointerException("oops")));
+        assertFalse(RunFailure.isForTheUser(new NullPointerException("oops")));
         // A stage that failed on a programming error is not something the user can fix.
-        assertFalse(CliErrors.isForTheUser(new PipelineException("BLAST failed", new IllegalStateException("oops"))));
+        assertFalse(RunFailure.isForTheUser(new PipelineException("BLAST failed", new IllegalStateException("oops"))));
     }
 }

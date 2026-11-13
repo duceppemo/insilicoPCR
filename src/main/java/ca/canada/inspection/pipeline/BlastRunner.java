@@ -3,6 +3,7 @@ package ca.canada.inspection.pipeline;
 import ca.canada.inspection.insilicopcr.Sample;
 import ca.canada.inspection.util.ProcessRunner;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -42,16 +43,20 @@ public final class BlastRunner {
         context.directories().createSampleDirectory(name);
         Path blastTsv = blastOutput.resolve(name + ".tsv");
 
-        ProcessRunner.run(null,
-                context.dependencies().blastn().toString(),
-                "-task", "blastn-short",
-                "-query", query.toString(),
-                "-db", context.directories().primerDatabase().toString(),
-                "-evalue", Double.toString(context.config().evalue()),
-                "-num_alignments", "1000000",
-                "-num_threads", "1",
-                "-outfmt", BlastTsv.OUTFMT,
-                "-out", blastTsv.toString());
+        try (BlastQuery blastQuery = BlastQuery.of(query, blastOutput)) {
+            ProcessRunner.run(null,
+                    context.dependencies().blastn().toString(),
+                    "-task", "blastn-short",
+                    "-query", blastQuery.path().toString(),
+                    "-db", context.directories().primerDatabase().toString(),
+                    "-evalue", Double.toString(context.config().evalue()),
+                    "-num_alignments", "1000000",
+                    "-num_threads", "1",
+                    "-outfmt", BlastTsv.OUTFMT,
+                    "-out", blastTsv.toString());
+        } catch (IOException e) {
+            throw new PipelineException("Unable to prepare the BLAST query for " + query, e);
+        }
         BlastTsv.prependHeader(blastTsv);
     }
 }

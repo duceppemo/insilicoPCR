@@ -97,17 +97,17 @@ public final class BlastPipeline {
         var blastTsv = blastOutput.resolve(name + ".tsv");
         try {
             Files.createDirectories(blastOutput);
-            var command = new String[]{AppPaths.executable(dependencies.blastLocation(), "blastn").toString(),
-                    "-task", "blastn-short",
-                    "-query", query.toString(),
-                    "-db", primers.toString(),
-                    "-evalue", Double.toString(config.evalue()),
-                    "-num_alignments", "1000000",
-                    "-num_threads", "1",
-                    "-outfmt", BlastTsv.OUTFMT,
-                    "-out", blastTsv.toString()};
-
-            try (var process = new ProcessBuilder(command).start()) {
+            try (var blastQuery = BlastQuery.of(query, blastOutput);
+                 var process = new ProcessBuilder(
+                         AppPaths.executable(dependencies.blastLocation(), "blastn").toString(),
+                         "-task", "blastn-short",
+                         "-query", blastQuery.path().toString(),
+                         "-db", primers.toString(),
+                         "-evalue", Double.toString(config.evalue()),
+                         "-num_alignments", "1000000",
+                         "-num_threads", "1",
+                         "-outfmt", BlastTsv.OUTFMT,
+                         "-out", blastTsv.toString()).start()) {
                 processTracker.add(process);
                 Platform.runLater(consumer::start);
                 streamProcessOutput(process, messageQueue);

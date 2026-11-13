@@ -1,10 +1,12 @@
 package ca.canada.inspection.dispatchpcr;
 
 import ca.canada.inspection.pipeline.PipelineException;
+import ca.canada.inspection.util.ProcessRunner;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.nio.file.NoSuchFileException;
+import java.time.Duration;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -40,6 +42,21 @@ class CliErrorsTest {
         PipelineException error = new PipelineException("Could not write QA log: /data/QAlog.txt", new IOException());
 
         assertEquals(List.of("Error: Could not write QA log: /data/QAlog.txt", "  Cause: IOException"),
+                CliErrors.lines(error));
+    }
+
+    @Test
+    void aFailedExternalToolIsItsCommandLine() {
+        // blastn has printed its own message; the stage names itself and the command follows.
+        ProcessRunner.Result result = new ProcessRunner.Result(1, Duration.ofSeconds(2),
+                List.of("blastn", "-query", "/data/sample.fasta"));
+        ProcessRunner.ProcessException failed = new ProcessRunner.ProcessException(
+                "External command failed: " + result.commandLine() + " (exit 1, 2s)", result);
+        PipelineException error = new PipelineException("BLAST failed", failed);
+
+        assertTrue(CliErrors.isForTheUser(error));
+        assertEquals(List.of("Error: BLAST failed",
+                "  Cause: External command failed: blastn -query /data/sample.fasta (exit 1, 2s)"),
                 CliErrors.lines(error));
     }
 

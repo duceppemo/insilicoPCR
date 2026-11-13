@@ -40,8 +40,9 @@ usage: java -jar insilicoPCR.jar -i <input> -o <output> -p <primers> [-t
                                 .fasta/.fastq sequence(s)
  -l,--max-length <bp>           Maximum amplicon length in bp, 0 =
                                 unlimited; default: 5000
- -m,--mismatches <n>            Allowed mismatches+indels per primer
-                                (unaligned 3' bases count); default: 0
+ -m,--mismatches <n>            Allowed mismatches+indels per primer (3'
+                                bases that do not pair with the template
+                                count); default: 0
     --min-length <bp>           Minimum amplicon length in bp; default: 0
  -o,--output <dir>              Directory for output files
  -p,--primers <file>            Primer FASTA file

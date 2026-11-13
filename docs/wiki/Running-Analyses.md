@@ -6,10 +6,10 @@ insilicoPCR can analyze genome assemblies and sequencing reads.
 
 Supported sequence inputs include:
 
-- assemblies: `.fasta`, `.fa`, `.fna`, `.ffn`, `.fsa`
+- assemblies: `.fasta`, `.fa`, `.fna`, `.ffn`, `.fsa`, plain or (since 0.12.1) gzipped
 - reads: `.fastq`, `.fq`, plain or gzipped (`.fastq.gz`, `.fq.gz`)
 
-The input can be a single file or a directory containing multiple sequence files. Gzipped FASTA is not read: decompress assemblies first.
+The input can be a single file or a directory containing multiple sequence files. Gzipped assemblies (`.fasta.gz`, `.fna.gz` and so on) are read since 0.12.1; with earlier releases, decompress them first.
 
 ## Standard PCR analysis
 

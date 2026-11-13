@@ -42,7 +42,7 @@ insilicoPCR performs in silico PCR analysis against genome assemblies and sequen
 
 Supported input types include:
 
-- genome assemblies: `.fasta`, `.fa`, `.fna`, `.ffn`, `.fsa`
+- genome assemblies: `.fasta`, `.fa`, `.fna`, `.ffn`, `.fsa`, plain or (since 0.12.1) gzipped
 - sequencing reads: `.fastq`, `.fq`, plain or gzipped (`.fastq.gz`, `.fq.gz`)
 - directories containing multiple FASTA or FASTQ files
 

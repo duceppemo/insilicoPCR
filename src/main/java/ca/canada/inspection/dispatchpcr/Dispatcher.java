@@ -75,7 +75,7 @@ public final class Dispatcher {
         options.addOption(Option.builder("t").longOpt("threads").hasArg().argName("n")
                 .desc("Number of worker threads; default: available processors").build());
         options.addOption(Option.builder("m").longOpt("mismatches").hasArg().argName("n")
-                .desc("Allowed mismatches+indels per primer (unaligned 3' bases count); default: 0").build());
+                .desc("Allowed mismatches+indels per primer (3' bases that do not pair with the template count); default: 0").build());
         options.addOption(Option.builder("e").longOpt("evalue").hasArg().argName("value")
                 .desc("blastn e-value; deliberately permissive, since primer hits are filtered by the mismatch and 3'/5' rules instead, and lowering it (e.g. to 1e-5) drops valid hits; default: 1e5").build());
         options.addOption(Option.builder("l").longOpt("max-length").hasArg().argName("bp")

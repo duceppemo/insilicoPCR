@@ -55,7 +55,7 @@ insilicoPCR accepts genome assemblies and sequencing reads.
 
 Supported examples:
 
-- assemblies: `.fasta`, `.fa`, `.fna`, `.ffn`, `.fsa`
+- assemblies: `.fasta`, `.fa`, `.fna`, `.ffn`, `.fsa`, plain or (since 0.12.1) gzipped
 - reads: `.fastq`, `.fq`, plain or gzipped (`.fastq.gz`, `.fq.gz`)
 
 The input can be one sequence file or a directory containing sequence files.

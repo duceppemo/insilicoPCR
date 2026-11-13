@@ -110,9 +110,14 @@ public class MainRun extends Application {
         primaryStage.setScene(scene);
         primaryStage.setTitle("InSilico PCR " + Dispatcher.VERSION);
 
-        primaryStage.getIcons().add(
-                new Image(MainRun.class.getResourceAsStream("/icons/insilicoPCR-icon.png"))
-        );
+        // A build without the icon still opens its window, with the default icon.
+        try (var icon = MainRun.class.getResourceAsStream("/icons/insilicoPCR-icon.png")) {
+            if (icon != null) {
+                primaryStage.getIcons().add(new Image(icon));
+            }
+        } catch (java.io.IOException ignored) {
+            // Closing a resource stream does not fail in practice; the icon is cosmetic anyway.
+        }
 
         primaryStage.setOnCloseRequest(event -> {
             if (!confirmClose()) {

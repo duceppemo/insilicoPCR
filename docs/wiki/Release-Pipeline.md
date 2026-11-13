@@ -32,7 +32,7 @@ scripts/ci/smoke-test.sh insilicoPCR-<version>-linux-x64.zip
 
 ```bash
 export JAVA_HOME=/path/to/jdk-26
-scripts/release/package-linux-portable.sh 0.12.1
+scripts/release/package-linux-portable.sh 0.13.0
 ```
 
 Expected artifacts:

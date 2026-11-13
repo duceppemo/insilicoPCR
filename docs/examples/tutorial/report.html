@@ -69,7 +69,7 @@ button.chip { cursor: pointer; } button.chip:hover, button.chip:focus-visible { 
 .chip.amplified { background: var(--amplified); color: #fff; }
 .chip.other { border-color: var(--other); }
 .chip.unexpected { border-color: var(--unexpected); border-style: dashed; }
-.chip.inconclusive { border: 2px dotted var(--ink-3); color: var(--ink-2); }
+.chip.inconclusive, .chip.unconfirmed { border: 2px dotted var(--ink-3); color: var(--ink-2); }
 .chip.unchecked { color: var(--ink-3); min-width: 0; padding: 0; font-weight: 400; }
 .chip.none { color: var(--line-2); min-width: 0; padding: 0; font-weight: 400; }
 .chip sup { font-size: 10px; line-height: 1; margin-left: 1px; }
@@ -104,7 +104,7 @@ details .names { margin-top: 6px; }
 <main>
 <header>
 <h1>insilicoPCR report</h1>
-<p class="sub">2026-11-12 15:15 · version 0.12.0 · report.tsv</p>
+<p class="sub">2026-11-13 14:24 · version 0.13.0 · report.tsv</p>
 </header>
 <section class="tiles" aria-label="Summary">
 <div class="tile"><span class="n">4</span><span class="l">samples</span></div>
@@ -164,8 +164,8 @@ details .names { margin-top: 6px; }
 <section>
 <h2>Run details</h2>
 <dl class="details">
-<dt>Date</dt><dd>2026-11-12 15:15</dd>
-<dt>insilicoPCR version</dt><dd>0.12.0</dd>
+<dt>Date</dt><dd>2026-11-13 14:24</dd>
+<dt>insilicoPCR version</dt><dd>0.13.0</dd>
 <dt>Input</dt><dd>/data/tutorial/tutorial_input</dd>
 <dt>Primer file</dt><dd>/data/tutorial/listeria_assays.fasta</dd>
 <dt>Output folder</dt><dd>/data/tutorial/tutorial_results</dd>
@@ -175,6 +175,7 @@ details .names { margin-top: 6px; }
 <dt>5&#39; truncation allowed</dt><dd>5</dd>
 <dt>Product length</dt><dd>0 to 5000 bp</dd>
 <dt>Read-level calls (FASTQ)</dt><dd>at least 2 reads or read pairs and 30% of informative reads</dd>
+<dt>Read extension (FASTQ)</dt><dd>unreported: for assays in no contig and in no read, up to 150 reads per primer are extended through the baited reads (k=31); a product needs at least 2 extended reads seeded from each primer, and read pairs holding every window of it</dd>
 </dl>
 <p class="hint">This page shows the rows of <code>report.tsv</code>, in the same folder. insilicoPCR reports every product a PCR would amplify, whatever its size; the size check compares each product with the sizes declared in the primer file and removes nothing.</p>
 </section>

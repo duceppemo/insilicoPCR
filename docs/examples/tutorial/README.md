@@ -1,6 +1,6 @@
 # Tutorial example files
 
-The primer file and the reports of the [tutorial](https://github.com/duceppemo/insilicoPCR/wiki/Tutorial-Mixed-PCR-qPCR), from a run of insilicoPCR 0.12.0 on its four public samples with default settings.
+The primer file and the reports of the [tutorial](https://github.com/duceppemo/insilicoPCR/wiki/Tutorial-Mixed-PCR-qPCR), from a run of insilicoPCR 0.13.0 on its four public samples with default settings.
 
 | File | What it is |
 |---|---|

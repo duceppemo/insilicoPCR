@@ -381,7 +381,8 @@ public class MainRun extends Application {
                 outputField,
                 blastProgress,
                 fastqSettings.tadpole(),
-                fastqSettings.readMinFraction()
+                fastqSettings.readMinFraction(),
+                fastqSettings.readExtension()
         );
 
         runningTask = new PcrPipelineTask(config, processTracker);

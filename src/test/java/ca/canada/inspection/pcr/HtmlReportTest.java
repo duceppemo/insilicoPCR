@@ -94,6 +94,71 @@ class HtmlReportTest {
     }
 
     @Test
+    void negativeAfterReadExtensionIsNoLongerNotCheckable() {
+        // Reads could hold 300 bp at most and the declared product starts at 424 bp, but the
+        // reads were extended and did not join the primers: a negative, with the reason.
+        Cell cell = HtmlReport.cell("its", List.of(), SIZES, new Finding("S", "its", Status.NOT_CLOSED_BY_EXTENSION,
+                Assembly.SPLIT_ACROSS_CONTIGS, new ReadsWithOligo(19, 7, 0), 300,
+                "no complete amplicon in the reads, which could hold amplicons up to 300 bp; extending 19"
+                        + " forward-seeded and 7 reverse-seeded read(s) through the baited reads, by up to 2000 bases"
+                        + " each way, gave no product held by at least 2 extended reads seeded from each primer", ""));
+
+        assertEquals(State.NONE, cell.state());
+        assertTrue(cell.note().startsWith("Both primers are in the reads: no complete amplicon in the reads"),
+                cell.note());
+    }
+
+    @Test
+    void productTheReadPairsDoNotConfirmIsNotShownAsAPlainNegative() throws IOException {
+        Finding withheld = new Finding("S", "its", Status.EXTENSION_THROUGH_UNRESOLVED_REPEAT,
+                Assembly.SPLIT_ACROSS_CONTIGS, new ReadsWithOligo(50, 50, 0), 300, "extended reads hold a product of"
+                + " 434 bp (40 of 50 forward-seeded and 38 of 50 reverse-seeded reads), not reported: bases 100-400 are"
+                + " a repeat with another copy in the sample", "");
+
+        Cell cell = HtmlReport.cell("its", List.of(), SIZES, withheld);
+        assertEquals(State.UNCONFIRMED, cell.state());
+        assertTrue(cell.note().startsWith("Not reported: extended reads hold a product of 434 bp"), cell.note());
+        assertEquals(State.UNCONFIRMED, HtmlReport.cell("its", List.of(), SIZES, new Finding("S", "its",
+                Status.EXTENSION_NOT_SUPPORTED_BY_PAIRS, Assembly.NOT_ASSEMBLED, new ReadsWithOligo(5, 5, 0), 300,
+                "x", "")).state());
+
+        Path tsv = Files.write(dir.resolve("report.tsv"), List.of(HEADER));
+        String page = Files.readString(HtmlReport.write(tsv, List.of("S"), Set.of("S"), PRIMERS, SIZES,
+                List.of(withheld), Map.of()));
+        assertTrue(page.contains("class=\"chip unconfirmed\""));
+        assertTrue(page.contains("not confirmed by read pairs, not reported"), "its own summary tile");
+        assertTrue(page.contains("<span class=\"chip inconclusive\">?</span> not reported"), "listed with the reads");
+    }
+
+    @Test
+    void productCalledByExtensionIsShownAsCalledFromReads() throws IOException {
+        String description = "FASTQ read-extension call: no read holds the product; 142 of 150 forward-seeded and"
+                + " 145 of 150 reverse-seeded reads, extended through the baited reads (k=31), hold it";
+        Path tsv = Files.write(dir.resolve("report.tsv"), List.of(HEADER,
+                row("long", "its", 434, "extended_read_3", description)));
+        Finding called = new Finding("long", "its", Status.CALLED_BY_EXTENSION, Assembly.SPLIT_ACROSS_CONTIGS,
+                new ReadsWithOligo(6134, 5424, 0), 300, "no complete amplicon in the reads, which could hold amplicons"
+                + " up to 300 bp; reads extended through the baited reads hold a product of 434 bp (142 of 150"
+                + " forward-seeded and 145 of 150 reverse-seeded reads)", "");
+        Finding notClosed = new Finding("short", "its", Status.NOT_CLOSED_BY_EXTENSION, Assembly.NOT_ASSEMBLED,
+                new ReadsWithOligo(19, 7, 0), 144, "gave no product held by at least 2 extended reads seeded from each primer", "");
+
+        String page = Files.readString(HtmlReport.write(tsv, List.of("long", "short"), Set.of("long", "short"),
+                PRIMERS, SIZES, List.of(called, notClosed), Map.of("Read extension (FASTQ)", "on")));
+
+        assertTrue(page.contains("434 bp (target), from extended reads"), "the grid tooltip says where it comes from");
+        assertTrue(page.contains("<span class=\"tag\">reads</span> extended (142 of 150 forward-seeded, 145 of 150"
+                + " reverse-seeded)"), "the amplicon table shows the support");
+        assertTrue(page.contains("<span class=\"n\">1</span> of 2 samples positive at the target size"));
+        assertTrue(page.contains("<span class=\"tag\">reads</span> reported"), "listed with the read-level evidence");
+        assertTrue(page.contains("1 negative has both primers in the reads, but no read holds a complete amplicon and"
+                + " extending the reads"));
+        assertFalse(page.contains("class=\"chip unchecked\""),
+                "nothing is left as not checkable once the reads were extended");
+        assertTrue(page.contains("<dt>Read extension (FASTQ)</dt><dd>on</dd>"));
+    }
+
+    @Test
     void writesASelfContainedPageNextToTheReportWithEverySampleAndRow() throws IOException {
         Path tsv = Files.write(dir.resolve("report(1).tsv"), List.of(HEADER,
                 row("pos", "its", 434, "contig_1,len=900,cov=5.0", ""),

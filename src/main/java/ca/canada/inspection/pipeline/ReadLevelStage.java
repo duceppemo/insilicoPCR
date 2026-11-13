@@ -144,9 +144,20 @@ public final class ReadLevelStage {
      */
     static Map<String, String> readSequences(Path fasta, Set<String> readIds) {
         Map<String, String> sequences = new HashMap<>();
+        readRecords(fasta, readIds).forEach((id, record) -> sequences.put(id, record.sequence()));
+        return sequences;
+    }
+
+    /** One read of the FASTA written by {@link #writeReadsFasta}: its original header and its sequence. */
+    record ReadRecord(String description, String sequence) {
+    }
+
+    /** The given reads from the FASTA written by {@link #writeReadsFasta}, by read ID. */
+    static Map<String, ReadRecord> readRecords(Path fasta, Set<String> readIds) {
+        Map<String, ReadRecord> records = new HashMap<>();
         try (BufferedReader reader = Files.newBufferedReader(fasta, StandardCharsets.UTF_8)) {
             String header;
-            while ((header = reader.readLine()) != null && sequences.size() < readIds.size()) {
+            while ((header = reader.readLine()) != null && records.size() < readIds.size()) {
                 String sequence = reader.readLine();
                 if (!header.startsWith(">") || sequence == null) {
                     throw new PipelineException("Malformed baited reads FASTA: " + fasta + " near: " + header);
@@ -154,17 +165,18 @@ public final class ReadLevelStage {
                 int space = header.indexOf(' ');
                 String id = header.substring(1, space < 0 ? header.length() : space);
                 if (readIds.contains(id)) {
-                    sequences.put(id, sequence);
+                    records.put(id, new ReadRecord(space < 0 ? "" : header.substring(space + 1), sequence));
                 }
             }
         } catch (IOException e) {
             throw new PipelineException("Could not read baited reads FASTA: " + fasta, e);
         }
-        return sequences;
+        return records;
     }
 
-    private static void runBlast(Settings settings, int blastThreads, Path fasta, Path hitsFile) {
-        List<String> command = List.of(
+    /** Searches {@code fasta} for the primers with blastn, as contigs are searched. */
+    static void runBlast(Settings settings, int blastThreads, Path fasta, Path hitsFile) {
+        runProcess(settings, null, List.of(
                 settings.blastn().toString(),
                 "-task", "blastn-short",
                 "-query", fasta.toString(),
@@ -173,8 +185,22 @@ public final class ReadLevelStage {
                 "-num_alignments", "1000000",
                 "-num_threads", String.valueOf(blastThreads),
                 "-outfmt", BlastTsv.OUTFMT,
-                "-out", hitsFile.toString());
+                "-out", hitsFile.toString()), "blastn");
+    }
+
+    /**
+     * Runs an external command of a FASTQ-mode search: output to the console or to
+     * {@link Settings#log()}, the process registered with {@link Settings#processes()},
+     * and a cancelled run reported as such rather than as a failed command.
+     *
+     * @param workingDirectory directory to run in; {@code null} keeps the current one
+     * @param program          name of the program, for messages
+     */
+    static void runProcess(Settings settings, Path workingDirectory, List<String> command, String program) {
         ProcessBuilder builder = new ProcessBuilder(command);
+        if (workingDirectory != null) {
+            builder.directory(workingDirectory.toFile());
+        }
         if (settings.log() == null) {
             builder.inheritIO();
         } else {
@@ -199,13 +225,13 @@ public final class ReadLevelStage {
                 throw new CancellationException("Read-level search was cancelled.");
             }
             if (exit != 0) {
-                throw new PipelineException("blastn failed with exit code " + exit + ": " + String.join(" ", command));
+                throw new PipelineException(program + " failed with exit code " + exit + ": " + String.join(" ", command));
             }
         } catch (IOException e) {
-            throw new PipelineException("Could not run blastn: " + String.join(" ", command), e);
+            throw new PipelineException("Could not run " + program + ": " + String.join(" ", command), e);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new PipelineException("Interrupted while running blastn on " + fasta, e);
+            throw new PipelineException("Interrupted while running " + program + ": " + String.join(" ", command), e);
         }
     }
 

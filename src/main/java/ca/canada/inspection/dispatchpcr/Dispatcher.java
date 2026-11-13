@@ -2,6 +2,7 @@ package ca.canada.inspection.dispatchpcr;
 
 import ca.canada.inspection.commandpcr.CommandMain;
 import ca.canada.inspection.insilicopcr.MainRun;
+import ca.canada.inspection.pcr.ReadExtensionCaller;
 import ca.canada.inspection.pcr.ReadLevelCaller;
 import ca.canada.inspection.pipeline.RunFailure;
 import ca.canada.inspection.pipeline.TadpoleOptions;
@@ -110,6 +111,12 @@ public final class Dispatcher {
                         + " enough) that must hold a complete amplicon to call a product the mini-assembly"
                         + " missed from reads;"
                         + " default: " + ReadLevelCaller.DEFAULT_MIN_SUPPORT_FRACTION).build());
+        options.addOption(Option.builder().longOpt("read-extension").hasArg().argName("mode")
+                .desc("FASTQ mode: which assays the reads carrying both primers are extended for, through the"
+                        + " baited reads, to find products longer than a read or merged pair. One of: unreported"
+                        + " (assays found in no contig and in no read), target (those, and assays that declare"
+                        + " size= and show no product of that size yet), off (none); default: "
+                        + ReadExtensionCaller.Mode.DEFAULT).build());
         options.addOption(Option.builder().longOpt("input-check").hasArg().argName("full|quick")
                 .desc("How the input files are checked before the run. full: every read of every FASTQ file"
                         + " is read, and the two files of a pair must hold the same number of reads. quick: the"

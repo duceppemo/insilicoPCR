@@ -1,23 +1,32 @@
 package ca.canada.inspection.insilicopcr.ui;
 
+import ca.canada.inspection.pcr.ReadExtensionCaller;
 import ca.canada.inspection.pcr.ReadLevelCaller;
 import ca.canada.inspection.pipeline.TadpoleOptions;
+import javafx.scene.control.ChoiceBox;
 import javafx.scene.control.TextField;
 import javafx.stage.Window;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
- * Dialog for the FASTQ-mode settings: the Tadpole mini-assembly and the read-level
- * call threshold. Mirrors the {@code --tadpole-*} and {@code --read-min-fraction}
- * command-line options.
+ * Dialog for the FASTQ-mode settings: the Tadpole mini-assembly, the read-level
+ * call threshold and the read extension. Mirrors the {@code --tadpole-*},
+ * {@code --read-min-fraction} and {@code --read-extension} command-line options.
  */
 public final class FastqSettingsDialog {
 
     /** The FASTQ-mode settings edited by this dialog. */
-    public record FastqSettings(TadpoleOptions tadpole, double readMinFraction) {
-        public static final FastqSettings DEFAULTS =
-                new FastqSettings(TadpoleOptions.DEFAULTS, ReadLevelCaller.DEFAULT_MIN_SUPPORT_FRACTION);
+    public record FastqSettings(TadpoleOptions tadpole, double readMinFraction,
+                                ReadExtensionCaller.Mode readExtension) {
+        public static final FastqSettings DEFAULTS = new FastqSettings(TadpoleOptions.DEFAULTS,
+                ReadLevelCaller.DEFAULT_MIN_SUPPORT_FRACTION, ReadExtensionCaller.Mode.DEFAULT);
+
+        /** Settings with the default read extension. */
+        public FastqSettings(TadpoleOptions tadpole, double readMinFraction) {
+            this(tadpole, readMinFraction, ReadExtensionCaller.Mode.DEFAULT);
+        }
 
         public boolean isDefault() {
             return equals(DEFAULTS);
@@ -50,10 +59,22 @@ public final class FastqSettingsDialog {
                         + "least this share of the reads that "
                         + "carry one of its primers at the same locus and are long enough, hold a complete amplicon "
                         + "(--read-min-fraction). Default " + ReadLevelCaller.DEFAULT_MIN_SUPPORT_FRACTION + ".");
+        dialog.section("Read extension");
+        ChoiceBox<ReadExtensionCaller.Mode> readExtension = dialog.choice("Extend reads for",
+                List.of(ReadExtensionCaller.Mode.values()), current.readExtension(),
+                "Finds products longer than a read or merged pair (--read-extension). When reads carry both primers "
+                        + "of an assay, up to " + ReadExtensionCaller.MAX_SEEDS_PER_PRIMER + " reads per primer are "
+                        + "extended through the baited reads, and a product that at least "
+                        + ReadExtensionCaller.MIN_CLOSING_READS_PER_SIDE + " reads extended from each primer hold, and "
+                        + "that the sample's read pairs confirm, is reported.\nunreported: " + ReadExtensionCaller.Mode.UNREPORTED.description()
+                        + ".\ntarget: " + ReadExtensionCaller.Mode.TARGET.description()
+                        + " (size= in the primer file).\noff: no read is extended.\nAdds from seconds to a few "
+                        + "minutes per sample that has such an assay. Default "
+                        + ReadExtensionCaller.Mode.DEFAULT + ".");
 
         return dialog.show(owner, "FASTQ settings", "Settings used only for FASTQ (read) input",
                 () -> parse(k.getText(), minSeed.getText(), minCov.getText(), minContig.getText(),
-                        readFraction.getText()),
+                        readFraction.getText(), readExtension.getValue()),
                 () -> {
                     FastqSettings defaults = FastqSettings.DEFAULTS;
                     k.setText(String.valueOf(defaults.tadpole().k()));
@@ -61,6 +82,7 @@ public final class FastqSettingsDialog {
                     minCov.setText(String.valueOf(defaults.tadpole().minCoverage()));
                     minContig.setText(String.valueOf(defaults.tadpole().minContig()));
                     readFraction.setText(String.valueOf(defaults.readMinFraction()));
+                    readExtension.setValue(defaults.readExtension());
                 });
     }
 
@@ -74,7 +96,8 @@ public final class FastqSettingsDialog {
         return (settings.isDefault() ? "Defaults" : "Changed from defaults (*)")
                 + "\nTadpole: " + String.join(" ", settings.tadpole().arguments())
                 + "\nRead-level calls: at least " + ReadLevelCaller.MIN_SUPPORTING_READS + " reads or read pairs and "
-                + Math.round(100 * settings.readMinFraction()) + "% of informative reads";
+                + Math.round(100 * settings.readMinFraction()) + "% of informative reads"
+                + "\nRead extension: " + settings.readExtension();
     }
 
     /**
@@ -83,6 +106,12 @@ public final class FastqSettingsDialog {
      * @throws IllegalArgumentException with a user-facing message when a value is invalid
      */
     static FastqSettings parse(String k, String minSeed, String minCov, String minContig, String readFraction) {
+        return parse(k, minSeed, minCov, minContig, readFraction, ReadExtensionCaller.Mode.DEFAULT);
+    }
+
+    /** As {@link #parse(String, String, String, String, String)}, with the read extension chosen. */
+    static FastqSettings parse(String k, String minSeed, String minCov, String minContig, String readFraction,
+                               ReadExtensionCaller.Mode readExtension) {
         TadpoleOptions tadpole = new TadpoleOptions(
                 SettingsDialog.parseInt(k, "k-mer length", 1),
                 SettingsDialog.parseInt(minSeed, "Min k-mer count to seed", 1),
@@ -97,6 +126,6 @@ public final class FastqSettingsDialog {
         if (!(fraction >= 0.0 && fraction <= 1.0)) {
             throw new IllegalArgumentException("Min share of informative reads must be between 0 and 1.");
         }
-        return new FastqSettings(tadpole, fraction);
+        return new FastqSettings(tadpole, fraction, readExtension);
     }
 }

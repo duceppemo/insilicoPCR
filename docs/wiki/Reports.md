@@ -34,7 +34,7 @@ for that assay. The genomes, the primer file and the report of this run are in t
 | Samples by assay | One row per sample, one column per assay, and in each cell the outcome with the product size in bp. Samples without any product are listed too. Each column head gives the number of positive samples. Click a cell to list its amplicons |
 | By assay | Per assay: the sizes it declares, how many samples are positive, and their names |
 | All amplicons | Every row of the TSV, with a filter box |
-| Read-level evidence | FASTQ input only: products called from reads and products seen in too few reads to be reported |
+| Read-level evidence | FASTQ input only: products called from reads (whole or extended) and products seen in too few reads to be reported |
 | Run details | Version, date, input, primer file and the amplicon settings used |
 
 The outcome of a sample for an assay uses the [product sizes declared in the primer file](Primer-FASTA-Format#declaring-product-sizes-optional), when there are any:
@@ -46,7 +46,8 @@ The outcome of a sample for an assay uses the [product sizes declared in the pri
 | Amber outline, `≈` | Other known product | Only a product declared as another known size (`other=`) |
 | Red dashed outline, `!` | Unexpected size | Only a product of a size the primer file does not declare |
 | Dotted outline, `?` | Seen in too few reads | FASTQ input: a complete amplicon is in some reads, too few to report (`WEAK_READ_SUPPORT`) |
-| `○` | Not checkable from reads | FASTQ input: both primers are in the reads, no product was found, and a product of the declared size is longer than a read or merged pair could hold. Not a reliable negative; confirm on an assembly |
+| Dotted outline, `?` | Not confirmed by read pairs | FASTQ input: reads extended from both primers hold a product, but the read pairs do not confirm it; not reported (`EXTENSION_NOT_SUPPORTED_BY_PAIRS`, `EXTENSION_THROUGH_UNRESOLVED_REPEAT`) |
+| `○` | Not checkable from reads | FASTQ input run with `--read-extension off`: both primers are in the reads, no product was found, and a product of the declared size is longer than a read or merged pair could hold. Not a reliable negative; rerun with the [read extension](#read-extension-products-longer-than-a-read) on, or confirm on an assembly |
 | `·` | No product | |
 | `◐` beside the size | A primer binds only partly | Added to any of the outcomes above when every product that decides it has a primer with unaligned 5' bases. The product is reported as usual; whether such a primer anneals in a reaction is for you to judge from the [primer binding columns](#primer-binding-columns) |
 
@@ -178,11 +179,101 @@ the two unmerged reads of one pair count once, whether supporting or informative
 
 Read-level calling only works when an amplicon fits in a read or a merged pair: at most the fragment length
 of the library, and no more than about twice the read length minus the overlap BBMerge needs (roughly 580 bp
-for 2 x 300 bp reads). A longer amplicon can only come from the mini-assembly, which often breaks inside
-high-copy regions such as rDNA; its `NOT_IN_READS` row states the longest amplicon the reads could have held
-(`CheckableLength`). **A FASTQ-mode negative is weaker
-evidence than a negative on a genome assembly**; for exclusivity or diagnostic work, and for assays with
-amplicons longer than the fragments, confirm negatives on an assembly of the reads.
+for 2 x 300 bp reads). The longest amplicon the reads could have held is given as `CheckableLength` in the
+diagnostics. A longer amplicon is looked for by extending the reads, described next.
+
+### Read extension: products longer than a read
+
+A product longer than a read or merged pair used to come from the mini-assembly only, and the mini-assembly
+often breaks inside high-copy, variable regions such as rDNA: at every position where the copies differ it sees
+a branch and stops. For an assay that neither the mini-assembly nor a read reports, **although reads carry both
+of its primers**, the reads themselves are therefore extended (which assays exactly is a setting, below):
+
+1. Up to 150 reads carrying the forward primer and up to 150 carrying the reverse primer are taken as seeds,
+   spread evenly over the input (all variants of a degenerate primer count as one primer).
+2. Tadpole extends each seed both ways through the k-mers (k = 31) of all the baited reads, by up to the maximum
+   amplicon length (`-l`), and at a branch always follows the better-supported path.
+3. The extended reads are searched like contigs: same hit filters, amplicon rules and probe requirement.
+4. A product must be held by at least **2 extended reads seeded from the forward primer and at least 2 seeded
+   from the reverse primer**. Sizes within 10 bp of each other are one product, taken at its most frequent
+   size.
+5. Such a product is then **checked against the sample's read pairs**, described below, and reported only when
+   they support it over its whole length. Each product reported gets its own row.
+
+The two-sided rule keeps out an extension that takes a wrong branch on its own: the reads of the other primer,
+extended the other way, do not give the same product. On the test runs a real product was held by 67 to 98% of
+the extended reads of each side, and such a false join by one read of one side.
+
+**The read-pair check.** Where two places in the genome share a repeat, an extension can enter the repeat at
+one place and leave it at the other, and it does so from both primers alike: both sides then agree on a product
+that does not exist. A read pair is one DNA fragment, and no fragment of the sample spans a junction the
+sample does not have. So every read of the sample that shares 31 bases with the product is fetched from the
+input (not from the baited reads, which thin out away from the primers), each pair is laid on the product, and
+two rules are applied:
+
+- **Every window must lie inside read pairs.** For windows of 100, 150, 200 ... bases, the pairs whose
+  fragment (from the start of one read to the end of its mate) contains the whole window are counted. The
+  largest window is used whose median count is at least 10 and at least 30% of the median count of 100-base
+  windows, so that the check adapts to the depth and to the fragment length of the library. The product is
+  withheld when some window is held by fewer than 2 pairs, or fewer than 10% of the median, and when even
+  100-base windows have a median under 10: too few pairs to tell.
+- **No repeat longer than that window.** Pairs cannot bridge a repeat longer than the window they verify:
+  every window is then held by fragments of one place or the other, for a real product and for a wrong turn
+  alike. Such a repeat is recognised by the reads of its other copy, which match the product over the repeat
+  only: many reads start matching at one position and many stop matching at another. The product is then
+  withheld, real or not. (A small insertion or deletion in some copies of a locus makes reads stop matching
+  from both directions at one position, which is not taken for a repeat.)
+
+On a benchmark of simulated 2 x 250 bp pairs from a bacterial genome edited to hold 19 real products and
+repeat traps (a wrong turn through a repeat of 40 to 1000 bp giving the declared size), the extension without
+this check reported 1 to 4 false products per run, each held by most of the extended reads of both sides. With
+it, it reported none at 60x and at 20x, and found 5 or 6 of the 10 real products that only an extension can
+find at 60x, and 3 at 20x. What it costs: real products through a repeat longer than the verified window (300
+to 350 bases at 60x, 200 to 250 at 20x) are withheld together with the traps they cannot be told from.
+
+Unpaired reads are their own fragments: the same rules apply, with windows no longer than a read.
+
+Rows called this way have a `Contig Description` starting with `FASTQ read-extension call:` and giving the
+support, e.g. `142 of 150 forward-seeded and 145 of 150 reverse-seeded reads` and `every 150-base window held
+by at least 2403 read pairs`. `Contig` is the extended read (`extended_read_<n>`), and the coordinates are on
+it. Kept under `detailed_report/<sample>/`: `_extensionSeeds.fasta`, `_extendedReads.fasta`,
+`_extendedReads.blast.txt`, and, when a product was checked, `_extensionCandidates.fasta` (the products checked)
+and `_extensionCandidateReads.fastq.gz` (the reads fetched for them).
+
+**An extended read is not an assembled consensus.** It is the best-supported path through a locus that can exist
+in many slightly different copies, and it can switch from one copy to another along the way. Its **size** is
+the result; do not take its sequence as the sequence of the sample. Two length variants of one locus can show
+as two close sizes (1072 and 1074 bp for a field population), reported as one product.
+
+What the extension does not do:
+
+- It does not overrule the read-level rules. A product seen in too few reads to report (`WEAK_READ_SUPPORT`)
+  stays unreported: the assay is not extended for it, and if the extended reads hold it, it is not added.
+- It does not weigh the product against the rest of the sample as the 30% rule does. A product needs 2 extended
+  reads per side, whatever share of the seeds they are; the counts are in the row for you to judge. A primer
+  that also matches elsewhere in the genome gives seeds that never reach the product, which lowers the share
+  without meaning anything.
+- It needs coverage: with a handful of reads carrying the primers (single juveniles in the test runs) the
+  extension stops before joining them, and the assay stays negative with status `NOT_CLOSED_BY_EXTENSION`; with
+  too few read pairs on a product (about 20x and less) the check cannot confirm it.
+- It cannot confirm a product through a repeat longer than the read pairs can bridge. Such a product is
+  withheld with status `EXTENSION_THROUGH_UNRESOLVED_REPEAT`; an assembly of long reads is what settles it.
+
+**Which assays are extended** is set with `--read-extension` (GUI: **FASTQ settings…**, *Extend reads for*):
+
+| Value | Reads are extended for |
+|---|---|
+| `unreported` (default) | An assay that nothing reports in the sample: no contig and no read holds a product |
+| `target` | Those, and an assay that declares a target size (`size=`) of which the sample shows no product yet, whatever other products it shows. Use it when an assay can give a short product somewhere else and its real, long product would otherwise never be looked for |
+| `off` | None; long products are then left at `NOT_IN_READS` |
+
+In every case reads must carry both primers, and the two-sided rule decides the call. A product the extended
+reads hold at a size the sample already shows (on a contig or in reads, within 10 bp) is not reported a second
+time. The extension adds from a few seconds to a few minutes per sample that has such an assay (the read-pair
+check reads the input once more when a product needs checking), and nothing otherwise. The value used is recorded in `QAlog.txt` and in the HTML report.
+
+**A FASTQ-mode negative is weaker evidence than a negative on a genome assembly**; for exclusivity or diagnostic
+work, confirm negatives on an assembly of the reads.
 
 ### Diagnostics file
 
@@ -192,7 +283,8 @@ reports only at another size than a product called from reads, is listed in
 summarized in `QAlog.txt`, and noted on the console or in the GUI log. Files kept per sample under
 `detailed_report/<sample>/`: `_merged.fastq.gz` / `_unmerged.fastq.gz` (BBMerge output, paired-end input only), `_baitedReads.fasta`
 (the reads searched, renamed `read_<n>` with the original name as description) and `_baitedReads.blast.txt`
-(their BLAST hits).
+(their BLAST hits), and, when reads were extended, `_extensionSeeds.fasta`, `_extendedReads.fasta`,
+`_extendedReads.blast.txt`, `_extensionCandidates.fasta` and `_extensionCandidateReads.fastq.gz`.
 
 | Column | Meaning |
 |---|---|
@@ -206,8 +298,12 @@ summarized in `QAlog.txt`, and noted on the console or in the GUI log. Files kep
 | Status | Meaning |
 |---|---|
 | `CALLED_FROM_READS` | Reported in `report.tsv` from reads |
+| `CALLED_BY_EXTENSION` | A product that no contig and no read holds, but reads extended from both primers do, and that the read pairs support: reported in `report.tsv` (`FASTQ read-extension call`). `ReadDetail` gives the size and the extended reads holding it per side, then any product withheld or held by too few extended reads. With `--read-extension target` the assay can show other products too (`Assembly` is then `OTHER_PRODUCT_ONLY`) |
+| `EXTENSION_NOT_SUPPORTED_BY_PAIRS` | Reads extended from both primers hold a product, but read pairs do not span one of its windows, or are too few to verify it. **Not reported, and warned about**: this is what a wrong turn through a repeat looks like. `ReadDetail` gives the weakest window, its position and the median |
+| `EXTENSION_THROUGH_UNRESOLVED_REPEAT` | Reads extended from both primers hold a product that passes through a repeat with another copy in the sample, longer than the read pairs can bridge. **Not reported, and warned about**: a real product and a wrong turn look the same there. `ReadDetail` gives the repeat's position |
 | `WEAK_READ_SUPPORT` | Complete amplicons in reads, but fewer than 2 or under `--read-min-fraction` (default 30%) of informative reads. **Not reported, and warned about**: contamination, index hopping, a mixed sample, or a locus of which only some copies match the assay. Inspect the reads before trusting either answer |
-| `NOT_IN_READS` | Both primers are in the reads, but no read holds a complete amplicon. Conclusive only for amplicons up to `CheckableLength`; a longer amplicon cannot be ruled out |
+| `NOT_IN_READS` | Both primers are in the reads, but no read holds a complete amplicon, and the reads were not extended (`--read-extension off`). Conclusive only for amplicons up to `CheckableLength`; a longer amplicon cannot be ruled out |
+| `NOT_CLOSED_BY_EXTENSION` | Both primers are in the reads, no read holds a complete amplicon, and extending the reads did not join the primers from both sides. `ReadDetail` gives the number of reads extended and anything seen from one side only. A negative, weaker than one on an assembly, especially when few reads carry the primers |
 | `PARTIAL_BAIT` | Only some of the assay's primers are in the reads (e.g. one primer site diverged beyond `-m`); usually a true negative |
 
 | Assembly | Meaning |

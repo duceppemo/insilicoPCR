@@ -24,6 +24,7 @@ class PipelineConfigTest {
         assertTrue(config.primers().isAbsolute());
         assertEquals(3, config.mismatches());
         assertTrue(config.gel());
+        assertEquals(ca.canada.inspection.pcr.ReadExtensionCaller.Mode.UNREPORTED, config.readExtension());
     }
 
     @Test

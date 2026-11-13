@@ -33,7 +33,7 @@
 
 ## Features
 
-- **Assemblies and reads.** FASTA genomes are searched directly; FASTQ reads (single or paired, gzipped or not) are baited and micro-assembled first, and a product the mini-assembly misses is called from the reads themselves.
+- **Assemblies and reads.** FASTA genomes are searched directly; FASTQ reads (single or paired, gzipped or not) are baited and micro-assembled first, and a product the mini-assembly misses is called from the reads themselves, even one longer than a read.
 - **PCR and qPCR in one primer file.** An assay with a probe is reported only when the probe sits inside the amplicon. Degenerate (IUPAC) primers are expanded automatically.
 - **Realistic amplicon calling.** Primers must face each other on one contig, within a size limit, with a weighted 3'-end mismatch check that knows a terminal G/C mismatch is worse than an A/T one.
 - **Every product is reported, whatever its size**, as a real PCR would amplify it. Declare the size an assay is designed to give and each product is labelled `target`, `other` or `unexpected`.

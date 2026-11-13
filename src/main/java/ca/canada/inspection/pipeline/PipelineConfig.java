@@ -1,6 +1,7 @@
 package ca.canada.inspection.pipeline;
 
 import ca.canada.inspection.pcr.AmpliconOptions;
+import ca.canada.inspection.pcr.ReadExtensionCaller;
 import ca.canada.inspection.pcr.ReadLevelCaller;
 
 import java.nio.file.Path;
@@ -16,7 +17,8 @@ public record PipelineConfig(
         AmpliconOptions ampliconOptions,
         boolean gel,
         TadpoleOptions tadpole,
-        double readMinFraction
+        double readMinFraction,
+        ReadExtensionCaller.Mode readExtension
 ) {
     public PipelineConfig {
         input = Objects.requireNonNull(input, "input").toAbsolutePath().normalize();
@@ -24,6 +26,7 @@ public record PipelineConfig(
         primers = Objects.requireNonNull(primers, "primers").toAbsolutePath().normalize();
         Objects.requireNonNull(ampliconOptions, "ampliconOptions");
         Objects.requireNonNull(tadpole, "tadpole");
+        Objects.requireNonNull(readExtension, "readExtension");
         ReadLevelCaller.requireFraction(readMinFraction);
         if (threads < 1) {
             throw new IllegalArgumentException("threads must be >= 1");
@@ -33,11 +36,19 @@ public record PipelineConfig(
         }
     }
 
-    /** Configuration with the default Tadpole settings. */
+    /** Configuration with the default FASTQ-mode settings. */
     public PipelineConfig(Path input, Path output, Path primers, int threads, double evalue,
                           AmpliconOptions ampliconOptions, boolean gel) {
         this(input, output, primers, threads, evalue, ampliconOptions, gel, TadpoleOptions.DEFAULTS,
-                ReadLevelCaller.DEFAULT_MIN_SUPPORT_FRACTION);
+                ReadLevelCaller.DEFAULT_MIN_SUPPORT_FRACTION, ReadExtensionCaller.Mode.DEFAULT);
+    }
+
+    /** Configuration with the default read extension. */
+    public PipelineConfig(Path input, Path output, Path primers, int threads, double evalue,
+                          AmpliconOptions ampliconOptions, boolean gel, TadpoleOptions tadpole,
+                          double readMinFraction) {
+        this(input, output, primers, threads, evalue, ampliconOptions, gel, tadpole, readMinFraction,
+                ReadExtensionCaller.Mode.DEFAULT);
     }
 
     /** Allowed primer mismatches; also used as BBDuk {@code hdist} when baiting reads. */

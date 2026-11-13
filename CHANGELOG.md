@@ -2,8 +2,73 @@
 
 ## Unreleased
 
+### Added
+
+- FASTQ mode: products longer than a read or merged pair are now found
+  (**read extension**). Until now such a product could only come from the
+  mini-assembly, which breaks inside high-copy, variable regions such as rDNA,
+  and the assay stayed negative (`NOT_IN_READS`, "not checkable from reads" in
+  the HTML report). For an assay that neither the mini-assembly nor a read
+  reports although reads carry both of its primers, up to 150 reads per primer
+  are now extended through all the baited reads with Tadpole (`mode=extend`,
+  `k=31`), always along the better-supported branch, by up to the maximum
+  amplicon length each way. The extended reads are searched like contigs, with
+  the same hit filters, amplicon rules and probe requirement. A product must
+  be held by at least 2 reads extended from the forward primer and at least 2
+  extended from the reverse primer (sizes within 10 bp are one product), and
+  is then checked against the sample's read pairs: where two places share a
+  repeat, the extension takes the same wrong turn from both sides, but no read
+  pair spans a junction the sample does not have. Every window of the product
+  (the largest of 100, 150, ... bases that the depth still fills) must lie
+  inside read pairs, and a product through a repeat longer than that window,
+  where a real product and a wrong turn look the same, is withheld. On a
+  benchmark of simulated reads with repeat traps the unchecked extension
+  reported 1 to 4 false products per run; checked, none, at the price of the
+  real products through repeats longer than about 300 bp. On the *Globodera*
+  runs behind 0.11.0 this reports the universal 28S control (1074 bp, 2 x 300 bp
+  reads) in the reference samples, held by over 90% of the extended reads of
+  each side, and nothing in the samples and assays where a primer is missing.
+  - Rows are marked `FASTQ read-extension call` in `Contig Description`, with
+    the number of extended reads holding the product per side and the window
+    the read pairs verified. `Contig` is the extended read, kept in
+    `detailed_report/<sample>/<sample>_extendedReads.fasta`.
+    **An extended read is the best-supported path through a locus that can
+    exist in many slightly different copies; it is not an assembled
+    consensus.** Its size is the result; do not use its sequence as the
+    sample's sequence.
+  - `report_fastq_diagnostics.tsv` has four new statuses:
+    `CALLED_BY_EXTENSION`; `NOT_CLOSED_BY_EXTENSION` (both primers in the
+    reads, but neither a read nor the extended reads hold a complete
+    amplicon); `EXTENSION_NOT_SUPPORTED_BY_PAIRS` and
+    `EXTENSION_THROUGH_UNRESOLVED_REPEAT` (extended reads hold a product that
+    the read pairs do not confirm; not reported, and warned about). The
+    counts, the weakest window or the repeat are in `ReadDetail`.
+    `NOT_IN_READS` remains for runs without the extension.
+  - The HTML report shows such a product as called from reads, and no longer
+    marks a long declared target "not checkable from reads" once the reads
+    were extended: it is found, it is "not confirmed by read pairs", or it is
+    a negative with the reason.
+  - `--read-extension <unreported|target|off>` (GUI: **FASTQ settings…**)
+    chooses the assays. `unreported`, the default: assays that nothing
+    reports in the sample. `target`: those, and assays that declare `size=`
+    and show no product of that size yet, whatever else they show; a product
+    the sample already shows is not reported twice. `off`: none. The value is
+    recorded in `QAlog.txt` and in the HTML run details. The extension adds
+    from a few seconds to a few minutes per sample that has such an assay,
+    and nothing otherwise.
+- `docs/examples/five-isolates`: the small synthetic data set pictured on the
+  Reports page (five genomes, two assays with declared sizes) and its report.
+- CI runs each portable ZIP it builds, on Linux and on Windows, on that
+  example (`scripts/ci/smoke-test.sh`): two genomes gzipped, the report
+  compared with the expected one, and a search `blastn` rejects checked to end
+  the run with an `Error:` line.
+
 ### Changed
 
+- **FASTQ-mode results can gain rows versus 0.12.1**: products of assays that
+  0.12.1 left at `NOT_IN_READS`. Rows that 0.12.1 reports are unchanged, and a
+  product in too few reads to be reported (`WEAK_READ_SUPPORT`) stays
+  unreported: the extension does not overrule the read-level rules.
 - Application: a failed run is reported in the output area as `Run failed` and
   an `Error:` line (with `Cause:` lines when they add something), like the
   command line, when the failure is one the user can act on: an external tool
@@ -12,14 +77,6 @@
   that points at the program keeps its stack trace, and the terminal the
   application was started from gets the stack trace in every case.
 
-### Added
-
-- `docs/examples/five-isolates`: the small synthetic data set pictured on the
-  Reports page (five genomes, two assays with declared sizes) and its report.
-- CI runs each portable ZIP it builds, on Linux and on Windows, on that
-  example (`scripts/ci/smoke-test.sh`): two genomes gzipped, the report
-  compared with the expected one, and a search `blastn` rejects checked to end
-  the run with an `Error:` line.
 
 ## 0.12.1 (2026-11-13)
 

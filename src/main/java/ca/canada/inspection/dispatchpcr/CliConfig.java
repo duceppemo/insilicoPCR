@@ -1,6 +1,7 @@
 package ca.canada.inspection.dispatchpcr;
 
 import ca.canada.inspection.pcr.AmpliconOptions;
+import ca.canada.inspection.pcr.ReadExtensionCaller;
 import ca.canada.inspection.pcr.ReadLevelCaller;
 import ca.canada.inspection.pipeline.TadpoleOptions;
 import org.apache.commons.cli.CommandLine;
@@ -18,7 +19,8 @@ public record CliConfig(
         AmpliconOptions ampliconOptions,
         boolean gel,
         TadpoleOptions tadpole,
-        double readMinFraction
+        double readMinFraction,
+        ReadExtensionCaller.Mode readExtension
 ) {
     public static final double DEFAULT_EVALUE = 1e5;
 
@@ -66,8 +68,20 @@ public record CliConfig(
                 options,
                 cmd.hasOption("gel"),
                 tadpoleOptions(cmd),
-                parseFraction(cmd, "read-min-fraction", ReadLevelCaller.DEFAULT_MIN_SUPPORT_FRACTION)
+                parseFraction(cmd, "read-min-fraction", ReadLevelCaller.DEFAULT_MIN_SUPPORT_FRACTION),
+                readExtension(cmd.getOptionValue("read-extension"))
         );
+    }
+
+    private static ReadExtensionCaller.Mode readExtension(String value) {
+        if (value == null) {
+            return ReadExtensionCaller.Mode.DEFAULT;
+        }
+        try {
+            return ReadExtensionCaller.Mode.parse(value);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("--read-extension must be off, unreported or target, got: " + value);
+        }
     }
 
     private static double parseFraction(CommandLine cmd, String option, double defaultValue) {

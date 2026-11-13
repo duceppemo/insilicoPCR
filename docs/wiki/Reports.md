@@ -24,7 +24,8 @@ browser's light or dark theme and prints. It shows exactly the rows of the TSV a
 The report of a run on five FASTA files with two assays that both declare their product size (the **Run
 details** section at the bottom is not shown). `isolate_04` gives the `toxA` product at 583 bp instead of
 312 bp: the product is reported and marked as an unexpected size, and the sample is not counted as positive
-for that assay.
+for that assay. The picture was taken with version 0.11.0; since 0.12.0 the amplicon table also has a
+`5′ unpaired F/R` column (the [tutorial](Tutorial-Mixed-PCR-qPCR#4-the-html-report) shows a current page).
 
 | Section | What it shows |
 |---|---|
@@ -69,7 +70,7 @@ The consolidated report is the primary summary table: one row per predicted ampl
 | `Contig` | Contig/sequence ID the product sits on |
 | `Contig Description` | Free text from the contig FASTA header |
 | `ForwardPrimers` / `ReversePrimers` | Primer IDs that formed the pair (degenerate variants keep their `_n` suffix) |
-| `ForwardMismatches` / `ReverseMismatches` | Mismatches + indels + unaligned 3' bases for each primer |
+| `ForwardMismatches` / `ReverseMismatches` | Mismatches + indels for each primer, as counted against `-m`. The 3' bases BLAST trimmed off its alignment are compared with the template and counted when they do not pair; a 3' base beyond the end of a contig or read counts too. Unpaired 5' bases are not included (see [Primer binding columns](#primer-binding-columns)) |
 | `Forward3PrimeMismatches` / `Reverse3PrimeMismatches` | Number of imperfections within the 3'-end window (default last 5 bases) |
 | `Strand` | `+` when the forward primer matched the plus strand; `-` when the assay matched the reverse strand |
 

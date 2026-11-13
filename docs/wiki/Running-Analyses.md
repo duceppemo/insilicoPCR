@@ -6,13 +6,10 @@ insilicoPCR can analyze genome assemblies and sequencing reads.
 
 Supported sequence inputs include:
 
-- `.fasta`
-- `.fa`
-- `.fna`
-- `.fastq`
-- `.fq`
+- assemblies: `.fasta`, `.fa`, `.fna`, `.ffn`, `.fsa`
+- reads: `.fastq`, `.fq`, plain or gzipped (`.fastq.gz`, `.fq.gz`)
 
-The input can be a single file or a directory containing multiple sequence files.
+The input can be a single file or a directory containing multiple sequence files. Gzipped FASTA is not read: decompress assemblies first.
 
 ## Standard PCR analysis
 
@@ -58,7 +55,7 @@ Standard PCR assays and qPCR/probe assays can be mixed in the same primer FASTA 
 | Parameter | Purpose |
 |---|---|
 | Threads | Number of worker threads |
-| Mismatches | Allowed mismatches + indels per primer (unaligned 3' bases count) |
+| Mismatches | Allowed mismatches + indels per primer (3' bases that do not pair with the template count) |
 | E-value | BLASTN e-value threshold |
 | Amplicon settings… | Probe mismatches, 3'-end check, 5' truncation, min/max amplicon length (default max 5000; 0 disables the limit) |
 | FASTQ settings… | Tadpole mini-assembly settings and the read-level call threshold |

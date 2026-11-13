@@ -1,5 +1,7 @@
 # Professional cleanup summary
 
+> Historical note: this page records a one-off cleanup of the release system and is kept for reference only. The "remaining required action" at the end has been done: the BBMap and BLAST+ files are committed under `runtime/`. For the current state, see [runtime-layout.md](runtime-layout.md), [release-process.md](release-process.md) and the Wiki [Release Pipeline](https://github.com/duceppemo/insilicoPCR/wiki/Release-Pipeline) page.
+
 This cleanup removes the fragile parts of the portable release system and makes the runtime structure deterministic.
 
 ## What changed

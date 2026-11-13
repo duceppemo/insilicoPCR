@@ -19,9 +19,9 @@ The workflow publishes:
 
 ```text
 insilicoPCR-0.8.0-linux-x64.zip
-insilicoPCR-0.8.0-linux-x64.sha256
+insilicoPCR-0.8.0-linux-x64.zip.sha256
 insilicoPCR-0.8.0-windows-x64.zip
-insilicoPCR-0.8.0-windows-x64.sha256
+insilicoPCR-0.8.0-windows-x64.zip.sha256
 ```
 
 Only portable ZIPs are published — no `.exe`, `.msi`, `.dmg`, `.deb`, or `.rpm` installers.

@@ -97,7 +97,19 @@ Primer FASTA IDs must end with:
 - `-R`
 - `-P` for probes
 
-See [Primer FASTA Format](Primer-FASTA-Format.md).
+See [Primer FASTA Format](Primer-FASTA-Format).
+
+Since 0.12.0 the command line reports a mistake in the primer file (an ID without a role suffix, characters that are not bases, a `size=` that cannot be read, two different sizes for one assay) as one `Error:` line and exits with code 1. Earlier releases printed a Java stack trace for the same mistakes.
+
+## Results differ between 0.11.0 and 0.12.0
+
+Releases before 0.12.0 miscounted mismatches near the ends of probes and near the 3' end of primers, because BLAST leaves such a mismatch out of its alignment together with the matching bases beyond it. Since 0.12.0 those bases are compared with the sample sequence. Three kinds of calls can change:
+
+- **A probe mismatch on the first or last two bases** used to go uncounted: the assay was reported with `0` probe mismatches, even at the default `--probe-mismatches 0`. It is now counted, so the assay is negative unless `--probe-mismatches` is 1 or more.
+- **A probe mismatch on the third or fourth base from either end** used to remove the assay whatever `--probe-mismatches` allowed. It now counts as one mismatch, and the assay is reported when the budget allows it.
+- **Primer mismatches near the 3' end** used to count once per base BLAST trimmed. They now count once each, so runs with `--3p-penalty` above 0, or with `-m 2` or more, can report amplicons that 0.11.0 rejected.
+
+See [Amplicon Calling](Amplicon-Calling) for the rules.
 
 ## Missing positive results in mixed primer files
 

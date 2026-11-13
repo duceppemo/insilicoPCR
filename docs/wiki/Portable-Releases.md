@@ -45,7 +45,9 @@ runtime/
   linux/blast/ or windows/blast/
 run-insilicoPCR.sh or run-insilicoPCR.bat
 README.md
+CHANGELOG.md
 LICENSE
+runtime-layout.md
 ```
 
 ## Important

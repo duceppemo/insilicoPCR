@@ -42,10 +42,14 @@
   and 2-3, so `-m 3 --3p-penalty 2` rejected a primer it should accept. The
   trimmed 3' bases are now compared with the sample sequence and only those
   that do not pair count; a 3' base beyond the end of a contig or read still
-  counts as a mismatch. Runs with `--3p-penalty 0` (the default) are not
-  affected: BLAST only trims the last four bases, inside the default 3'
-  window. The 5' rule is unchanged: `--5p-truncation` still counts the bases
-  BLAST left out, paired or not.
+  counts as a mismatch. With `--3p-penalty 0` (the default) a mismatch inside
+  the 3' window still rejects the primer, as before. Runs with `-m 2` or more
+  can gain amplicons all the same: two mismatches close together just outside
+  the window (5 to 7 bases from the 3' terminus) make BLAST trim past them and
+  the matching bases after them, every trimmed base counted, and the primer
+  was rejected; they now count as the two mismatches they are. The 5' rule is
+  unchanged: `--5p-truncation` still counts the bases BLAST left out, paired
+  or not.
 - The sequences that trimmed hit ends are compared with are read alongside the
   BLAST report, one contig or read at a time (BLAST reports the hits of each
   query together, in file order), not loaded up front, so a primer that hits a

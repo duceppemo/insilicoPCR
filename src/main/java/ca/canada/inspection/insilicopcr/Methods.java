@@ -44,6 +44,7 @@ import ca.canada.inspection.dispatchpcr.AppPaths;
 import ca.canada.inspection.insilicopcr.gel.GelBand;
 import ca.canada.inspection.insilicopcr.gel.GelColors;
 import ca.canada.inspection.insilicopcr.gel.GelReportReader;
+import ca.canada.inspection.pipeline.PipelineException;
 import ca.canada.inspection.pipeline.PrimerService;
 import ca.canada.inspection.util.SequenceFileUtils;
 
@@ -63,7 +64,7 @@ public class Methods {
 			try (Stream<Path> files = Files.list(inputFile)) {
 				return files.noneMatch(SequenceFileUtils::looksLikeSequenceFile);
 			} catch (IOException e) {
-				throw new IllegalStateException("Unable to list input directory: " + inputFile, e);
+				throw new PipelineException("Unable to list input directory: " + inputFile, e);
 			}
 		}
 		return !SequenceFileUtils.looksLikeSequenceFile(inputFile);
@@ -159,7 +160,7 @@ public class Methods {
 				fastaDict.put(id, sequence.toString());
 			}
 		} catch (IOException e) {
-			throw new IllegalStateException("Unable to parse FASTA file: " + file, e);
+			throw new PipelineException("Unable to parse FASTA file: " + file, e);
 		}
 
 		// Return the filled dictionary
@@ -234,10 +235,10 @@ public class Methods {
 			process = new ProcessBuilder(processCall).start();
 			int exitCode = process.waitFor();
 			if (exitCode != 0) {
-				throw new IllegalStateException("makeblastdb failed with exit code: " + exitCode);
+				throw new PipelineException("makeblastdb failed with exit code " + exitCode + " for " + reference);
 			}
 		} catch (IOException e) {
-			throw new IllegalStateException("Unable to run makeblastdb for reference: " + reference, e);
+			throw new PipelineException("Unable to run makeblastdb for reference: " + reference, e);
 		} catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
 			throw new IllegalStateException("Interrupted while running makeblastdb", e);
@@ -276,7 +277,7 @@ public class Methods {
 				}
 			}
 		} catch (IOException e) {
-			throw new IllegalStateException("Unable to read " + description, e);
+			throw new PipelineException("Unable to read " + description, e);
 		}
 	}
 

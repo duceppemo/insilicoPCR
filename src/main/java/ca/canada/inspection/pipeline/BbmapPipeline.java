@@ -108,7 +108,7 @@ public final class BbmapPipeline {
         try {
             Files.createDirectories(sampleDir);
         } catch (IOException e) {
-            throw new IllegalStateException("Unable to create sample directory: " + sampleDir, e);
+            throw new PipelineException("Unable to create sample directory: " + sampleDir, e);
         }
         return sampleDir;
     }
@@ -135,13 +135,13 @@ public final class BbmapPipeline {
             var exitCode = process.waitFor();
             stopIfCancelled(owner);
             if (exitCode != 0) {
-                throw new IllegalStateException("Command failed with exit code " + exitCode + ": " + String.join(" ", command));
+                throw new PipelineException("Command failed with exit code " + exitCode + ": " + String.join(" ", command));
             }
         } catch (CancellationException e) {
             destroy(process);
             throw e;
         } catch (IOException e) {
-            throw new IllegalStateException("Unable to start command: " + String.join(" ", command), e);
+            throw new PipelineException("Unable to start command: " + String.join(" ", command), e);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             destroy(process);

@@ -24,7 +24,8 @@ browser's light or dark theme and prints. It shows exactly the rows of the TSV a
 The report of a run on five FASTA files with two assays that both declare their product size (the **Run
 details** section at the bottom is not shown). `isolate_04` gives the `toxA` product at 583 bp instead of
 312 bp: the product is reported and marked as an unexpected size, and the sample is not counted as positive
-for that assay.
+for that assay. The genomes, the primer file and the report of this run are in the repository under
+[`docs/examples/five-isolates`](https://github.com/duceppemo/insilicoPCR/tree/master/docs/examples/five-isolates).
 
 | Section | What it shows |
 |---|---|

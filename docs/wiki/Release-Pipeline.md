@@ -15,7 +15,18 @@ Releases are fully automated: pushing a `v*` tag builds the Linux and Windows po
 5. Stage the application, libraries, JDK, BBMap, and BLAST+.
 6. Create portable ZIP files.
 7. Create SHA256 checksum files.
-8. Publish release artifacts for version tags.
+8. Smoke test: run the ZIP that was just built, on Linux and on Windows.
+9. Publish release artifacts for version tags.
+
+## Smoke test
+
+`scripts/ci/smoke-test.sh <portable ZIP>` extracts the ZIP and runs its command line with the bundled Java, BLAST+ and BBTools on the [five-isolate example](https://github.com/duceppemo/insilicoPCR/tree/master/docs/examples/five-isolates), two of the five genomes gzipped. It fails the build when `report.tsv` differs from the one kept with the example, or when a search that `blastn` rejects does not end the run with exit code 1 and an `Error:` line. It covers assemblies only: FASTQ mode (BBDuk, Tadpole, BBMerge) is not run in CI.
+
+The same script checks a downloaded release:
+
+```bash
+scripts/ci/smoke-test.sh insilicoPCR-<version>-linux-x64.zip
+```
 
 ## Linux packaging
 

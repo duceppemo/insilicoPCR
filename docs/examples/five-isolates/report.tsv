@@ -1,0 +1,8 @@
+Sample	Gene	GenomeLocation	AmpliconSize	Contig	Contig Description	ForwardPrimers	ReversePrimers	ForwardMismatches	ReverseMismatches	Forward3PrimeMismatches	Reverse3PrimeMismatches	Strand	Probe	ProbeLocation	ProbeSize	ProbeMismatches	Forward5PrimeUnaligned	Reverse5PrimeUnaligned	SizeCheck
+isolate_01	stxQ	7313-7430	118	isolate_01_contig1		stxQ-F	stxQ-R	0	0	0	0	+	stxQ-P	7360-7383	24	0	0	0	target
+isolate_01	toxA	4001-4312	312	isolate_01_contig1		toxA-F	toxA-R	0	0	0	0	+					0	0	target
+isolate_02	stxQ	7313-7430	118	isolate_02_contig1		stxQ-F	stxQ-R	0	0	0	0	+	stxQ-P	7360-7383	24	0	0	0	target
+isolate_02	toxA	4001-4312	312	isolate_02_contig1		toxA-F	toxA-R	0	0	0	0	+					0	0	target
+isolate_03	toxA	4001-4312	312	isolate_03_contig1		toxA-F	toxA-R	0	0	0	0	+					0	0	target
+isolate_04	stxQ	4001-4118	118	isolate_04_contig1		stxQ-F	stxQ-R	0	0	0	0	+	stxQ-P	4048-4071	24	0	0	0	target
+isolate_04	toxA	7119-7701	583	isolate_04_contig1		toxA-F	toxA-R	0	0	0	0	+					0	0	unexpected

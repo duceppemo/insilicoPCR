@@ -79,6 +79,12 @@ jobs:
         run: |
           REQUIRE_BINARIES=true scripts/dev/verify-runtime-layout.sh
 
+      - name: Smoke test the Linux ZIP
+        shell: bash
+        run: |
+          chmod +x scripts/ci/smoke-test.sh
+          scripts/ci/smoke-test.sh release/*linux-x64.zip
+
       - name: Upload Linux artifact
         uses: actions/upload-artifact@v4
         with:
@@ -132,6 +138,11 @@ jobs:
         shell: bash
         run: |
           REQUIRE_BINARIES=true scripts/dev/verify-runtime-layout.sh
+
+      - name: Smoke test the Windows ZIP
+        shell: bash
+        run: |
+          scripts/ci/smoke-test.sh release/*windows-x64.zip
 
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v4

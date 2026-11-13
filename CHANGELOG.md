@@ -1,5 +1,26 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- Application: a failed run is reported in the output area as `Run failed` and
+  an `Error:` line (with `Cause:` lines when they add something), like the
+  command line, when the failure is one the user can act on: an external tool
+  that failed, a file or folder that cannot be read or written, a mistake in
+  the primer file. It showed a Java stack trace for every failure. A failure
+  that points at the program keeps its stack trace, and the terminal the
+  application was started from gets the stack trace in every case.
+
+### Added
+
+- `docs/examples/five-isolates`: the small synthetic data set pictured on the
+  Reports page (five genomes, two assays with declared sizes) and its report.
+- CI runs each portable ZIP it builds, on Linux and on Windows, on that
+  example (`scripts/ci/smoke-test.sh`): two genomes gzipped, the report
+  compared with the expected one, and a search `blastn` rejects checked to end
+  the run with an `Error:` line.
+
 ## 0.12.1 (2026-11-13)
 
 ### Fixed

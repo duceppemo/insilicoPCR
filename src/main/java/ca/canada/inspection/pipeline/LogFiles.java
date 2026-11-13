@@ -50,7 +50,7 @@ public final class LogFiles {
                 }
             }
         } catch (IOException e) {
-            throw new IllegalStateException("Unable to append to QA log: " + qaFile, e);
+            throw new PipelineException("Unable to append to QA log: " + qaFile, e);
         }
     }
 
@@ -63,7 +63,7 @@ public final class LogFiles {
                 writer.newLine();
             }
         } catch (IOException e) {
-            throw new IllegalStateException("Unable to append run log: " + logPath, e);
+            throw new PipelineException("Unable to append run log: " + logPath, e);
         }
     }
 }

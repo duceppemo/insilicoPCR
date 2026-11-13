@@ -105,6 +105,8 @@ Since 0.12.1 a failing external tool (BLAST+, BBTools) is reported the same way:
 
 In the application, releases before 0.12.1 did not notice a failed `blastn` search: the run finished and the sample was shown without any product. Since 0.12.1 the run stops with `Run failed` and names the file that could not be searched.
 
+Up to 0.12.1 the application printed a Java stack trace in its output area when a run failed. Later releases print `Run failed` and an `Error:` line there for a failure you can act on (a tool that failed, a file that cannot be read or written), and keep the stack trace for anything else; the terminal the application was started from always gets the stack trace.
+
 ## Run fails with `BLAST query error` on a gzipped assembly
 
 Releases before 0.12.1 accept a gzipped FASTA file (`.fasta.gz`, `.fna.gz` and so on) as input, then hand it to `blastn`, which does not read gzip and stops. In the application the same input ends with `Unable to read sequence file for sample`. Upgrade to 0.12.1, or decompress the assemblies first (`gunzip *.fasta.gz`). Gzipped FASTQ reads were never affected.

@@ -9,8 +9,10 @@ import java.util.concurrent.FutureTask;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class BlastPipelineTest {
 
@@ -23,18 +25,30 @@ class BlastPipelineTest {
     }
 
     @Test
-    void aFailedSearchFailsTheStageWithItsCause() {
+    void aFailedSearchFailsTheStageAsItWasRaised() {
         // An empty report would otherwise read as a sample without any primer hit.
-        IllegalStateException failed = new IllegalStateException(
-                "BLAST failed with exit code 3 for query /data/broken.fasta");
+        PipelineException failed = new PipelineException("BLAST failed with exit code 3 for query /data/broken.fasta");
         List<Future<?>> searches = List.of(CompletableFuture.completedFuture(null),
                 CompletableFuture.failedFuture(failed));
+
+        PipelineException error = assertThrows(PipelineException.class,
+                () -> BlastPipeline.requireAllSucceeded(searches));
+
+        assertSame(failed, error);
+        assertTrue(RunFailure.isForTheUser(error));
+    }
+
+    @Test
+    void anErrorInASearchFailsTheStageToo() {
+        OutOfMemoryError failed = new OutOfMemoryError("Java heap space");
+        List<Future<?>> searches = List.of(CompletableFuture.failedFuture(failed));
 
         IllegalStateException error = assertThrows(IllegalStateException.class,
                 () -> BlastPipeline.requireAllSucceeded(searches));
 
-        assertEquals("BLAST failed with exit code 3 for query /data/broken.fasta", error.getMessage());
+        assertEquals("BLAST failed", error.getMessage());
         assertSame(failed, error.getCause());
+        assertFalse(RunFailure.isForTheUser(error));
     }
 
     @Test

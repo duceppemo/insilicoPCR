@@ -103,6 +103,8 @@ Since 0.12.0 the command line reports a mistake in the primer file (an ID withou
 
 Since 0.12.1 a failing external tool (BLAST+, BBTools) is reported the same way: the tool's own message, then `Error:` with the stage that failed and `Cause:` with the full command line and its exit code. Copy the command line to run the tool by hand.
 
+In the application, releases before 0.12.1 did not notice a failed `blastn` search: the run finished and the sample was shown without any product. Since 0.12.1 the run stops with `Run failed` and names the file that could not be searched.
+
 ## Run fails with `BLAST query error` on a gzipped assembly
 
 Releases before 0.12.1 accept a gzipped FASTA file (`.fasta.gz`, `.fna.gz` and so on) as input, then hand it to `blastn`, which does not read gzip and stops. In the application the same input ends with `Unable to read sequence file for sample`. Upgrade to 0.12.1, or decompress the assemblies first (`gunzip *.fasta.gz`). Gzipped FASTQ reads were never affected.

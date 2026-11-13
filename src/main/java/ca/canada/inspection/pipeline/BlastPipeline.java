@@ -11,8 +11,12 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -48,12 +52,13 @@ public final class BlastPipeline {
                 TimeUnit.SECONDS,
                 new LinkedBlockingQueue<>());
 
+        List<Future<?>> searches = new ArrayList<>();
         for (var sample : sampleDict.values()) {
             if ("fastq".equals(sample.getFileType())) {
-                pool.submit(() -> runBlast(primerDatabase, sample.getAssemblyFile()));
+                searches.add(pool.submit(() -> runBlast(primerDatabase, sample.getAssemblyFile())));
             } else {
                 for (var file : sample.getFiles()) {
-                    pool.submit(() -> runBlast(primerDatabase, file));
+                    searches.add(pool.submit(() -> runBlast(primerDatabase, file)));
                 }
             }
         }
@@ -64,6 +69,7 @@ public final class BlastPipeline {
             while (!pool.awaitTermination(250, TimeUnit.MILLISECONDS)) {
                 updateBlastProgress(pool.getCompletedTaskCount(), pool.getTaskCount());
             }
+            requireAllSucceeded(searches);
         } catch (InterruptedException e) {
             pool.shutdownNow();
             Thread.currentThread().interrupt();
@@ -73,6 +79,26 @@ public final class BlastPipeline {
         }
 
         updateBlastProgress(1, 1);
+    }
+
+    /**
+     * Fails the stage when a search failed or never ran. A search that fails leaves an
+     * empty report, which reads as "no primer hit": without this check the sample would
+     * be reported negative although it was not searched.
+     */
+    static void requireAllSucceeded(List<Future<?>> searches) throws InterruptedException {
+        for (Future<?> search : searches) {
+            if (!search.isDone()) {
+                // Dropped from the queue when the pool was shut down (the window closing).
+                throw new IllegalStateException("BLAST was stopped before every sample was searched");
+            }
+            try {
+                search.get();
+            } catch (ExecutionException e) {
+                // Under its own message, which names the query.
+                throw new IllegalStateException(String.valueOf(e.getCause().getMessage()), e.getCause());
+            }
+        }
     }
 
     private void updateBlastProgress(long workDone, long totalWork) {

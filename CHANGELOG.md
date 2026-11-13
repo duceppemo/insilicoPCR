@@ -26,8 +26,10 @@
   reported 1 to 4 false products per run; checked, none, at the price of the
   real products through repeats longer than about 300 bp. On the *Globodera*
   runs behind 0.11.0 this reports the universal 28S control (1074 bp, 2 x 300 bp
-  reads) in the reference samples, held by over 90% of the extended reads of
-  each side, and nothing in the samples and assays where a primer is missing.
+  reads) in the five *Globodera* reference samples, held by 70% to 97% of the
+  extended reads of each side (over 90% in three of them), and nothing in the
+  samples and assays where a primer is missing. Every row that 0.12.1 reports
+  for these samples is reported unchanged.
   - Rows are marked `FASTQ read-extension call` in `Contig Description`, with
     the number of extended reads holding the product per side and the window
     the read pairs verified. `Contig` is the extended read, kept in

@@ -111,4 +111,29 @@ class QueryTemplatesTest {
             assertEquals("TTTT", templates.apply(on("c2")).bases().toString());
         }
     }
+
+    @Test
+    void aHeaderEndsAtTheEndOfItsFile() throws IOException {
+        // The first file ends on a header line without a line end; the next file starts with its own.
+        Path first = Files.writeString(dir.resolve("1.fasta"), ">c1\nACGT\n>empty");
+        Path second = Files.writeString(dir.resolve("2.fasta"), ">c2\nTTTT\n");
+
+        try (QueryTemplates templates = new QueryTemplates(List.of(first, second))) {
+            assertEquals("ACGT", templates.apply(on("c1")).bases().toString());
+            assertEquals("TTTT", templates.apply(on("c2")).bases().toString());
+            assertEquals("", templates.apply(on("empty")).bases().toString(), "found by reading again");
+            assertEquals(Set.of(), templates.missing());
+        }
+    }
+
+    @Test
+    void aHeaderThatIsNotUtf8IsReadAllTheSame() throws IOException {
+        Path fasta = dir.resolve("latin1.fasta");
+        Files.write(fasta, ">c1 s\u00e9rovar\nACGT\n>c2\nGG\n".getBytes(StandardCharsets.ISO_8859_1));
+
+        try (QueryTemplates templates = new QueryTemplates(List.of(fasta))) {
+            assertEquals("ACGT", templates.apply(on("c1")).bases().toString());
+            assertEquals("GG", templates.apply(on("c2")).bases().toString());
+        }
+    }
 }

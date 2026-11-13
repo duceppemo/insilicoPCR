@@ -169,4 +169,31 @@ class FastqCheckTest {
         assertTrue(quick.valid());
         assertEquals(1, quick.records());
     }
+
+    @Test
+    void aFileCutInsideItsLastQualityLineIsIncompleteNotMalformed() throws IOException {
+        Result result = check("cutquality.fastq", READ_1 + "@r2\nGGCC\n+\nII");
+
+        assertEquals(Fault.TRUNCATED, result.fault());
+        assertEquals("it ends inside read 2, after 1 complete read", result.detail());
+        // The same short quality line followed by a line end is a malformed read.
+        assertEquals(Fault.MALFORMED, check("shortquality.fastq", READ_1 + "@r2\nGGCC\n+\nII\n").fault());
+    }
+
+    @Test
+    void anInterruptedCheckStopsAtTheNextBlock() throws IOException {
+        Path file = Files.writeString(dir.resolve("big.fastq"), (READ_1 + READ_2).repeat(20_000));
+
+        Thread.currentThread().interrupt();
+        Result result;
+        try {
+            result = FastqCheck.check(file);
+        } finally {
+            Thread.interrupted();
+        }
+
+        assertEquals(Fault.UNREADABLE, result.fault());
+        assertEquals("the check was interrupted", result.detail());
+        assertEquals(40_000, FastqCheck.check(file).records(), "read to the end when not interrupted");
+    }
 }

@@ -5,6 +5,7 @@ import ca.canada.inspection.insilicopcr.Sample;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -152,10 +153,13 @@ public final class SequenceFileUtils {
     }
 
     public static BufferedReader openMaybeGzip(Path file) throws IOException {
+        // Decoded leniently either way: a byte that is not UTF-8 (an accented letter in a
+        // header, say) becomes a replacement character instead of ending the run.
         if (file.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(".gz")) {
-            return new BufferedReader(new InputStreamReader(new GZIPInputStream(Files.newInputStream(file))));
+            return new BufferedReader(new InputStreamReader(new GZIPInputStream(Files.newInputStream(file)),
+                    StandardCharsets.UTF_8));
         }
-        return Files.newBufferedReader(file);
+        return new BufferedReader(new InputStreamReader(Files.newInputStream(file), StandardCharsets.UTF_8));
     }
 
     public static BufferedReader openMaybeGzip(java.io.File file) throws IOException {

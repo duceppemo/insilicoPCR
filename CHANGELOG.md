@@ -121,7 +121,14 @@
   fewest probe mismatches, so the best-matching variant is shown. Which
   products are reported does not change, only the `Probe`, `ProbeLocation`,
   `ProbeSize` and `ProbeMismatches` of such a row, and with them the read it is
-  shown on.
+  shown on. Between variants of a degenerate primer that bind a read alike, the
+  one shown is now always the same.
+- A sequence file, not gzipped, with a byte that is not UTF-8 in a header (an
+  accented letter written in Latin-1, say): when the byte was near the start of
+  the file the sample was skipped without a word, and when it was further on
+  the run stopped with `Could not parse contigs` (`Input length = 1`). Such a
+  byte is now read as a replacement character, as it already was in a gzipped
+  file, and the sample is analysed.
 - Memory on very large contigs. Since 0.12.0 the contig a hit lies on is read
   to compare the hit's trimmed ends with it, and it was built as text and then
   copied: about three bytes per base for a moment. A single contig of 1 Gb

@@ -28,7 +28,7 @@ Two buttons above the log open the remaining settings. Each dialog has **Default
 
 See [Amplicon Calling](Amplicon-Calling) and [FASTQ mode and false negatives](Reports#fastq-mode-and-false-negatives) for what they do.
 
-After the inputs are selected, click **Run** to start the analysis. **Run** stays disabled until the run ends, so two runs cannot write to the same output folder at once.
+After the inputs are selected, click **Run** to start the analysis. The run first checks every input file (since 0.13.0): a sample with an empty, damaged or malformed file is left out with a `Warning:` line in the log and the other samples are run; see [Input check](Running-Analyses#input-check). **Run** stays disabled until the run ends, so two runs cannot write to the same output folder at once.
 
 ## Progress and logs
 

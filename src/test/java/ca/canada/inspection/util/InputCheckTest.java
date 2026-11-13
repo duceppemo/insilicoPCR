@@ -160,4 +160,54 @@ class InputCheckTest {
         IllegalArgumentException error = assertThrows(IllegalArgumentException.class, () -> Depth.parse("none"));
         assertEquals("--input-check must be full or quick, not: none", error.getMessage());
     }
+
+    @Test
+    void aContigOnOneLineAndBlankLinesAreFine() throws IOException {
+        // Longer than the block the file is read in.
+        write("oneline.fasta", ">chromosome 1\n\n" + "ACGTTGCA".repeat(30_000) + "\n");
+        write("leadingblank.fasta", ">c1\n   \n\nACGT");
+        write("blanksonly.fasta", ">c1\n  \n\t\n>c2\n");
+
+        Result result = InputCheck.scan(dir, Depth.FULL, 2);
+
+        assertEquals(Set.of("oneline", "leadingblank"), result.samples().keySet());
+        assertEquals(List.of("blanksonly.fasta: the file holds no sequence (header lines only)"),
+                result.issues().stream().map(Issue::describe).toList());
+    }
+
+    @Test
+    void aHeaderThatIsNotUtf8DoesNotCostTheSample() throws IOException {
+        // "Listeria sérovar" written in Latin-1: one byte that is not valid UTF-8.
+        byte[] fasta = ">c1 Listeria s\u00e9rovar\nACGT\n".getBytes(StandardCharsets.ISO_8859_1);
+        Files.write(dir.resolve("latin1.fasta"), fasta);
+
+        Result result = InputCheck.scan(dir, Depth.FULL, 1);
+
+        assertEquals(Set.of("latin1"), result.samples().keySet());
+        assertEquals(List.of(), result.issues());
+    }
+
+    @Test
+    void aGzippedAssemblyIsReadToItsEndWhateverItsSize() throws IOException {
+        gzip("big.fasta.gz", ">c1\n" + "ACGTTGCA".repeat(30_000) + "\n>c2\nGGCC\n");
+
+        Result result = InputCheck.scan(dir, Depth.FULL, 1);
+
+        assertEquals(Set.of("big"), result.samples().keySet());
+    }
+
+    @Test
+    void anInterruptedScanEndsAtOnce() throws IOException {
+        write("reads_R1.fastq", READ.repeat(50_000));
+        write("reads_R2.fastq", READ.repeat(50_000));
+
+        Thread.currentThread().interrupt();
+        try {
+            IllegalStateException error = assertThrows(IllegalStateException.class,
+                    () -> InputCheck.scan(dir, Depth.FULL, 2));
+            assertEquals("Interrupted while checking the input files", error.getMessage());
+        } finally {
+            Thread.interrupted();
+        }
+    }
 }

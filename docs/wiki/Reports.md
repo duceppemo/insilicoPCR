@@ -184,7 +184,7 @@ diagnostics. A longer amplicon is looked for by extending the reads, described n
 
 ### Read extension: products longer than a read
 
-A product longer than a read or merged pair used to come from the mini-assembly only, and the mini-assembly
+Since 0.13.0. A product longer than a read or merged pair used to come from the mini-assembly only, and the mini-assembly
 often breaks inside high-copy, variable regions such as rDNA: at every position where the copies differ it sees
 a branch and stops. For an assay that neither the mini-assembly nor a read reports, **although reads carry both
 of its primers**, the reads themselves are therefore extended (which assays exactly is a setting, below):

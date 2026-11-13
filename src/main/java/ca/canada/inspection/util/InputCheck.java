@@ -177,7 +177,13 @@ public final class InputCheck {
         if (files.isEmpty()) {
             return faults;
         }
-        try (ExecutorService pool = Executors.newFixedThreadPool(Math.clamp(threads, 1, files.size()))) {
+        // Daemon threads: a window closed during the check must not leave the program running.
+        ExecutorService pool = Executors.newFixedThreadPool(Math.clamp(threads, 1, files.size()), task -> {
+            Thread worker = new Thread(task, "input-check");
+            worker.setDaemon(true);
+            return worker;
+        });
+        try {
             Map<Path, Future<FileFault>> pending = new LinkedHashMap<>();
             for (Path file : files) {
                 pending.put(file, pool.submit(() -> check(file, depth)));
@@ -190,6 +196,10 @@ public final class InputCheck {
             throw new IllegalStateException("Interrupted while checking the input files", e);
         } catch (ExecutionException e) {
             throw new IllegalStateException("Unable to check the input files", e.getCause());
+        } finally {
+            // Nothing is left to wait for after a normal end; after a cancelled run the files
+            // still being read are dropped (FastqCheck stops at its next block).
+            pool.shutdownNow();
         }
         return faults;
     }
@@ -224,21 +234,48 @@ public final class InputCheck {
             if (Files.size(file) == 0) {
                 return new FileFault("the file holds no sequence", "the file is empty", 0);
             }
+            // Read a block at a time: a contig written on one line would otherwise be built
+            // as one string, for every file being checked at once.
             try (BufferedReader reader = SequenceFileUtils.openMaybeGzip(file)) {
-                String line = reader.readLine();
-                if (line == null) {
-                    return new FileFault("the file holds no sequence", "the file is empty", 0);
-                }
-                if (!line.startsWith(">")) {
-                    return new FileFault("not a FASTA file", "the first line does not start with >", 0);
-                }
-                while ((line = reader.readLine()) != null) {
-                    if (!sequenceSeen && !line.isBlank() && !line.startsWith(">")) {
-                        sequenceSeen = true;
-                        if (!gzipped || depth == Depth.QUICK) {
-                            break;
+                char[] block = new char[1 << 16];
+                boolean first = true;
+                boolean atLineStart = true;
+                boolean inHeader = false;
+                int read;
+                scan:
+                while ((read = reader.read(block)) >= 0) {
+                    if (Thread.currentThread().isInterrupted()) {
+                        return new FileFault("the file cannot be read", "the check was interrupted", 0);
+                    }
+                    for (int i = 0; i < read; i++) {
+                        char c = block[i];
+                        if (first) {
+                            first = false;
+                            if (c != '>') {
+                                return new FileFault("not a FASTA file", "the first line does not start with >", 0);
+                            }
+                        }
+                        if (c == '\n' || c == '\r') {
+                            atLineStart = true;
+                            inHeader = false;
+                        } else if (atLineStart && c == '>') {
+                            atLineStart = false;
+                            inHeader = true;
+                        } else {
+                            atLineStart = false;
+                            if (!inHeader && !Character.isWhitespace(c)) {
+                                sequenceSeen = true;
+                                if (!gzipped || depth == Depth.QUICK) {
+                                    break scan;
+                                }
+                                // A gzipped file is read on to its end, to see that the stream is whole.
+                                break;
+                            }
                         }
                     }
+                }
+                if (first) {
+                    return new FileFault("the file holds no sequence", "the file is empty", 0);
                 }
             }
         } catch (EOFException e) {

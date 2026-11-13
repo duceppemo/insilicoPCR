@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### Fixed
+
+- Memory on very large contigs. Since 0.12.0 the contig a hit lies on is read
+  to compare the hit's trimmed ends with it, and it was built as text and then
+  copied: about three bytes per base for a moment. A single contig of 1 Gb
+  needed more than a 2 GB Java heap (the default on a machine with 8 GB) and
+  the run ended with `OutOfMemoryError`; 0.11.0 ran it. The contig is now held
+  at one byte per base and read without building its lines, so a contig written
+  on one line costs no more than a wrapped one. Results are unchanged.
+
 ### Changed
 
 - Application: a failed run is reported in the output area as `Run failed` and

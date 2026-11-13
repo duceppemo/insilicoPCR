@@ -2,6 +2,7 @@ package ca.canada.inspection.pcr;
 
 import ca.canada.inspection.pcr.FastqDiagnostics.Finding;
 import ca.canada.inspection.pcr.FastqDiagnostics.Status;
+import ca.canada.inspection.util.InputCheck;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -185,6 +186,19 @@ public final class HtmlReport {
     public static Path write(Path reportTsv, Collection<String> sampleNames, Set<String> fastqSamples,
                              Map<String, String> primers, ExpectedSizes sizes, List<Finding> findings,
                              Map<String, String> runDetails) {
+        return write(reportTsv, sampleNames, fastqSamples, primers, sizes, findings, runDetails, List.of());
+    }
+
+    /**
+     * As {@link #write(Path, Collection, Set, Map, ExpectedSizes, List, Map)}, with the input
+     * that was left out of the run.
+     *
+     * @param inputIssues files that could not be analysed; their samples are listed apart,
+     *                    as neither positive nor negative
+     */
+    public static Path write(Path reportTsv, Collection<String> sampleNames, Set<String> fastqSamples,
+                             Map<String, String> primers, ExpectedSizes sizes, List<Finding> findings,
+                             Map<String, String> runDetails, List<InputCheck.Issue> inputIssues) {
         Path html = pathFor(reportTsv);
         Collection<String> primerIds = primers.keySet();
         try {
@@ -193,7 +207,7 @@ public final class HtmlReport {
                     fastqSamples, ConsolidatedReport.groupByAssay(primerIds).entrySet().stream()
                             .filter(entry -> !entry.getValue().forward.isEmpty() && !entry.getValue().reverse.isEmpty())
                             .map(Map.Entry::getKey).toList(),
-                    sizes, findings, runDetails);
+                    sizes, findings, runDetails, inputIssues);
             Files.writeString(html, page, StandardCharsets.UTF_8);
         } catch (IOException e) {
             throw new IllegalStateException("Unable to write HTML report: " + html, e);
@@ -288,6 +302,13 @@ public final class HtmlReport {
     static String render(String reportName, List<Product> products, Collection<String> sampleNames,
                          Set<String> fastqSamples, List<String> assays, ExpectedSizes sizes,
                          List<Finding> findings, Map<String, String> runDetails) {
+        return render(reportName, products, sampleNames, fastqSamples, assays, sizes, findings, runDetails, List.of());
+    }
+
+    static String render(String reportName, List<Product> products, Collection<String> sampleNames,
+                         Set<String> fastqSamples, List<String> assays, ExpectedSizes sizes,
+                         List<Finding> findings, Map<String, String> runDetails,
+                         List<InputCheck.Issue> inputIssues) {
         Set<String> samples = new TreeSet<>(sampleNames);
         Set<String> assayOrder = new TreeSet<>(assays);
         Map<String, List<Product>> byPair = new HashMap<>();
@@ -323,7 +344,10 @@ public final class HtmlReport {
                 .append("<main>\n<header>\n<h1>insilicoPCR report</h1>\n<p class=\"sub\">")
                 .append(escape(String.join(" · ", headline(runDetails, reportName)))).append("</p>\n</header>\n");
 
-        tiles(html, samples.size(), assayOrder.size(), products.size(), totals, anyDeclared, anyUndeclared);
+        long notAnalysed = inputIssues.stream().map(InputCheck.Issue::sample).distinct().count();
+        tiles(html, samples.size(), assayOrder.size(), products.size(), totals, anyDeclared, anyUndeclared,
+                (int) notAnalysed);
+        inputSection(html, inputIssues);
         gridSection(html, grid, assayOrder, sizes, fastqSamples, totals, anyDeclared);
         assaySection(html, grid, assayOrder, sizes);
         productSection(html, products, sizes);
@@ -346,9 +370,13 @@ public final class HtmlReport {
     }
 
     private static void tiles(StringBuilder html, int samples, int assays, int products, Map<State, Integer> totals,
-                              boolean anyDeclared, boolean anyUndeclared) {
+                              boolean anyDeclared, boolean anyUndeclared, int notAnalysed) {
         html.append("<section class=\"tiles\" aria-label=\"Summary\">\n");
         tile(html, samples, samples == 1 ? "sample" : "samples", "");
+        if (notAnalysed > 0) {
+            tile(html, notAnalysed, notAnalysed == 1 ? "sample not analysed: faulty input file"
+                    : "samples not analysed: faulty input files", "unexpected");
+        }
         tile(html, assays, assays == 1 ? "assay" : "assays", "");
         if (anyDeclared) {
             tile(html, totals.getOrDefault(State.TARGET, 0), "positive at target size", "target");
@@ -365,6 +393,25 @@ public final class HtmlReport {
         }
         tile(html, products, products == 1 ? "amplicon in the report" : "amplicons in the report", "");
         html.append("</section>\n");
+    }
+
+    /** The samples left out of the run, and why; nothing when every input file was analysed. */
+    private static void inputSection(StringBuilder html, List<InputCheck.Issue> issues) {
+        if (issues.isEmpty()) {
+            return;
+        }
+        html.append("<section>\n<h2>Input not analysed</h2>\n<p class=\"hint\">A file given for these samples is")
+                .append(" faulty. Nothing was run on them and they are not in the tables below: they are neither")
+                .append(" positive nor negative. Replace the files and run the samples again.</p>\n")
+                .append("<div class=\"scroll\"><table class=\"rows\">\n<thead><tr><th>Sample</th><th>File</th>")
+                .append("<th>Problem</th><th>Detail</th></tr></thead>\n<tbody>\n");
+        for (InputCheck.Issue issue : issues) {
+            html.append("<tr><td>").append(escape(issue.sample())).append("</td><td>")
+                    .append(escape(String.join(", ", issue.files()))).append("</td><td class=\"wrap\">")
+                    .append(escape(issue.problem())).append("</td><td class=\"wrap\">")
+                    .append(escape(issue.detail())).append("</td></tr>\n");
+        }
+        html.append("</tbody></table></div>\n</section>\n");
     }
 
     private static void tile(StringBuilder html, int value, String label, String state) {

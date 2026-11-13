@@ -7,6 +7,7 @@ import ca.canada.inspection.pcr.FastqDiagnostics.Status;
 import ca.canada.inspection.pcr.HtmlReport.Cell;
 import ca.canada.inspection.pcr.HtmlReport.Product;
 import ca.canada.inspection.pcr.HtmlReport.State;
+import ca.canada.inspection.util.InputCheck;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -218,5 +219,38 @@ class HtmlReportTest {
             count++;
         }
         return count;
+    }
+
+    @Test
+    void samplesLeftOutForAFaultyFileAreListedApartAndCounted() throws IOException {
+        Path tsv = Files.write(dir.resolve("report.tsv"), List.of(HEADER, row("a", "its", 434, "c1", "")));
+        List<InputCheck.Issue> issues = List.of(
+                new InputCheck.Issue("failed", List.of("failed_R1.fastq.gz"), "the file holds no read", "the file is empty"),
+                new InputCheck.Issue("failed", List.of("failed_R2.fastq.gz"), "the file holds no read", "the file is empty"),
+                new InputCheck.Issue("odd <b>", List.of("odd_R1.fastq", "odd_R2.fastq"),
+                        "the two files of the pair hold different numbers of reads", "3 and 2"));
+
+        String page = Files.readString(HtmlReport.write(tsv, List.of("a"), Set.of(), Map.of("its-F", "", "its-R", ""),
+                SIZES, List.of(), Map.of(), issues));
+
+        assertTrue(page.contains("<h2>Input not analysed</h2>"));
+        assertTrue(page.contains("<span class=\"n\">2</span><span class=\"l\">samples not analysed: faulty input files</span>"),
+                "two samples, three problems");
+        assertTrue(page.contains("<td>failed</td><td>failed_R1.fastq.gz</td><td class=\"wrap\">the file holds no read</td>"
+                + "<td class=\"wrap\">the file is empty</td>"));
+        assertTrue(page.contains("<td>odd &lt;b&gt;</td><td>odd_R1.fastq, odd_R2.fastq</td>"), "escaped, both mates named");
+        assertFalse(page.contains("data-sample=\"failed\""), "not a row of the grid: it is not a negative");
+        assertTrue(page.indexOf("Input not analysed") < page.indexOf("Samples by assay"), "said before the results");
+    }
+
+    @Test
+    void aRunWithoutFaultyInputHasNoSuchSection() throws IOException {
+        Path tsv = Files.write(dir.resolve("report.tsv"), List.of(HEADER, row("a", "its", 434, "c1", "")));
+
+        String page = Files.readString(HtmlReport.write(tsv, List.of("a"), Set.of(), PRIMERS, SIZES, List.of(),
+                Map.of()));
+
+        assertFalse(page.contains("Input not analysed"));
+        assertFalse(page.contains("not analysed: faulty"));
     }
 }

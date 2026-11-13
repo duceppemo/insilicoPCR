@@ -3,6 +3,7 @@ package ca.canada.inspection.dispatchpcr;
 import ca.canada.inspection.pcr.AmpliconOptions;
 import ca.canada.inspection.pcr.ReadLevelCaller;
 import ca.canada.inspection.pipeline.TadpoleOptions;
+import ca.canada.inspection.util.InputCheck;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.ParseException;
@@ -122,5 +123,14 @@ class CliConfigTest {
         CommandLine primerIsDir = new DefaultParser().parse(Dispatcher.options(),
                 new String[]{"-i", primersFile.toString(), "-o", dir.toString(), "-p", dir.toString()});
         assertThrows(IllegalArgumentException.class, () -> CliConfig.from(primerIsDir));
+    }
+
+    @Test
+    void theInputCheckIsFullUnlessAskedOtherwise() throws Exception {
+        assertEquals(InputCheck.Depth.FULL, parse().inputCheck());
+        assertEquals(InputCheck.Depth.QUICK, parse("--input-check", "quick").inputCheck());
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> parse("--input-check", "off"));
+        assertEquals("--input-check must be full or quick, not: off", error.getMessage());
     }
 }

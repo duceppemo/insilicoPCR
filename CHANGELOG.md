@@ -14,6 +14,33 @@
 
 ### Added
 
+- Input check: every input file is checked before the run, and a sample with
+  a faulty file is left out with a warning while the others are run. Until
+  now an empty file was skipped without a word (the sample was simply absent
+  from the report), a pair with one empty file was run as single-end reads,
+  and a damaged file stopped the whole run inside BBDuk.
+  - Faults found in FASTQ files: empty (also an empty gzip stream, what a
+    library without reads looks like); not gzip, or a gzip stream damaged or
+    cut short; a file that ends inside a read; a read that is not four lines
+    of the expected kind (no `@` header, no `+` line, a quality line of
+    another length, a character that is not a base or a quality score, a blank
+    line between reads); FASTA under a `.fastq` name; and two files of a pair
+    with different numbers of reads. Each is reported with the file, the read
+    and the line.
+  - Faults found in assemblies: empty, header lines only, not starting with
+    `>`, and a gzip stream cut short.
+  - Reported as `Warning:` lines (terminal, or the output area of the
+    application), in `QAlog.txt` (`Input not analysed`, with one
+    `Sample not analysed: <name>` line per sample), and at the top of the HTML
+    report (a section **Input not analysed** and a summary tile). Such a
+    sample is in no table of the report and has no lane in the synthetic gel:
+    nothing was run on it, so it is neither positive nor negative. The exit
+    code stays 0.
+  - Every read is read, which costs one more pass over each FASTQ file, about
+    as long as decompressing it (files are checked in parallel).
+    `--input-check quick` reads the first read of each file only. The
+    application always checks every read, and no longer refuses to start
+    because one file of the input folder is faulty.
 - `docs/examples/five-isolates`: the small synthetic data set pictured on the
   Reports page (five genomes, two assays with declared sizes) and its report.
 - CI runs each portable ZIP it builds, on Linux and on Windows, on that

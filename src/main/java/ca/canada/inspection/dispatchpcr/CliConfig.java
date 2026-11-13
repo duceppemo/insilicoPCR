@@ -3,6 +3,7 @@ package ca.canada.inspection.dispatchpcr;
 import ca.canada.inspection.pcr.AmpliconOptions;
 import ca.canada.inspection.pcr.ReadLevelCaller;
 import ca.canada.inspection.pipeline.TadpoleOptions;
+import ca.canada.inspection.util.InputCheck;
 import org.apache.commons.cli.CommandLine;
 
 import java.nio.file.Files;
@@ -18,7 +19,8 @@ public record CliConfig(
         AmpliconOptions ampliconOptions,
         boolean gel,
         TadpoleOptions tadpole,
-        double readMinFraction
+        double readMinFraction,
+        InputCheck.Depth inputCheck
 ) {
     public static final double DEFAULT_EVALUE = 1e5;
 
@@ -66,7 +68,8 @@ public record CliConfig(
                 options,
                 cmd.hasOption("gel"),
                 tadpoleOptions(cmd),
-                parseFraction(cmd, "read-min-fraction", ReadLevelCaller.DEFAULT_MIN_SUPPORT_FRACTION)
+                parseFraction(cmd, "read-min-fraction", ReadLevelCaller.DEFAULT_MIN_SUPPORT_FRACTION),
+                InputCheck.Depth.parse(cmd.getOptionValue("input-check", "full"))
         );
     }
 

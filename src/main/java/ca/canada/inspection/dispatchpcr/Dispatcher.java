@@ -110,6 +110,11 @@ public final class Dispatcher {
                         + " enough) that must hold a complete amplicon to call a product the mini-assembly"
                         + " missed from reads;"
                         + " default: " + ReadLevelCaller.DEFAULT_MIN_SUPPORT_FRACTION).build());
+        options.addOption(Option.builder().longOpt("input-check").hasArg().argName("full|quick")
+                .desc("How the input files are checked before the run. full: every read of every FASTQ file"
+                        + " is read, and the two files of a pair must hold the same number of reads. quick: the"
+                        + " first read only, faster on large files but blind to a file cut short. A sample with"
+                        + " a faulty file is left out with a warning and the others are run; default: full").build());
         options.addOption(Option.builder("g").longOpt("gel").desc("Also write the synthetic gel image as PNG"
                 + " (requires a graphical environment)").build());
         options.addOption(Option.builder("h").longOpt("help").desc("Print help and usage").build());

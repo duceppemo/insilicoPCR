@@ -41,9 +41,11 @@ public final class ReportGenerator {
                 context.primers(), context.expectedSizes(), diagnostics.findings(),
                 RunDetails.of(Dispatcher.VERSION, context.config().input(), context.config().primers(),
                         context.config().output(), context.config().ampliconOptions(),
-                        context.hasFastqSamples() ? context.config().readMinFraction() : null));
+                        context.hasFastqSamples() ? context.config().readMinFraction() : null),
+                context.inputIssues());
         System.out.println("HTML report written to " + html);
-        List<String> qaLines = new ArrayList<>(context.expectedSizes().qaLogLines());
+        List<String> qaLines = new ArrayList<>(RunDetails.inputIssueLines(context.inputIssues()));
+        qaLines.addAll(context.expectedSizes().qaLogLines());
         qaLines.addAll(diagnostics.qaLogLines(context.config().tadpole(), context.config().readMinFraction()));
         qaLog.write(context, Dispatcher.VERSION, qaLines);
     }

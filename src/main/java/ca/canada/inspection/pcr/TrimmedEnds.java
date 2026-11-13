@@ -33,7 +33,7 @@ public final class TrimmedEnds {
      * Bases of a query sequence (contig or read) starting at 1-based position
      * {@code start}, and the length of the whole sequence.
      */
-    public record Template(int start, String bases, int length) {
+    public record Template(int start, CharSequence bases, int length) {
 
         /** A whole sequence. */
         public static Template whole(String sequence) {

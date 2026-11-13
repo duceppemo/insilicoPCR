@@ -5,6 +5,7 @@ import javafx.geometry.Insets;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
+import javafx.scene.control.ChoiceBox;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
@@ -14,6 +15,7 @@ import javafx.scene.layout.VBox;
 import javafx.scene.text.Text;
 import javafx.stage.Window;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.function.Supplier;
 
@@ -55,6 +57,22 @@ final class SettingsDialog {
         grid.add(name, 0, row);
         grid.add(field, 1, row++);
         return field;
+    }
+
+    /** A row with a choice among {@code options}, {@code selected} shown first. */
+    <T> ChoiceBox<T> choice(String label, List<T> options, T selected, String tooltip) {
+        var box = new ChoiceBox<T>();
+        box.getItems().addAll(options);
+        box.setValue(selected);
+        var name = new Label(label);
+        var tip = new Tooltip(tooltip);
+        tip.setWrapText(true);
+        tip.setMaxWidth(380);
+        name.setTooltip(tip);
+        box.setTooltip(tip);
+        grid.add(name, 0, row);
+        grid.add(box, 1, row++);
+        return box;
     }
 
     /**

@@ -86,6 +86,35 @@ class BbtoolsCommandsTest {
         assertEquals(dir.resolve("s_baitedReads.fasta"), BbtoolsCommands.baitedReadsFasta(dir, "s"));
         // Must not end in .tsv, or it would be parsed as a sample's contig hits.
         assertEquals(dir.resolve("s_baitedReads.blast.txt"), BbtoolsCommands.baitedReadsHits(dir, "s"));
+        assertEquals(dir.resolve("s_extensionSeeds.fasta"), BbtoolsCommands.extensionSeeds(dir, "s"));
+        assertEquals(dir.resolve("s_extendedReads.fasta"), BbtoolsCommands.extendedReads(dir, "s"));
+        assertEquals(dir.resolve("s_extendedReads.blast.txt"), BbtoolsCommands.extendedReadsHits(dir, "s"));
+        assertEquals(dir.resolve("s_extensionCandidates.fasta"), BbtoolsCommands.extensionCandidates(dir, "s"));
+        assertEquals(dir.resolve("s_extensionCandidateReads.fastq.gz"), BbtoolsCommands.candidateReads(dir, "s"));
+    }
+
+    @Test
+    void readsOfCandidateProductsAreFetchedFromTheInputWithTheirMates() {
+        List<String> command = commands.recruit(Path.of("candidates.fasta"), paired, Path.of("reads.fq.gz"), 31);
+
+        assertTrue(command.contains("jgi.BBDuk"));
+        assertTrue(command.contains("ref=candidates.fasta"));
+        assertTrue(command.contains("in1=s_R1.fastq.gz"));
+        assertTrue(command.contains("in2=s_R2.fastq.gz"));
+        assertTrue(command.contains("outm=reads.fq.gz"));
+        assertTrue(command.contains("interleaved=t"), "mates stay together");
+        assertTrue(command.contains("hdist=0"));
+        assertTrue(command.contains("k=31"));
+    }
+
+    @Test
+    void extensionFollowsTheBetterSupportedBranchBothWays() {
+        List<String> command = commands.extend(Path.of("seeds.fasta"), Path.of("second.fq.gz"),
+                Path.of("extended.fasta"), 31, 2000);
+
+        assertEquals(List.of("java", "-ea", "-Xmx6g", "-cp", "bbtools.jar", "assemble.Tadpole",
+                "in=seeds.fasta", "out=extended.fasta", "mode=extend", "el=2000", "er=2000", "extra=second.fq.gz",
+                "k=31", "branchmult1=1", "branchmult2=1", "mincountextend=2", "overwrite=t", "threads=4"), command);
     }
 
     @Test

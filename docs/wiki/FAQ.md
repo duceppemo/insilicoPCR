@@ -20,7 +20,8 @@ Yes. Use the bundled Java runtime:
 
 Yes. insilicoPCR supports FASTA assemblies and FASTQ reads. Reads are baited and micro-assembled before the
 search; targets the mini-assembly misses are called from the reads themselves when single reads or merged
-pairs hold the whole amplicon. A FASTQ-mode negative is still weaker evidence than one on a genome assembly;
+pairs hold the whole amplicon, and a product longer than a read is looked for by extending the reads that
+carry its primers. A FASTQ-mode negative is still weaker evidence than one on a genome assembly;
 assays whose oligos were found in the reads are explained in `report_fastq_diagnostics.tsv` and `QAlog.txt`. See
 [FASTQ mode and false negatives](Reports#fastq-mode-and-false-negatives).
 

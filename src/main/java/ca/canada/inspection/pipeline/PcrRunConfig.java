@@ -1,6 +1,7 @@
 package ca.canada.inspection.pipeline;
 
 import ca.canada.inspection.pcr.AmpliconOptions;
+import ca.canada.inspection.pcr.ReadExtensionCaller;
 import javafx.scene.control.ProgressBar;
 import javafx.scene.control.TextArea;
 
@@ -16,7 +17,8 @@ public record PcrRunConfig(
         TextArea outputField,
         ProgressBar blastProgress,
         TadpoleOptions tadpole,
-        double readMinFraction
+        double readMinFraction,
+        ReadExtensionCaller.Mode readExtension
 ) {
     /** Allowed primer mismatches; also used as BBDuk {@code hdist} when baiting reads. */
     public int mismatches() {

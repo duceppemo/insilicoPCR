@@ -184,6 +184,133 @@ class FastqDiagnosticsTest {
         assertTrue(finding.assemblyDetail().contains("assay-F and assay-R"), finding.assemblyDetail());
     }
 
+    private static final PairSupport.Verdict PAIRS_SUPPORT_IT = new PairSupport.Verdict(PairSupport.Kind.SUPPORTED,
+            true, 300, 9, 191, 14, 0, 0, 0, 0, 40);
+
+    /** What extending reads for {@code assay} showed: products as {size, forward-closing, reverse-closing}. */
+    private static ReadExtensionCaller.Outcome extensionOutcome(int[]... products) {
+        List<ReadExtensionCaller.Product> list = new java.util.ArrayList<>();
+        for (int[] product : products) {
+            list.add(new ReadExtensionCaller.Product("assay", product[0], Set.of(product[0]), product[1], 150,
+                    product[2], 150, List.of(), PAIRS_SUPPORT_IT));
+        }
+        return new ReadExtensionCaller.Outcome("assay", 150, 150, 2000, list);
+    }
+
+    @Test
+    void productClosedByExtendedReadsIsCalledByExtension() {
+        Finding finding = FastqDiagnostics.assess(fastqSample(), PRIMERS, DEFAULTS, noReadCall(ALL_IN_READS), Map.of(),
+                Map.of("assay", extensionOutcome(new int[]{1074, 142, 145}, new int[]{1303, 0, 1}))).getFirst();
+
+        assertEquals(Status.CALLED_BY_EXTENSION, finding.status());
+        assertEquals(Assembly.NOT_ASSEMBLED, finding.assembly());
+        assertEquals("no complete amplicon in the reads, which could hold amplicons up to 240 bp; reads extended"
+                + " through the baited reads hold a product of 1074 bp (142 of 150 forward-seeded and 145 of 150"
+                + " reverse-seeded reads); too few to report: 1303 bp in 0 of 150 forward-seeded and 1 of 150"
+                + " reverse-seeded reads", finding.readDetail());
+        assertTrue(finding.message().contains("called by extending reads"), finding.message());
+    }
+
+    @Test
+    void primersTheExtensionDidNotJoinAreNotClosedByExtension() {
+        Finding none = FastqDiagnostics.assess(fastqSample(), PRIMERS, DEFAULTS, noReadCall(ALL_IN_READS), Map.of(),
+                Map.of("assay", extensionOutcome())).getFirst();
+
+        assertEquals(Status.NOT_CLOSED_BY_EXTENSION, none.status());
+        assertEquals("no complete amplicon in the reads, which could hold amplicons up to 240 bp; extending 150"
+                + " forward-seeded and 150 reverse-seeded read(s) through the baited reads, by up to 2000 bases each"
+                + " way, gave no product held by at least 2 extended reads seeded from each primer",
+                none.readDetail());
+
+        // Closed from one side only: still a negative, and the detail says what was seen.
+        Finding oneSided = FastqDiagnostics.assess(fastqSample(), PRIMERS, DEFAULTS, noReadCall(ALL_IN_READS),
+                Map.of(), Map.of("assay", extensionOutcome(new int[]{447, 0, 2}))).getFirst();
+        assertEquals(Status.NOT_CLOSED_BY_EXTENSION, oneSided.status());
+        assertTrue(oneSided.readDetail().endsWith("; too few to report: 447 bp in 0 of 150 forward-seeded and 2 of 150"
+                + " reverse-seeded reads"), oneSided.readDetail());
+    }
+
+    @Test
+    void productAddedByExtensionToAnAssayTheAssemblyReportsElsewhereIsListed() {
+        // Target mode: the assembly reports 181 bp; the extended reads add a 1074 bp product.
+        Sample sample = fastqSample();
+        sample.addBlastResult("assay-F", TestHits.plusHit("assay-F", "contig_0", 101));
+        sample.addBlastResult("assay-R", TestHits.minusHit("assay-R", "contig_0", 262));
+        sample.addBlastResult("assay-P", TestHits.plusHit("assay-P", "contig_0", 200));
+        ReadExtensionCaller.Product found = new ReadExtensionCaller.Product("assay", 1074, Set.of(1074), 12, 150,
+                9, 150, List.of(), PAIRS_SUPPORT_IT);
+        ReadExtensionCaller.Product again = new ReadExtensionCaller.Product("assay", 183, Set.of(183), 40, 150,
+                38, 150, List.of(), PAIRS_SUPPORT_IT);
+
+        Finding finding = FastqDiagnostics.assess(sample, PRIMERS, DEFAULTS, noReadCall(ALL_IN_READS), Map.of(),
+                Map.of("assay", new ReadExtensionCaller.Outcome("assay", 150, 150, 2000, List.of(again, found),
+                        Set.of(181)))).getFirst();
+
+        assertEquals(Status.CALLED_BY_EXTENSION, finding.status());
+        assertEquals(Assembly.OTHER_PRODUCT_ONLY, finding.assembly());
+        assertEquals("reports 181 bp only", finding.assemblyDetail());
+        assertEquals("reads extended through the baited reads hold a product of 1074 bp (12 of 150 forward-seeded and"
+                + " 9 of 150 reverse-seeded reads)", finding.readDetail());
+
+        // Nothing new from the extension: the assay is reported already, and nothing needs explaining.
+        assertTrue(FastqDiagnostics.assess(sample, PRIMERS, DEFAULTS, noReadCall(ALL_IN_READS), Map.of(),
+                Map.of("assay", new ReadExtensionCaller.Outcome("assay", 150, 150, 2000, List.of(again),
+                        Set.of(181)))).isEmpty());
+    }
+
+    @Test
+    void productTheReadPairsDoNotSupportIsWithheldWithTheReason() {
+        // A wrong turn through a repeat: closed from both sides, but no read pair spans one window.
+        ReadExtensionCaller.Product wrongTurn = new ReadExtensionCaller.Product("assay", 727, Set.of(727), 44, 52,
+                37, 46, List.of(), new PairSupport.Verdict(PairSupport.Kind.UNSUPPORTED_WINDOW, true, 300, 1, 191, 14,
+                0, 0, 0, 0, 30));
+        Finding finding = FastqDiagnostics.assess(fastqSample(), PRIMERS, DEFAULTS, noReadCall(ALL_IN_READS), Map.of(),
+                Map.of("assay", new ReadExtensionCaller.Outcome("assay", 52, 46, 2000, List.of(wrongTurn)))).getFirst();
+
+        assertEquals(Status.EXTENSION_NOT_SUPPORTED_BY_PAIRS, finding.status());
+        assertEquals("no complete amplicon in the reads, which could hold amplicons up to 240 bp; extended reads hold"
+                + " a product of 727 bp (44 of 52 forward-seeded and 37 of 46 reverse-seeded reads), not reported:"
+                + " the 300-base window at 191-490 is held by 1 read pair, against 14 for the median window",
+                finding.readDetail());
+        assertTrue(finding.message().contains("read pairs do not support the product; not reported"));
+
+        // Too few pairs to tell is the same status, with its own reason.
+        ReadExtensionCaller.Product thin = wrongTurn.withSupport(new PairSupport.Verdict(
+                PairSupport.Kind.TOO_FEW_PAIRS, true, 100, 0, 0, 2, 0, 0, 0, 0, 5));
+        Finding tooFew = FastqDiagnostics.assess(fastqSample(), PRIMERS, DEFAULTS, noReadCall(ALL_IN_READS), Map.of(),
+                Map.of("assay", new ReadExtensionCaller.Outcome("assay", 52, 46, 2000, List.of(thin)))).getFirst();
+        assertEquals(Status.EXTENSION_NOT_SUPPORTED_BY_PAIRS, tooFew.status());
+        assertTrue(tooFew.readDetail().endsWith("not reported: too few read pairs to verify it: the median 100-base"
+                + " window is held by 2, 10 needed"), tooFew.readDetail());
+    }
+
+    @Test
+    void productThroughARepeatLongerThanTheReadPairsIsWithheldAsUnresolved() {
+        ReadExtensionCaller.Product through = new ReadExtensionCaller.Product("assay", 1047, Set.of(1047), 40, 50,
+                38, 50, List.of(), new PairSupport.Verdict(PairSupport.Kind.UNRESOLVED_REPEAT, true, 250, 5, 310, 10,
+                228, 827, 16, 10, 50));
+        Finding finding = FastqDiagnostics.assess(fastqSample(), PRIMERS, DEFAULTS, noReadCall(ALL_IN_READS), Map.of(),
+                Map.of("assay", new ReadExtensionCaller.Outcome("assay", 50, 50, 2000, List.of(through)))).getFirst();
+
+        assertEquals(Status.EXTENSION_THROUGH_UNRESOLVED_REPEAT, finding.status());
+        assertTrue(finding.readDetail().endsWith("extended reads hold a product of 1047 bp (40 of 50 forward-seeded and"
+                + " 38 of 50 reverse-seeded reads), not reported: bases 228-827 are a repeat with another copy in the"
+                + " sample (16 reads of that copy enter the product there and 10 leave it), longer than the 250-base"
+                + " window the read pairs can verify: a real product and a wrong turn look the same there"),
+                finding.readDetail());
+    }
+
+    @Test
+    void withoutAnExtensionOutcomeTheStatusAndWordingAreUnchanged() {
+        // The extension was off, or ran for other assays only.
+        Finding finding = FastqDiagnostics.assess(fastqSample(), PRIMERS, DEFAULTS, noReadCall(ALL_IN_READS), Map.of(),
+                Map.of("other", extensionOutcome(new int[]{1074, 5, 5}))).getFirst();
+
+        assertEquals(Status.NOT_IN_READS, finding.status());
+        assertEquals("no complete amplicon in the reads; reads carrying the primers could hold amplicons up to 240 bp,"
+                + " so longer amplicons cannot be ruled out", finding.readDetail());
+    }
+
     @Test
     void primersOnDifferentContigsAreSplitWithDistanceToContigEnd() {
         // Mirrors ERR2938678 in #7: forward primer 19 bp from the end of contig_6,

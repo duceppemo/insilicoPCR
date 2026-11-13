@@ -47,6 +47,9 @@ public final class HtmlReport {
         UNEXPECTED("Unexpected size", "Only a product of a size the primer file does not declare", "!"),
         /** A complete amplicon in too few of the reads to be reported (FASTQ input). */
         INCONCLUSIVE("Seen in too few reads", "A complete amplicon is in some reads, too few to be reported", "?"),
+        /** Extended reads join the primers, but read pairs do not confirm the product (FASTQ input). */
+        UNCONFIRMED("Not confirmed by read pairs", "Reads extended from both primers hold a product, but the read"
+                + " pairs do not confirm it; not reported", "?"),
         /** No product, and the reads could not have shown one of the declared size (FASTQ input). */
         UNCHECKED("Not checkable from reads", "No product, but one of the declared size is longer than the reads"
                 + " could hold, so its absence proves nothing", "\u25cb"),
@@ -74,8 +77,15 @@ public final class HtmlReport {
 
     /** One row of the consolidated report. */
     record Product(String sample, String assay, int size, Map<String, String> fields, ExpectedSizes.Label label) {
+        /** Called from the reads themselves, whole or extended, not from the mini-assembly. */
         boolean fromReads() {
-            return fields.getOrDefault("Contig Description", "").startsWith("FASTQ read-level call");
+            return fields.getOrDefault("Contig Description", "").startsWith("FASTQ read-level call")
+                    || fromExtension();
+        }
+
+        /** Called on reads extended through the baited reads: a product no single read holds. */
+        boolean fromExtension() {
+            return fields.getOrDefault("Contig Description", "").startsWith(ReadExtensionCaller.ROW_PREFIX);
         }
 
         String field(String name) {
@@ -152,6 +162,9 @@ public final class HtmlReport {
 
     private static final Pattern READ_SUPPORT =
             Pattern.compile("complete amplicon in (\\d+ of \\d+) informative read\\(s\\) \\((\\d+%)\\)");
+
+    private static final Pattern EXTENSION_SUPPORT =
+            Pattern.compile("(\\d+ of \\d+) forward-seeded and (\\d+ of \\d+) reverse-seeded reads");
 
     private HtmlReport() {
     }
@@ -273,6 +286,14 @@ public final class HtmlReport {
         if (finding != null && finding.status() == Status.WEAK_READ_SUPPORT) {
             return new Cell(State.INCONCLUSIVE, products, "Not reported: " + finding.readDetail());
         }
+        if (finding != null && (finding.status() == Status.EXTENSION_NOT_SUPPORTED_BY_PAIRS
+                || finding.status() == Status.EXTENSION_THROUGH_UNRESOLVED_REPEAT)) {
+            return new Cell(State.UNCONFIRMED, products, "Not reported: " + finding.readDetail());
+        }
+        if (finding != null && finding.status() == Status.NOT_CLOSED_BY_EXTENSION) {
+            // The reads were extended, so the product's length is no longer what hides it.
+            return new Cell(State.NONE, products, "Both primers are in the reads: " + finding.readDetail());
+        }
         OptionalInt target = sizes.smallestTarget(assay);
         if (finding != null && finding.status() == Status.NOT_IN_READS && target.isPresent()
                 && target.getAsInt() > finding.checkableLength()) {
@@ -363,6 +384,9 @@ public final class HtmlReport {
         if (totals.getOrDefault(State.INCONCLUSIVE, 0) > 0) {
             tile(html, totals.get(State.INCONCLUSIVE), "seen in too few reads, not reported", "inconclusive");
         }
+        if (totals.getOrDefault(State.UNCONFIRMED, 0) > 0) {
+            tile(html, totals.get(State.UNCONFIRMED), "not confirmed by read pairs, not reported", "inconclusive");
+        }
         tile(html, products, products == 1 ? "amplicon in the report" : "amplicons in the report", "");
         html.append("</section>\n");
     }
@@ -452,7 +476,7 @@ public final class HtmlReport {
             if (product.label() != null) {
                 tip.append(" (").append(product.label().text()).append(")");
             }
-            tip.append(product.fromReads() ? ", from reads" : "");
+            tip.append(product.fromExtension() ? ", from extended reads" : product.fromReads() ? ", from reads" : "");
             if (product.partlyBound()) {
                 tip.append("; ").append(product.binding());
             }
@@ -493,7 +517,7 @@ public final class HtmlReport {
                     .append(grid.isEmpty() ? 0 : Math.round(1000.0 * positive / grid.size()) / 10.0)
                     .append("%\"></span></div>\n");
             for (State state : List.of(State.TARGET, State.AMPLIFIED, State.OTHER, State.UNEXPECTED,
-                    State.INCONCLUSIVE)) {
+                    State.INCONCLUSIVE, State.UNCONFIRMED)) {
                 List<String> names = byState.getOrDefault(state, List.of());
                 if (names.isEmpty()) {
                     continue;
@@ -556,7 +580,11 @@ public final class HtmlReport {
             String source = comma > 0 ? contig.substring(0, comma) : contig;
             String sourceTitle = contig + (product.field("Contig Description").isEmpty() ? ""
                     : " — " + product.field("Contig Description"));
-            if (product.fromReads()) {
+            if (product.fromExtension()) {
+                Matcher support = EXTENSION_SUPPORT.matcher(product.field("Contig Description"));
+                source = "reads extended" + (support.find() ? " (" + support.group(1) + " forward-seeded, "
+                        + support.group(2) + " reverse-seeded)" : "");
+            } else if (product.fromReads()) {
                 Matcher support = READ_SUPPORT.matcher(product.field("Contig Description"));
                 source = "reads" + (support.find() ? " (" + support.group(1) + ", " + support.group(2) + ")" : "");
             }
@@ -599,20 +627,28 @@ public final class HtmlReport {
     private static void readSection(StringBuilder html, List<Finding> findings) {
         List<Finding> shown = findings.stream()
                 .filter(finding -> finding.status() == Status.CALLED_FROM_READS
-                        || finding.status() == Status.WEAK_READ_SUPPORT)
+                        || finding.status() == Status.CALLED_BY_EXTENSION
+                        || finding.status() == Status.WEAK_READ_SUPPORT
+                        || finding.status() == Status.EXTENSION_NOT_SUPPORTED_BY_PAIRS
+                        || finding.status() == Status.EXTENSION_THROUGH_UNRESOLVED_REPEAT)
                 .toList();
         long notInReads = findings.stream().filter(finding -> finding.status() == Status.NOT_IN_READS).count();
-        if (shown.isEmpty() && notInReads == 0) {
+        long notClosed = findings.stream()
+                .filter(finding -> finding.status() == Status.NOT_CLOSED_BY_EXTENSION).count();
+        if (shown.isEmpty() && notInReads == 0 && notClosed == 0) {
             return;
         }
         html.append("<section>\n<h2>Read-level evidence (FASTQ input)</h2>\n<p class=\"hint\">Reads are baited and")
                 .append(" micro-assembled; a product the assembly misses is called from the reads when enough of them")
-                .append(" hold it. A negative from reads is weaker evidence than a negative on a genome assembly.</p>\n");
+                .append(" hold it, or, when no read is long enough to hold it, when reads extended from both of its")
+                .append(" primers hold it and the read pairs span it throughout. A negative from reads is weaker")
+                .append(" evidence than a negative on a genome assembly.</p>\n");
         if (!shown.isEmpty()) {
             html.append("<div class=\"scroll\"><table class=\"rows\">\n<thead><tr><th>Sample</th><th>Assay</th><th>Outcome")
                     .append("</th><th>What the reads show</th></tr></thead>\n<tbody>\n");
             for (Finding finding : shown) {
-                boolean called = finding.status() == Status.CALLED_FROM_READS;
+                boolean called = finding.status() == Status.CALLED_FROM_READS
+                        || finding.status() == Status.CALLED_BY_EXTENSION;
                 html.append("<tr><td>").append(escape(finding.sample())).append("</td><td>")
                         .append(escape(finding.assay())).append("</td><td>")
                         .append(called ? "<span class=\"tag\">reads</span> reported"
@@ -625,6 +661,11 @@ public final class HtmlReport {
             html.append("<p class=\"hint\">").append(notInReads).append(notInReads == 1 ? " negative has" : " negatives have")
                     .append(" both primers in the reads but no complete amplicon in any read. That only rules out")
                     .append(" products short enough to fit in a read or merged pair; see the diagnostics TSV.</p>\n");
+        }
+        if (notClosed > 0) {
+            html.append("<p class=\"hint\">").append(notClosed).append(notClosed == 1 ? " negative has" : " negatives have")
+                    .append(" both primers in the reads, but no read holds a complete amplicon and extending the reads")
+                    .append(" through the baited reads did not join the primers; see the diagnostics TSV.</p>\n");
         }
         html.append("</section>\n");
     }
@@ -729,7 +770,7 @@ public final class HtmlReport {
             .chip.amplified { background: var(--amplified); color: #fff; }
             .chip.other { border-color: var(--other); }
             .chip.unexpected { border-color: var(--unexpected); border-style: dashed; }
-            .chip.inconclusive { border: 2px dotted var(--ink-3); color: var(--ink-2); }
+            .chip.inconclusive, .chip.unconfirmed { border: 2px dotted var(--ink-3); color: var(--ink-2); }
             .chip.unchecked { color: var(--ink-3); min-width: 0; padding: 0; font-weight: 400; }
             .chip.none { color: var(--line-2); min-width: 0; padding: 0; font-weight: 400; }
             .chip sup { font-size: 10px; line-height: 1; margin-left: 1px; }

@@ -30,7 +30,8 @@ public final class CommandMain {
 				config.ampliconOptions(),
 				config.gel(),
 				config.tadpole(),
-				config.readMinFraction()
+				config.readMinFraction(),
+				config.readExtension()
 		));
 	}
 

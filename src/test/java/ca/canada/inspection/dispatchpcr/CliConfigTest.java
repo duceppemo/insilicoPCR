@@ -1,6 +1,7 @@
 package ca.canada.inspection.dispatchpcr;
 
 import ca.canada.inspection.pcr.AmpliconOptions;
+import ca.canada.inspection.pcr.ReadExtensionCaller;
 import ca.canada.inspection.pcr.ReadLevelCaller;
 import ca.canada.inspection.pipeline.TadpoleOptions;
 import org.apache.commons.cli.CommandLine;
@@ -64,6 +65,19 @@ class CliConfigTest {
         assertThrows(IllegalArgumentException.class, () -> parse("--read-min-fraction", "1.5"));
         assertThrows(IllegalArgumentException.class, () -> parse("--read-min-fraction", "-0.1"));
         assertThrows(IllegalArgumentException.class, () -> parse("--read-min-fraction", "30%"));
+    }
+
+    @Test
+    void readExtensionDefaultsToUnreportedAssaysAndParses() throws Exception {
+        assertEquals(ReadExtensionCaller.Mode.UNREPORTED, parse().readExtension());
+        assertEquals(ReadExtensionCaller.Mode.OFF, parse("--read-extension", "off").readExtension());
+        assertEquals(ReadExtensionCaller.Mode.UNREPORTED, parse("--read-extension", "unreported").readExtension());
+        assertEquals(ReadExtensionCaller.Mode.TARGET, parse("--read-extension", "TARGET").readExtension());
+        IllegalArgumentException bad = assertThrows(IllegalArgumentException.class,
+                () -> parse("--read-extension", "on"));
+        assertEquals("--read-extension must be off, unreported or target, got: on", bad.getMessage());
+        assertTrue(Dispatcher.options().getOption("read-extension").getDescription().endsWith("default: unreported"));
+        assertFalse(Dispatcher.options().hasOption("no-read-extension"));
     }
 
     @Test

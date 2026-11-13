@@ -63,6 +63,37 @@ record BbtoolsCommands(String javaCommand, Path bbtoolsJar, int childMemoryGiB, 
         return sampleDir.resolve(sampleName + "_baitedReads.blast.txt");
     }
 
+    /** Reads carrying a primer of an assay still unreported, used as seeds of the read extension. */
+    static Path extensionSeeds(Path sampleDir, String sampleName) {
+        return sampleDir.resolve(sampleName + "_extensionSeeds.fasta");
+    }
+
+    /**
+     * The seeds extended through the baited reads. Each is the best-supported path
+     * from one read, not an assembled consensus.
+     */
+    static Path extendedReads(Path sampleDir, String sampleName) {
+        return sampleDir.resolve(sampleName + "_extendedReads.fasta");
+    }
+
+    /**
+     * The products that extended reads of both primers hold, before the read pairs have
+     * confirmed them or not: best-supported paths, not assembled consensus sequences.
+     */
+    static Path extensionCandidates(Path sampleDir, String sampleName) {
+        return sampleDir.resolve(sampleName + "_extensionCandidates.fasta");
+    }
+
+    /** The sample's reads (pairs kept together) sharing a k-mer with a candidate product. */
+    static Path candidateReads(Path sampleDir, String sampleName) {
+        return sampleDir.resolve(sampleName + "_extensionCandidateReads.fastq.gz");
+    }
+
+    /** BLAST hits of the primers on the extended reads; not {@code .tsv}, as for {@link #baitedReadsHits}. */
+    static Path extendedReadsHits(Path sampleDir, String sampleName) {
+        return sampleDir.resolve(sampleName + "_extendedReads.blast.txt");
+    }
+
     /**
      * First pass: keep reads sharing a k-mer with any primer, allowing
      * {@code hdist} mismatches so primers with tolerated mismatches still bait.
@@ -100,6 +131,18 @@ record BbtoolsCommands(String javaCommand, Path bbtoolsJar, int childMemoryGiB, 
         return bbduk(firstPassMatches, reads, output, 0);
     }
 
+    /**
+     * Third pass, on the sample's own reads: keep every read, with its mate, sharing a
+     * k-mer with a candidate product of the read extension. The baited reads do not
+     * hold them all: far from the primers they thin out, and the reads of a second copy
+     * of a repeat that say where the repeat ends are among those missing.
+     */
+    List<String> recruit(Path candidates, List<Path> reads, Path output, int k) {
+        List<String> command = bbduk(candidates, reads, output, 0);
+        command.add("k=" + k);
+        return command;
+    }
+
     List<String> assemble(Path reads, Path output, TadpoleOptions tadpole) {
         List<String> command = new ArrayList<>(List.of(
                 javaCommand, "-ea", "-Xmx" + childMemoryGiB + "g",
@@ -111,6 +154,31 @@ record BbtoolsCommands(String javaCommand, Path bbtoolsJar, int childMemoryGiB, 
         ));
         command.addAll(tadpole.arguments());
         return command;
+    }
+
+    /**
+     * Extends each seed both ways, by up to {@code reach} bases, through the k-mers of
+     * {@code reads}. At a branch the better-supported path is always followed
+     * ({@code branchmult=1}): Tadpole's defaults stop there, which is what breaks the
+     * mini-assembly inside a multi-copy locus, where near-balanced variants are the rule.
+     */
+    List<String> extend(Path seeds, Path reads, Path output, int k, int reach) {
+        return new ArrayList<>(List.of(
+                javaCommand, "-ea", "-Xmx" + childMemoryGiB + "g",
+                "-cp", bbtoolsJar.toString(), "assemble.Tadpole",
+                "in=" + seeds,
+                "out=" + output,
+                "mode=extend",
+                "el=" + reach,
+                "er=" + reach,
+                "extra=" + reads,
+                "k=" + k,
+                "branchmult1=1",
+                "branchmult2=1",
+                "mincountextend=2",
+                "overwrite=t",
+                "threads=" + threads
+        ));
     }
 
     private List<String> bbduk(Path ref, List<Path> reads, Path output, int hdist) {

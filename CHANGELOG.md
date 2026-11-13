@@ -7,9 +7,11 @@
 - Gzipped assemblies (`.fasta.gz`, `.fna.gz`, `.ffn.gz`, `.fsa.gz`, `.fa.gz`)
   were accepted as input and then given to `blastn` as they were. `blastn`
   does not read gzip, so the run stopped with `BLAST query error`, on the
-  command line and in the application. A gzipped assembly is now decompressed
-  to a temporary file in the sample's `detailed_report` folder for the time of
-  the search. Results are the same as for the plain file.
+  command line. The application failed as well, with `Unable to read sequence
+  file`: it also read the compressed file as text when listing its contigs. A
+  gzipped assembly is now decompressed to a temporary file in the sample's
+  `detailed_report` folder for the time of the search, and its contigs are read
+  through gzip. Results are the same as for the plain file.
 - Command line: a failing external tool (BLAST+, BBTools) ended the run with a
   Java stack trace. It now ends with the tool's own message followed by an
   `Error:` line naming the stage and a `Cause:` line with the full command line

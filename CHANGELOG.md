@@ -112,6 +112,16 @@
 
 ### Fixed
 
+- FASTQ mode, degenerate probes: a product called from reads (or from extended
+  reads) is reported on one representative read, and when two variants of a
+  degenerate probe both hit that read within `--probe-mismatches`, the variant
+  shown was arbitrary: `ProbeMismatches` could read `1` although another
+  variant matched exactly, and the choice could change from run to run. The
+  representative is now the row with the fewest primer mismatches, then the
+  fewest probe mismatches, so the best-matching variant is shown. Which
+  products are reported does not change, only the `Probe`, `ProbeLocation`,
+  `ProbeSize` and `ProbeMismatches` of such a row, and with them the read it is
+  shown on.
 - Memory on very large contigs. Since 0.12.0 the contig a hit lies on is read
   to compare the hit's trimmed ends with it, and it was built as text and then
   copied: about three bytes per base for a moment. A single contig of 1 Gb

@@ -404,12 +404,13 @@ public final class ReadLevelCaller {
         }
         elsewhere.removeAll(informative);
 
-        // Representative: fewest primer mismatches, then a stable read order.
+        // Representative: fewest primer mismatches, then fewest probe mismatches (of the
+        // variants of a degenerate probe that hit a read, the one that matches best), then
+        // a stable order of reads and of probe variants.
         List<String> best = rows.stream()
-                .min(Comparator.<List<String>>comparingInt(row ->
-                                Integer.parseInt(row.get(ConsolidatedReport.FORWARD_MISMATCHES_COLUMN))
-                                        + Integer.parseInt(row.get(ConsolidatedReport.REVERSE_MISMATCHES_COLUMN)))
-                        .thenComparing(row -> row.get(ConsolidatedReport.CONTIG_COLUMN)))
+                .min(ConsolidatedReport.BEST_BOUND
+                        .thenComparing(row -> row.get(ConsolidatedReport.CONTIG_COLUMN))
+                        .thenComparing(ConsolidatedReport::probe))
                 .orElseThrow();
         return new ReadCall(assay, supporting.size(), informative.size(), elsewhere.size(), best, sizes,
                 evidence.minSupportFraction());

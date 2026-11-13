@@ -340,4 +340,65 @@ class ReadLevelCallerTest {
         assertTrue(products.getFirst().matches(60) && products.getFirst().matches(90));
         assertTrue(!products.getFirst().matches(59) && !products.getFirst().matches(91));
     }
+
+    /** The probe site with its first base changed: one mismatch against {@link TestHits#PRIMER_20}. */
+    private static String oneMismatch() {
+        return (PRIMER_20.charAt(0) == 'A' ? 'C' : 'A') + PRIMER_20.substring(1);
+    }
+
+    private static List<String> representativeRow(String exactVariant, String otherVariant, List<String> readsOfExact) {
+        Map<String, String> primers = Map.of("assay-F", PRIMER_20, "assay-R", PRIMER_20,
+                exactVariant, PRIMER_20, otherVariant, PRIMER_20);
+        Sample reads = reads();
+        for (String read : List.of("read_1", "read_2")) {
+            reads.addBlastResult("assay-F", TestHits.plusHit("assay-F", read, 11));
+            reads.addBlastResult("assay-R", TestHits.minusHit("assay-R", read, 61));
+            reads.addBlastResult(otherVariant, TestHits.plusHit(otherVariant, read, 35, oneMismatch(), PRIMER_20));
+            if (readsOfExact.contains(read)) {
+                reads.addBlastResult(exactVariant, TestHits.plusHit(exactVariant, read, 35));
+            }
+        }
+        ReadEvidence evidence = ReadLevelCaller.evaluate(reads, Map.of("read_1", 101, "read_2", 101), primers,
+                new AmpliconOptions(0, 1, 5, 0, 5, 0, 5000));
+        return evidence.products("assay").getFirst().row();
+    }
+
+    @Test
+    void ofTheVariantsOfADegenerateProbeTheOneThatMatchesBestIsReported() {
+        // Both variants hit both reads, one exactly and one with a mismatch. Whatever their
+        // names and the order they are met in, the row shows the exact one.
+        for (String[] names : new String[][] {{"assay-P_0", "assay-P_1"}, {"assay-P_1", "assay-P_0"}}) {
+            List<String> row = representativeRow(names[0], names[1], List.of("read_1", "read_2"));
+
+            assertEquals(names[0], ConsolidatedReport.probe(row));
+            assertEquals(0, ConsolidatedReport.probeMismatches(row));
+            assertEquals("read_1", row.get(ConsolidatedReport.CONTIG_COLUMN));
+        }
+    }
+
+    @Test
+    void aReadWhereTheProbeMatchesExactlyIsTheRepresentative() {
+        // read_1 comes first by name, but only read_2 carries the allele one variant matches exactly.
+        List<String> row = representativeRow("assay-P_1", "assay-P_0", List.of("read_2"));
+
+        assertEquals("read_2", row.get(ConsolidatedReport.CONTIG_COLUMN));
+        assertEquals("assay-P_1", ConsolidatedReport.probe(row));
+        assertEquals(0, ConsolidatedReport.probeMismatches(row));
+    }
+
+    @Test
+    void aRowWithoutProbeColumnsHasNoProbeMismatch() {
+        Sample reads = reads();
+        for (String read : List.of("read_1", "read_2")) {
+            reads.addBlastResult("plain-F", TestHits.plusHit("plain-F", read, 11));
+            reads.addBlastResult("plain-R", TestHits.minusHit("plain-R", read, 61));
+        }
+        ReadEvidence evidence = ReadLevelCaller.evaluate(reads, Map.of("read_1", 101, "read_2", 101),
+                Map.of("plain-F", PRIMER_20, "plain-R", PRIMER_20), DEFAULTS);
+        List<String> row = evidence.products("plain").getFirst().row();
+
+        assertEquals("", ConsolidatedReport.probe(row));
+        assertEquals(0, ConsolidatedReport.probeMismatches(row));
+        assertEquals("read_1", row.get(ConsolidatedReport.CONTIG_COLUMN));
+    }
 }

@@ -50,6 +50,15 @@ usage: java -jar insilicoPCR.jar -i <input> -o <output> -p <primers> [-t
                                 probe; probes bind hotter than primers and
                                 tolerate roughly one more mismatch;
                                 default: same as -m
+    --read-extension <mode>     FASTQ mode: which assays the reads
+                                carrying both primers are extended for,
+                                through the baited reads, to find products
+                                longer than a read or merged pair. One of:
+                                unreported (assays found in no contig and
+                                in no read), target (those, and assays
+                                that declare size= and show no product of
+                                that size yet), off (none); default:
+                                unreported
     --read-min-fraction <0-1>   FASTQ mode: share of informative reads
                                 (carrying a primer at the product's locus
                                 and long enough) that must hold a complete
@@ -97,10 +106,11 @@ usage: java -jar insilicoPCR.jar -i <input> -o <output> -p <primers> [-t
 | `--tadpole-min-cov` | `1` | FASTQ mode: minimum average contig coverage (Tadpole `mincov`) |
 | `--tadpole-min-contig` | `60` | FASTQ mode: minimum contig length kept (Tadpole `mincontig`); keep it below the shortest amplicon you expect |
 | `--read-min-fraction` | `0.3` | FASTQ mode: share (0–1) of informative reads that must hold a complete amplicon for a read-level call; see [Read-level calls](Reports#read-level-calls) |
+| `--read-extension` | `unreported` | FASTQ mode: which assays the reads carrying both primers are extended for, to find products longer than a read or merged pair. `unreported`: assays found in no contig and in no read. `target`: those, and assays that declare `size=` and show no product of that size yet. `off`: none. See [Read extension](Reports#read-extension-products-longer-than-a-read) |
 | `-v`, `--version` | | Print version |
 | `-h`, `--help` | | Print help |
 
-The `--read-min-fraction` and `--tadpole-*` options only affect FASTQ input, where reads are baited and micro-assembled before BLAST; see [FASTQ mode and false negatives](Reports#fastq-mode-and-false-negatives). In the GUI they are under **FASTQ settings…**.
+The `--read-min-fraction`, `--read-extension` and `--tadpole-*` options only affect FASTQ input, where reads are baited and micro-assembled before BLAST; see [FASTQ mode and false negatives](Reports#fastq-mode-and-false-negatives). In the GUI they are under **FASTQ settings…**.
 
 See [Amplicon Calling](Amplicon-Calling) for exactly how the mismatch budget, the 3'-end penalty, and the size limits decide which amplicons are reported.
 

@@ -3,6 +3,7 @@ package ca.canada.inspection.insilicopcr.ui;
 import ca.canada.inspection.insilicopcr.ui.AmpliconSettingsDialog.AmpliconSettings;
 import ca.canada.inspection.insilicopcr.ui.FastqSettingsDialog.FastqSettings;
 import ca.canada.inspection.pcr.AmpliconOptions;
+import ca.canada.inspection.pcr.ReadExtensionCaller;
 import ca.canada.inspection.pipeline.TadpoleOptions;
 import org.junit.jupiter.api.Test;
 
@@ -60,6 +61,11 @@ class SettingsRecordsTest {
         assertThrows(IllegalArgumentException.class, () -> FastqSettingsDialog.parse("31", "2", "1", "60", "1.5"));
         assertThrows(IllegalArgumentException.class, () -> FastqSettingsDialog.parse("31", "2", "1", "60", "NaN"));
         assertThrows(IllegalArgumentException.class, () -> FastqSettingsDialog.parse("31", "2", "1", "60", "30%"));
+        // The read extension keeps its default unless another choice is made.
+        assertEquals(ReadExtensionCaller.Mode.UNREPORTED,
+                FastqSettingsDialog.parse("31", "2", "1", "60", "0.3").readExtension());
+        assertEquals(new FastqSettings(TadpoleOptions.DEFAULTS, 0.3, ReadExtensionCaller.Mode.TARGET),
+                FastqSettingsDialog.parse("31", "2", "1", "60", "0.3", ReadExtensionCaller.Mode.TARGET));
     }
 
     @Test
@@ -81,5 +87,12 @@ class SettingsRecordsTest {
         FastqSettings custom = new FastqSettings(new TadpoleOptions(25, 2, 1, 60), 0.3);
         assertEquals("FASTQ settings… *", FastqSettingsDialog.buttonLabel(custom));
         assertTrue(FastqSettingsDialog.summary(custom).contains("k=25"));
+        assertTrue(FastqSettingsDialog.summary(custom).endsWith("Read extension: unreported"));
+
+        FastqSettings noExtension = new FastqSettings(TadpoleOptions.DEFAULTS, 0.3, ReadExtensionCaller.Mode.OFF);
+        assertEquals(ReadExtensionCaller.Mode.UNREPORTED, FastqSettings.DEFAULTS.readExtension());
+        assertTrue(!noExtension.isDefault());
+        assertEquals("FASTQ settings… *", FastqSettingsDialog.buttonLabel(noExtension));
+        assertTrue(FastqSettingsDialog.summary(noExtension).endsWith("Read extension: off"));
     }
 }

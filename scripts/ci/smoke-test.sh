@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Runs a portable release ZIP on the five-isolate example and compares the report with
-# the expected one. Works on Linux and, under Git Bash, on Windows.
+# Runs a portable release ZIP on the five-isolate example, assemblies and reads, and
+# compares the reports with the expected ones. Works on Linux and, under Git Bash, on
+# Windows.
 #
 # usage: scripts/ci/smoke-test.sh <portable ZIP> [work directory]
 set -euo pipefail
@@ -11,7 +12,7 @@ EXAMPLE="$ROOT/docs/examples/five-isolates"
 WORK="${2:-$(mktemp -d)}"
 
 mkdir -p "$WORK"
-rm -rf "$WORK/app" "$WORK/genomes" "$WORK/results" "$WORK/broken" "$WORK/broken-results"
+rm -rf "$WORK/app" "$WORK/genomes" "$WORK/results" "$WORK/reads-results" "$WORK/broken" "$WORK/broken-results"
 unzip -q "$ZIP" -d "$WORK/app"
 
 JAR="$(find "$WORK/app" -maxdepth 2 -name insilicoPCR.jar | head -n 1)"
@@ -43,6 +44,27 @@ fi
 
 LEFT="$(find "$WORK/results" -name 'blast_query_*' | wc -l)"
 [[ "$LEFT" -eq 0 ]] || { echo "FAIL: $LEFT decompressed BLAST queries left in the results" >&2; exit 1; }
+
+echo "== FASTQ mode on simulated reads of isolate_01"
+# Baiting (BBDuk), merging (BBMerge) and the mini-assembly (Tadpole), then the same search.
+"$JAVA" -jar "$JAR" -i "$EXAMPLE/reads" -p "$EXAMPLE/primers.fasta" -o "$WORK/reads-results" -t 2
+
+READS_REPORT="$WORK/reads-results/consolidated_report/report.tsv"
+[[ -s "$READS_REPORT" ]] || { echo "FAIL: no report at $READS_REPORT" >&2; exit 1; }
+# Contig names and positions depend on the assembly; the products and their sizes must not.
+products() {
+  tr -d '\r' < "$1" | awk -F '\t' '
+    NR == 1 { for (i = 1; i <= NF; i++) column[$i] = i; next }
+    { print $column["Sample"], $column["Gene"], $column["AmpliconSize"], $column["SizeCheck"] }' | sort
+}
+EXPECTED_PRODUCTS=$'isolate_01 stxQ 118 target\nisolate_01 toxA 312 target'
+if [[ "$(products "$READS_REPORT")" != "$EXPECTED_PRODUCTS" ]]; then
+  echo "FAIL: FASTQ mode reported:" >&2
+  products "$READS_REPORT" >&2
+  echo "expected:" >&2
+  echo "$EXPECTED_PRODUCTS" >&2
+  exit 1
+fi
 
 echo "== a search that fails ends the run with a message"
 mkdir -p "$WORK/broken"

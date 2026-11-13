@@ -14,7 +14,7 @@ import org.apache.commons.cli.ParseException;
 
 public final class Dispatcher {
 
-    public static final String VERSION = "0.12.0";
+    public static final String VERSION = "0.12.1";
 
     /**
      * Compatibility alias for older code paths and release branches.

@@ -63,7 +63,10 @@
 - CI runs each portable ZIP it builds, on Linux and on Windows, on that
   example (`scripts/ci/smoke-test.sh`): two genomes gzipped, the report
   compared with the expected one, and a search `blastn` rejects checked to end
-  the run with an `Error:` line.
+  the run with an `Error:` line. It also runs FASTQ mode on simulated reads of
+  one genome (`docs/examples/five-isolates/reads`, written by `make-reads.py`),
+  so baiting, merging and the mini-assembly are run on Windows before a
+  release.
 
 ### Changed
 

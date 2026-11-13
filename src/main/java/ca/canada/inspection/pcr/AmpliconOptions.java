@@ -4,7 +4,8 @@ package ca.canada.inspection.pcr;
  * Parameters controlling which BLAST primer hits are accepted and which
  * forward/reverse hit pairs are reported as amplicons.
  *
- * @param maxTotalMismatches    maximum mismatches + indels + unaligned 3' bases over the whole primer
+ * @param maxTotalMismatches    maximum mismatches + indels over the whole primer, counting the 3' bases BLAST
+ *                              trimmed off its alignment that do not pair with the template
  * @param maxProbeMismatches    maximum mismatches + indels over a hydrolysis probe (probes are longer
  *                              and bind hotter than primers, so they tolerate more)
  * @param threePrimeWindow      number of bases at the primer 3' end checked separately

@@ -101,6 +101,14 @@ See [Primer FASTA Format](Primer-FASTA-Format).
 
 Since 0.12.0 the command line reports a mistake in the primer file (an ID without a role suffix, characters that are not bases, a `size=` that cannot be read, two different sizes for one assay) as one `Error:` line and exits with code 1. Earlier releases printed a Java stack trace for the same mistakes.
 
+Since 0.12.1 a failing external tool (BLAST+, BBTools) is reported the same way: the tool's own message, then `Error:` with the stage that failed and `Cause:` with the full command line and its exit code. Copy the command line to run the tool by hand.
+
+In the application, releases before 0.12.1 did not notice a failed `blastn` search: the run finished and the sample was shown without any product. Since 0.12.1 the run stops with `Run failed` and names the file that could not be searched.
+
+## Run fails with `BLAST query error` on a gzipped assembly
+
+Releases before 0.12.1 accept a gzipped FASTA file (`.fasta.gz`, `.fna.gz` and so on) as input, then hand it to `blastn`, which does not read gzip and stops. In the application the same input ends with `Unable to read sequence file for sample`. Upgrade to 0.12.1, or decompress the assemblies first (`gunzip *.fasta.gz`). Gzipped FASTQ reads were never affected.
+
 ## Results differ between 0.11.0 and 0.12.0
 
 Releases before 0.12.0 miscounted mismatches near the ends of probes and near the 3' end of primers, because BLAST leaves such a mismatch out of its alignment together with the matching bases beyond it. Since 0.12.0 those bases are compared with the sample sequence. Three kinds of calls can change:

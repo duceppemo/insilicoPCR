@@ -24,8 +24,7 @@ browser's light or dark theme and prints. It shows exactly the rows of the TSV a
 The report of a run on five FASTA files with two assays that both declare their product size (the **Run
 details** section at the bottom is not shown). `isolate_04` gives the `toxA` product at 583 bp instead of
 312 bp: the product is reported and marked as an unexpected size, and the sample is not counted as positive
-for that assay. The picture was taken with version 0.11.0; since 0.12.0 the amplicon table also has a
-`5′ unpaired F/R` column (the [tutorial](Tutorial-Mixed-PCR-qPCR#4-the-html-report) shows a current page).
+for that assay.
 
 | Section | What it shows |
 |---|---|

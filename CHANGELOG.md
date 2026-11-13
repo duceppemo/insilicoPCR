@@ -1,5 +1,33 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- Gzipped assemblies (`.fasta.gz`, `.fna.gz`, `.ffn.gz`, `.fsa.gz`, `.fa.gz`)
+  were accepted as input and then given to `blastn` as they were. `blastn`
+  does not read gzip, so the run stopped with `BLAST query error`, on the
+  command line. The application failed as well, with `Unable to read sequence
+  file`: it also read the compressed file as text when listing its contigs. A
+  gzipped assembly is now decompressed to a temporary file in the sample's
+  `detailed_report` folder for the time of the search, and its contigs are read
+  through gzip. Results are the same as for the plain file.
+- Application: a `blastn` search that failed went unnoticed. The run carried
+  on to the end and the sample was shown without any product, as if it had been
+  searched and found negative. The run now stops with `Run failed` and the
+  message `BLAST failed with exit code ... for query ...`, as a failing BBTools
+  step already did. The command line always stopped on a failed search.
+- Command line: a failing external tool (BLAST+, BBTools) ended the run with a
+  Java stack trace. It now ends with the tool's own message followed by an
+  `Error:` line naming the stage and a `Cause:` line with the full command line
+  and exit code, like the input mistakes since 0.12.0. The exit code stays 1.
+
+### Changed
+
+- The `-m` help text and the tooltip of the mismatch field say "3' bases that
+  do not pair with the template count" where they said "unaligned 3' bases
+  count", which described the counting before 0.12.0.
+
 ## 0.12.0 (2026-11-12)
 
 ### Added

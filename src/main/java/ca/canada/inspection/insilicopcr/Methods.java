@@ -268,7 +268,7 @@ public class Methods {
 	}
 
 	private static void addContigsFromFasta(Path fastaFile, Sample sample, String description) {
-		try (BufferedReader reader = Files.newBufferedReader(fastaFile, StandardCharsets.UTF_8)) {
+		try (BufferedReader reader = SequenceFileUtils.openMaybeGzip(fastaFile)) {
 			String line;
 			while ((line = reader.readLine()) != null) {
 				if (line.startsWith(">")) {

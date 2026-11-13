@@ -210,8 +210,8 @@ public class MainRun extends Application {
         pane.add(box, 38, 10, 5, 1);
 
         var field = new ComboBox<Integer>();
-        field.setTooltip(new Tooltip("Allowed mismatches + indels per primer. Bases BLAST leaves unaligned at the "
-                + "primer 3' end also count. Independently, the primer 3' end is checked separately "
+        field.setTooltip(new Tooltip("Allowed mismatches + indels per primer. Bases at the primer 3' end that do not "
+                + "pair with the template also count. Independently, the primer 3' end is checked separately "
                 + "(see Amplicon settings)."));
         field.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
         field.getItems().addAll(0, 1, 2, 3);

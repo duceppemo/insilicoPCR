@@ -13,8 +13,8 @@ import java.util.function.Function;
  * {@code qseqid sseqid positive mismatch gaps evalue bitscore slen length qstart qend qseq sstart send sseq}
  * where the query is the sample sequence and the subject is the primer.</p>
  *
- * <p>Acceptance rules for primers (-F/-R): mismatches, indels, and unaligned 3'
- * bases must fit within the total mismatch budget, at most
+ * <p>Acceptance rules for primers (-F/-R): mismatches, indels, and 3' bases that
+ * do not pair with the template must fit within the total mismatch budget, at most
  * {@code maxFivePrimeTruncation} bases may be missing at the 5' end, and the
  * weighted penalty of imperfections inside the 3' window must not exceed
  * {@code maxThreePrimePenalty}. Hydrolysis probes (-P) do not extend, so only

@@ -1,15 +1,18 @@
 package ca.canada.inspection.pipeline;
 
 import ca.canada.inspection.insilicopcr.Sample;
+import ca.canada.inspection.pipeline.RunMonitor.Step;
 import ca.canada.inspection.util.InputCheck;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
-/** High-level orchestration for one in silico PCR run. */
+/** One in silico PCR run, for the command line and for the application alike. */
 public final class InSilicoPcrPipeline {
     private final PipelineConfig config;
+    private final RunMonitor monitor;
     private final SampleRepository samples = new SampleRepository();
     private final PrimerService primers = new PrimerService();
     private final FastqProcessor fastqProcessor = new FastqProcessor();
@@ -17,23 +20,31 @@ public final class InSilicoPcrPipeline {
     private final BlastRunner blastRunner = new BlastRunner();
     private final ReportGenerator reportGenerator = new ReportGenerator();
 
+    /** A run that reports to the console. */
     public InSilicoPcrPipeline(PipelineConfig config) {
-        this.config = config;
+        this(config, RunMonitor.CONSOLE);
+    }
+
+    public InSilicoPcrPipeline(PipelineConfig config, RunMonitor monitor) {
+        this.config = Objects.requireNonNull(config, "config");
+        this.monitor = Objects.requireNonNull(monitor, "monitor");
     }
 
     public void run() {
         long startTime = System.nanoTime();
-        System.out.println("Beginning Program Run");
-
+        monitor.info("Beginning Program Run");
         RuntimeDependencies dependencies = RuntimeDependencies.discover();
         PipelineDirectories directories = PipelineDirectories.create(config.output());
-        System.out.println("Checking the input files (" + (config.inputCheck() == InputCheck.Depth.FULL
+        monitor.stepDone(Step.DEPENDENCIES);
+
+        monitor.info("Checking the input files (" + (config.inputCheck() == InputCheck.Depth.FULL
                 ? "every read; --input-check quick reads the first one only" : "first read only") + ")");
         InputCheck.Result checked = samples.check(config);
-        checked.warnings().forEach(line -> System.err.println("Warning: " + line));
+        checked.warnings().forEach(line -> monitor.warning("Warning: " + line));
         Map<String, Sample> sampleMap = new LinkedHashMap<>(checked.samples());
-        PrimerService.PreparedPrimers prepared = primers.loadAndPrepare(config, directories);
+        monitor.stepDone(Step.INPUT_CHECK);
 
+        PrimerService.PreparedPrimers prepared = primers.loadAndPrepare(config, directories);
         PipelineContext context = new PipelineContext(
                 config,
                 dependencies,
@@ -42,24 +53,30 @@ public final class InSilicoPcrPipeline {
                 prepared.primers(),
                 prepared.expectedSizes(),
                 ChildJavaMemory.recommendedGiB(),
-                checked.issues()
+                checked.issues(),
+                monitor
         );
-
         logRuntime(context);
-        fastqProcessor.process(context);
-        blastDatabaseBuilder.build(context);
-        blastRunner.run(context);
-        reportGenerator.generate(context);
+        monitor.stepDone(Step.PRIMERS);
 
+        fastqProcessor.process(context);
+        monitor.stepDone(Step.READS);
+        blastDatabaseBuilder.build(context);
+        monitor.stepDone(Step.BLAST_DATABASE);
+        blastRunner.run(context);
+        monitor.info("Completed BLAST");
+        monitor.stepDone(Step.BLAST);
+        reportGenerator.generate(context);
         long seconds = TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - startTime);
-        System.out.println("Done in " + seconds + " seconds");
+        monitor.info("Done in " + seconds + " seconds");
     }
 
     private static void logRuntime(PipelineContext context) {
-        System.out.println("Application root: " + context.dependencies().appRoot());
-        System.out.println("BBMap: " + context.dependencies().bbmapDirectory());
-        System.out.println("BLAST: " + context.dependencies().blastBinDirectory());
-        System.out.println("Java: " + context.dependencies().javaCommand());
-        System.out.println("Child Java memory: -Xmx" + context.childJavaMemoryGiB() + "g");
+        RunMonitor monitor = context.monitor();
+        monitor.info("Application root: " + context.dependencies().appRoot());
+        monitor.info("BBMap: " + context.dependencies().bbmapDirectory());
+        monitor.info("BLAST: " + context.dependencies().blastBinDirectory());
+        monitor.info("Java: " + context.dependencies().javaCommand());
+        monitor.info("Child Java memory: -Xmx" + context.childJavaMemoryGiB() + "g");
     }
 }

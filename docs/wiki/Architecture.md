@@ -18,9 +18,11 @@ One dispatcher starts the desktop GUI when it is given no arguments and the comm
 
 The dispatcher starts the GUI when no command-line arguments are provided. When CLI arguments are present, it runs the command-line pipeline.
 
+The GUI runs the same pipeline: `PcrPipelineTask` runs `InSilicoPcrPipeline` on a background thread and gives it a `RunMonitor` that sends messages, program output and progress to the window, and stops the run when the window closes. The command line gives it `RunMonitor.CONSOLE`. Every external program (BLAST+, BBTools) is started by one class, `pipeline.ExternalProgram`.
+
 ## Shared analysis core (`ca.canada.inspection.pcr`)
 
-Both the GUI pipeline (`PcrPipelineTask`) and the CLI pipeline (`InSilicoPcrPipeline`) delegate the scientific decisions to one shared, JavaFX-free package, so the two interfaces cannot drift apart:
+The pipeline delegates the scientific decisions to one JavaFX-free package:
 
 | Class | Responsibility |
 |---|---|
@@ -38,7 +40,7 @@ Both the GUI pipeline (`PcrPipelineTask`) and the CLI pipeline (`InSilicoPcrPipe
 | `ExpectedSizes` | Product sizes declared in primer FASTA headers (`size=`, `other=`); labels report rows `target` / `other` / `unexpected` and never filters |
 | `HtmlReport` | Writes the self-contained HTML report from the consolidated TSV: sample-by-assay grid, per-assay summary, amplicon table |
 
-Three classes outside this package are shared by both pipelines as well:
+Three classes outside this package take part in every run as well:
 
 | Class | Responsibility |
 |---|---|
@@ -46,7 +48,7 @@ Three classes outside this package are shared by both pipelines as well:
 | `util.FastqCheck` | Reads a FASTQ file to its end and names the first fault (empty, gzip damaged or cut short, file ending inside a read, malformed read) |
 | `pipeline.RunFailure` | Tells a failure the user can act on (reported as `Error:` and `Cause:` lines) from one that points at the program (reported with its stack trace) |
 
-`BlastResult` (in `insilicopcr`) carries full alignment context (strand, subject coordinates, aligned sequences) and computes the 3'-end mismatch counts and weighted penalties. The rules themselves are documented on the [Amplicon Calling](Amplicon-Calling) page, and covered by unit tests under `src/test/java`.
+`BlastResult` (in `insilicopcr`) carries full alignment context (strand, subject coordinates, aligned sequences) and computes the 3'-end mismatch counts and weighted penalties. The rules themselves are documented on the [Amplicon Calling](Amplicon-Calling) page, and covered by unit tests under `src/test/java`. `EndToEndTest` runs whole runs on the five-isolate example with the BLAST+ and BBTools of the checkout.
 
 ## High-level layers
 

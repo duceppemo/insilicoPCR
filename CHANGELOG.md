@@ -1,5 +1,32 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- The application now runs the same pipeline as the command line, instead of a
+  copy of it. Results are unchanged (the five-isolate example gives the same
+  report from both). What the application does differently:
+  - FASTQ samples are baited, merged and assembled several at a time, as on the
+    command line, instead of one after the other;
+  - the primer BLAST database (`primer_tmp.fasta*`) stays in the output folder,
+    as on the command line, instead of a `.tmp` folder deleted after the run.
+- A failed BLAST+ or BBTools command is reported as
+  `<program> failed with exit code <n>: <command line>`, from the command line
+  and from the application alike.
+
+### Tests
+
+- Whole runs of the five-isolate example (assemblies, reads, read extension,
+  faulty input files, a cancelled run) are now part of the unit tests, with the
+  BLAST+ and BBTools of the checkout.
+- The synthetic gel's layout, colours, text, paging and SVG/PDF/PNG writing
+  are now plain classes with unit tests, and the three gel pictures (the
+  viewer, the paged viewer and the `--gel` image) no longer keep copies of the
+  same code. Every picture is byte-for-byte what it was.
+- Line coverage went from 48% to 70% (72% where a display lets the gel be
+  drawn), and the build fails if it drops below the floors set in `pom.xml`.
+
 ## 0.13.0 (2026-11-13)
 
 ### Added

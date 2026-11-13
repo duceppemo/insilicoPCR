@@ -6,9 +6,8 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Builds the BBDuk and Tadpole command lines of FASTQ mode. Shared by the
- * command-line ({@link FastqProcessor}) and GUI ({@link BbmapPipeline}) pipelines
- * so both bait and assemble reads identically.
+ * Builds the BBTools command lines of FASTQ mode: baiting and recruiting (BBDuk),
+ * merging (BBMerge), assembly and read extension (Tadpole).
  *
  * @param javaCommand    Java launcher used for the BBTools child processes
  * @param bbtoolsJar     bundled {@code bbtools.jar}

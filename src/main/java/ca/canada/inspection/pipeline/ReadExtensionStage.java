@@ -136,7 +136,7 @@ public final class ReadExtensionStage {
                 BbtoolsCommands.baitedReadsFasta(sampleDir, name), seedsFile);
         int reach = options.maxAmpliconLength() > 0 ? options.maxAmpliconLength() : ReadExtensionCaller.DEFAULT_REACH;
 
-        ReadLevelStage.runProcess(settings.search(), settings.bbtoolsDirectory(),
+        ExternalProgram.run(settings.search().monitor(), settings.bbtoolsDirectory(),
                 settings.bbtools().extend(seedsFile, baitedReads, extendedFile, ReadExtensionCaller.K, reach),
                 "Tadpole");
         if (!Files.isRegularFile(extendedFile)) {
@@ -200,7 +200,7 @@ public final class ReadExtensionStage {
             throw new PipelineException("Could not write the candidate products: " + candidates, e);
         }
         Path candidateReads = BbtoolsCommands.candidateReads(sampleDir, name);
-        ReadLevelStage.runProcess(settings.search(), settings.bbtoolsDirectory(),
+        ExternalProgram.run(settings.search().monitor(), settings.bbtoolsDirectory(),
                 settings.bbtools().recruit(candidates, sample.files(), candidateReads, ReadExtensionCaller.K), "BBDuk");
         PairSupport.Tally tally = tally(sequences, candidateReads, sample.files().size() == 2, settings);
         Map<Product, PairSupport.Verdict> verdicts = new java.util.IdentityHashMap<>();
@@ -343,7 +343,7 @@ public final class ReadExtensionStage {
     }
 
     private static void stopIfCancelled(Settings settings) {
-        if (settings.search().cancelled() != null && settings.search().cancelled().getAsBoolean()) {
+        if (settings.search().monitor().isCancelled()) {
             throw new CancellationException("Read extension was cancelled.");
         }
     }

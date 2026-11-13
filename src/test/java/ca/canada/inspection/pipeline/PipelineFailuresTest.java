@@ -1,5 +1,6 @@
 package ca.canada.inspection.pipeline;
 
+import ca.canada.inspection.dispatchpcr.AppPaths;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -22,9 +23,9 @@ class PipelineFailuresTest {
     void anOutputFolderThatCannotBeCreatedIsForTheUser() throws IOException {
         Path notAFolder = Files.writeString(directory.resolve("results"), "a file where the folder should go");
 
-        PipelineException error = assertThrows(PipelineException.class, () -> RunDirectories.createUnder(notAFolder));
+        PipelineException error = assertThrows(PipelineException.class, () -> PipelineDirectories.create(notAFolder));
 
-        assertEquals("Unable to create output directories under " + notAFolder, error.getMessage());
+        assertEquals("Unable to create directory: " + notAFolder.resolve("detailed_report"), error.getMessage());
         assertTrue(RunFailure.isForTheUser(error));
     }
 
@@ -32,16 +33,28 @@ class PipelineFailuresTest {
     void aQaLogThatCannotBeWrittenIsForTheUser() throws IOException {
         Path notAFolder = Files.writeString(directory.resolve("results"), "a file where the folder should go");
 
-        PipelineException error = assertThrows(PipelineException.class,
-                () -> LogFiles.appendQaLog(notAFolder, List.of("FASTQ mode Tadpole settings: k=31")));
+        PipelineException error = assertThrows(PipelineException.class, () -> QaLogWriter.write(notAFolder, "0.0.0",
+                directory, directory, directory.resolve("primers.fasta"), directory, List.of()));
 
-        assertEquals("Unable to append to QA log: " + notAFolder.resolve("QAlog.txt"), error.getMessage());
+        assertEquals("Could not write QA log: " + notAFolder.resolve("QAlog.txt"), error.getMessage());
+        assertTrue(RunFailure.isForTheUser(error));
+    }
+
+    @Test
+    void aRunLogThatCannotBeWrittenIsForTheUser() throws IOException {
+        Path notAFolder = Files.writeString(directory.resolve("results"), "a file where the folder should go");
+
+        PipelineException error = assertThrows(PipelineException.class,
+                () -> LogFiles.appendRunLog(notAFolder, "Beginning Program Run"));
+
+        assertEquals("Unable to append run log: " + notAFolder.resolve("log.txt"), error.getMessage());
         assertTrue(RunFailure.isForTheUser(error));
     }
 
     @Test
     void aMissingBbtoolsJarIsForTheUser() {
-        DependencyContext dependencies = new DependencyContext(directory, directory, directory, "java", null);
+        RuntimeDependencies dependencies = new RuntimeDependencies(new AppPaths.RuntimeLayout(directory, directory,
+                directory, directory, directory, directory.resolve("java"), null));
 
         PipelineException error = assertThrows(PipelineException.class, dependencies::bbtoolsJar);
 

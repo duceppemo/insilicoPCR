@@ -384,4 +384,27 @@ class FastqDiagnosticsTest {
         reads.setFileType("reads");
         return reads;
     }
+
+    @Test
+    void findingsAreWrittenOneRowEachWithoutTabsInTheirDetails() throws IOException {
+        Path file = tempDir.resolve("report_fastq_diagnostics.tsv");
+        Finding finding = new Finding("S1", "its", Status.NOT_IN_READS, Assembly.SPLIT_ACROSS_CONTIGS,
+                new ReadsWithOligo(5, 4, 0), 300, "no read\tholds both", "contig_1\tcontig_2");
+
+        FastqDiagnosticsReport.write(file, List.of(finding));
+
+        assertEquals(List.of(FastqDiagnosticsReport.HEADER,
+                        "S1\tits\tNOT_IN_READS\tSPLIT_ACROSS_CONTIGS\t5\t4\t0\t300\tno read holds both\tcontig_1 contig_2"),
+                Files.readAllLines(file));
+    }
+
+    @Test
+    void aDiagnosticsFileThatCannotBeWrittenSaysWhich() {
+        Path file = tempDir.resolve("missing").resolve("report_fastq_diagnostics.tsv");
+
+        IllegalStateException error = org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class,
+                () -> FastqDiagnosticsReport.write(file, List.of()));
+
+        assertEquals("Unable to write FASTQ diagnostics: " + file, error.getMessage());
+    }
 }

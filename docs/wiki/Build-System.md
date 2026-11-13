@@ -16,6 +16,8 @@ cd insilicoPCR
 ./mvnw clean package
 ```
 
+The tests include whole runs of the five-isolate example (`EndToEndTest`), which use the BLAST+ and BBTools under `runtime/` (Git LFS) and are skipped without them. `./mvnw test` fails when line coverage drops below the floors set in `pom.xml` (the whole project, and the `pcr`, `util` and `pipeline` packages); without the tools, run `./mvnw test -Djacoco.haltOnFailure=false`. For a quicker build, `-Dsurefire.excludedGroups=end-to-end` leaves out the whole runs.
+
 Development requires Java 26. End users should normally use the portable releases, which bundle their own Java.
 
 ## Output

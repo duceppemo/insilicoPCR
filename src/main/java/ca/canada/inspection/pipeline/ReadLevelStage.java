@@ -11,7 +11,6 @@ import ca.canada.inspection.util.SequenceFileUtils;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -20,11 +19,9 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.CancellationException;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.BooleanSupplier;
-import java.util.function.Consumer;
 
 /**
  * FASTQ mode: searches the first-pass baited reads directly for amplicons, so a
@@ -40,22 +37,21 @@ public final class ReadLevelStage {
      * @param evalue             blastn e-value, as for contigs
      * @param threads            total threads; split between samples searched in parallel
      * @param minSupportFraction share of informative reads required for a read-level call
-     * @param processes          tracks the blastn processes so a GUI can kill them; may be {@code null}
-     * @param log                receives blastn output lines; {@code null} inherits the console
-     * @param cancelled          checked before each sample; may be {@code null}
+     * @param monitor            where program output goes, and whether the run was cancelled
      */
     public record Settings(Path blastn, Path primerDatabase, double evalue, int threads, double minSupportFraction,
-                           ExternalProcessTracker processes, Consumer<String> log, BooleanSupplier cancelled) {
+                           RunMonitor monitor) {
         public Settings {
             ReadLevelCaller.requireFraction(minSupportFraction);
             if (threads < 1) {
                 throw new IllegalArgumentException("threads must be >= 1");
             }
+            Objects.requireNonNull(monitor, "monitor");
         }
 
-        /** Command-line settings: blastn output goes to the console, nothing to cancel. */
+        /** Settings for the console: blastn output goes to the terminal, nothing to cancel. */
         public Settings(Path blastn, Path primerDatabase, double evalue, int threads, double minSupportFraction) {
-            this(blastn, primerDatabase, evalue, threads, minSupportFraction, null, null, null);
+            this(blastn, primerDatabase, evalue, threads, minSupportFraction, RunMonitor.CONSOLE);
         }
     }
 
@@ -79,13 +75,10 @@ public final class ReadLevelStage {
         // Samples run in parallel; give each blastn its share of the threads.
         int blastThreads = Math.max(1, settings.threads() / Math.min(settings.threads(), fastq.size()));
         Map<String, ReadEvidence> evidence = new ConcurrentHashMap<>();
-        ParallelStageRunner.run("Read-level amplicon search", fastq, settings.threads(), sample -> {
-            if (settings.cancelled() != null && settings.cancelled().getAsBoolean()) {
-                throw new CancellationException("Read-level search was cancelled.");
-            }
-            evidence.put(sample.getName(), searchSample(settings, blastThreads,
-                    detailedDir.resolve(sample.getName()), sample, primers, options));
-        });
+        ParallelStageRunner.run("Read-level amplicon search", fastq, settings.threads(), settings.monitor(),
+                sample -> evidence.put(sample.getName(), searchSample(settings, blastThreads,
+                        detailedDir.resolve(sample.getName()), sample, primers, options)),
+                ParallelStageRunner.Progress.NONE);
         return Map.copyOf(evidence);
     }
 
@@ -176,7 +169,7 @@ public final class ReadLevelStage {
 
     /** Searches {@code fasta} for the primers with blastn, as contigs are searched. */
     static void runBlast(Settings settings, int blastThreads, Path fasta, Path hitsFile) {
-        runProcess(settings, null, List.of(
+        ExternalProgram.run(settings.monitor(), null, List.of(
                 settings.blastn().toString(),
                 "-task", "blastn-short",
                 "-query", fasta.toString(),
@@ -186,53 +179,6 @@ public final class ReadLevelStage {
                 "-num_threads", String.valueOf(blastThreads),
                 "-outfmt", BlastTsv.OUTFMT,
                 "-out", hitsFile.toString()), "blastn");
-    }
-
-    /**
-     * Runs an external command of a FASTQ-mode search: output to the console or to
-     * {@link Settings#log()}, the process registered with {@link Settings#processes()},
-     * and a cancelled run reported as such rather than as a failed command.
-     *
-     * @param workingDirectory directory to run in; {@code null} keeps the current one
-     * @param program          name of the program, for messages
-     */
-    static void runProcess(Settings settings, Path workingDirectory, List<String> command, String program) {
-        ProcessBuilder builder = new ProcessBuilder(command);
-        if (workingDirectory != null) {
-            builder.directory(workingDirectory.toFile());
-        }
-        if (settings.log() == null) {
-            builder.inheritIO();
-        } else {
-            builder.redirectErrorStream(true);
-        }
-        try {
-            Process process = builder.start();
-            if (settings.processes() != null) {
-                settings.processes().add(process);
-            }
-            if (settings.log() != null) {
-                try (BufferedReader output = new BufferedReader(
-                        new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
-                    String line;
-                    while ((line = output.readLine()) != null) {
-                        settings.log().accept(line);
-                    }
-                }
-            }
-            int exit = process.waitFor();
-            if (settings.cancelled() != null && settings.cancelled().getAsBoolean()) {
-                throw new CancellationException("Read-level search was cancelled.");
-            }
-            if (exit != 0) {
-                throw new PipelineException(program + " failed with exit code " + exit + ": " + String.join(" ", command));
-            }
-        } catch (IOException e) {
-            throw new PipelineException("Could not run " + program + ": " + String.join(" ", command), e);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new PipelineException("Interrupted while running " + program + ": " + String.join(" ", command), e);
-        }
     }
 
     /**

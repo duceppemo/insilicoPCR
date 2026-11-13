@@ -1,6 +1,6 @@
 package ca.canada.inspection.pipeline;
 
-import ca.canada.inspection.insilicopcr.Methods;
+import ca.canada.inspection.insilicopcr.gel.SyntheticGelImage;
 import javafx.application.Platform;
 
 import java.nio.file.Path;
@@ -36,7 +36,7 @@ final class GelImageWriter {
             } catch (IllegalStateException alreadyRunning) {
                 // Toolkit already initialized (e.g. running inside the GUI); reuse it.
             }
-            Path written = Methods.exportSyntheticGelPng(consolidatedReport, outputFile, sampleNames);
+            Path written = SyntheticGelImage.exportPng(consolidatedReport, outputFile, sampleNames);
             System.out.println("Synthetic gel image written to " + written);
         } catch (RuntimeException | NoClassDefFoundError | UnsatisfiedLinkError e) {
             System.err.println("Warning: could not render the synthetic gel image (a graphical environment is required): "

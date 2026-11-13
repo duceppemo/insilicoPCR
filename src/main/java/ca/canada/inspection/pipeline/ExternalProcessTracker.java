@@ -22,8 +22,9 @@ public final class ExternalProcessTracker {
         processes.add(process);
     }
 
-    public synchronized void clear() {
-        processes.clear();
+    /** Forgets {@code process}, which has ended. */
+    public synchronized void remove(Process process) {
+        processes.remove(process);
     }
 
     /** Kills every registered process and every process registered from now on. */

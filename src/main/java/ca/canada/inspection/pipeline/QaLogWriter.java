@@ -16,18 +16,25 @@ final class QaLogWriter {
 
     /** @param extraLines run-specific lines appended after the input list (e.g. FASTQ-mode diagnostics) */
     void write(PipelineContext context, String version, List<String> extraLines) {
-        Path qLog = context.directories().output().resolve("QAlog.txt");
+        write(context.directories().output(), version, context.dependencies().bbmapDirectory(),
+                context.dependencies().blastBinDirectory(), context.config().primers(), context.config().input(),
+                extraLines);
+    }
+
+    /** Writes {@code QAlog.txt} in {@code output}, replacing any earlier one. */
+    static void write(Path output, String version, Path bbmapDirectory, Path blastBinDirectory, Path primers,
+                      Path input, List<String> extraLines) {
+        Path qLog = output.resolve("QAlog.txt");
         try (BufferedWriter writer = Files.newBufferedWriter(qLog, StandardCharsets.UTF_8)) {
             writeLine(writer, "In Silico PCR version: " + version);
             writeLine(writer, "Date run: " + QA_DATE_FORMAT.format(LocalDateTime.now()));
             writeLine(writer, "Run by user: " + System.getProperty("user.name"));
-            writeLine(writer, "BBTools Location: " + context.dependencies().bbmapDirectory());
-            writeLine(writer, "BLAST Location: " + context.dependencies().blastBinDirectory());
-            writeLine(writer, "Output Folder: " + context.directories().output());
-            writeLine(writer, "Primer File: " + context.config().primers());
+            writeLine(writer, "BBTools Location: " + bbmapDirectory);
+            writeLine(writer, "BLAST Location: " + blastBinDirectory);
+            writeLine(writer, "Output Folder: " + output);
+            writeLine(writer, "Primer File: " + primers);
             writeLine(writer, "Input File(s) :");
 
-            Path input = context.config().input();
             if (Files.isDirectory(input)) {
                 try (Stream<Path> files = Files.list(input)) {
                     for (Path file : files.sorted().toList()) {

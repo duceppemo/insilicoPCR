@@ -11,6 +11,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -125,6 +126,31 @@ public final class ConsolidatedReport {
     public static final int FORWARD_MISMATCHES_COLUMN = 8;
     public static final int REVERSE_MISMATCHES_COLUMN = 9;
     public static final int AMPLICON_SIZE_COLUMN = 3;
+    /** Probe columns; present in every row of a run whose primer file has a probe, empty for an assay without one. */
+    public static final int PROBE_COLUMN = 13;
+    public static final int PROBE_MISMATCHES_COLUMN = 16;
+
+    /** The probe ID of a row, or the empty string when the row has none. */
+    public static String probe(List<String> row) {
+        return row.size() > PROBE_MISMATCHES_COLUMN ? row.get(PROBE_COLUMN) : "";
+    }
+
+    /** The probe mismatches of a row; 0 when the row has no probe. */
+    public static int probeMismatches(List<String> row) {
+        return probe(row).isEmpty() ? 0 : Integer.parseInt(row.get(PROBE_MISMATCHES_COLUMN));
+    }
+
+    /**
+     * Which of several rows of one product best shows how the oligos bind: fewest primer
+     * mismatches, then fewest probe mismatches. A degenerate probe is searched as several
+     * variants, and more than one can hit the same place within the mismatch budget; the
+     * variant that matches best is the one to show. Rows that compare equal still differ
+     * (another read, another variant): callers add their own order after this one.
+     */
+    public static final Comparator<List<String>> BEST_BOUND = Comparator
+            .<List<String>>comparingInt(row -> Integer.parseInt(row.get(FORWARD_MISMATCHES_COLUMN))
+                    + Integer.parseInt(row.get(REVERSE_MISMATCHES_COLUMN)))
+            .thenComparingInt(ConsolidatedReport::probeMismatches);
 
     /**
      * Columns giving, per primer, the bases at its 5' end that do not pair with the

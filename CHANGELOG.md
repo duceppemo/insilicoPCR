@@ -83,6 +83,19 @@
   application was started from gets the stack trace in every case.
 
 
+### Fixed
+
+- FASTQ mode, degenerate probes: a product called from reads (or from extended
+  reads) is reported on one representative read, and when two variants of a
+  degenerate probe both hit that read within `--probe-mismatches`, the variant
+  shown was arbitrary: `ProbeMismatches` could read `1` although another
+  variant matched exactly, and the choice could change from run to run. The
+  representative is now the row with the fewest primer mismatches, then the
+  fewest probe mismatches, so the best-matching variant is shown. Which
+  products are reported does not change, only the `Probe`, `ProbeLocation`,
+  `ProbeSize` and `ProbeMismatches` of such a row, and with them the read it is
+  shown on.
+
 ## 0.12.1 (2026-11-13)
 
 ### Fixed

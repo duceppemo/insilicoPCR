@@ -84,7 +84,7 @@ When at least one assay in the primer file defines a `-P` probe, the report appe
 | `Probe` | Probe ID |
 | `ProbeLocation` | 1-based start-end of the probe on the contig |
 | `ProbeSize` | Length of the probe match |
-| `ProbeMismatches` | Mismatches + indels in the probe alignment |
+| `ProbeMismatches` | Mismatches + indels in the probe alignment. A degenerate probe is searched as its variants (`_0`, `_1`, ...): on a contig, each variant that hits within `--probe-mismatches` gives its own row; a product called from reads has one row, on a representative read, with the variant that matches best (since 0.13.0; before, an arbitrary one) |
 
 For an assay that defines a probe, a row is only written when the probe lies entirely within the amplicon. Probe-less assays in the same run keep these columns empty.
 

@@ -433,14 +433,14 @@ public final class ReadExtensionCaller {
                 .max(Comparator.<Map.Entry<Integer, Set<String>>>comparingInt(entry -> entry.getValue().size())
                         .thenComparing(Map.Entry.comparingByKey(Comparator.reverseOrder())))
                 .orElseThrow().getKey();
-        // Representative: of the reported size, fewest primer mismatches, then a stable read order.
+        // Representative: of the reported size, fewest primer mismatches, then fewest probe
+        // mismatches, then a stable order of reads, places and probe variants.
         List<String> best = rows.stream()
                 .filter(row -> size(row) == size)
-                .min(Comparator.<List<String>>comparingInt(row ->
-                                Integer.parseInt(row.get(ConsolidatedReport.FORWARD_MISMATCHES_COLUMN))
-                                        + Integer.parseInt(row.get(ConsolidatedReport.REVERSE_MISMATCHES_COLUMN)))
+                .min(ConsolidatedReport.BEST_BOUND
                         .thenComparingLong(row -> readNumber(row.get(ConsolidatedReport.CONTIG_COLUMN)))
-                        .thenComparing(row -> row.get(ConsolidatedReport.LOCATION_COLUMN)))
+                        .thenComparing(row -> row.get(ConsolidatedReport.LOCATION_COLUMN))
+                        .thenComparing(ConsolidatedReport::probe))
                 .orElseThrow();
         return new Product(assay, size, readsBySize.keySet(), forward.size(), forwardSeeds, reverse.size(),
                 reverseSeeds, best);

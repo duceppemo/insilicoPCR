@@ -14,8 +14,14 @@ import java.util.List;
  */
 final class PackedBases implements CharSequence {
 
-    private static final int BLOCK_BITS = 20;
-    private static final int BLOCK = 1 << BLOCK_BITS;
+    /**
+     * 256 KiB blocks. The collector Java uses by default (G1) gives an array of half a
+     * heap region or more whole regions of its own, and a region is 1 MiB on a small
+     * heap: a block of 1 MiB, a few bytes over with its header, would take two regions and
+     * the sequence twice its size.
+     */
+    private static final int BLOCK_BITS = 18;
+    static final int BLOCK = 1 << BLOCK_BITS;
 
     /** Full blocks, each of {@link #BLOCK} bases. */
     private final List<byte[]> full = new ArrayList<>();

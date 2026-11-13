@@ -42,13 +42,13 @@ class PackedBasesTest {
 
     @Test
     void everyBaseIsFoundAgainAcrossBlocks() {
-        // Three blocks of 2^20 bases and a partly filled fourth.
-        int length = 3 * (1 << 20) + 12_345;
+        // Three full blocks and a partly filled fourth.
+        int block = PackedBases.BLOCK;
+        int length = 3 * block + 12_345;
         PackedBases bases = of(length);
 
         assertEquals(length, bases.length());
-        for (int index : new int[] {0, 255, 256, (1 << 20) - 1, 1 << 20, (1 << 20) + 1, 2 * (1 << 20) - 1,
-                3 * (1 << 20), length - 1}) {
+        for (int index : new int[] {0, 255, 256, block - 1, block, block + 1, 2 * block - 1, 3 * block, length - 1}) {
             assertEquals(baseAt(index), bases.charAt(index), "base " + index);
         }
         assertThrows(IndexOutOfBoundsException.class, () -> bases.charAt(length));
@@ -56,7 +56,7 @@ class PackedBasesTest {
 
     @Test
     void aSequenceOfExactlyOneBlockIsComplete() {
-        int length = 1 << 20;
+        int length = PackedBases.BLOCK;
         PackedBases bases = of(length);
 
         assertEquals(length, bases.length());

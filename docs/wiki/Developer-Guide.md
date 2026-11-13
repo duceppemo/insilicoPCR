@@ -48,20 +48,17 @@ The dispatcher starts the GUI when no arguments are provided and starts the CLI 
 
 Keep the README compact. Use the GitHub Wiki as the user-facing manual.
 
-The `docs/wiki/` directory is a source-controlled mirror that can be pushed into the actual GitHub Wiki repository after the Wiki has been initialized.
+The `docs/wiki/` directory is the source-controlled mirror of the GitHub Wiki. Publish it with `scripts/docs/publish-wiki.sh` (see [Publishing to GitHub Wiki](Publishing-to-GitHub-Wiki)).
 
 When adding a feature, update:
 
 - README only if the feature changes the project overview or quick start
 - relevant Wiki page for full details
 - SVG diagrams under `docs/assets/` if the architecture, workflow, or release process changes
-- screenshots under `docs/screenshots/` when available
+- screenshots under `docs/assets/` (`gui/`, `report/`, `gel/`, `tutorial/`) when the GUI, the reports or the gel change
 
 ## Notes for future improvements
 
 Potential future work:
 
-- enforce the standard PCR vs qPCR mode limitation earlier in the run
 - improve synthetic gel export options
-- add screenshots to the README and Wiki
-- publish `docs/wiki/` pages into the GitHub Wiki after initialization

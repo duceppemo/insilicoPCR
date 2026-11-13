@@ -1,5 +1,7 @@
 # insilicoPCR architecture modernization pass
 
+> Historical note: this page describes a source bundle that was applied long ago and is kept for reference only. Do not follow "How to apply"; the changes are in the repository. For the current structure, see the Wiki [Architecture](https://github.com/duceppemo/insilicoPCR/wiki/Architecture) page.
+
 This bundle is a coherent source replacement for the command-line pipeline architecture.
 
 ## What changed

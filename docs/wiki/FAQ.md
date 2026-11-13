@@ -66,9 +66,9 @@ Launching from a terminal makes startup messages and errors visible, which helps
 The most common reasons, in order:
 
 1. **Product too long.** The default maximum amplicon length is 5000 bp. Raise it with `-l <bp>` or disable it with `-l 0`.
-2. **3'-end mismatch.** By default the last 5 bases of each primer must match perfectly (BLAST-trimmed terminal bases count as mismatches). Relax with `--3p-penalty` together with `-m` — see [Amplicon Calling](Amplicon-Calling).
+2. **3'-end mismatch.** By default the last 5 bases of each primer must match perfectly (the 3' bases BLAST trims off its alignment are compared with the template, and those that do not pair count as mismatches). Relax with `--3p-penalty` together with `-m` — see [Amplicon Calling](Amplicon-Calling).
 3. **Wrong orientation.** Primer pairs on the same strand, or pointing away from each other, are never reported because they cannot amplify.
-4. **qPCR mode without a probe hit.** If any primer in the file ends with `-P`, every reported assay needs its probe inside the amplicon.
+4. **Probe assay without a probe hit.** An assay that defines a `-P` probe is reported only when an accepted probe hit lies inside the amplicon. Every probe mismatch counts against `--probe-mismatches` (default: same as `-m`, so 0), wherever it sits in the probe.
 
 ## Why does the report show huge amplicons from old versions but not anymore?
 

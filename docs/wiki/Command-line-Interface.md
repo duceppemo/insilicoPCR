@@ -82,7 +82,7 @@ usage: java -jar insilicoPCR.jar -i <input> -o <output> -p <primers> [-t
 | Option | Default | Meaning |
 |---|---|---|
 | `-t`, `--threads` | available processors | Number of worker threads |
-| `-m`, `--mismatches` | `0` | Allowed mismatches + indels per primer; unaligned 3' bases count against the budget |
+| `-m`, `--mismatches` | `0` | Allowed mismatches + indels per primer; 3' bases that do not pair with the template count against the budget |
 | `--probe-mismatches` | same as `-m` | Allowed mismatches + indels per hydrolysis probe (probes bind hotter and tolerate more) |
 | `-e`, `--evalue` | `1e5` | BLASTN e-value; deliberately permissive, see [BLAST e-value](Amplicon-Calling#blast-e-value) |
 | `-l`, `--max-length` | `5000` | Maximum amplicon length in bp; `0` disables the limit |

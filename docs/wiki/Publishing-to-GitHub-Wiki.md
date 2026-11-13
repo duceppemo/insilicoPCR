@@ -20,16 +20,26 @@ If the Wiki repository does not exist yet, open the repository's **Wiki** tab in
 
 ## Publish the mirrored pages
 
-From a local checkout of the main repository:
+From a local checkout of the main repository, run:
+
+```bash
+scripts/docs/publish-wiki.sh
+```
+
+The script clones the Wiki repository into `/tmp/insilicoPCR.wiki` (or reuses the clone already there), copies `docs/wiki/` over it, and commits and pushes when something changed. Set `WIKI_WORKDIR` to use another folder and `WIKI_REMOTE` to push to another repository.
+
+The same steps by hand:
 
 ```bash
 git clone https://github.com/duceppemo/insilicoPCR.wiki.git /tmp/insilicoPCR.wiki
-rsync -av --delete docs/wiki/ /tmp/insilicoPCR.wiki/
+rsync -av --delete --exclude='.git/' docs/wiki/ /tmp/insilicoPCR.wiki/
 cd /tmp/insilicoPCR.wiki
 git add .
 git commit -m "Update Wiki documentation"
 git push
 ```
+
+Keep `--exclude='.git/'`: without it, `--delete` removes the clone's `.git` folder.
 
 ## Why keep a mirror in the main repository?
 

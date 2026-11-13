@@ -37,6 +37,7 @@
 - **PCR and qPCR in one primer file.** An assay with a probe is reported only when the probe sits inside the amplicon. Degenerate (IUPAC) primers are expanded automatically.
 - **Realistic amplicon calling.** Primers must face each other on one contig, within a size limit, with a weighted 3'-end mismatch check that knows a terminal G/C mismatch is worse than an A/T one.
 - **Every product is reported, whatever its size**, as a real PCR would amplify it. Declare the size an assay is designed to give and each product is labelled `target`, `other` or `unexpected`.
+- **Faulty input is named, not skipped.** Every file is checked before the run: an empty library, a download cut short or a malformed read leaves its sample out with a warning, and the other samples are run.
 - **Reports you can read.** A self-contained HTML report, a TSV table with per-primer mismatch details, and a synthetic gel.
 - **Nothing to install.** One portable ZIP for Windows or Linux holds the desktop app, the command line, Java, BBTools and BLAST+.
 - **Works with [primer-finder](https://github.com/duceppemo/primer-finder)**, which designs selective (q)PCR assays and writes primer files in this format.

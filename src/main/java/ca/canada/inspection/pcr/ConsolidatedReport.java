@@ -123,6 +123,8 @@ public final class ConsolidatedReport {
     public static final int LOCATION_COLUMN = 2;
     public static final int CONTIG_COLUMN = 4;
     public static final int CONTIG_DESCRIPTION_COLUMN = 5;
+    public static final int FORWARD_PRIMERS_COLUMN = 6;
+    public static final int REVERSE_PRIMERS_COLUMN = 7;
     public static final int FORWARD_MISMATCHES_COLUMN = 8;
     public static final int REVERSE_MISMATCHES_COLUMN = 9;
     public static final int AMPLICON_SIZE_COLUMN = 3;
@@ -145,12 +147,22 @@ public final class ConsolidatedReport {
      * mismatches, then fewest probe mismatches. A degenerate probe is searched as several
      * variants, and more than one can hit the same place within the mismatch budget; the
      * variant that matches best is the one to show. Rows that compare equal still differ
-     * (another read, another variant): callers add their own order after this one.
+     * (another read, another variant): callers add their own order after this one, and
+     * end it with {@link #VARIANT_ORDER}.
      */
     public static final Comparator<List<String>> BEST_BOUND = Comparator
             .<List<String>>comparingInt(row -> Integer.parseInt(row.get(FORWARD_MISMATCHES_COLUMN))
                     + Integer.parseInt(row.get(REVERSE_MISMATCHES_COLUMN)))
             .thenComparingInt(ConsolidatedReport::probeMismatches);
+
+    /**
+     * A last, arbitrary but fixed order among rows that differ only by which variant of a
+     * degenerate primer or probe they name, so that the same run always shows the same one.
+     */
+    public static final Comparator<List<String>> VARIANT_ORDER = Comparator
+            .<List<String>, String>comparing(row -> row.get(FORWARD_PRIMERS_COLUMN))
+            .thenComparing(row -> row.get(REVERSE_PRIMERS_COLUMN))
+            .thenComparing(ConsolidatedReport::probe);
 
     /**
      * Columns giving, per primer, the bases at its 5' end that do not pair with the

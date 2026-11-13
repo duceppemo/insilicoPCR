@@ -70,7 +70,7 @@ Releases before 0.9.0 ran the second baiting pass with the `-m` mismatch budget 
 
 ## An assay is negative in FASTQ mode but positive on an assembly
 
-A FASTQ-mode negative is weaker evidence than an assembly-mode one: the mini-assembly can miss the target region or break inside the amplicon. Since 0.10.0 such assays are, where the reads support them, called from the reads themselves (`FASTQ read-level call` in `report.tsv`), and products longer than a read are looked for by extending the reads (`FASTQ read-extension call`). Every missed assay whose oligos are in the reads is listed in `consolidated_report/report_fastq_diagnostics.tsv`, with the reason. See [FASTQ mode and false negatives](Reports#fastq-mode-and-false-negatives).
+A FASTQ-mode negative is weaker evidence than an assembly-mode one: the mini-assembly can miss the target region or break inside the amplicon. Since 0.10.0 such assays are, where the reads support them, called from the reads themselves (`FASTQ read-level call` in `report.tsv`), and since 0.13.0 products longer than a read are looked for by extending the reads (`FASTQ read-extension call`). Every missed assay whose oligos are in the reads is listed in `consolidated_report/report_fastq_diagnostics.tsv`, with the reason. See [FASTQ mode and false negatives](Reports#fastq-mode-and-false-negatives).
 
 These cases remain negative by design:
 

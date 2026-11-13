@@ -155,8 +155,14 @@ public final class QueryTemplates implements Function<BlastResult, TrimmedEnds.T
         /** The rest of a header line whose {@code >} was just read. */
         private String headerLine() throws IOException {
             StringBuilder header = new StringBuilder(">");
+            int file = fileIndex;
             int c;
             while ((c = read()) >= 0 && c != '\n' && c != '\r') {
+                if (fileIndex != file) {
+                    // The file ended without a line end: this character starts the next file.
+                    next--;
+                    break;
+                }
                 header.append((char) c);
             }
             atLineStart = true;

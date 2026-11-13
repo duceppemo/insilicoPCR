@@ -96,6 +96,10 @@ public final class FastqCheck {
             byte[] block = new byte[1 << 16];
             int read;
             while ((read = in.read(block)) >= 0) {
+                if (Thread.currentThread().isInterrupted()) {
+                    // The run was cancelled; the verdict will not be used.
+                    return new Result(Fault.UNREADABLE, scan.records, "the check was interrupted");
+                }
                 String problem = scan.accept(block, read);
                 if (problem != null) {
                     return scan.fault(problem);
@@ -259,6 +263,11 @@ public final class FastqCheck {
 
         /** The verdict once the last byte was read. */
         Result end() {
+            if (lineOpen && part == 3 && length < bases) {
+                // The last line stops short of its read's length, without a line end: cut off.
+                return new Result(Fault.TRUNCATED, records, String.format(Locale.ROOT,
+                        "it ends inside read %,d, after %s", records + 1, reads(records)));
+            }
             if (lineOpen) {
                 // Last line without a line end.
                 String problem = endLine();

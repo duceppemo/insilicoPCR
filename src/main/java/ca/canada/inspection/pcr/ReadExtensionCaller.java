@@ -440,7 +440,7 @@ public final class ReadExtensionCaller {
                 .min(ConsolidatedReport.BEST_BOUND
                         .thenComparingLong(row -> readNumber(row.get(ConsolidatedReport.CONTIG_COLUMN)))
                         .thenComparing(row -> row.get(ConsolidatedReport.LOCATION_COLUMN))
-                        .thenComparing(ConsolidatedReport::probe))
+                        .thenComparing(ConsolidatedReport.VARIANT_ORDER))
                 .orElseThrow();
         return new Product(assay, size, readsBySize.keySet(), forward.size(), forwardSeeds, reverse.size(),
                 reverseSeeds, best);

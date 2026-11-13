@@ -410,7 +410,7 @@ public final class ReadLevelCaller {
         List<String> best = rows.stream()
                 .min(ConsolidatedReport.BEST_BOUND
                         .thenComparing(row -> row.get(ConsolidatedReport.CONTIG_COLUMN))
-                        .thenComparing(ConsolidatedReport::probe))
+                        .thenComparing(ConsolidatedReport.VARIANT_ORDER))
                 .orElseThrow();
         return new ReadCall(assay, supporting.size(), informative.size(), elsewhere.size(), best, sizes,
                 evidence.minSupportFraction());

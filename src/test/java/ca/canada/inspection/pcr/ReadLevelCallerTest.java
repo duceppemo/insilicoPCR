@@ -401,4 +401,27 @@ class ReadLevelCallerTest {
         assertEquals(0, ConsolidatedReport.probeMismatches(row));
         assertEquals("read_1", row.get(ConsolidatedReport.CONTIG_COLUMN));
     }
+
+    @Test
+    void ofTwoPrimerVariantsThatBindAlikeTheSameOneIsAlwaysShown() {
+        // Both variants of a degenerate forward primer hit the read with no mismatch (the
+        // site lies in bases BLAST left out, say). The row must not depend on the order
+        // the hits are met in, which changes from one run to the next.
+        Map<String, String> primers = Map.of("deg-F_0", PRIMER_20, "deg-F_1", PRIMER_20, "deg-R", PRIMER_20);
+        for (List<String> order : List.of(List.of("deg-F_0", "deg-F_1"), List.of("deg-F_1", "deg-F_0"))) {
+            Sample reads = reads();
+            for (String read : List.of("read_1", "read_2")) {
+                for (String forward : order) {
+                    reads.addBlastResult(forward, TestHits.plusHit(forward, read, 11));
+                }
+                reads.addBlastResult("deg-R", TestHits.minusHit("deg-R", read, 61));
+            }
+            ReadEvidence evidence = ReadLevelCaller.evaluate(reads, Map.of("read_1", 101, "read_2", 101), primers,
+                    DEFAULTS);
+            List<String> row = evidence.products("deg").getFirst().row();
+
+            assertEquals("deg-F_0", row.get(ConsolidatedReport.FORWARD_PRIMERS_COLUMN));
+            assertEquals("read_1", row.get(ConsolidatedReport.CONTIG_COLUMN));
+        }
+    }
 }

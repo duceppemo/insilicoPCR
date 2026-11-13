@@ -31,7 +31,8 @@ public final class CommandMain {
 				config.gel(),
 				config.tadpole(),
 				config.readMinFraction(),
-				config.readExtension()
+				config.readExtension(),
+				config.inputCheck()
 		));
 	}
 

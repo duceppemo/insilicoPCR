@@ -66,18 +66,39 @@ if [[ "$(products "$READS_REPORT")" != "$EXPECTED_PRODUCTS" ]]; then
   exit 1
 fi
 
-echo "== a search that fails ends the run with a message"
+echo "== faulty input files are named and left out, the others are run"
 mkdir -p "$WORK/broken"
-printf '>only_a_header\n' > "$WORK/broken/broken.fasta"
+cp "$EXAMPLE/genomes/isolate_03.fasta" "$WORK/broken/"
+printf '>only_a_header\n' > "$WORK/broken/headers.fasta"
+printf '' | gzip > "$WORK/broken/nolibrary_R1.fastq.gz"
+printf '' | gzip > "$WORK/broken/nolibrary_R2.fastq.gz"
+# A download that stopped early: the first 5000 bytes of a gzipped FASTQ file.
+head -c 5000 "$EXAMPLE/reads/isolate_01_R1.fastq.gz" > "$WORK/broken/cutshort_R1.fastq.gz"
+cp "$EXAMPLE/reads/isolate_01_R2.fastq.gz" "$WORK/broken/cutshort_R2.fastq.gz"
 set +e
-"$JAVA" -jar "$JAR" -i "$WORK/broken" -p "$EXAMPLE/primers.fasta" -o "$WORK/broken-results" -t 1 \
+"$JAVA" -jar "$JAR" -i "$WORK/broken" -p "$EXAMPLE/primers.fasta" -o "$WORK/broken-results" -t 2 \
   > "$WORK/broken.log" 2>&1
 CODE=$?
 set -e
-if [[ "$CODE" -ne 1 ]] || ! grep -q '^Error: BLAST failed' "$WORK/broken.log"; then
+fail_broken() {
   cat "$WORK/broken.log" >&2
-  echo "FAIL: expected exit code 1 and an 'Error: BLAST failed' line, got exit code $CODE" >&2
+  echo "FAIL: $1" >&2
   exit 1
+}
+[[ "$CODE" -eq 0 ]] || fail_broken "expected exit code 0, got $CODE"
+for EXPECTED in \
+  'Warning: headers.fasta: the file holds no sequence' \
+  'Warning: nolibrary_R1.fastq.gz: the file holds no read' \
+  'Warning: nolibrary_R2.fastq.gz: the file holds no read' \
+  'Warning: cutshort_R1.fastq.gz: the file cannot be read (the gzip stream ends early'; do
+  grep -qF "$EXPECTED" "$WORK/broken.log" || fail_broken "no line starting with: $EXPECTED"
+done
+BROKEN_REPORT="$WORK/broken-results/consolidated_report/report.tsv"
+if [[ "$(products "$BROKEN_REPORT")" != "isolate_03 toxA 312 target" ]]; then
+  products "$BROKEN_REPORT" >&2
+  fail_broken "the sample with good files should be the only one reported, as: isolate_03 toxA 312 target"
 fi
+LEFT_OUT="$(tr -d '\r' < "$WORK/broken-results/QAlog.txt" | grep -c '^Sample not analysed: ' || true)"
+[[ "$LEFT_OUT" -eq 3 ]] || fail_broken "QAlog.txt should name 3 samples not analysed, it names $LEFT_OUT"
 
 echo "Smoke test passed: $(basename "$ZIP")"

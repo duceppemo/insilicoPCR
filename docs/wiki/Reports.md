@@ -30,6 +30,7 @@ for that assay. The genomes, the primer file and the report of this run are in t
 | Section | What it shows |
 |---|---|
 | Summary | Number of samples, assays and amplicons, and how many sample/assay pairs fall in each outcome below |
+| Input not analysed | Only when a file given for a sample is faulty (since 0.13.0): the sample, the file and what is wrong with it. Such a sample is in no other section, as nothing was run on it. See [Input check](Running-Analyses#input-check) |
 | Samples by assay | One row per sample, one column per assay, and in each cell the outcome with the product size in bp. Samples without any product are listed too. Each column head gives the number of positive samples. Click a cell to list its amplicons |
 | By assay | Per assay: the sizes it declares, how many samples are positive, and their names |
 | All amplicons | Every row of the TSV, with a filter box |

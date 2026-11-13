@@ -1,7 +1,9 @@
 package ca.canada.inspection.pipeline;
 
 import ca.canada.inspection.insilicopcr.Sample;
+import ca.canada.inspection.util.InputCheck;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -25,7 +27,11 @@ public final class InSilicoPcrPipeline {
 
         RuntimeDependencies dependencies = RuntimeDependencies.discover();
         PipelineDirectories directories = PipelineDirectories.create(config.output());
-        Map<String, Sample> sampleMap = samples.load(config);
+        System.out.println("Checking the input files (" + (config.inputCheck() == InputCheck.Depth.FULL
+                ? "every read; --input-check quick reads the first one only" : "first read only") + ")");
+        InputCheck.Result checked = samples.check(config);
+        checked.warnings().forEach(line -> System.err.println("Warning: " + line));
+        Map<String, Sample> sampleMap = new LinkedHashMap<>(checked.samples());
         PrimerService.PreparedPrimers prepared = primers.loadAndPrepare(config, directories);
 
         PipelineContext context = new PipelineContext(
@@ -35,7 +41,8 @@ public final class InSilicoPcrPipeline {
                 sampleMap,
                 prepared.primers(),
                 prepared.expectedSizes(),
-                ChildJavaMemory.recommendedGiB()
+                ChildJavaMemory.recommendedGiB(),
+                checked.issues()
         );
 
         logRuntime(context);

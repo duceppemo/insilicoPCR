@@ -9,6 +9,7 @@ import ca.canada.inspection.pcr.ConsolidatedReport;
 import ca.canada.inspection.pcr.HtmlReport;
 import ca.canada.inspection.pcr.ReadExtensionCaller;
 import ca.canada.inspection.pcr.ReadLevelCaller.ReadEvidence;
+import ca.canada.inspection.util.InputCheck;
 import javafx.concurrent.Task;
 
 import java.io.IOException;
@@ -47,7 +48,10 @@ public final class PcrPipelineTask extends Task<Void> {
             Methods.logMessage(config.outputField(), "Created Directories");
             updateProgress(2, 13);
 
-            HashMap<String, Sample> sampleDict = Methods.createSampleDict(config.inputFile());
+            Methods.logMessage(config.outputField(), "Checking the input files (every read)");
+            InputCheck.Result checked = InputCheck.scan(config.inputFile(), InputCheck.Depth.FULL, config.threads());
+            checked.warnings().forEach(line -> Methods.logMessage(config.outputField(), "Warning: " + line));
+            HashMap<String, Sample> sampleDict = new HashMap<>(checked.samples());
             Methods.logMessage(config.outputField(), "Created Sample Dictionary");
             updateProgress(3, 13);
 
@@ -135,14 +139,16 @@ public final class PcrPipelineTask extends Task<Void> {
                     primerDict, primerFile.expectedSizes(), diagnostics.findings(),
                     RunDetails.of(Dispatcher.VERSION, config.inputFile(), config.primerFile(), config.outDir(),
                             config.ampliconOptions(), fastqPresent ? config.readMinFraction() : null,
-                            config.readExtension()));
+                            config.readExtension()),
+                    checked.issues());
             Methods.logMessage(config.outputField(), "Created HTML Report: " + html);
             updateProgress(12, 13);
 
             // Rewritten each run, like the command line: an output folder reused by several
             // runs must not keep the first run's header with every later run's FASTQ lines.
             LogFiles.writeQaLog(config.outDir(), config.inputFile(), config.primerFile(), dependencies);
-            List<String> qaLines = new ArrayList<>(primerFile.expectedSizes().qaLogLines());
+            List<String> qaLines = new ArrayList<>(RunDetails.inputIssueLines(checked.issues()));
+            qaLines.addAll(primerFile.expectedSizes().qaLogLines());
             qaLines.addAll(diagnostics.qaLogLines(config.tadpole(), config.readMinFraction(),
                     config.readExtension()));
             LogFiles.appendQaLog(config.outDir(), qaLines);

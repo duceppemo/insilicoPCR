@@ -2,7 +2,6 @@ package ca.canada.inspection.pipeline;
 
 import ca.canada.inspection.insilicopcr.Methods;
 
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -23,21 +22,8 @@ public final class InputValidator {
             if (Methods.noFastaFile(inputFile)) {
                 return "Input directory must contain at least one valid fastq/fasta file";
             }
-            try (var files = Files.list(inputFile)) {
-                var invalid = files
-                        .filter(path -> !Files.isDirectory(path))
-                        .filter(path -> path.getFileName() != null)
-                        .filter(path -> {
-                            var name = path.getFileName().toString();
-                            return name.contains(".fasta") || name.contains(".fna") || name.contains(".ffn") || name.contains(".fastq");
-                        })
-                        .anyMatch(path -> !Methods.verifyFastaFormat(path));
-                if (invalid) {
-                    return "Input directory contains non-fastq/fasta format files";
-                }
-            } catch (IOException e) {
-                return "Unable to read input directory: " + e.getMessage();
-            }
+            // A faulty file among good ones does not stop the run: the run names it, leaves
+            // its sample out and analyses the others (InputCheck).
         }
         return "";
     }

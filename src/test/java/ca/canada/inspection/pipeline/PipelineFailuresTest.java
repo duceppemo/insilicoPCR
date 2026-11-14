@@ -32,8 +32,9 @@ class PipelineFailuresTest {
     void aQaLogThatCannotBeWrittenIsForTheUser() throws IOException {
         Path notAFolder = Files.writeString(directory.resolve("results"), "a file where the folder should go");
 
-        PipelineException error = assertThrows(PipelineException.class, () -> QaLogWriter.write(notAFolder, "0.0.0",
-                directory, directory, directory.resolve("primers.fasta"), directory, List.of()));
+        PipelineContext context = TestContexts.writingTo(notAFolder, java.util.Map.of());
+        PipelineException error = assertThrows(PipelineException.class, () -> QaLogWriter.write(context, "0.0.0",
+                notAFolder.resolve("report.tsv"), List.of()));
 
         assertEquals("Could not write QA log: " + notAFolder.resolve("QAlog.txt"), error.getMessage());
         assertTrue(RunFailure.isForTheUser(error));

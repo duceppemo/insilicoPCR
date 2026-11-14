@@ -31,7 +31,11 @@ public final class InSilicoPcrPipeline {
         this.monitor = Objects.requireNonNull(monitor, "monitor");
     }
 
-    public void run() {
+    /**
+     * Runs every step. {@code QAlog.txt} is written at the end, so a run that fails or is
+     * cancelled leaves the log of the last finished run in the folder, with the report it names.
+     */
+    public RunResult run() {
         long startTime = System.nanoTime();
         monitor.info("Beginning Program Run");
         RuntimeDependencies dependencies = RuntimeDependencies.discover();
@@ -85,11 +89,12 @@ public final class InSilicoPcrPipeline {
         }
         monitor.stepDone(Step.READ_EXTENSION);
 
-        ReportGenerator.write(context, readEvidence, extension);
+        RunResult result = ReportGenerator.write(context, readEvidence, extension);
         monitor.stepDone(Step.REPORTS);
 
         long seconds = TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - startTime);
         monitor.info("Done in " + seconds + " seconds");
+        return result;
     }
 
     private static void logRuntime(PipelineContext context) {

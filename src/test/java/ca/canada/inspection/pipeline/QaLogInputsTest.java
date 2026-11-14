@@ -69,23 +69,6 @@ class QaLogInputsTest {
     }
 
     @Test
-    void theRunSectionIsSeparatedFromTheInputs() throws IOException {
-        Path input = Files.createDirectory(dir.resolve("reads"));
-        Files.writeString(input.resolve("S_R1.fastq.gz"), "");
-        Files.writeString(input.resolve("S_R2.fastq.gz"), "");
-        QaLogWriter.write(dir, "0.0.0", Path.of("/bbmap"), Path.of("/blast"), Path.of("/primers.fasta"), input,
-                List.of("FASTQ mode Tadpole settings: k=31", "FASTQ mode diagnostics: x.tsv"));
-
-        List<String> lines = Files.readAllLines(dir.resolve("QAlog.txt"));
-        int inputs = lines.indexOf("Input File(s) :");
-        assertEquals(input.resolve("S_R2.fastq.gz").toString(), lines.get(inputs + 2));
-        assertEquals("", lines.get(inputs + 3));
-        assertEquals("FASTQ mode Tadpole settings: k=31", lines.get(inputs + 4));
-        assertEquals(List.of(input.resolve("S_R1.fastq.gz").toString(), input.resolve("S_R2.fastq.gz").toString()),
-                QaLogInputs.read(dir.resolve("QAlog.txt")));
-    }
-
-    @Test
     void samplesLeftOutForAFaultyFileAreReadBackFromTheLog() throws IOException {
         // Their files are in the input list, but they are not samples without a product.
         List<String> section = RunDetails.inputIssueLines(List.of(

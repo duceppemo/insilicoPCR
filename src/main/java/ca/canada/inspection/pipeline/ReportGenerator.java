@@ -28,8 +28,8 @@ public final class ReportGenerator {
      * @param readEvidence what the read-level search found, per FASTQ sample; empty without one
      * @param extension    what extending reads found; {@link ReadExtensionStage.Result#NONE} when not run
      */
-    public static void write(PipelineContext context, Map<String, ReadEvidence> readEvidence,
-                             ReadExtensionStage.Result extension) {
+    public static RunResult write(PipelineContext context, Map<String, ReadEvidence> readEvidence,
+                                  ReadExtensionStage.Result extension) {
         RunMonitor monitor = context.monitor();
         Path report = ConsolidatedReport.write(context.directories().consolidated(), context.samples(),
                 context.primers(), context.config().ampliconOptions(),
@@ -58,7 +58,8 @@ public final class ReportGenerator {
         qaLines.addAll(diagnostics.qaLogLines(context.config().tadpole(), context.config().readMinFraction(),
                 context.config().readExtension()));
         splits.forEach(split -> qaLines.add("Primers at contig ends: " + split.message()));
-        QaLogWriter.write(context, Version.VERSION, qaLines);
+        QaLogWriter.write(context, Version.VERSION, report, qaLines);
+        return new RunResult(report, html, List.copyOf(context.samples().keySet()));
     }
 
     /** Assays of the assembly samples with no product whose primers point off contig ends. */

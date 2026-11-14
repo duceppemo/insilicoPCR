@@ -15,8 +15,11 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 
-/** Reads the input-file list back from a run's QAlog.txt (used to reopen a previous run). */
-public final class QaLogInputs {
+/**
+ * Reads the samples of a run back from the input-file list of a {@code QAlog.txt} written
+ * before 0.15.1, which names no sample (see {@link PreviousRun}).
+ */
+final class QaLogInputs {
     static final String INPUTS_MARKER = "Input File(s) :";
     /** Lines written after the input list since 0.10.0; logs from 0.10.0 have no blank line before them. */
     private static final String FASTQ_SECTION_PREFIX = "FASTQ mode";
@@ -32,7 +35,7 @@ public final class QaLogInputs {
      *         are in the input list all the same, but nothing was run on them: they are not
      *         samples without a product.
      */
-    public static Set<String> samplesNotAnalysed(Path qaLog) {
+    static Set<String> samplesNotAnalysed(Path qaLog) {
         Set<String> samples = new TreeSet<>();
         try {
             for (String line : Files.readAllLines(qaLog, StandardCharsets.UTF_8)) {
@@ -50,7 +53,7 @@ public final class QaLogInputs {
      * @return the input paths listed after {@code Input File(s) :}, up to the first blank
      *         line or FASTQ-mode line, in file order
      */
-    public static List<String> read(Path qaLog) {
+    static List<String> read(Path qaLog) {
         List<String> inputs = new ArrayList<>();
         boolean readingInputs = false;
         try {
@@ -78,7 +81,7 @@ public final class QaLogInputs {
      * mates are paired using the logged list itself, so the names stay right after the
      * input files have been moved or deleted.
      */
-    public static Set<String> sampleNames(List<String> inputs) {
+    static Set<String> sampleNames(List<String> inputs) {
         Map<String, Set<String>> namesByFolder = new HashMap<>();
         List<Path> sequenceFiles = new ArrayList<>();
         for (String input : inputs) {

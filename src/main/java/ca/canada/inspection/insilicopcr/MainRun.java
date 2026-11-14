@@ -3,20 +3,15 @@ package ca.canada.inspection.insilicopcr;
 import ca.canada.inspection.util.Version;
 import ca.canada.inspection.gel.PaginatedGelViewer;
 import ca.canada.inspection.pcr.AmpliconOptions;
-import ca.canada.inspection.report.HtmlReport;
 import ca.canada.inspection.insilicopcr.ui.AmpliconSettingsDialog;
 import ca.canada.inspection.insilicopcr.ui.AmpliconSettingsDialog.AmpliconSettings;
 import ca.canada.inspection.insilicopcr.ui.FastqSettingsDialog;
 import ca.canada.inspection.insilicopcr.ui.FastqSettingsDialog.FastqSettings;
 import ca.canada.inspection.insilicopcr.ui.PathFieldBinder;
-import ca.canada.inspection.pipeline.ExternalProcessTracker;
 import ca.canada.inspection.pipeline.InputValidator;
-import ca.canada.inspection.pipeline.LogFiles;
-import ca.canada.inspection.pipeline.PcrPipelineTask;
 import ca.canada.inspection.pipeline.PipelineConfig;
-import ca.canada.inspection.pipeline.QaLogInputs;
-import ca.canada.inspection.pipeline.RunFailure;
-import ca.canada.inspection.pipeline.RuntimeDependencies;
+import ca.canada.inspection.pipeline.PreviousRun;
+import ca.canada.inspection.pipeline.RunResult;
 import ca.canada.inspection.util.InputCheck;
 import javafx.application.Application;
 import javafx.application.Platform;
@@ -46,17 +41,11 @@ import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.io.StringWriter;
-import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
-import java.util.Set;
-import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class MainRun extends Application {
@@ -75,14 +64,15 @@ public class MainRun extends Application {
     private Scene scene;
     private Stage primaryStage;
 
-    private final ExternalProcessTracker processTracker = new ExternalProcessTracker();
+    /** How long closing the window waits for a cancelled run to stop and write its log. */
+    private static final Duration CLOSE_WAIT = Duration.ofSeconds(20);
+
     private final AtomicBoolean currentlyRunning = new AtomicBoolean(false);
     private PcrPipelineTask runningTask;
+    private Thread runningThread;
     private FastqSettings fastqSettings = FastqSettings.DEFAULTS;
-    /** Paths of the last run started; the fields may have been edited since. */
-    private Path lastRunInput;
-    private Path lastRunPrimer;
-    private Path lastRunOutDir;
+    /** What the last finished run wrote; {@code null} before one finishes. */
+    private RunResult lastResult;
     private AmpliconSettings ampliconSettings = AmpliconSettings.DEFAULTS;
 
     @Override
@@ -373,9 +363,7 @@ public class MainRun extends Application {
         mainProgress.setProgress(ProgressBar.INDETERMINATE_PROGRESS);
         blastProgress.setProgress(ProgressBar.INDETERMINATE_PROGRESS);
 
-        lastRunInput = inputFile;
-        lastRunPrimer = primerFile;
-        lastRunOutDir = outDir;
+        lastResult = null;
         // The window has its own gel viewer, and checks every read as the command line does
         // by default.
         var config = new PipelineConfig(
@@ -392,7 +380,7 @@ public class MainRun extends Application {
                 InputCheck.Depth.FULL
         );
 
-        runningTask = new PcrPipelineTask(config, outputField, blastProgress, processTracker);
+        runningTask = new PcrPipelineTask(config, outputField, blastProgress);
         mainProgress.progressProperty().bind(runningTask.progressProperty());
         runningTask.setOnCancelled(event -> {
             currentlyRunning.set(false);
@@ -400,6 +388,7 @@ public class MainRun extends Application {
             showProgressBars(false);
         });
         runningTask.setOnSucceeded(event -> {
+            lastResult = runningTask.getValue();
             runButton.setDisable(false);
             currentlyRunning.set(false);
             gelButton.setDisable(false);
@@ -412,29 +401,14 @@ public class MainRun extends Application {
             gelButton.setDisable(true);
             htmlButton.setDisable(true);
             showProgressBars(false);
-
-            Throwable error = runningTask.getException();
-            if (error == null) {
-                logMessage("Run failed");
-                return;
-            }
-
-            // The console always gets the stack trace. The window gets the message of a
-            // failure the user can act on, and the stack trace of anything else (a bug).
-            error.printStackTrace();
-
-            if (RunFailure.isForTheUser(error)) {
-                logMessage("Run failed\n" + String.join("\n", RunFailure.lines(error)));
-                return;
-            }
-            StringWriter sw = new StringWriter();
-            error.printStackTrace(new PrintWriter(sw));
-            logMessage("Run failed:\n" + sw);
+            // The task has shown why, and written it to log.txt.
         });
 
-        var thread = new Thread(runningTask, "insilico-pcr-run");
-        thread.setDaemon(true);
-        thread.start();
+        // A daemon: a run that does not stop within CLOSE_WAIT of the window closing does
+        // not keep the program running.
+        runningThread = new Thread(runningTask, "insilico-pcr-run");
+        runningThread.setDaemon(true);
+        runningThread.start();
     }
 
     private void showProgressBars(boolean visible) {
@@ -445,16 +419,9 @@ public class MainRun extends Application {
     }
 
     private boolean confirmClose() {
-        // Logs belong to the last run started, in the folder it used: the path fields
-        // may since hold another, half-typed or mistyped path. No run, no logs.
-        if (lastRunOutDir == null) {
-            Platform.exit();
-            return true;
-        }
-
         if (currentlyRunning.get()) {
             Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
-                    "Are you sure you want to exit? If the program is running, output may become corrupted",
+                    "Are you sure you want to exit? The run will be stopped.",
                     ButtonType.OK, ButtonType.CANCEL);
             confirm.initOwner(primaryStage);
             confirm.setTitle("Exit InSilico PCR");
@@ -462,20 +429,17 @@ public class MainRun extends Application {
             if (confirm.showAndWait().orElse(ButtonType.CANCEL) != ButtonType.OK) {
                 return false;
             }
-            if (runningTask != null) {
-                // Cancel first so no stage starts a new process, then kill the running ones.
-                runningTask.cancel(true);
-                runningTask.shutdownNow();
+            // Stops the run and its programs; the run then writes its log.txt and ends.
+            runningTask.cancel(true);
+            try {
+                if (!runningThread.join(CLOSE_WAIT)) {
+                    System.err.println("The run did not stop within " + CLOSE_WAIT.toSeconds()
+                            + " seconds of the window closing; its log.txt may be incomplete.");
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
             }
         }
-
-        try {
-            LogFiles.ensureQaLog(lastRunOutDir, lastRunInput, lastRunPrimer, RuntimeDependencies.discover());
-            LogFiles.appendRunLog(lastRunOutDir, outputField.getText());
-        } catch (RuntimeException e) {
-            logMessage("Unable to write shutdown logs: " + e.getMessage());
-        }
-
         Platform.exit();
         return true;
     }
@@ -494,7 +458,7 @@ public class MainRun extends Application {
 
     private void displayGelImage() {
         try {
-            PaginatedGelViewer.show(scene, latestConsolidatedReport(), List.of());
+            PaginatedGelViewer.show(scene, finishedRun().report(), finishedRun().samples());
         } catch (Exception e) {
             showError("Unable to create gel image:\n" + e.getMessage());
         }
@@ -503,7 +467,7 @@ public class MainRun extends Application {
     /** Opens the last run's HTML report in the system browser. */
     private void viewHtmlReport() {
         try {
-            Path html = HtmlReport.pathFor(latestConsolidatedReport());
+            Path html = finishedRun().html();
             if (!Files.isRegularFile(html)) {
                 throw new IllegalStateException("HTML report not found: " + html);
             }
@@ -511,6 +475,14 @@ public class MainRun extends Application {
         } catch (Exception e) {
             showError("Unable to open the HTML report:\n" + e.getMessage());
         }
+    }
+
+    /** The last run of this window that finished; the buttons that need one are disabled before. */
+    private RunResult finishedRun() {
+        if (lastResult == null) {
+            throw new IllegalStateException("No run has finished in this window.");
+        }
+        return lastResult;
     }
 
     private void openPreviousRun() {
@@ -525,9 +497,8 @@ public class MainRun extends Application {
         }
 
         try {
-            Path runDir = selected.toPath();
-            Path report = latestConsolidatedReport(runDir);
-            PaginatedGelViewer.show(scene, report, samplesFromQaLog(runDir.resolve("QAlog.txt")));
+            PreviousRun run = PreviousRun.open(selected.toPath());
+            PaginatedGelViewer.show(scene, run.report(), run.samples());
         } catch (Exception e) {
             showError("Unable to open previous run:\n" + e.getMessage());
         }
@@ -552,60 +523,8 @@ public class MainRun extends Application {
         }
     }
 
-    /** The last run's report: the output field may have been edited since the run. */
-    private Path latestConsolidatedReport() {
-        if (lastRunOutDir == null) {
-            throw new IllegalStateException("No run has been started in this window.");
-        }
-        return latestConsolidatedReport(lastRunOutDir);
-    }
-
-    private Path latestConsolidatedReport(Path runDir) {
-        Path reportDir = runDir.resolve("consolidated_report");
-        if (!Files.isDirectory(reportDir)) {
-            throw new IllegalStateException("Consolidated report directory not found: " + reportDir);
-        }
-
-        try (var reports = Files.list(reportDir)) {
-            return reports
-                    .filter(Files::isRegularFile)
-                    .filter(path -> path.getFileName().toString().matches("report(\\(\\d+\\))?\\.tsv"))
-                    .max(Comparator.comparingLong(this::lastModifiedMillis))
-                    .orElseThrow(() -> new IllegalStateException("No consolidated report TSV found in: " + reportDir));
-        } catch (IOException e) {
-            throw new UncheckedIOException("Unable to list consolidated reports in: " + reportDir, e);
-        }
-    }
-
-    /** The samples a past run analysed: the gel's lanes, with or without a band. */
-    private static Set<String> samplesFromQaLog(Path qaLog) {
-        if (!Files.isRegularFile(qaLog)) {
-            throw new IllegalStateException("QAlog.txt not found: " + qaLog);
-        }
-        Set<String> samples = new TreeSet<>(QaLogInputs.sampleNames(QaLogInputs.read(qaLog)));
-        // A sample left out for a faulty file is not a lane without a band.
-        samples.removeAll(QaLogInputs.samplesNotAnalysed(qaLog));
-        if (samples.isEmpty()) {
-            throw new IllegalStateException("No input samples were found in QAlog.txt: " + qaLog);
-        }
-        return samples;
-    }
-
-    private long lastModifiedMillis(Path path) {
-        try {
-            return Files.getLastModifiedTime(path).toMillis();
-        } catch (IOException e) {
-            throw new UncheckedIOException("Unable to read modification time for: " + path, e);
-        }
-    }
-
     public static void main(String[] args) {
         Application.launch(MainRun.class);
-    }
-
-    /** Appends a message to the run log, from any thread. */
-    private void logMessage(String message) {
-        Platform.runLater(() -> outputField.appendText("\n" + message + "\n"));
     }
 
     /** An error message in a dialog owned by the window. */

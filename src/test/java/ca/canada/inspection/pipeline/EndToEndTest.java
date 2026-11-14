@@ -79,9 +79,13 @@ class EndToEndTest {
         }
         Path output = directory.resolve("results");
 
-        new InSilicoPcrPipeline(config(genomes, output)).run();
+        RunResult result = new InSilicoPcrPipeline(config(genomes, output)).run();
 
         assertEquals(lines(EXAMPLE.resolve("report.tsv")), lines(report(output)));
+        assertEquals(report(output), result.report());
+        assertEquals(output.resolve("consolidated_report").resolve("report.html"), result.html());
+        assertEquals(List.of("isolate_01", "isolate_02", "isolate_03", "isolate_04", "isolate_05"), result.samples());
+        assertEquals(result.samples(), PreviousRun.open(output).samples());
         assertTrue(Files.size(output.resolve("consolidated_report").resolve("report.html")) > 0);
         assertTrue(Files.readString(output.resolve("QAlog.txt")).contains("isolate_05.fasta"));
         assertFalse(Files.readString(output.resolve("QAlog.txt")).contains("Primers at contig ends"));

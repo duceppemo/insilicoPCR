@@ -31,6 +31,14 @@ class ParallelStageRunnerTest {
     }
 
     @Test
+    void itemsRunOnDaemonThreads() {
+        // Work in flight when the window closes must not keep the program running.
+        List<Boolean> daemon = Collections.synchronizedList(new ArrayList<>());
+        ParallelStageRunner.run("Test", List.of(1, 2, 3), 2, item -> daemon.add(Thread.currentThread().isDaemon()));
+        assertEquals(List.of(true, true, true), daemon);
+    }
+
+    @Test
     void noItemsIsNothingToDo() {
         ParallelStageRunner.run("Test", List.<String>of(), 4, item -> {
             throw new AssertionError("ran");

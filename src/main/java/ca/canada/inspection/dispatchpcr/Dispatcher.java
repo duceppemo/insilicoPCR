@@ -18,7 +18,7 @@ import java.io.PrintWriter;
 
 public final class Dispatcher {
 
-    public static final String VERSION = "0.13.0";
+    public static final String VERSION = "0.14.0";
 
     /**
      * Compatibility alias for older code paths and release branches.

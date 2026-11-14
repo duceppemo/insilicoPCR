@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.14.0 (2026-11-13)
 
 ### Changed
 
@@ -24,10 +24,10 @@
   threads and memory, from the step that ran out. If it runs out alone too,
   the run stops with `<program> ran out of memory on sample <name>` and says
   to raise `-Xmx` (or, at the 64 GB cap, that more does not help), instead of
-  `failed with exit code 1`. When the read extension runs out of memory, its warning says so. BBTools programs now
-  run with `-XX:+ExitOnOutOfMemoryError`, so running out of memory in any of
-  their threads stops them (exit code 3) rather than possibly leaving them
-  running on without that thread's work.
+  `failed with exit code 1`. When the read extension runs out of memory, its
+  warning says so. BBTools programs now run with `-XX:+ExitOnOutOfMemoryError`,
+  so running out of memory in any of their threads stops them (exit code 3)
+  rather than possibly leaving them running on without that thread's work.
 - A failed BLAST+ or BBTools command is reported as
   `<program> failed with exit code <n>: <command line>`, from the command line
   and from the application alike.

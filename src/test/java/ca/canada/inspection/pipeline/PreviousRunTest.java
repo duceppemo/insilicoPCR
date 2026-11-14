@@ -118,4 +118,34 @@ class PreviousRunTest {
         PipelineException noReport = assertThrows(PipelineException.class, () -> PreviousRun.open(output));
         assertEquals("The report of the run in " + output + " is missing: " + report, noReport.getMessage());
     }
+
+    @Test
+    void aLogWrittenBefore0151WithoutItsReportsOrSamplesIsAMessage() throws IOException {
+        Path run = Files.createDirectories(dir.resolve("old"));
+        Path log = Files.writeString(run.resolve("QAlog.txt"), "In Silico PCR version: 0.15.0\nInput File(s) :\n"
+                + "/gone/notes.txt\n");
+
+        PipelineException noFolder = assertThrows(PipelineException.class, () -> PreviousRun.open(run));
+        assertEquals("Consolidated report folder not found: " + run.resolve("consolidated_report"), noFolder.getMessage());
+
+        Files.createDirectories(run.resolve("consolidated_report"));
+        PipelineException noReport = assertThrows(PipelineException.class, () -> PreviousRun.open(run));
+        assertEquals("No consolidated report found in " + run.resolve("consolidated_report"), noReport.getMessage());
+
+        Files.writeString(run.resolve("consolidated_report").resolve("report.tsv"), "Sample\n");
+        PipelineException noSample = assertThrows(PipelineException.class, () -> PreviousRun.open(run));
+        assertEquals("No input samples were found in " + log, noSample.getMessage());
+    }
+
+    @Test
+    void aReportOutsideTheOutputFolderIsNamedInFull() throws IOException {
+        output = Files.createDirectories(dir.resolve("results"));
+        reads = Files.createDirectories(dir.resolve("reads"));
+        Path elsewhere = Files.writeString(dir.resolve("report.tsv"), "Sample\n");
+
+        QaLogWriter.write(TestContexts.writingTo(output, Map.of()), "0.0.0", elsewhere, List.of());
+
+        assertEquals(elsewhere, PreviousRun.open(output).report());
+        assertEquals(List.of(), PreviousRun.open(output).samples());
+    }
 }

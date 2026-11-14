@@ -14,7 +14,6 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.function.IntBinaryOperator;
 import java.util.zip.DeflaterOutputStream;
 
 /** Pictures of the synthetic gel as PNG and PDF files, and their default names. */
@@ -60,11 +59,11 @@ final class GelImages {
      * Image from ARGB pixels. With {@code whiteBackground}, an opaque RGB image in which every
      * pixel that is not fully opaque becomes white; otherwise an ARGB image.
      */
-    static BufferedImage toBufferedImage(int width, int height, IntBinaryOperator argbAt, boolean whiteBackground) {
+    static BufferedImage toBufferedImage(int width, int height, PixelSource argbAt, boolean whiteBackground) {
         BufferedImage buffered = new BufferedImage(width, height, whiteBackground ? BufferedImage.TYPE_INT_RGB : BufferedImage.TYPE_INT_ARGB);
         for (int y = 0; y < height; y++) {
             for (int x = 0; x < width; x++) {
-                int argb = argbAt.applyAsInt(x, y);
+                int argb = argbAt.argbAt(x, y);
                 if (whiteBackground && ((argb >>> 24) & 0xff) < 255) {
                     argb = 0xffffffff;
                 }
@@ -72,6 +71,12 @@ final class GelImages {
             }
         }
         return buffered;
+    }
+
+    /** ARGB colour of the pixel in column {@code x}, row {@code y}. */
+    @FunctionalInterface
+    interface PixelSource {
+        int argbAt(int x, int y);
     }
 
     /** Writes a PNG, creating the parent folder if needed. */

@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1180" height="802" viewBox="0 0 1180 802" role="img" aria-labelledby="title desc">
   <title id="title">Where insilicoPCR can miss a product</title>
-  <desc id="desc">Six cases where insilicoPCR reports less than a real PCR would: a fragmented assembly with the primers on different contigs; in FASTQ mode, a long repeat inside the product, too few reads carrying the primers, too few read pairs to confirm an extended product, and a product in a minority of the reads; and what is not simulated (temperatures, dimers and hairpins, efficiency, multiplex competition). Each case gives the status the diagnostics report and what to do.</desc>
+  <desc id="desc">Six cases where insilicoPCR reports less than a real PCR would: a fragmented assembly with the primers on different contigs, which is warned about; in FASTQ mode, a long repeat inside the product, too few reads carrying the primers, too few read pairs to confirm an extended product, and a product in a minority of the reads; and what is not simulated (temperatures, dimers and hairpins, efficiency, multiplex competition). Each case gives the status the diagnostics report and what to do.</desc>
   <defs>
     <filter id="shadow" x="-20%" y="-20%" width="140%" height="160%">
       <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#0F172A" flood-opacity="0.12"/>
@@ -39,11 +39,12 @@
 <line x1="152" y1="208" x2="282" y2="208" stroke="#E11D48" stroke-width="2" stroke-linecap="round" stroke-dasharray="5 4"/>
 <line x1="210" y1="201" x2="224" y2="215" stroke="#E11D48" stroke-width="3.2" stroke-linecap="round" />
 <line x1="210" y1="215" x2="224" y2="201" stroke="#E11D48" stroke-width="3.2" stroke-linecap="round" />
-<rect x="56" y="312" width="321" height="30" rx="8" fill="#FFF1F2"/>
-<text x="68" y="332" class="verdict" text-anchor="start">No product</text>
-<text x="60" y="368" class="small" text-anchor="start">The primers bind on different contigs, and</text>
-<text x="60" y="387" class="small" text-anchor="start">a product is called on one contig only.</text>
-<text x="60" y="406" class="small" text-anchor="start">Use a more complete assembly, or the reads.</text>
+<rect x="56" y="312" width="321" height="48" rx="8" fill="#FFF1F2"/>
+<text x="68" y="332" class="verdict" text-anchor="start">No product, warned</text>
+<text x="68" y="351" class="code" text-anchor="start">Primers at contig ends</text>
+<text x="60" y="384" class="small" text-anchor="start">The primers point off the ends of two contigs</text>
+<text x="60" y="403" class="small" text-anchor="start">(or both ends of a circular one): a product is</text>
+<text x="60" y="422" class="small" text-anchor="start">called on one contig only. Use a better assembly.</text>
 <g filter="url(#shadow)">
 <rect x="413" y="118" width="353" height="320" rx="18" class="card"/>
 </g>

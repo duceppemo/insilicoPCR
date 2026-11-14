@@ -256,16 +256,16 @@ public final class ReadExtensionCaller {
      *
      * @param sample FASTQ sample with its accepted contig hits attached
      * @param reads  read-level evidence for the sample
-     * @param sizes  product sizes declared in the primer file
      */
-    public static List<String> candidates(Sample sample, Map<String, String> primers, AmpliconOptions options,
-                                          ReadEvidence reads, Mode mode, ExpectedSizes sizes) {
+    public static List<String> candidates(Sample sample, PrimerPanel primers, AmpliconOptions options,
+                                          ReadEvidence reads, Mode mode) {
+        ExpectedSizes sizes = primers.expectedSizes();
         if (mode == Mode.OFF) {
             return List.of();
         }
         Map<String, Set<Integer>> known = knownSizes(sample, primers, options, reads);
         List<String> assays = new ArrayList<>();
-        PrimerId.byAssay(primers.keySet()).forEach((assay, group) -> {
+        primers.assays().forEach((assay, group) -> {
             if (!group.isComplete()
                     || reads.readsCarrying(group.forward()) == 0 || reads.readsCarrying(group.reverse()) == 0) {
                 return;
@@ -287,7 +287,7 @@ public final class ReadExtensionCaller {
      * A product called by extension at one of these sizes is not added: it is reported
      * already, or its fate was decided by the read-level rules.
      */
-    public static Map<String, Set<Integer>> knownSizes(Sample sample, Map<String, String> primers,
+    public static Map<String, Set<Integer>> knownSizes(Sample sample, PrimerPanel primers,
                                                        AmpliconOptions options, ReadEvidence reads) {
         Map<String, Set<Integer>> known = new TreeMap<>();
         ConsolidatedReport.reportedSizes(sample, primers, options).forEach((assay, sizes) ->
@@ -297,10 +297,10 @@ public final class ReadExtensionCaller {
         return known;
     }
 
-    /** As the full {@code candidates} in the default mode, without declared sizes. */
-    public static List<String> candidates(Sample sample, Map<String, String> primers, AmpliconOptions options,
+    /** As the full {@code candidates}, in the default mode. */
+    public static List<String> candidates(Sample sample, PrimerPanel primers, AmpliconOptions options,
                                           ReadEvidence reads) {
-        return candidates(sample, primers, options, reads, Mode.DEFAULT, ExpectedSizes.NONE);
+        return candidates(sample, primers, options, reads, Mode.DEFAULT);
     }
 
     /**
@@ -372,7 +372,7 @@ public final class ReadExtensionCaller {
      * @return one outcome per seeded assay, in assay order
      */
     public static Map<String, Outcome> evaluate(Sample extended, Map<String, Integer> lengths, List<Seed> seeds,
-                                                Map<String, String> primers, AmpliconOptions options, int reach) {
+                                                PrimerPanel primers, AmpliconOptions options, int reach) {
         return evaluate(extended, lengths, seeds, primers, options, reach, Map.of());
     }
 
@@ -384,7 +384,7 @@ public final class ReadExtensionCaller {
      *                 ({@link #knownSizes}); a product called at one of them is not added
      */
     public static Map<String, Outcome> evaluate(Sample extended, Map<String, Integer> lengths, List<Seed> seeds,
-                                                Map<String, String> primers, AmpliconOptions options, int reach,
+                                                PrimerPanel primers, AmpliconOptions options, int reach,
                                                 Map<String, Set<Integer>> reported) {
         Map<String, Seed> seedById = new HashMap<>();
         Map<String, int[]> seedCounts = new TreeMap<>();

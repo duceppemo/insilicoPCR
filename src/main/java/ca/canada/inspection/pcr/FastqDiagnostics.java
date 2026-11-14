@@ -148,7 +148,7 @@ public final class FastqDiagnostics {
      *         reads, and per assay it reports at another size only than a product called from reads
      *         or by extending reads
      */
-    public static List<Finding> assess(Sample sample, Map<String, String> primers, AmpliconOptions options,
+    public static List<Finding> assess(Sample sample, PrimerPanel primers, AmpliconOptions options,
                                        ReadEvidence reads, Map<String, Integer> contigLengths) {
         return assess(sample, primers, options, reads, contigLengths, Map.of());
     }
@@ -161,14 +161,14 @@ public final class FastqDiagnostics {
      *                  read extension did not run for the sample. An assay that already shows
      *                  a product gets a finding from it only when the extension adds another
      */
-    public static List<Finding> assess(Sample sample, Map<String, String> primers, AmpliconOptions options,
+    public static List<Finding> assess(Sample sample, PrimerPanel primers, AmpliconOptions options,
                                        ReadEvidence reads, Map<String, Integer> contigLengths,
                                        Map<String, ReadExtensionCaller.Outcome> extension) {
         Map<String, Set<Integer>> assembled = ConsolidatedReport.reportedSizes(sample, primers, options);
         Map<String, List<BlastResult>> hits = sample.blastResults();
         List<Finding> findings = new ArrayList<>();
 
-        for (Map.Entry<String, PrimerId.Assay> entry : PrimerId.byAssay(primers.keySet()).entrySet()) {
+        for (Map.Entry<String, PrimerId.Assay> entry : primers.assays().entrySet()) {
             String assay = entry.getKey();
             PrimerId.Assay group = entry.getValue();
             if (!group.isComplete()) {

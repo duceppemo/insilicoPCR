@@ -2,6 +2,7 @@ package ca.canada.inspection.pipeline;
 
 import ca.canada.inspection.model.Sample;
 import ca.canada.inspection.pcr.BlastReports;
+import ca.canada.inspection.pcr.PrimerPanel;
 import ca.canada.inspection.pcr.ReadExtensionCaller;
 import ca.canada.inspection.pcr.ReadLevelCaller.ReadEvidence;
 import ca.canada.inspection.pipeline.RunMonitor.Step;
@@ -44,9 +45,9 @@ public final class InSilicoPcrPipeline {
         Map<String, Sample> sampleMap = new LinkedHashMap<>(checked.samples());
         monitor.stepDone(Step.INPUT_CHECK);
 
-        PrimerService.PreparedPrimers prepared = PrimerService.loadAndPrepare(config, directories);
-        PipelineContext context = new PipelineContext(config, dependencies, directories, sampleMap,
-                prepared.primers(), prepared.expectedSizes(), ChildJavaMemory.budgetGiB(), checked.issues(), monitor);
+        PrimerPanel primers = PrimerService.loadAndPrepare(config, directories);
+        PipelineContext context = new PipelineContext(config, dependencies, directories, sampleMap, primers,
+                ChildJavaMemory.budgetGiB(), checked.issues(), monitor);
         logRuntime(context);
         monitor.stepDone(Step.PRIMERS);
 

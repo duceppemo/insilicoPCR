@@ -196,21 +196,21 @@ public final class ReadLevelCaller {
      * @param readLengths read lengths keyed by read ID
      */
     public static ReadEvidence evaluate(Sample reads, Map<String, Integer> readLengths,
-                                        Map<String, String> primers, AmpliconOptions options) {
+                                        PrimerPanel primers, AmpliconOptions options) {
         return evaluate(reads, readLengths, Map.of(), primers, options, DEFAULT_MIN_SUPPORT_FRACTION,
                 ReadSequences.NONE);
     }
 
     /** As the full {@code evaluate} with every read its own fragment and no read sequences. */
     public static ReadEvidence evaluate(Sample reads, Map<String, Integer> readLengths,
-                                        Map<String, String> primers, AmpliconOptions options,
+                                        PrimerPanel primers, AmpliconOptions options,
                                         double minSupportFraction) {
         return evaluate(reads, readLengths, Map.of(), primers, options, minSupportFraction, ReadSequences.NONE);
     }
 
     /** As the full {@code evaluate} with no read sequences. */
     public static ReadEvidence evaluate(Sample reads, Map<String, Integer> readLengths,
-                                        Map<String, String> fragments, Map<String, String> primers,
+                                        Map<String, String> fragments, PrimerPanel primers,
                                         AmpliconOptions options, double minSupportFraction) {
         return evaluate(reads, readLengths, fragments, primers, options, minSupportFraction, ReadSequences.NONE);
     }
@@ -225,7 +225,7 @@ public final class ReadLevelCaller {
      *                           reads carrying a primer elsewhere in the genome
      */
     public static ReadEvidence evaluate(Sample reads, Map<String, Integer> readLengths,
-                                        Map<String, String> fragments, Map<String, String> primers,
+                                        Map<String, String> fragments, PrimerPanel primers,
                                         AmpliconOptions options, double minSupportFraction,
                                         ReadSequences sequences) {
         requireFraction(minSupportFraction);
@@ -243,7 +243,7 @@ public final class ReadLevelCaller {
         for (ReportRow row : ConsolidatedReport.rows(reads, primers, options)) {
             rowsByAssay.computeIfAbsent(row.assay(), ignored -> new ArrayList<>()).add(row);
         }
-        Map<String, PrimerId.Assay> groups = PrimerId.byAssay(primers.keySet());
+        Map<String, PrimerId.Assay> groups = primers.assays();
 
         // Only reads carrying a primer of an assay with a product are compared by sequence.
         Set<String> wanted = new HashSet<>();

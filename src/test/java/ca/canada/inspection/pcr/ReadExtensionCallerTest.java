@@ -23,7 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class ReadExtensionCallerTest {
 
     private static final AmpliconOptions DEFAULTS = AmpliconOptions.withMismatches(0);
-    private static final Map<String, String> PRIMERS = Map.of("long-F", PRIMER_20, "long-R", PRIMER_20);
+    private static final PrimerPanel PRIMERS = PrimerPanel.of(Map.of("long-F", PRIMER_20, "long-R", PRIMER_20));
     private static final int REACH = 5000;
     private static final PairSupport.Verdict SUPPORTED = new PairSupport.Verdict(PairSupport.Kind.SUPPORTED, true,
             300, 9, 191, 14, 0, 0, 0, 0, 40);
@@ -91,7 +91,8 @@ class ReadExtensionCallerTest {
 
     private static List<String> candidates(Sample sample, ReadEvidence reads, ReadExtensionCaller.Mode mode,
                                            ExpectedSizes sizes) {
-        return ReadExtensionCaller.candidates(sample, PRIMERS, DEFAULTS, reads, mode, sizes);
+        return ReadExtensionCaller.candidates(sample, PrimerPanel.of(PRIMERS.sequences(), sizes), DEFAULTS, reads,
+                mode);
     }
 
     /** A sample whose mini-assembly reports the assay at 200 bp. */
@@ -168,7 +169,7 @@ class ReadExtensionCallerTest {
 
     @Test
     void everyReadIsASeedWhenFewCarryThePrimer() {
-        List<Seed> seeds = ReadExtensionCaller.seeds(List.of("long"), PRIMERS.keySet(), primersInReads(3, 2));
+        List<Seed> seeds = ReadExtensionCaller.seeds(List.of("long"), PRIMERS.ids(), primersInReads(3, 2));
 
         assertEquals(List.of(new Seed("extended_read_0", "read_0", "long", 'F'),
                 new Seed("extended_read_1", "read_1", "long", 'F'),
@@ -179,7 +180,7 @@ class ReadExtensionCallerTest {
 
     @Test
     void seedsAreCappedPerPrimerAndSpreadOverTheReads() {
-        List<Seed> seeds = ReadExtensionCaller.seeds(List.of("long"), PRIMERS.keySet(), primersInReads(600, 40));
+        List<Seed> seeds = ReadExtensionCaller.seeds(List.of("long"), PRIMERS.ids(), primersInReads(600, 40));
 
         List<Seed> forward = seeds.stream().filter(seed -> seed.role() == 'F').toList();
         assertEquals(ReadExtensionCaller.MAX_SEEDS_PER_PRIMER, forward.size());
@@ -193,7 +194,7 @@ class ReadExtensionCallerTest {
 
     @Test
     void variantsOfADegeneratePrimerCountAsOnePrimer() {
-        Map<String, String> primers = Map.of("long-F_1", PRIMER_20, "long-F_2", PRIMER_20, "long-R", PRIMER_20);
+        PrimerPanel primers = PrimerPanel.of(Map.of("long-F_1", PRIMER_20, "long-F_2", PRIMER_20, "long-R", PRIMER_20));
         Map<String, Set<String>> ids = new HashMap<>();
         ids.put("long-F_1", readIds(0, 120));
         Set<String> second = new HashSet<>(readIds(100, 120)); // 20 reads match both variants
@@ -201,7 +202,7 @@ class ReadExtensionCallerTest {
         ids.put("long-R", readIds(1000, 3));
         ReadEvidence evidence = new ReadEvidence(ids, Map.of(), Map.of());
 
-        List<Seed> seeds = ReadExtensionCaller.seeds(List.of("long"), primers.keySet(), evidence);
+        List<Seed> seeds = ReadExtensionCaller.seeds(List.of("long"), primers.ids(), evidence);
 
         List<Seed> forward = seeds.stream().filter(seed -> seed.role() == 'F').toList();
         assertEquals(ReadExtensionCaller.MAX_SEEDS_PER_PRIMER, forward.size(), "220 distinct reads, capped once");
@@ -220,7 +221,7 @@ class ReadExtensionCallerTest {
 
     /** Seeds: {@code forward} forward-seeded reads then {@code reverse} reverse-seeded ones. */
     private static List<Seed> seeds(int forward, int reverse) {
-        return ReadExtensionCaller.seeds(List.of("long"), PRIMERS.keySet(), primersInReads(forward, reverse));
+        return ReadExtensionCaller.seeds(List.of("long"), PRIMERS.ids(), primersInReads(forward, reverse));
     }
 
     private static Sample extended() {
@@ -404,8 +405,8 @@ class ReadExtensionCallerTest {
 
     @Test
     void productOfAnotherAssayOnASeedIsIgnored() {
-        Map<String, String> primers = Map.of("long-F", PRIMER_20, "long-R", PRIMER_20,
-                "other-F", PRIMER_20, "other-R", PRIMER_20);
+        PrimerPanel primers = PrimerPanel.of(Map.of("long-F", PRIMER_20, "long-R", PRIMER_20,
+                "other-F", PRIMER_20, "other-R", PRIMER_20));
         List<Seed> seeds = seeds(2, 2);
         Sample extended = extended();
         for (Seed seed : seeds) {
@@ -422,7 +423,7 @@ class ReadExtensionCallerTest {
 
     @Test
     void probeAssayNeedsItsProbeInsideTheProduct() {
-        Map<String, String> primers = Map.of("long-F", PRIMER_20, "long-R", PRIMER_20, "long-P", PRIMER_20);
+        PrimerPanel primers = PrimerPanel.of(Map.of("long-F", PRIMER_20, "long-R", PRIMER_20, "long-P", PRIMER_20));
         List<Seed> seeds = seeds(2, 2);
         Sample withoutProbe = extended();
         Sample withProbe = extended();

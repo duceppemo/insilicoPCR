@@ -3,9 +3,8 @@ package ca.canada.inspection.pipeline;
 import ca.canada.inspection.model.Sample;
 import ca.canada.inspection.pcr.AmpliconOptions;
 import ca.canada.inspection.pcr.BlastHitParser;
+import ca.canada.inspection.pcr.PrimerPanel;
 import ca.canada.inspection.pcr.QueryTemplates;
-import ca.canada.inspection.pcr.ConsolidatedReport;
-import ca.canada.inspection.pcr.ExpectedSizes;
 import ca.canada.inspection.pcr.FastqDiagnosticsReport;
 import ca.canada.inspection.pcr.PairSupport;
 import ca.canada.inspection.pcr.ReadExtensionCaller;
@@ -51,14 +50,13 @@ public final class ReadExtensionStage {
      * @param sizes            product sizes declared in the primer file
      */
     record Settings(ReadLevelStage.Settings search, BbtoolsCommands bbtools, Path bbtoolsDirectory,
-                    ReadExtensionCaller.Mode mode, ExpectedSizes sizes) {
+                    ReadExtensionCaller.Mode mode) {
 
         /** The settings of a run: one sample at a time, so each BBTools child gets everything. */
         static Settings of(PipelineContext context, ReadLevelStage.Settings search) {
             return new Settings(search, BbtoolsCommands.of(context.dependencies(),
                     ChildJavaMemory.forOneChild(context.childJavaMemoryBudgetGiB()), context.config().threads()),
-                    context.dependencies().bbmapDirectory(), context.config().readExtension(),
-                    context.expectedSizes());
+                    context.dependencies().bbmapDirectory(), context.config().readExtension());
         }
     }
 
@@ -85,7 +83,7 @@ public final class ReadExtensionStage {
     /**
      * @param evidence read-level evidence per FASTQ sample name, from {@link ReadLevelStage#run}
      */
-    static Result run(Settings settings, Path detailedDir, Map<String, Sample> samples, Map<String, String> primers,
+    static Result run(Settings settings, Path detailedDir, Map<String, Sample> samples, PrimerPanel primers,
                       AmpliconOptions options, Map<String, ReadEvidence> evidence) {
         if (settings.mode() == ReadExtensionCaller.Mode.OFF) {
             return Result.NONE;
@@ -119,7 +117,7 @@ public final class ReadExtensionStage {
         return new Result(Map.copyOf(outcomes), Map.copyOf(rows), List.copyOf(notes));
     }
 
-    private static void extendSample(Settings settings, Path sampleDir, Sample sample, Map<String, String> primers,
+    private static void extendSample(Settings settings, Path sampleDir, Sample sample, PrimerPanel primers,
                                      AmpliconOptions options, ReadEvidence reads,
                                      Map<String, Map<String, Outcome>> outcomes,
                                      Map<String, List<ReportRow>> rows) {
@@ -134,8 +132,7 @@ public final class ReadExtensionStage {
         deleteQuietly(BbtoolsCommands.extensionCandidates(sampleDir, name));
         deleteQuietly(BbtoolsCommands.candidateReads(sampleDir, name));
 
-        List<String> assays = ReadExtensionCaller.candidates(sample, primers, options, reads, settings.mode(),
-                settings.sizes());
+        List<String> assays = ReadExtensionCaller.candidates(sample, primers, options, reads, settings.mode());
         if (assays.isEmpty()) {
             return;
         }
@@ -143,7 +140,7 @@ public final class ReadExtensionStage {
         if (!Files.isRegularFile(baitedReads)) {
             throw new PipelineException("no baited reads file " + baitedReads.getFileName());
         }
-        List<Seed> seeds = ReadExtensionCaller.seeds(assays, primers.keySet(), reads);
+        List<Seed> seeds = ReadExtensionCaller.seeds(assays, primers.ids(), reads);
         Map<String, ReadLevelStage.ReadRecord> seedReads = writeSeeds(seeds,
                 BbtoolsCommands.baitedReadsFasta(sampleDir, name), seedsFile);
         int reach = options.maxAmpliconLength() > 0 ? options.maxAmpliconLength() : ReadExtensionCaller.DEFAULT_REACH;
@@ -331,7 +328,7 @@ public final class ReadExtensionStage {
      *                     compared with it (see TrimmedEnds), as for contigs and reads
      */
     static Sample extendedSample(String name, Path hitsFile, Path extendedFile, Map<String, Integer> lengths,
-                                 Map<String, String> primers, AmpliconOptions options) {
+                                 PrimerPanel primers, AmpliconOptions options) {
         Sample extended = new Sample();
         extended.setName(name);
         extended.setFileType(Sample.FileType.READS);

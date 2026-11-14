@@ -38,7 +38,7 @@ class ConsolidatedReportTest {
     @Test
     void writesOneRowPerProductivePair() throws IOException {
         Map<String, Sample> samples = new HashMap<>(Map.of("sampleA", sampleWithHits()));
-        Map<String, String> primers = Map.of("assay-F", PRIMER_20, "assay-R", PRIMER_20);
+        PrimerPanel primers = PrimerPanel.of(Map.of("assay-F", PRIMER_20, "assay-R", PRIMER_20));
 
         Path report = ConsolidatedReport.write(tempDir, samples, primers, DEFAULTS);
         List<String> lines = Files.readAllLines(report);
@@ -64,8 +64,8 @@ class ConsolidatedReportTest {
         // Probe inside the amplicon.
         sample.addBlastResult("assay-P", TestHits.plusHit("assay-P", "contig1", 300));
         Map<String, Sample> samples = new HashMap<>(Map.of("sampleA", sample));
-        Map<String, String> primers = Map.of(
-                "assay-F", PRIMER_20, "assay-R", PRIMER_20, "assay-P", PRIMER_20);
+        PrimerPanel primers = PrimerPanel.of(Map.of(
+                "assay-F", PRIMER_20, "assay-R", PRIMER_20, "assay-P", PRIMER_20));
 
         Path report = ConsolidatedReport.write(tempDir, samples, primers, DEFAULTS);
         List<String> lines = Files.readAllLines(report);
@@ -83,8 +83,8 @@ class ConsolidatedReportTest {
         Sample sample = sampleWithHits();
         sample.addBlastResult("assay-P", TestHits.plusHit("assay-P", "contig1", 900)); // outside 101-600
         Map<String, Sample> samples = new HashMap<>(Map.of("sampleA", sample));
-        Map<String, String> primers = Map.of(
-                "assay-F", PRIMER_20, "assay-R", PRIMER_20, "assay-P", PRIMER_20);
+        PrimerPanel primers = PrimerPanel.of(Map.of(
+                "assay-F", PRIMER_20, "assay-R", PRIMER_20, "assay-P", PRIMER_20));
 
         Path report = ConsolidatedReport.write(tempDir, samples, primers, DEFAULTS);
         assertEquals(1, Files.readAllLines(report).size(), "only the header is expected");
@@ -98,9 +98,9 @@ class ConsolidatedReportTest {
         sample.addBlastResult("taq-R", TestHits.minusHit("taq-R", "contig1", 2581));
         sample.addBlastResult("taq-P", TestHits.plusHit("taq-P", "contig1", 2300));
         Map<String, Sample> samples = new HashMap<>(Map.of("sampleA", sample));
-        Map<String, String> primers = Map.of(
+        PrimerPanel primers = PrimerPanel.of(Map.of(
                 "assay-F", PRIMER_20, "assay-R", PRIMER_20,
-                "taq-F", PRIMER_20, "taq-R", PRIMER_20, "taq-P", PRIMER_20);
+                "taq-F", PRIMER_20, "taq-R", PRIMER_20, "taq-P", PRIMER_20));
 
         Path report = ConsolidatedReport.write(tempDir, samples, primers, DEFAULTS);
         List<String> lines = Files.readAllLines(report);
@@ -126,8 +126,8 @@ class ConsolidatedReportTest {
         // The primer file defines assay-P, but no probe hit was found: the primer
         // pair alone must NOT produce a row for this assay.
         Map<String, Sample> samples = new HashMap<>(Map.of("sampleA", sampleWithHits()));
-        Map<String, String> primers = Map.of(
-                "assay-F", PRIMER_20, "assay-R", PRIMER_20, "assay-P", PRIMER_20);
+        PrimerPanel primers = PrimerPanel.of(Map.of(
+                "assay-F", PRIMER_20, "assay-R", PRIMER_20, "assay-P", PRIMER_20));
 
         Path report = ConsolidatedReport.write(tempDir, samples, primers, DEFAULTS);
         assertEquals(1, Files.readAllLines(report).size(), "only the header is expected");
@@ -136,7 +136,7 @@ class ConsolidatedReportTest {
     @Test
     void existingReportIsNotOverwritten() throws IOException {
         Map<String, Sample> samples = new HashMap<>(Map.of("sampleA", sampleWithHits()));
-        Map<String, String> primers = Map.of("assay-F", PRIMER_20, "assay-R", PRIMER_20);
+        PrimerPanel primers = PrimerPanel.of(Map.of("assay-F", PRIMER_20, "assay-R", PRIMER_20));
 
         Path first = ConsolidatedReport.write(tempDir, samples, primers, DEFAULTS);
         Path second = ConsolidatedReport.write(tempDir, samples, primers, DEFAULTS);
@@ -152,7 +152,7 @@ class ConsolidatedReportTest {
         sample.addBlastResult("assay-F_0", TestHits.plusHit("assay-F_0", "contig1", 101));
         sample.addBlastResult("assay-R_1", TestHits.minusHit("assay-R_1", "contig1", 581));
         Map<String, Sample> samples = new HashMap<>(Map.of("sampleA", sample));
-        Map<String, String> primers = Map.of("assay-F_0", PRIMER_20, "assay-R_1", PRIMER_20);
+        PrimerPanel primers = PrimerPanel.of(Map.of("assay-F_0", PRIMER_20, "assay-R_1", PRIMER_20));
 
         Path report = ConsolidatedReport.write(tempDir, samples, primers, DEFAULTS);
         List<String> lines = Files.readAllLines(report);
@@ -169,7 +169,7 @@ class ConsolidatedReportTest {
         sample.addBlastResult("plainname", TestHits.plusHit("plainname", "contig1", 900));
         sample.addBlastResult("odd-X", TestHits.plusHit("odd-X", "contig1", 950));
         Map<String, Sample> samples = new HashMap<>(Map.of("sampleA", sample));
-        Map<String, String> primers = Map.of("assay-F", PRIMER_20, "assay-R", PRIMER_20);
+        PrimerPanel primers = PrimerPanel.of(Map.of("assay-F", PRIMER_20, "assay-R", PRIMER_20));
 
         Path report = ConsolidatedReport.write(tempDir, samples, primers, DEFAULTS);
         assertEquals(2, Files.readAllLines(report).size(), "only the valid assay row is expected");
@@ -181,7 +181,7 @@ class ConsolidatedReportTest {
         silent.setName("silent");
         silent.setFileType(Sample.FileType.FASTA);
         Map<String, Sample> samples = new HashMap<>(Map.of("silent", silent, "sampleA", sampleWithHits()));
-        Map<String, String> primers = Map.of("assay-F", PRIMER_20, "assay-R", PRIMER_20);
+        PrimerPanel primers = PrimerPanel.of(Map.of("assay-F", PRIMER_20, "assay-R", PRIMER_20));
 
         Path report = ConsolidatedReport.write(tempDir, samples, primers, DEFAULTS);
         List<String> lines = Files.readAllLines(report);
@@ -198,12 +198,12 @@ class ConsolidatedReportTest {
         sample.addBlastResult("plain-F", TestHits.plusHit("plain-F", "contig1", 2001));
         sample.addBlastResult("plain-R", TestHits.minusHit("plain-R", "contig1", 2181));
         Map<String, Sample> samples = new HashMap<>(Map.of("sampleA", sample));
-        Map<String, String> primers = Map.of(
-                "assay-F", PRIMER_20, "assay-R", PRIMER_20, "plain-F", PRIMER_20, "plain-R", PRIMER_20);
+        PrimerPanel primers = PrimerPanel.of(Map.of(
+                "assay-F", PRIMER_20, "assay-R", PRIMER_20, "plain-F", PRIMER_20, "plain-R", PRIMER_20));
         ExpectedSizes sizes = ExpectedSizes.fromHeaders(Map.of("assay-F", "size=500"));
 
         List<String> lines = Files.readAllLines(
-                ConsolidatedReport.write(tempDir, samples, primers, DEFAULTS, Map.of(), sizes));
+                ConsolidatedReport.write(tempDir, samples, PrimerPanel.of(primers.sequences(), sizes), DEFAULTS, Map.of()));
 
         assertEquals(4, lines.size(), "header + three rows expected, got: " + lines);
         assertTrue(lines.get(0).endsWith("Strand\tForward5PrimeUnaligned\tReverse5PrimeUnaligned\tSizeCheck"), lines.get(0));
@@ -238,7 +238,8 @@ class ConsolidatedReportTest {
                 AmpliconOptions.DEFAULT_THREE_PRIME_PENALTY, 8, 0, 5000);
 
         List<String> lines = Files.readAllLines(ConsolidatedReport.write(tempDir,
-                new HashMap<>(Map.of("sampleA", sample)), Map.of("assay-F", PRIMER_20, "assay-R", PRIMER_20), lenient));
+                new HashMap<>(Map.of("sampleA", sample)), PrimerPanel.of(Map.of("assay-F", PRIMER_20, "assay-R", PRIMER_20)),
+                lenient));
 
         assertEquals(2, lines.size(), "the truncated primer still gives its product: " + lines);
         List<String> header = List.of(lines.get(0).split("\t", -1));
@@ -255,14 +256,14 @@ class ConsolidatedReportTest {
         Sample sample = sampleWithHits();
         sample.addBlastResult("assay-P", TestHits.plusHit("assay-P", "contig1", 300));
         Map<String, Sample> samples = new HashMap<>(Map.of("sampleA", sample));
-        Map<String, String> primers = Map.of("assay-F", PRIMER_20, "assay-R", PRIMER_20, "assay-P", PRIMER_20);
+        PrimerPanel primers = PrimerPanel.of(Map.of("assay-F", PRIMER_20, "assay-R", PRIMER_20, "assay-P", PRIMER_20));
         ExpectedSizes sizes = ExpectedSizes.fromHeaders(Map.of("assay-F", "size=70 other=500"));
         // A read-level row, as FASTQ mode adds them.
         ReportRow readRow = new ReportRow("sampleA", "assay", 11, 80, 70, "read_1", "FASTQ read-level call: ...",
                 "assay-F", "assay-R", 0, 0, 0, 0, '+', new ReportRow.Probe("assay-P", 35, 54, 0), 0, 0);
 
-        List<String> lines = Files.readAllLines(ConsolidatedReport.write(tempDir, samples, primers, DEFAULTS,
-                Map.of("sampleA", List.of(readRow)), sizes));
+        List<String> lines = Files.readAllLines(ConsolidatedReport.write(tempDir, samples,
+                PrimerPanel.of(primers.sequences(), sizes), DEFAULTS, Map.of("sampleA", List.of(readRow))));
 
         assertTrue(lines.get(0).endsWith("ProbeMismatches\tForward5PrimeUnaligned\tReverse5PrimeUnaligned\tSizeCheck"), lines.get(0));
         assertEquals(3, lines.size());

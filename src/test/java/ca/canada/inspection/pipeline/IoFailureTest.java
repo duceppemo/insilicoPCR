@@ -1,5 +1,6 @@
 package ca.canada.inspection.pipeline;
 
+import ca.canada.inspection.pcr.PrimerPanel;
 import ca.canada.inspection.model.Sample;
 import ca.canada.inspection.pcr.AmpliconOptions;
 import ca.canada.inspection.pcr.BlastReports;
@@ -31,7 +32,7 @@ class IoFailureTest {
         sample.setName("s");
 
         RuntimeException error = assertThrows(RuntimeException.class, () -> ConsolidatedReport.write(notAFolder,
-                Map.of("s", sample), Map.of("a-F", "ACGT", "a-R", "ACGT"), AmpliconOptions.withMismatches(0)));
+                Map.of("s", sample), PrimerPanel.of(Map.of("a-F", "ACGT", "a-R", "ACGT")), AmpliconOptions.withMismatches(0)));
 
         assertTrue(RunFailure.isForTheUser(error), error.toString());
         assertTrue(RunFailure.lines(error).getFirst().startsWith("Error: Unable to write consolidated report: "),
@@ -41,7 +42,7 @@ class IoFailureTest {
     @Test
     void blastReportsThatCannotBeListedAreAMessage() {
         RuntimeException error = assertThrows(RuntimeException.class, () -> BlastReports.attachHits(
-                dir.resolve("no-such-folder"), Map.of(), Map.of(), AmpliconOptions.withMismatches(0)));
+                dir.resolve("no-such-folder"), Map.of(), PrimerPanel.EMPTY, AmpliconOptions.withMismatches(0)));
 
         assertTrue(RunFailure.isForTheUser(error), error.toString());
         assertEquals("Error: Unable to list BLAST reports in: " + dir.resolve("no-such-folder"),

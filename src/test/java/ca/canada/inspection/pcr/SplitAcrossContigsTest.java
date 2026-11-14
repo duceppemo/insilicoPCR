@@ -19,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class SplitAcrossContigsTest {
 
     private static final AmpliconOptions DEFAULTS = AmpliconOptions.withMismatches(0);
-    private static final Map<String, String> PRIMERS = Map.of("assay-F", PRIMER_20, "assay-R", PRIMER_20);
+    private static final PrimerPanel PRIMERS = PrimerPanel.of(Map.of("assay-F", PRIMER_20, "assay-R", PRIMER_20));
     private static final Map<String, Integer> LENGTHS = Map.of("contig_1", 1000, "contig_2", 800, "plasmid", 3000);
 
     private static Sample genome(BlastResult... hits) {
@@ -125,7 +125,7 @@ class SplitAcrossContigsTest {
 
     @Test
     void aProbeAssaySaysTheProbeIsNotChecked() {
-        Map<String, String> withProbe = Map.of("assay-F", PRIMER_20, "assay-R", PRIMER_20, "assay-P", PRIMER_20);
+        PrimerPanel withProbe = PrimerPanel.of(Map.of("assay-F", PRIMER_20, "assay-R", PRIMER_20, "assay-P", PRIMER_20));
         Sample sample = genome(plusHit("assay-F", "contig_1", 941), minusHit("assay-R", "contig_2", 31));
 
         Split split = SplitAcrossContigs.find(sample, withProbe, DEFAULTS, () -> LENGTHS).getFirst();

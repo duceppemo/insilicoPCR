@@ -3,6 +3,7 @@ package ca.canada.inspection.pipeline;
 import ca.canada.inspection.model.Sample;
 import ca.canada.inspection.pcr.AmpliconOptions;
 import ca.canada.inspection.pcr.BlastHitParser;
+import ca.canada.inspection.pcr.PrimerPanel;
 import ca.canada.inspection.pcr.ReadLevelCaller;
 import ca.canada.inspection.pcr.QueryTemplates;
 import ca.canada.inspection.pcr.ReadLevelCaller.ReadEvidence;
@@ -71,7 +72,7 @@ public final class ReadLevelStage {
 
     /** @return read-level evidence per FASTQ sample name */
     public static Map<String, ReadEvidence> run(Settings settings, Path detailedDir, Map<String, Sample> samples,
-                                                Map<String, String> primers, AmpliconOptions options) {
+                                                PrimerPanel primers, AmpliconOptions options) {
         List<Sample> fastq = samples.values().stream()
                 .filter(Sample::isFastq)
                 .sorted(Comparator.comparing(Sample::getName))
@@ -90,7 +91,7 @@ public final class ReadLevelStage {
     }
 
     private static ReadEvidence searchSample(Settings settings, int blastThreads, Path sampleDir, Sample sample,
-                                             Map<String, String> primers, AmpliconOptions options) {
+                                             PrimerPanel primers, AmpliconOptions options) {
         String name = sample.getName();
         Path fasta = BbtoolsCommands.baitedReadsFasta(sampleDir, name);
         Path hitsFile = BbtoolsCommands.baitedReadsHits(sampleDir, name);
@@ -112,7 +113,7 @@ public final class ReadLevelStage {
      * @param fasta    the reads searched, as written by {@link #writeReadsFasta}
      */
     static ReadEvidence callFromHits(String name, Path hitsFile, Path fasta, ReadSet reads,
-                                     Map<String, String> primers, AmpliconOptions options,
+                                     PrimerPanel primers, AmpliconOptions options,
                                      double minSupportFraction) {
         Sample readSample = new Sample();
         readSample.setName(name);

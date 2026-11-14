@@ -47,7 +47,7 @@ public final class FastqProcessor {
 
         RunMonitor monitor = context.monitor();
         monitor.info("FastQ files identified, conducting baiting and assembly");
-        int kLength = context.primers().values().stream().mapToInt(String::length).min()
+        int kLength = context.primers().sequences().values().stream().mapToInt(String::length).min()
                 .orElseThrow(() -> new PipelineException("Primer dictionary is empty"));
         int budget = context.childJavaMemoryBudgetGiB();
         int threads = context.config().threads();

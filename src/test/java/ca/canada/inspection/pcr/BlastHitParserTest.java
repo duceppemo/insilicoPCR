@@ -8,15 +8,14 @@ import java.util.Optional;
 
 import static ca.canada.inspection.pcr.TestHits.PRIMER_20;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class BlastHitParserTest {
 
-    private static final Map<String, String> PRIMERS = Map.of(
+    private static final PrimerPanel PRIMERS = PrimerPanel.of(Map.of(
             "assay-F", PRIMER_20,
             "assay-P", PRIMER_20
-    );
+    ));
     private static final AmpliconOptions STRICT = AmpliconOptions.withMismatches(0);
     private static final AmpliconOptions RELAXED = new AmpliconOptions(2, 2, 5, 0, 2, 0, 5000);
 

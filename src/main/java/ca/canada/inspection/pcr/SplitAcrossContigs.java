@@ -68,14 +68,14 @@ public final class SplitAcrossContigs {
      *                      when an assay has no product but hits of both primers
      * @return one split per assay that could have one, in assay order
      */
-    public static List<Split> find(Sample sample, Map<String, String> primers, AmpliconOptions options,
+    public static List<Split> find(Sample sample, PrimerPanel primers, AmpliconOptions options,
                                    Supplier<Map<String, Integer>> contigLengths) {
         Set<String> reported = ConsolidatedReport.reportedSizes(sample, primers, options).keySet();
         Map<String, List<BlastResult>> hits = sample.blastResults();
         Map<String, Integer> lengths = null;
         List<Split> splits = new ArrayList<>();
         for (Map.Entry<String, PrimerId.Assay> entry
-                : PrimerId.byAssay(primers.keySet()).entrySet()) {
+                : primers.assays().entrySet()) {
             String assay = entry.getKey();
             PrimerId.Assay group = entry.getValue();
             if (reported.contains(assay) || !group.isComplete()) {

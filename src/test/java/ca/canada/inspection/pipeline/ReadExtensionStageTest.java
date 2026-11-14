@@ -1,5 +1,6 @@
 package ca.canada.inspection.pipeline;
 
+import ca.canada.inspection.pcr.PrimerPanel;
 import ca.canada.inspection.model.Sample;
 import ca.canada.inspection.pcr.AmpliconOptions;
 import ca.canada.inspection.pcr.FastqDiagnostics.Assembly;
@@ -30,7 +31,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class ReadExtensionStageTest {
 
     private static final String PRIMER = "ACGTACGTACGTACGTACGT";
-    private static final Map<String, String> PRIMERS = Map.of("long-F", PRIMER, "long-R", PRIMER);
+    private static final PrimerPanel PRIMERS = PrimerPanel.of(Map.of("long-F", PRIMER, "long-R", PRIMER));
 
     @TempDir
     Path dir;

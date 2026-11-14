@@ -25,7 +25,7 @@ class TrimmedEndsTest {
     private static final String FLANK_L = "ATATATATATATATATATAT";     // 20 bases
     private static final String FLANK_R = "GAGAGAGAGAGAGAGAGAGA";     // 20 bases
     private static final int PROBE_START = FLANK_L.length() + 1;      // query position of probe base 1
-    private static final Map<String, String> PRIMERS = Map.of("assay-P", PROBE, "assay-F", PROBE);
+    private static final PrimerPanel PRIMERS = PrimerPanel.of(Map.of("assay-P", PROBE, "assay-F", PROBE));
     private static final AmpliconOptions PROBE_BUDGET_0 = new AmpliconOptions(0, 0, 5, 0, 5, 0, 5000);
     private static final AmpliconOptions PROBE_BUDGET_1 = new AmpliconOptions(0, 1, 5, 0, 5, 0, 5000);
 

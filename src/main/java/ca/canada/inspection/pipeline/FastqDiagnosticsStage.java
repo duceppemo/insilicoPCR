@@ -8,6 +8,7 @@ import ca.canada.inspection.pcr.FastqDiagnostics.Finding;
 import ca.canada.inspection.pcr.FastqDiagnostics.Status;
 import ca.canada.inspection.pcr.FastqDiagnosticsReport;
 import ca.canada.inspection.pcr.PairSupport;
+import ca.canada.inspection.pcr.PrimerPanel;
 import ca.canada.inspection.pcr.ReadExtensionCaller;
 import ca.canada.inspection.pcr.ReadLevelCaller;
 import ca.canada.inspection.pcr.ReadLevelCaller.ReadEvidence;
@@ -154,7 +155,7 @@ public final class FastqDiagnosticsStage {
      * product.
      */
     public static Map<String, List<ReportRow>> readLevelRows(Map<String, Sample> samples,
-                                                                Map<String, String> primers,
+                                                                PrimerPanel primers,
                                                                 AmpliconOptions options,
                                                                 Map<String, ReadEvidence> evidence) {
         Map<String, List<ReportRow>> rows = new HashMap<>();
@@ -180,7 +181,7 @@ public final class FastqDiagnosticsStage {
      * The rows to append to each sample's own: those called from single reads
      * ({@link #readLevelRows}), then those called by extending reads.
      */
-    public static Map<String, List<ReportRow>> extraRows(Map<String, Sample> samples, Map<String, String> primers,
+    public static Map<String, List<ReportRow>> extraRows(Map<String, Sample> samples, PrimerPanel primers,
                                                             AmpliconOptions options, Map<String, ReadEvidence> evidence,
                                                             ReadExtensionStage.Result extension) {
         Map<String, List<ReportRow>> rows = new HashMap<>();
@@ -191,7 +192,7 @@ public final class FastqDiagnosticsStage {
         return rows;
     }
 
-    public static Result run(Path consolidatedReport, Map<String, Sample> samples, Map<String, String> primers,
+    public static Result run(Path consolidatedReport, Map<String, Sample> samples, PrimerPanel primers,
                              AmpliconOptions options, Map<String, ReadEvidence> evidence) {
         return run(consolidatedReport, samples, primers, options, evidence, ReadExtensionStage.Result.NONE);
     }
@@ -199,7 +200,7 @@ public final class FastqDiagnosticsStage {
     /**
      * As {@link #run(Path, Map, Map, AmpliconOptions, Map)}, taking into account what the read extension showed.
      */
-    public static Result run(Path consolidatedReport, Map<String, Sample> samples, Map<String, String> primers,
+    public static Result run(Path consolidatedReport, Map<String, Sample> samples, PrimerPanel primers,
                              AmpliconOptions options, Map<String, ReadEvidence> evidence,
                              ReadExtensionStage.Result extension) {
         List<Finding> findings = new ArrayList<>();

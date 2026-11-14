@@ -4,7 +4,6 @@ import ca.canada.inspection.pcr.FastqDiagnostics.Finding;
 import ca.canada.inspection.pcr.FastqDiagnostics.Status;
 import ca.canada.inspection.util.InputCheck;
 
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
@@ -191,61 +190,23 @@ public final class HtmlReport {
      * @param reportTsv    consolidated report just written; the page shows exactly its rows
      * @param sampleNames  every sample of the run, so that samples without a product show too
      * @param fastqSamples samples given as reads (marked in the page)
-     * @param primerIds    expanded primer IDs of the run; they give the assays
-     * @param sizes        product sizes the primer file declares
+     * @param primers      the run's primers: they give the assays, the primer lengths (so the page
+     *                     says how many bases of each primer pair) and the declared product sizes
      * @param findings     FASTQ-mode diagnostics; may be empty
      * @param runDetails   label and value pairs listed under "Run details", in order
+     * @param inputIssues  files that could not be analysed; their samples are listed apart, as
+     *                     neither positive nor negative
+     * @param splits       assays without a product whose product could span a break in the assembly
      * @return the HTML file written
      */
     public static Path write(Path reportTsv, Collection<String> sampleNames, Set<String> fastqSamples,
-                             Collection<String> primerIds, ExpectedSizes sizes, List<Finding> findings,
-                             Map<String, String> runDetails) {
-        Map<String, String> primers = new HashMap<>();
-        primerIds.forEach(id -> primers.put(id, ""));
-        return write(reportTsv, sampleNames, fastqSamples, primers, sizes, findings, runDetails);
-    }
-
-    /**
-     * As {@link #write(Path, Collection, Set, Collection, ExpectedSizes, List, Map)}, with the
-     * primer sequences: the page then says how many bases of each primer are aligned, of its length.
-     *
-     * @param primers expanded primer IDs of the run and their sequences
-     */
-    public static Path write(Path reportTsv, Collection<String> sampleNames, Set<String> fastqSamples,
-                             Map<String, String> primers, ExpectedSizes sizes, List<Finding> findings,
-                             Map<String, String> runDetails) {
-        return write(reportTsv, sampleNames, fastqSamples, primers, sizes, findings, runDetails, List.of());
-    }
-
-    /**
-     * As {@link #write(Path, Collection, Set, Map, ExpectedSizes, List, Map)}, with the input
-     * that was left out of the run.
-     *
-     * @param inputIssues files that could not be analysed; their samples are listed apart,
-     *                    as neither positive nor negative
-     */
-    public static Path write(Path reportTsv, Collection<String> sampleNames, Set<String> fastqSamples,
-                             Map<String, String> primers, ExpectedSizes sizes, List<Finding> findings,
-                             Map<String, String> runDetails, List<InputCheck.Issue> inputIssues) {
-        return write(reportTsv, sampleNames, fastqSamples, primers, sizes, findings, runDetails, inputIssues, List.of());
-    }
-
-    /**
-     * As {@link #write(Path, Collection, Set, Map, ExpectedSizes, List, Map, List)}, with the
-     * assays of assembly samples whose primers point off contig ends.
-     *
-     * @param splits assays without a product whose product could span a break in the assembly
-     */
-    public static Path write(Path reportTsv, Collection<String> sampleNames, Set<String> fastqSamples,
-                             Map<String, String> primers, ExpectedSizes sizes, List<Finding> findings,
-                             Map<String, String> runDetails, List<InputCheck.Issue> inputIssues,
-                             List<SplitAcrossContigs.Split> splits) {
+                             PrimerPanel primers, List<Finding> findings, Map<String, String> runDetails,
+                             List<InputCheck.Issue> inputIssues, List<SplitAcrossContigs.Split> splits) {
         Path html = pathFor(reportTsv);
-        Collection<String> primerIds = primers.keySet();
+        ExpectedSizes sizes = primers.expectedSizes();
         try {
-            String page = render(reportTsv.getFileName().toString(), readProducts(reportTsv, sizes, primers),
-                    sampleNames,
-                    fastqSamples, PrimerId.byAssay(primerIds).entrySet().stream()
+            String page = render(reportTsv.getFileName().toString(), readProducts(reportTsv, primers), sampleNames,
+                    fastqSamples, primers.assays().entrySet().stream()
                             .filter(entry -> entry.getValue().isComplete())
                             .map(Map.Entry::getKey).toList(),
                     sizes, findings, runDetails, inputIssues, splits);
@@ -273,10 +234,10 @@ public final class HtmlReport {
         return details;
     }
 
-    static List<Product> readProducts(Path reportTsv, ExpectedSizes sizes, Map<String, String> primers) {
+    static List<Product> readProducts(Path reportTsv, PrimerPanel primers) {
         return ReportTsv.read(reportTsv).stream()
-                .map(row -> new Product(row, primers.getOrDefault(row.forwardPrimer(), "").length(),
-                        primers.getOrDefault(row.reversePrimer(), "").length(), sizes.label(row.assay(), row.size())))
+                .map(row -> new Product(row, primers.length(row.forwardPrimer()),
+                        primers.length(row.reversePrimer()), primers.expectedSizes().label(row.assay(), row.size())))
                 .toList();
     }
 

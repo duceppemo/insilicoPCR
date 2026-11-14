@@ -7,6 +7,7 @@ import org.junit.jupiter.api.io.TempDir;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -82,24 +83,13 @@ class SequenceFileUtilsTest {
         assertEquals("reads", SequenceFileUtils.sampleName(Path.of("reads.fq.gz")));
     }
     @Test
-    void createSampleMapGroupsPairsAndSeparatesAssemblies() throws IOException {
-        write("genomeA.fasta", ">c1\nACGT\n");
-        write("run_1.fastq", "@r1\nACGT\n+\nIIII\n");
-        write("run_2.fastq", "@r1\nACGT\n+\nIIII\n");
-        write("notes.txt", "not a sequence file\n");
-
-        var samples = SequenceFileUtils.createSampleMap(dir);
+    void sampleMapGroupsPairsAndSeparatesAssemblies() throws IOException {
+        var samples = SequenceFileUtils.sampleMapOf(List.of(write("genomeA.fasta", ">c1\nACGT\n"),
+                write("run_1.fastq", "@r1\nACGT\n+\nIIII\n"), write("run_2.fastq", "@r1\nACGT\n+\nIIII\n")));
         assertEquals(java.util.Set.of("genomeA", "run"), samples.keySet());
         assertEquals(2, samples.get("run").files().size());
         assertEquals(Sample.FileType.FASTQ, samples.get("run").getFileType());
         assertEquals(Sample.FileType.FASTA, samples.get("genomeA").getFileType());
-    }
-
-    @Test
-    void createSampleMapAcceptsASingleFile() throws IOException {
-        Path file = write("solo.fasta", ">c1\nACGT\n");
-        var samples = SequenceFileUtils.createSampleMap(file);
-        assertEquals(java.util.Set.of("solo"), samples.keySet());
     }
 
     @Test

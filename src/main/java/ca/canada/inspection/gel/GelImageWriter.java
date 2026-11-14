@@ -1,11 +1,11 @@
-package ca.canada.inspection.pipeline;
+package ca.canada.inspection.gel;
 
-import ca.canada.inspection.gel.SyntheticGelImage;
 import javafx.application.Platform;
 
 import java.nio.file.Path;
 import java.util.Collection;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
 
 /**
  * Renders the synthetic gel PNG from the CLI (--gel). JavaFX needs a graphical
@@ -13,7 +13,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * servers, missing JavaFX natives) are reported as a warning instead of
  * failing the run.
  */
-final class GelImageWriter {
+public final class GelImageWriter {
 
     /** JavaFX cannot be restarted after Platform.exit, so exporting is once per JVM. */
     private static final AtomicBoolean TOOLKIT_SHUT_DOWN = new AtomicBoolean(false);
@@ -21,9 +21,14 @@ final class GelImageWriter {
     private GelImageWriter() {
     }
 
-    static void write(Path consolidatedReport, Path outputFile, Collection<String> sampleNames, RunMonitor monitor) {
+    /**
+     * @param info    told where the picture was written
+     * @param warning told why it could not be
+     */
+    public static void write(Path consolidatedReport, Path outputFile, Collection<String> sampleNames,
+                             Consumer<String> info, Consumer<String> warning) {
         if (TOOLKIT_SHUT_DOWN.get()) {
-            monitor.warning("Warning: the JavaFX toolkit was already shut down in this process;"
+            warning.accept("Warning: the JavaFX toolkit was already shut down in this process;"
                     + " the synthetic gel can only be rendered once per run.");
             return;
         }
@@ -37,9 +42,9 @@ final class GelImageWriter {
                 // Toolkit already initialized (e.g. running inside the GUI); reuse it.
             }
             Path written = SyntheticGelImage.exportPng(consolidatedReport, outputFile, sampleNames);
-            monitor.info("Synthetic gel image written to " + written);
+            info.accept("Synthetic gel image written to " + written);
         } catch (RuntimeException | NoClassDefFoundError | UnsatisfiedLinkError e) {
-            monitor.warning("Warning: could not render the synthetic gel image (a graphical environment is required): "
+            warning.accept("Warning: could not render the synthetic gel image (a graphical environment is required): "
                     + rootMessage(e));
         } finally {
             if (startedHere) {

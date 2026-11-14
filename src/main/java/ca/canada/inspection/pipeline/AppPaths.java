@@ -44,17 +44,7 @@ public final class AppPaths {
         Path blastBin = requireBlastBin(platformRoot.resolve("blast").resolve("bin"));
         Path javaExecutable = findJavaExecutable(platformRoot, appRoot)
                 .orElseThrow(() -> missing("bundled Java runtime", platformRoot.resolve("jdk")));
-        Path javafxLib = findJavaFxLib(platformRoot).orElse(null);
-
-        return new RuntimeLayout(
-                appRoot,
-                runtimeRoot,
-                platformRoot,
-                bbmap,
-                blastBin,
-                javaExecutable,
-                javafxLib
-        );
+        return new RuntimeLayout(appRoot, bbmap, blastBin, javaExecutable);
     }
 
     public static Path applicationRoot() {
@@ -164,30 +154,15 @@ public final class AppPaths {
         return Optional.empty();
     }
 
-    private static Optional<Path> findJavaFxLib(Path platformRoot) {
-        Path javafx = platformRoot.resolve("javafx-sdk").resolve("lib");
-        if (Files.isDirectory(javafx)) {
-            return Optional.of(javafx.toAbsolutePath().normalize());
-        }
-        return Optional.empty();
-    }
-
-    private static IllegalStateException missing(String dependency, Path expectedPath) {
-        return new IllegalStateException(
+    /** A tool missing from the installation: something the user can fix, not a bug. */
+    private static PipelineException missing(String dependency, Path expectedPath) {
+        return new PipelineException(
                 "Unable to find " + dependency + ". Expected deterministic portable layout at: "
                         + expectedPath.toAbsolutePath().normalize()
         );
     }
 
-    public record RuntimeLayout(
-            Path appRoot,
-            Path runtimeRoot,
-            Path platformRoot,
-            Path bbmapDirectory,
-            Path blastBinDirectory,
-            Path javaExecutable,
-            Path javafxLibDirectory
-    ) {
+    public record RuntimeLayout(Path appRoot, Path bbmapDirectory, Path blastBinDirectory, Path javaExecutable) {
         public String javaCommand() {
             return javaExecutable.toString();
         }

@@ -27,6 +27,7 @@ import java.util.zip.GZIPOutputStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
@@ -107,13 +108,7 @@ class EndToEndTest {
 
     @Test
     void samplesProcessedAtOnceShareTheThreads() throws IOException {
-        Path reads = Files.createDirectory(directory.resolve("two-samples"));
-        for (String sample : List.of("first", "second")) {
-            for (String mate : List.of("R1", "R2")) {
-                Files.copy(EXAMPLE.resolve("reads").resolve("isolate_01_" + mate + ".fastq.gz"),
-                        reads.resolve(sample + "_" + mate + ".fastq.gz"));
-            }
-        }
+        Path reads = twoSamples("first", "second");
         Recorder monitor = new Recorder();
         Path output = directory.resolve("two-samples-results");
 
@@ -130,6 +125,46 @@ class EndToEndTest {
         }
         assertEquals(List.of("first stxQ 118 target", "first toxA 312 target",
                 "second stxQ 118 target", "second toxA 312 target"), products(report(output)));
+    }
+
+    @Test
+    void aSampleThatRunsOutOfMemoryIsRunAgainAloneWithAllTheMemory() throws IOException {
+        Recorder monitor = new Recorder();
+        Path output = directory.resolve("out-of-memory-results");
+        // 8 GiB and 2 threads: the two samples get 4 GiB and 1 thread each, alone 8 GiB and 2 threads.
+        PipelineContext context = readContext(twoSamples("big", "small"), output, 8, monitor);
+
+        new FastqProcessor().process(context);
+
+        assertEquals(List.of("Warning: Tadpole ran out of memory on sample big with -Xmx4g; it will be run again"
+                + " after the other samples, alone, with -Xmx8g"), monitor.warnings);
+        assertTrue(monitor.messages.contains(
+                "Running the samples that ran out of memory again, one at a time, with 2 threads and -Xmx8g: big"),
+                monitor.messages.toString());
+        assertTrue(monitor.messages.contains("Completed sample big"), monitor.messages.toString());
+        // Run again from the assembly on: no baiting twice.
+        assertEquals(4, executed(monitor, "jgi.BBDuk").size());
+        assertEquals(List.of("threads=1", "threads=2"), executed(monitor, "assemble.Tadpole"));
+        assertEquals(List.of("threads=1", "threads=2"), executed(monitor, "jgi.BBMerge"));
+        for (String sample : List.of("big", "small")) {
+            Path assembly = context.samples().get(sample).getAssemblyFile();
+            assertTrue(Files.size(assembly) > 0, assembly.toString());
+        }
+    }
+
+    @Test
+    void aSampleThatRunsOutOfMemoryAloneFailsTheRunWithAHint() throws IOException {
+        Recorder monitor = new Recorder();
+        // 4 GiB: one sample at a time already, with all of it.
+        PipelineContext context = readContext(twoSamples("big", "small"), directory.resolve("results"), 4, monitor);
+
+        StageException error = assertThrows(StageException.class, () -> new FastqProcessor().process(context));
+
+        assertTrue(RunFailure.isForTheUser(error));
+        assertTrue(RunFailure.lines(error).stream().anyMatch(line -> line.contains(
+                "Tadpole ran out of memory on sample big with -Xmx4g. Give insilicoPCR more memory with Java's -Xmx"
+                        + " option")), RunFailure.lines(error).toString());
+        assertTrue(monitor.warnings.isEmpty(), monitor.warnings.toString());
     }
 
     @Test
@@ -204,6 +239,56 @@ class EndToEndTest {
         }
         assertFalse(Files.exists(output.resolve("consolidated_report").resolve("report.tsv")));
         assertEquals(List.of(Step.DEPENDENCIES, Step.INPUT_CHECK, Step.PRIMERS, Step.READS), monitor.steps);
+    }
+
+    /** Copies of the example reads under the given sample names. */
+    private Path twoSamples(String first, String second) throws IOException {
+        Path reads = Files.createDirectory(directory.resolve(first + "-" + second));
+        for (String sample : List.of(first, second)) {
+            for (String mate : List.of("R1", "R2")) {
+                Files.copy(EXAMPLE.resolve("reads").resolve("isolate_01_" + mate + ".fastq.gz"),
+                        reads.resolve(sample + "_" + mate + ".fastq.gz"));
+            }
+        }
+        return reads;
+    }
+
+    /**
+     * What the FASTQ stage needs, with a {@code java} that stands in for running out of
+     * memory: Tadpole on sample {@code big} with a 4 GiB heap exits as the Java runtime
+     * does with {@code -XX:+ExitOnOutOfMemoryError}.
+     */
+    private PipelineContext readContext(Path reads, Path output, int budgetGiB, RunMonitor monitor) throws IOException {
+        assumeTrue(!AppPaths.isWindows(), "the stand-in java is a shell script");
+        AppPaths.RuntimeLayout real = AppPaths.discover();
+        Path java = directory.resolve("java");
+        Files.writeString(java, """
+                #!/bin/sh
+                case "$*" in
+                  *-Xmx4g*assemble.Tadpole*big_doubleTargetMatches*)
+                    echo 'Exception in thread "main" java.lang.OutOfMemoryError: Java heap space (stand-in)'
+                    exit %d ;;
+                esac
+                exec '%s' "$@"
+                """.formatted(BbtoolsCommands.OUT_OF_MEMORY_EXIT, real.javaExecutable()));
+        assertTrue(java.toFile().setExecutable(true));
+        AppPaths.RuntimeLayout layout = new AppPaths.RuntimeLayout(real.appRoot(), real.runtimeRoot(),
+                real.platformRoot(), real.bbmapDirectory(), real.blastBinDirectory(), java, real.javafxLibDirectory());
+        PipelineConfig config = config(reads, output);
+        PipelineDirectories directories = PipelineDirectories.create(output);
+        PrimerService.PreparedPrimers primers = new PrimerService().loadAndPrepare(config, directories);
+        return new PipelineContext(config, new RuntimeDependencies(layout), directories,
+                InputCheck.scan(reads, InputCheck.Depth.QUICK, 2).samples(), primers.primers(),
+                primers.expectedSizes(), budgetGiB, List.of(), monitor);
+    }
+
+    /** The {@code threads=} of each run of a BBTools program, sorted; Tadpole logs itself as Tadpole1 or 2. */
+    private static List<String> executed(Recorder monitor, String program) {
+        return monitor.programLines.stream()
+                .filter(line -> line.matches("Executing " + program.replace(".", "\\.") + "\\d? .*"))
+                .map(line -> line.replaceFirst(".*\\b(threads=\\d+).*", "$1"))
+                .sorted()
+                .toList();
     }
 
     private static PipelineConfig config(Path input, Path output) {

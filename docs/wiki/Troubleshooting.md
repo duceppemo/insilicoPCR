@@ -68,9 +68,11 @@ Upgrade to 0.9.0 or newer, which bundles BBTools 40.04. The files are then read 
 
 Releases before 0.9.0 ran the second baiting pass with the `-m` mismatch budget as BBDuk's `hdist`, and on large samples with `-m 2` or more its k-mer table outgrew any heap. Since 0.9.0 that pass runs with `hdist=0`, and `-m` still applies to primer baiting and amplicon calling. Upgrade.
 
-## FASTQ run with many samples fails in BBDuk or Tadpole
+## FASTQ run fails with `ran out of memory on sample`
 
-The message is `Tadpole failed with exit code 1: ...` (or `BBDuk`), and the program's output just above it says `java.lang.OutOfMemoryError`. Since 0.14.0 the samples processed at once share half of insilicoPCR's heap instead of each getting all of it, so a sample with many baited reads may need more than its share. Give insilicoPCR more memory (`java -Xmx96g -jar insilicoPCR.jar ...`), or fewer threads with `-t` so fewer samples run at once. Running one sample per insilicoPCR run gives each its whole half (up to 64 GB). See [Threads and memory in FASTQ mode](Command-line-Interface#threads-and-memory-in-fastq-mode).
+The message is `Tadpole ran out of memory on sample <name> with -Xmx<n>g` (or `BBDuk`, `BBMerge`). The sample had already been run alone, with all the memory insilicoPCR gives its BBTools programs: half of its own heap, up to 64 GB. Give insilicoPCR more memory with Java's `-Xmx` option (`java -Xmx96g -jar insilicoPCR.jar ...`). Samples that run out of only their share, when several run at once, are run again alone automatically; see [Threads and memory in FASTQ mode](Command-line-Interface#threads-and-memory-in-fastq-mode).
+
+Releases before 0.14.0 reported this as `Tadpole failed with exit code 1`, with `java.lang.OutOfMemoryError` in the program's output above it.
 
 ## An assay is negative in FASTQ mode but positive on an assembly
 

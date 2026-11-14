@@ -17,8 +17,15 @@
   of 64 threads at once, each allowed half the heap. Now as many samples run
   at once as each can have 4 GB of that half, at most one per thread, and each
   gets its share of the threads and of the half (up to 64 GB). A single sample
-  still gets everything. The log says how it was split. Large samples in one
-  run may now need more `-Xmx`; see Troubleshooting.
+  still gets everything. The log says how it was split.
+- FASTQ mode: a sample whose BBTools program runs out of its share of memory
+  is set aside with a warning and run again at the end, alone, with all the
+  threads and memory, from the step that ran out. If it runs out alone too,
+  the run stops with `<program> ran out of memory on sample <name>` and says
+  to raise `-Xmx`, instead of `failed with exit code 1`. BBTools programs now
+  run with `-XX:+ExitOnOutOfMemoryError`, so running out of memory in any of
+  their threads stops them (exit code 3) rather than possibly leaving them
+  running on without that thread's work.
 - A failed BLAST+ or BBTools command is reported as
   `<program> failed with exit code <n>: <command line>`, from the command line
   and from the application alike.

@@ -5,42 +5,138 @@ import ca.canada.inspection.insilicopcr.Sample;
 import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.List;
-import java.util.function.Consumer;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * Baits, assembles and merges the reads of the FASTQ samples, several samples at a time.
+ * The samples running at once share the threads and the memory; a sample that runs out
+ * of memory is set aside and run again at the end, alone, with all of them.
+ */
 public final class FastqProcessor {
+
+    /** The steps of a sample, in the order they run. */
+    private enum ReadStep {
+        FIRST_BAIT("First BBDuk baiting", "BBDuk", "Completed First Baiting"),
+        SECOND_BAIT("Second BBDuk baiting", "BBDuk", "Completed Second Baiting"),
+        ASSEMBLY("Tadpole assembly", "Tadpole", null),
+        MERGE("BBMerge of baited pairs", "BBMerge", "Completed Assembly");
+
+        private final String stageName;
+        private final String program;
+        private final String completed;
+
+        ReadStep(String stageName, String program, String completed) {
+            this.stageName = stageName;
+            this.program = program;
+            this.completed = completed;
+        }
+
+        boolean appliesTo(Sample sample) {
+            return this != MERGE || sample.files().size() == 2;
+        }
+    }
+
     public void process(PipelineContext context) {
         List<Sample> samples = fastqSamples(context);
         if (samples.isEmpty()) {
             return;
         }
 
-        context.monitor().info("FastQ files identified, conducting baiting and assembly");
+        RunMonitor monitor = context.monitor();
+        monitor.info("FastQ files identified, conducting baiting and assembly");
         int kLength = context.primers().values().stream().mapToInt(String::length).min()
                 .orElseThrow(() -> new PipelineException("Primer dictionary is empty"));
         // The samples processed at once share the threads and the memory.
-        ChildJavaMemory.Share share = ChildJavaMemory.share(context.childJavaMemoryBudgetGiB(),
-                context.config().threads(), samples.size());
-        context.monitor().info(share.atOnce() == 1
-                ? "BBTools: one sample at a time, with " + share.threads() + " threads and -Xmx" + share.memoryGiB() + "g"
-                : "BBTools: " + share.atOnce() + " samples at a time, each with " + share.threads()
-                        + " threads and -Xmx" + share.memoryGiB() + "g");
-        BbtoolsCommands commands = new BbtoolsCommands(context.dependencies().javaCommand(),
-                context.dependencies().bbtoolsJar(), share.memoryGiB(), share.threads());
+        int budget = context.childJavaMemoryBudgetGiB();
+        ChildJavaMemory.Share share = ChildJavaMemory.share(budget, context.config().threads(), samples.size());
+        ChildJavaMemory.Share alone = ChildJavaMemory.share(budget, context.config().threads(), 1);
+        monitor.info(share.atOnce() == 1
+                ? "BBTools: one sample at a time, with " + describe(share)
+                : "BBTools: " + share.atOnce() + " samples at a time, each with " + describe(share));
+        BbtoolsCommands shared = commands(context, share);
+        // Only worth setting a sample aside if it gets more memory alone.
+        boolean runAgainAlone = share.memoryGiB() < alone.memoryGiB();
 
-        stage(context, share, "First BBDuk baiting", samples, sample -> bait(context, commands, sample, kLength));
-        context.monitor().info("Completed First Baiting");
-        stage(context, share, "Second BBDuk baiting", samples, sample -> secondBait(context, commands, sample));
-        context.monitor().info("Completed Second Baiting");
-        stage(context, share, "Tadpole assembly", samples, sample -> assemble(context, commands, sample));
-        List<Sample> paired = samples.stream().filter(sample -> sample.files().size() == 2).toList();
-        stage(context, share, "BBMerge of baited pairs", paired, sample -> merge(context, commands, sample));
-        context.monitor().info("Completed Assembly");
+        // Samples that ran out of memory, by name, with the step they ran out of it in.
+        Map<String, ReadStep> setAside = new ConcurrentHashMap<>();
+        for (ReadStep step : ReadStep.values()) {
+            List<Sample> stepSamples = samples.stream()
+                    .filter(sample -> !setAside.containsKey(sample.getName()) && step.appliesTo(sample))
+                    .toList();
+            ParallelStageRunner.run(step.stageName, stepSamples, share.atOnce(), monitor, sample -> {
+                try {
+                    runStep(step, context, shared, sample, kLength);
+                } catch (ProgramFailedException e) {
+                    if (!runAgainAlone || !ranOutOfMemory(e)) {
+                        throw outOfMemoryOrAsIs(e, step, sample, share);
+                    }
+                    setAside.put(sample.getName(), step);
+                    monitor.warning("Warning: " + step.program + " ran out of memory on sample " + sample.getName()
+                            + " with -Xmx" + share.memoryGiB() + "g; it will be run again after the other samples,"
+                            + " alone, with -Xmx" + alone.memoryGiB() + "g");
+                }
+            }, ParallelStageRunner.Progress.NONE);
+            if (step.completed != null) {
+                monitor.info(step.completed);
+            }
+        }
+
+        List<Sample> again = samples.stream().filter(sample -> setAside.containsKey(sample.getName())).toList();
+        if (again.isEmpty()) {
+            return;
+        }
+        monitor.info("Running the samples that ran out of memory again, one at a time, with " + describe(alone)
+                + ": " + String.join(", ", again.stream().map(Sample::getName).toList()));
+        BbtoolsCommands whole = commands(context, alone);
+        for (Sample sample : again) {
+            ReadStep from = setAside.get(sample.getName());
+            for (ReadStep step : ReadStep.values()) {
+                if (step.compareTo(from) >= 0 && step.appliesTo(sample)) {
+                    try {
+                        runStep(step, context, whole, sample, kLength);
+                    } catch (ProgramFailedException e) {
+                        throw outOfMemoryOrAsIs(e, step, sample, alone);
+                    }
+                }
+            }
+            monitor.info("Completed sample " + sample.getName());
+        }
     }
 
-    private static void stage(PipelineContext context, ChildJavaMemory.Share share, String name, List<Sample> samples,
-                              Consumer<Sample> action) {
-        ParallelStageRunner.run(name, samples, share.atOnce(), context.monitor(), action,
-                ParallelStageRunner.Progress.NONE);
+    private static String describe(ChildJavaMemory.Share share) {
+        return share.threads() + " threads and -Xmx" + share.memoryGiB() + "g";
+    }
+
+    private static BbtoolsCommands commands(PipelineContext context, ChildJavaMemory.Share share) {
+        return new BbtoolsCommands(context.dependencies().javaCommand(), context.dependencies().bbtoolsJar(),
+                share.memoryGiB(), share.threads());
+    }
+
+    static boolean ranOutOfMemory(ProgramFailedException e) {
+        return e.exitCode() == BbtoolsCommands.OUT_OF_MEMORY_EXIT;
+    }
+
+    /** A failure that the user can do something about when it is a lack of memory. */
+    private static PipelineException outOfMemoryOrAsIs(ProgramFailedException e, ReadStep step, Sample sample,
+                                                       ChildJavaMemory.Share share) {
+        if (!ranOutOfMemory(e)) {
+            return e;
+        }
+        return new PipelineException(step.program + " ran out of memory on sample " + sample.getName() + " with -Xmx"
+                + share.memoryGiB() + "g. Give insilicoPCR more memory with Java's -Xmx option"
+                + " (java -Xmx96g -jar insilicoPCR.jar ...): the BBTools programs get half of it, up to "
+                + ChildJavaMemory.MAX_CHILD_GIB + " GB per sample.", e);
+    }
+
+    private static void runStep(ReadStep step, PipelineContext context, BbtoolsCommands commands, Sample sample,
+                                int kLength) {
+        switch (step) {
+            case FIRST_BAIT -> bait(context, commands, sample, kLength);
+            case SECOND_BAIT -> secondBait(context, commands, sample);
+            case ASSEMBLY -> assemble(context, commands, sample);
+            case MERGE -> merge(context, commands, sample);
+        }
     }
 
     private static void merge(PipelineContext context, BbtoolsCommands commands, Sample sample) {

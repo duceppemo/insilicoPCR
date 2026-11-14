@@ -15,6 +15,14 @@ import java.util.Objects;
  * @param threads        threads given to each BBTools child process
  */
 record BbtoolsCommands(String javaCommand, Path bbtoolsJar, int childMemoryGiB, int threads) {
+    /**
+     * Makes a child that runs out of heap exit with {@link #OUT_OF_MEMORY_EXIT}. Without it
+     * the exit code is that of any other error (BBTools catches the error only to stop),
+     * and an error in a worker thread may even leave the program running on.
+     */
+    private static final String EXIT_ON_OUT_OF_MEMORY = "-XX:+ExitOnOutOfMemoryError";
+    /** Exit code of the Java runtime when {@code -XX:+ExitOnOutOfMemoryError} stops it. */
+    static final int OUT_OF_MEMORY_EXIT = 3;
 
     BbtoolsCommands {
         Objects.requireNonNull(javaCommand, "javaCommand");
@@ -109,7 +117,7 @@ record BbtoolsCommands(String javaCommand, Path bbtoolsJar, int childMemoryGiB, 
      */
     List<String> mergePairs(Path interleavedPairs, Path merged, Path unmerged) {
         return new ArrayList<>(List.of(
-                javaCommand, "-ea", "-Xmx" + childMemoryGiB + "g",
+                javaCommand, "-ea", "-Xmx" + childMemoryGiB + "g", EXIT_ON_OUT_OF_MEMORY,
                 "-cp", bbtoolsJar.toString(), "jgi.BBMerge",
                 "in=" + interleavedPairs,
                 "interleaved=t",
@@ -144,7 +152,7 @@ record BbtoolsCommands(String javaCommand, Path bbtoolsJar, int childMemoryGiB, 
 
     List<String> assemble(Path reads, Path output, TadpoleOptions tadpole) {
         List<String> command = new ArrayList<>(List.of(
-                javaCommand, "-ea", "-Xmx" + childMemoryGiB + "g",
+                javaCommand, "-ea", "-Xmx" + childMemoryGiB + "g", EXIT_ON_OUT_OF_MEMORY,
                 "-cp", bbtoolsJar.toString(), "assemble.Tadpole",
                 "in=" + reads,
                 "out=" + output,
@@ -163,7 +171,7 @@ record BbtoolsCommands(String javaCommand, Path bbtoolsJar, int childMemoryGiB, 
      */
     List<String> extend(Path seeds, Path reads, Path output, int k, int reach) {
         return new ArrayList<>(List.of(
-                javaCommand, "-ea", "-Xmx" + childMemoryGiB + "g",
+                javaCommand, "-ea", "-Xmx" + childMemoryGiB + "g", EXIT_ON_OUT_OF_MEMORY,
                 "-cp", bbtoolsJar.toString(), "assemble.Tadpole",
                 "in=" + seeds,
                 "out=" + output,
@@ -185,7 +193,7 @@ record BbtoolsCommands(String javaCommand, Path bbtoolsJar, int childMemoryGiB, 
             throw new IllegalArgumentException("Expected one or two read files, got " + reads.size());
         }
         List<String> command = new ArrayList<>(List.of(
-                javaCommand, "-ea", "-Xmx" + childMemoryGiB + "g",
+                javaCommand, "-ea", "-Xmx" + childMemoryGiB + "g", EXIT_ON_OUT_OF_MEMORY,
                 "-cp", bbtoolsJar.toString(), "jgi.BBDuk",
                 "ref=" + ref,
                 "hdist=" + hdist,

@@ -9,6 +9,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PrimerIdTest {
@@ -26,6 +27,13 @@ class PrimerIdTest {
         for (String id : List.of("plainname", "-F", "assay-", "assay-X", "assay-fwd", "16S_27F")) {
             assertNull(PrimerId.parse(id), id);
         }
+    }
+
+    @Test
+    void aPrimerOfTheRunMustFollowTheConvention() {
+        assertEquals(new PrimerId("toxA", Role.REVERSE), PrimerId.of("toxA-R_2"));
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class, () -> PrimerId.of("plain"));
+        assertEquals("Not a primer ID of the <assay>-F/-R/-P convention: plain", error.getMessage());
     }
 
     @Test

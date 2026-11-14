@@ -523,7 +523,7 @@ public final class ReadLevelCaller {
 
     /** {@code F} or {@code R}: the role letter of the primer a hit belongs to. */
     private static char role(BlastResult hit) {
-        return PrimerId.parse(hit.subjectID()).role().letter();
+        return PrimerId.of(hit.subjectID()).role().letter();
     }
 
     /**

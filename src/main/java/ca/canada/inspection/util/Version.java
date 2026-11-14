@@ -16,18 +16,23 @@ public final class Version {
 
     private static String read() {
         try (InputStream in = Version.class.getResourceAsStream("version.properties")) {
-            if (in == null) {
-                throw new IllegalStateException("version.properties is missing from the build");
-            }
-            Properties properties = new Properties();
-            properties.load(in);
-            String version = properties.getProperty("version", "");
-            if (version.isBlank() || version.contains("${")) {
-                throw new IllegalStateException("version.properties was not filled in by the build: " + version);
-            }
-            return version;
+            return parse(in);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
+    }
+
+    /** The version in a {@code version.properties} as the build writes it. */
+    static String parse(InputStream in) throws IOException {
+        if (in == null) {
+            throw new IllegalStateException("version.properties is missing from the build");
+        }
+        Properties properties = new Properties();
+        properties.load(in);
+        String version = properties.getProperty("version", "");
+        if (version.isBlank() || version.contains("${")) {
+            throw new IllegalStateException("version.properties was not filled in by the build: " + version);
+        }
+        return version;
     }
 }

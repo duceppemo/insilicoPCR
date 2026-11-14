@@ -127,8 +127,9 @@ public final class ConsolidatedReport {
     private static Set<String> assaysWithProbe(Iterable<String> primerIds) {
         Set<String> assays = new TreeSet<>();
         for (String primerId : primerIds) {
-            if (PrimerId.isProbe(primerId)) {
-                assays.add(PrimerId.parse(primerId).assay());
+            PrimerId parsed = PrimerId.parse(primerId);
+            if (parsed != null && parsed.role() == PrimerId.Role.PROBE) {
+                assays.add(parsed.assay());
             }
         }
         return assays;

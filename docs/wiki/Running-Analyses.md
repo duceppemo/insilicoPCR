@@ -11,6 +11,16 @@ Supported sequence inputs include:
 
 The input can be a single file or a directory containing multiple sequence files. Gzipped assemblies (`.fasta.gz`, `.fna.gz` and so on) are read since 0.12.1; with earlier releases, decompress them first.
 
+## Sample names
+
+Each sample is named after its file, without the extension (in any case: `ISO2.FASTA` is the sample `ISO2`). A sample is one assembly, one FASTQ file, or the two FASTQ files of a read pair:
+
+- `_R1`/`_R2`, with or without `_001` (`s_R1_001.fastq.gz`, `s_R2_001.fastq.gz`), make the pair `s`;
+- `_1`/`_2` (`SRR123_1.fastq.gz`, `SRR123_2.fastq.gz`, as the ENA and SRA name them) make the pair `SRR123` when both files are there and no `_3` file says the names are numbered samples;
+- an assembly keeps these endings: `strain_R1.fasta` is the sample `strain_R1`, and `strain_R2.fasta` another one.
+
+Before 0.15.1, an assembly whose name ended with `_R1`, `_R2` or `_assembly`, or had an upper-case extension, was searched but reported with no product, whatever it held.
+
 ## Input check
 
 Since 0.13.0 every input file is checked before anything is run on it. A sample with a faulty file is **left out with a warning and the other samples are run**; before, such a file was skipped without a word, run as half of a read pair, or stopped the whole run inside BBDuk.
@@ -24,6 +34,8 @@ Since 0.13.0 every input file is checked before anything is run on it. A sample 
 | Not a FASTQ file under a `.fastq` name | `not a FASTQ file` |
 | The two files of a read pair with different numbers of reads | `the two files of the pair hold different numbers of reads (695 and 600)` |
 | An assembly that is empty, holds header lines only, does not start with `>`, or whose gzip stream is cut short | `the file holds no sequence (header lines only)` |
+| Files with the same sample name that are not a read pair (`x.fasta` and `x.fastq`, `x.fasta` and `x.fna`) | `these files have the same sample name (a sample is one FASTA file, ...)` |
+| Sample names that differ only in case (`iso2.fasta`, `ISO2.fna`); their results would share a folder on Windows and macOS | `the sample name differs only in case from another one (ISO2, iso2 would share a results folder; rename one)` |
 
 A sample is left out as a whole: when one file of a read pair is faulty, the other is not run as single-end reads.
 

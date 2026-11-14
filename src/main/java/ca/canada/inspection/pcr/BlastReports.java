@@ -10,41 +10,27 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Stream;
 
-/**
- * Walks per-sample BLAST TSV reports and attaches accepted primer hits to the
- * matching samples. Shared by the command-line and GUI pipelines.
- */
+/** Reads the per-sample BLAST TSV reports and attaches the accepted primer hits to the samples. */
 public final class BlastReports {
 
     private BlastReports() {
     }
 
-    public static void attachHits(Path detailedDir, Map<String, Sample> samples,
-                                  PrimerPanel primers, AmpliconOptions options) {
-        for (Path report : listTsvFiles(detailedDir)) {
-            String sampleName = report.getFileName().toString().replaceFirst("\\.tsv$", "");
-            Sample sample = samples.get(sampleName);
-            if (sample == null) {
-                // Output directories may be reused across runs, so stale reports from
-                // other sample sets are expected; still say so instead of hiding it.
-                System.err.println("Warning: ignoring BLAST report with no matching sample in this run: " + report);
-                continue;
-            }
-            parseSingleReport(report, sampleName, sample, primers, options);
-        }
+    /** Where the BLAST stage writes the report of the sample {@code sampleName}. */
+    public static Path reportFile(Path detailedDir, String sampleName) {
+        return detailedDir.resolve(sampleName).resolve(sampleName + ".tsv");
     }
 
-    private static List<Path> listTsvFiles(Path detailedDir) {
-        try (Stream<Path> paths = Files.walk(detailedDir, 2)) {
-            return paths
-                    .filter(Files::isRegularFile)
-                    .filter(path -> path.getFileName().toString().endsWith(".tsv"))
-                    .toList();
-        } catch (IOException e) {
-            throw new UncheckedIOException("Unable to list BLAST reports in: " + detailedDir, e);
-        }
+    /**
+     * Reads the BLAST report of each of {@code samples} (see {@link #reportFile}) and attaches
+     * its accepted hits. Reports of other samples, left by an earlier run in the same output
+     * folder, are not read.
+     */
+    public static void attachHits(Path detailedDir, Map<String, Sample> samples,
+                                  PrimerPanel primers, AmpliconOptions options) {
+        samples.forEach((sampleName, sample) ->
+                parseSingleReport(reportFile(detailedDir, sampleName), sampleName, sample, primers, options));
     }
 
     private static void parseSingleReport(Path report, String sampleName, Sample sample,
@@ -68,7 +54,7 @@ public final class BlastReports {
                         + "); the trimmed bases of their hits are not compared.");
             }
         } catch (IOException e) {
-            throw new UncheckedIOException("Unable to parse BLAST report: " + report, e);
+            throw new UncheckedIOException("Unable to read BLAST report: " + report, e);
         }
     }
 

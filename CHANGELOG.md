@@ -4,6 +4,22 @@
 
 ### Fixed
 
+- An assembly named `<name>_R1.fasta`, `<name>_R2.fasta` or `<name>_assembly.fasta`,
+  or with an upper-case extension (`ISO2.FASTA`), was searched but reported
+  with no product, whatever it held: its BLAST results were filed under a name
+  worked out from the file name with other rules than the sample's, and then
+  left out as the results of no sample, with a warning on the terminal only.
+  The results are now filed and read under the sample's own name. An assembly
+  keeps a `_R1`/`_R2` ending in its sample name (`strain_R1`), as it already
+  kept `_1`/`_2`: read pairs are FASTQ files only. Found on renamed copies of
+  the five-isolate example genomes, three of which lost all their products
+  (also with 0.15.0).
+- The input check leaves out, with a warning, files that share a sample name
+  without being a read pair (`x.fasta` and `x.fastq`, which were searched as
+  one sample, or `x.fasta` and `x.fna`), and sample names that differ only in
+  case (`iso2.fasta`, `ISO2.fna`), whose results would share a folder on
+  Windows and macOS.
+
 - FASTQ input: a sample whose Tadpole ran out of its share of memory, when
   several samples ran at once, stopped the run with `Tadpole failed with exit
   code 1` instead of being run again alone. Tadpole's k-mer table is sized

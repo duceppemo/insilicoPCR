@@ -33,7 +33,7 @@ public final class SequenceFileUtils {
             ".fasta.gz", ".ffn.gz", ".fna.gz", ".fsa.gz", ".fa.gz", ".fastq.gz", ".fq.gz"};
 
     private static final Pattern SEQUENCE_EXTENSION = Pattern.compile("(?i)\\.(fasta|ffn|fna|fsa|fa|fastq|fq)(\\.gz)?$");
-    private static final Pattern READ_PAIR_SUFFIX = Pattern.compile("(?i)_R[12](_001)?$");
+    private static final Pattern READ_PAIR_SUFFIX = Pattern.compile("(?i)_R([12])(_001)?$");
     // FASTQ reads from ENA/SRA (fasterq-dump) are named <run>_1 / <run>_2.
     private static final Pattern BARE_FASTQ_PAIR_SUFFIX = Pattern.compile("_([12])$");
 
@@ -47,9 +47,15 @@ public final class SequenceFileUtils {
     }
 
     public static String sampleName(Path path) {
-        Path directory = path.toAbsolutePath().getParent();
-        return sampleName(path.getFileName().toString(),
-                sibling -> directory != null && Files.exists(directory.resolve(sibling)));
+        return naming(path).sample();
+    }
+
+    /**
+     * Which mate of a read pair {@code path} is: 1 or 2, or 0 for a file that is not one
+     * (any FASTA file, and a FASTQ file without a mate suffix).
+     */
+    public static int mate(Path path) {
+        return naming(path).mate();
     }
 
     /**
@@ -58,23 +64,38 @@ public final class SequenceFileUtils {
      * (e.g. when the names come from a run's QA log and the files may have moved).
      */
     public static String sampleName(String fileName, java.util.function.Predicate<String> siblingExists) {
+        return naming(fileName, siblingExists).sample();
+    }
+
+    /** The sample a file belongs to and which mate of a read pair it is (0: none). */
+    private record Naming(String sample, int mate) {
+    }
+
+    private static Naming naming(Path path) {
+        Path directory = path.toAbsolutePath().getParent();
+        return naming(path.getFileName().toString(),
+                sibling -> directory != null && Files.exists(directory.resolve(sibling)));
+    }
+
+    private static Naming naming(String fileName, java.util.function.Predicate<String> siblingExists) {
         String base = SEQUENCE_EXTENSION.matcher(fileName).replaceFirst("");
-        String withoutIlluminaSuffix = READ_PAIR_SUFFIX.matcher(base).replaceFirst("");
-        if (!withoutIlluminaSuffix.equals(base)) {
-            return withoutIlluminaSuffix;
+        // Read pairs are FASTQ files only: an assembly named strain_R1.fasta or strain_1.fasta
+        // is the sample strain_R1 or strain_1, so that a FASTA sample is always one file.
+        if (!hasExtension(fileName, FASTQ_EXTENSIONS)) {
+            return new Naming(base, 0);
+        }
+        Matcher illumina = READ_PAIR_SUFFIX.matcher(base);
+        if (illumina.find()) {
+            return new Naming(base.substring(0, illumina.start()), Integer.parseInt(illumina.group(1)));
         }
         // The bare _1/_2 convention is ambiguous (sequentially numbered samples
         // use it too), so it only counts as a read pair when the mate file is
         // actually present and no _3 sibling suggests sequential numbering.
-        // It is also never applied to FASTA files: strain_1.fasta and
-        // strain_2.fasta are distinct samples.
-        if (hasExtension(fileName, FASTQ_EXTENSIONS)) {
-            Matcher mate = BARE_FASTQ_PAIR_SUFFIX.matcher(base);
-            if (mate.find() && isPartOfReadPair(siblingExists, fileName, base, mate.group(1))) {
-                return base.substring(0, mate.start());
-            }
+        Matcher mate = BARE_FASTQ_PAIR_SUFFIX.matcher(base);
+        if (mate.find() && isPartOfReadPair(siblingExists, fileName, base, mate.group(1))) {
+            return new Naming(base.substring(0, mate.start()), Integer.parseInt(mate.group(1)));
         }
-        return base;
+        return new Naming(base, 0);
     }
 
     private static boolean isPartOfReadPair(java.util.function.Predicate<String> siblingExists, String fileName,

@@ -52,11 +52,6 @@ final class GelScale {
         return minimum + ((maximum - minimum) * unit);
     }
 
-    /** Estimated width of a ladder label in the 10 pt Verdana used on the gel. */
-    static double approximateTextWidth(String text) {
-        return text.length() * 6.1;
-    }
-
     /** Estimated width of the longest lane label (the ladder lane included) in 10 pt Verdana. */
     static double laneLabelWidth(Collection<String> laneNames) {
         double longest = "Ladder".length();

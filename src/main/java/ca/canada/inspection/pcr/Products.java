@@ -29,14 +29,24 @@ public final class Products {
         return of(sample.getName(), sample, primers, options);
     }
 
-    /** As {@link #of(Sample, PrimerPanel, AmpliconOptions)}, the rows naming the sample {@code sampleName}. */
+    /**
+     * As {@link #of(Sample, PrimerPanel, AmpliconOptions)}, the rows naming the sample {@code sampleName}.
+     * Worked out once per sample, primer panel and options while the sample's hits stay as they are
+     * (the report, the FASTQ steps and the diagnostics all ask); the list cannot be changed.
+     */
     public static List<ReportRow> of(String sampleName, Sample sample, PrimerPanel primers, AmpliconOptions options) {
-        List<ReportRow> rows = new ArrayList<>();
-        // Probe requirement is decided per assay from the primer FILE, so standard PCR and qPCR
-        // assays can be mixed in one run: an assay whose probe is defined but never hits stays
-        // negative, while a probe-less assay is reported on its primer pair alone.
-        find(rows::add, sampleName, sample, options, primers.assaysWithProbe());
-        return rows;
+        return sample.derived(new Key(sampleName, primers, options), () -> {
+            List<ReportRow> rows = new ArrayList<>();
+            // Probe requirement is decided per assay from the primer FILE, so standard PCR and qPCR
+            // assays can be mixed in one run: an assay whose probe is defined but never hits stays
+            // negative, while a probe-less assay is reported on its primer pair alone.
+            find(rows::add, sampleName, sample, options, primers.assaysWithProbe());
+            return List.copyOf(rows);
+        });
+    }
+
+    /** What a sample's products depend on besides its hits; the panel by identity, one per run. */
+    private record Key(String sampleName, PrimerPanel primers, AmpliconOptions options) {
     }
 
     /** The product sizes of {@code sample}, per assay; an assay without a product is absent. */

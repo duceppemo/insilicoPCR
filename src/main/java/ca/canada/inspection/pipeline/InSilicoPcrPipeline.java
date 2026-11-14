@@ -11,6 +11,7 @@ import ca.canada.inspection.util.InputCheck;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -40,11 +41,11 @@ public final class InSilicoPcrPipeline {
         monitor.info("Beginning Program Run");
         RuntimeDependencies dependencies = RuntimeDependencies.discover();
         PipelineDirectories directories = PipelineDirectories.create(config.output());
-        monitor.stepDone(Step.DEPENDENCIES);
+        done(Step.DEPENDENCIES);
 
         // The primer file first: a mistake there is found at once, not after reading every input.
         PrimerPanel primers = PrimerService.loadAndPrepare(config, directories);
-        monitor.stepDone(Step.PRIMERS);
+        done(Step.PRIMERS);
 
         monitor.info("Checking the input files (" + (config.inputCheck() == InputCheck.Depth.FULL
                 ? "every read; --input-check quick reads the first one only" : "first read only") + ")");
@@ -54,21 +55,21 @@ public final class InSilicoPcrPipeline {
         PipelineContext context = new PipelineContext(config, dependencies, directories, sampleMap, primers,
                 ChildJavaMemory.budgetGiB(), checked.issues(), monitor);
         logRuntime(context);
-        monitor.stepDone(Step.INPUT_CHECK);
+        done(Step.INPUT_CHECK);
 
         // FASTQ samples: baited and assembled into a mini-assembly, searched like an assembly.
         FastqProcessor.process(context);
-        monitor.stepDone(Step.READS);
+        done(Step.READS);
 
         BlastDatabaseBuilder.build(context);
-        monitor.stepDone(Step.BLAST_DATABASE);
+        done(Step.BLAST_DATABASE);
 
         BlastRunner.run(context);
         ContigService.load(context);
         BlastReports.attachHits(directories.detailed(), sampleMap, context.primers(),
                 config.ampliconOptions());
         monitor.info("Completed BLAST");
-        monitor.stepDone(Step.BLAST);
+        done(Step.BLAST);
 
         // FASTQ samples: products the mini-assembly missed, looked for in the reads themselves.
         ReadLevelStage.Settings search = ReadLevelStage.Settings.of(context);
@@ -78,7 +79,7 @@ public final class InSilicoPcrPipeline {
                     config.ampliconOptions());
             monitor.info("Completed read-level amplicon search");
         }
-        monitor.stepDone(Step.READ_SEARCH);
+        done(Step.READ_SEARCH);
 
         // FASTQ samples: products longer than a read, looked for by extending reads.
         ReadExtensionStage.Result extension = ReadExtensionStage.Result.NONE;
@@ -87,14 +88,25 @@ public final class InSilicoPcrPipeline {
                     sampleMap, context.primers(), config.ampliconOptions(), readEvidence);
             monitor.info("Completed read extension");
         }
-        monitor.stepDone(Step.READ_EXTENSION);
+        done(Step.READ_EXTENSION);
 
         RunResult result = ReportGenerator.write(context, readEvidence, extension);
-        monitor.stepDone(Step.REPORTS);
+        done(Step.REPORTS);
 
         long seconds = TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - startTime);
         monitor.info("Done in " + seconds + " seconds");
         return result;
+    }
+
+    /**
+     * Reports {@code step} done, then stops a cancelled run: no step after it starts, and a
+     * stopped run writes no report or QAlog.txt (a step may go on after a failed program).
+     */
+    private void done(Step step) {
+        monitor.stepDone(step);
+        if (monitor.isCancelled()) {
+            throw new CancellationException("The run was cancelled.");
+        }
     }
 
     private static void logRuntime(PipelineContext context) {

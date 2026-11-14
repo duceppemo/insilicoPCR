@@ -23,6 +23,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.OptionalInt;
 import java.util.Set;
 import java.util.TreeSet;
@@ -346,7 +347,7 @@ public final class HtmlReport {
         StringBuilder html = new StringBuilder(64_000);
         html.append("<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n")
                 .append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n")
-                .append("<title>insilicoPCR report</title>\n<style>\n").append(Page.CSS).append("</style>\n</head>\n<body>\n")
+                .append("<title>insilicoPCR report</title>\n<style>\n").append(page("report.css")).append("</style>\n</head>\n<body>\n")
                 .append("<main>\n<header>\n<h1>insilicoPCR report</h1>\n<p class=\"sub\">")
                 .append(escape(String.join(" · ", headline(runDetails, reportName)))).append("</p>\n</header>\n");
 
@@ -361,7 +362,7 @@ public final class HtmlReport {
         splitSection(html, splits);
         detailSection(html, runDetails, reportName, anyDeclared);
 
-        html.append("</main>\n<script>\n").append(Page.SCRIPT).append("</script>\n</body>\n</html>\n");
+        html.append("</main>\n<script>\n").append(page("report.js")).append("</script>\n</body>\n</html>\n");
         return html.toString();
     }
 
@@ -765,12 +766,14 @@ public final class HtmlReport {
     }
 
     /**
-     * The page's style and script, kept as resources next to this class; read the first time a
-     * page is written, so that a build missing one fails that write, not every use of the class.
+     * The page's style and script, kept as resources next to this class, read the first time a
+     * page needs them. A build missing one fails each write with an exception, which the command
+     * line and the application report like any other failure; a later write tries again.
      */
-    private static final class Page {
-        static final String CSS = resource("report.css");
-        static final String SCRIPT = resource("report.js");
+    private static final Map<String, String> RESOURCES = new ConcurrentHashMap<>();
+
+    private static String page(String name) {
+        return RESOURCES.computeIfAbsent(name, HtmlReport::resource);
     }
 
     private static String resource(String name) {

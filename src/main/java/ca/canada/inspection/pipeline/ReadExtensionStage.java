@@ -107,7 +107,8 @@ public final class ReadExtensionStage {
                         outcomes, rows);
             } catch (PipelineException | UncheckedIOException e) {
                 // A failed program or a file that cannot be read or written: the assays stay as
-                // the read-level search left them, and the run goes on.
+                // the read-level search left them, and the run goes on; unless it was stopped.
+                stopIfCancelled(settings);
                 String reason = e instanceof ProgramFailedException failed && BbtoolsCommands.ranOutOfMemory(failed)
                         ? BbtoolsCommands.outOfMemoryMessage(failed.program(), "", settings.bbtools().childMemoryGiB())
                         : e.getMessage();

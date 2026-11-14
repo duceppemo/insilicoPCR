@@ -159,8 +159,10 @@ class ExternalProgramTest {
         running.join(20_000);
 
         assertFalse(running.isAlive(), "still waiting for the program");
-        assertTrue(thrown.get() instanceof PipelineException
-                && thrown.get().getMessage().startsWith("Interrupted while running Sleep"), String.valueOf(thrown.get()));
+        // A cancellation (the application interrupts the run thread to stop the run), not a
+        // failed program that a step could note and go on after.
+        assertTrue(thrown.get() instanceof CancellationException
+                && thrown.get().getMessage().equals("The run was cancelled (Sleep)."), String.valueOf(thrown.get()));
     }
 
     @Test

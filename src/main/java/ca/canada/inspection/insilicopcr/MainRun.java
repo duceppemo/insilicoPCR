@@ -424,16 +424,24 @@ public class MainRun extends Application {
             if (confirm.showAndWait().orElse(ButtonType.CANCEL) != ButtonType.OK) {
                 return false;
             }
-            // Stops the run and its programs; the run then writes its log.txt and ends.
+            // Stops the run and its programs; the run then writes its log.txt and ends. The window
+            // closes at once: the wait is on a thread of its own, not the window's, and that thread
+            // (not a daemon) keeps the program running until the run has stopped.
             runningTask.cancel(true);
-            try {
-                if (!runningThread.join(CLOSE_WAIT)) {
-                    System.err.println("The run did not stop within " + CLOSE_WAIT.toSeconds()
-                            + " seconds of the window closing; its log.txt may be incomplete.");
+            Thread run = runningThread;
+            Thread wait = new Thread(() -> {
+                try {
+                    if (!run.join(CLOSE_WAIT)) {
+                        System.err.println("The run did not stop within " + CLOSE_WAIT.toSeconds()
+                                + " seconds of the window closing; its log.txt may be incomplete.");
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
                 }
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
+                Platform.exit();
+            }, "close-after-run");
+            wait.start();
+            return true;
         }
         Platform.exit();
         return true;

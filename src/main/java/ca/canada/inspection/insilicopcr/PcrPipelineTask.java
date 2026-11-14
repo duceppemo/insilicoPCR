@@ -17,6 +17,7 @@ import java.io.StringWriter;
 import java.nio.file.Files;
 import java.util.Objects;
 import java.util.Queue;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
@@ -50,7 +51,12 @@ final class PcrPipelineTask extends Task<RunResult> {
     @Override
     protected RunResult call() {
         try {
-            return new InSilicoPcrPipeline(config, new WindowMonitor()).run();
+            RunResult result = new InSilicoPcrPipeline(config, new WindowMonitor()).run();
+            if (isCancelled()) {
+                // Cancelled as the run ended: its reports are written, but it is not a finished run.
+                throw new CancellationException("The run was cancelled.");
+            }
+            return result;
         } catch (RuntimeException | Error e) {
             // The console always gets the stack trace.
             e.printStackTrace();

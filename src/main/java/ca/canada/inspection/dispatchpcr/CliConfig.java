@@ -3,6 +3,7 @@ package ca.canada.inspection.dispatchpcr;
 import ca.canada.inspection.pcr.AmpliconOptions;
 import ca.canada.inspection.pcr.ReadExtensionCaller;
 import ca.canada.inspection.pcr.ReadLevelCaller;
+import ca.canada.inspection.pipeline.PipelineConfig;
 import ca.canada.inspection.pipeline.TadpoleOptions;
 import ca.canada.inspection.util.InputCheck;
 import org.apache.commons.cli.CommandLine;
@@ -74,6 +75,12 @@ public record CliConfig(
                 readExtension(cmd.getOptionValue("read-extension")),
                 InputCheck.Depth.parse(cmd.getOptionValue("input-check", "full"))
         );
+    }
+
+    /** The run these options ask for. */
+    public PipelineConfig pipelineConfig() {
+        return new PipelineConfig(input, output, primers, threads, evalue, ampliconOptions, gel, tadpole,
+                readMinFraction, readExtension, inputCheck);
     }
 
     private static ReadExtensionCaller.Mode readExtension(String value) {

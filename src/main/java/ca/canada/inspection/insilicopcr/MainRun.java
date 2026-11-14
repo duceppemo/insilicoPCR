@@ -1,7 +1,8 @@
 package ca.canada.inspection.insilicopcr;
 
-import ca.canada.inspection.dispatchpcr.Dispatcher;
-import ca.canada.inspection.insilicopcr.gel.PaginatedGelViewer;
+import ca.canada.inspection.util.Version;
+import ca.canada.inspection.model.Sample;
+import ca.canada.inspection.gel.PaginatedGelViewer;
 import ca.canada.inspection.pcr.AmpliconOptions;
 import ca.canada.inspection.pcr.HtmlReport;
 import ca.canada.inspection.insilicopcr.ui.AmpliconSettingsDialog;
@@ -108,7 +109,7 @@ public class MainRun extends Application {
 
         scene = new Scene(pane, 800, 500);
         primaryStage.setScene(scene);
-        primaryStage.setTitle("InSilico PCR " + Dispatcher.VERSION);
+        primaryStage.setTitle("InSilico PCR " + Version.VERSION);
 
         // A build without the icon still opens its window, with the default icon.
         try (var icon = MainRun.class.getResourceAsStream("/icons/insilicoPCR-icon.png")) {

@@ -18,6 +18,10 @@ Releases are fully automated: pushing a `v*` tag builds the Linux and Windows po
 8. Smoke test: run the ZIP that was just built, on Linux and on Windows.
 9. Publish release artifacts for version tags.
 
+## Version number
+
+The version is written once, as `<version>` in `pom.xml`. The build copies it into `version.properties` (the one filtered resource, under `src/main/version`), which `util.Version` reads for `--version`, the window title, `QAlog.txt` and the reports; a test checks that the two agree. A release changes `pom.xml`, the heading in `CHANGELOG.md` and the example below.
+
 ## Smoke test
 
 `scripts/ci/smoke-test.sh <portable ZIP>` extracts the ZIP and runs its command line with the bundled Java, BLAST+ and BBTools on the [five-isolate example](https://github.com/duceppemo/insilicoPCR/tree/master/docs/examples/five-isolates), two of the five genomes gzipped. It then runs FASTQ mode (BBDuk, BBMerge, Tadpole) on simulated reads of one of the genomes. It fails the build when `report.tsv` differs from the one kept with the example, when the reads do not give the two expected products at their sizes, or when a folder with faulty files (an assembly of header lines only, an empty library, a gzipped FASTQ file cut short) does not end with those files named in warnings, their samples left out and the good sample reported.

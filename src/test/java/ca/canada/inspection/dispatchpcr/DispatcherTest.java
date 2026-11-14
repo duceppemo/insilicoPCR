@@ -1,5 +1,8 @@
 package ca.canada.inspection.dispatchpcr;
 
+import ca.canada.inspection.pipeline.AppPaths;
+import ca.canada.inspection.util.Version;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -13,6 +16,7 @@ import java.nio.file.Path;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 class DispatcherTest {
 
@@ -38,7 +42,7 @@ class DispatcherTest {
     @Test
     void versionIsPrinted() {
         assertEquals(0, run("--version"));
-        assertEquals("insilicoPCR " + Dispatcher.VERSION, out().strip());
+        assertEquals("insilicoPCR " + Version.VERSION, out().strip());
     }
 
     @Test
@@ -62,6 +66,28 @@ class DispatcherTest {
         assertEquals(2, run("-i", directory.toString(), "-o", directory.resolve("out").toString(),
                 "-p", primers.toString(), "-t", "none"));
         assertFalse(err().isBlank());
+    }
+
+    @Test
+    @Tag("end-to-end")
+    void theCommandLineRunsThePipeline() throws IOException {
+        // The five-isolate example, with the BLAST+ of the checkout (Git LFS) as in EndToEndTest.
+        AppPaths.RuntimeLayout layout;
+        try {
+            layout = AppPaths.discover();
+        } catch (RuntimeException e) {
+            assumeTrue(false, "BLAST+ is not in runtime/: " + e.getMessage());
+            return;
+        }
+        assumeTrue(Files.size(layout.blastnExecutable()) > 100_000, "blastn is a Git LFS pointer");
+        Path example = Path.of("docs", "examples", "five-isolates").toAbsolutePath();
+        Path output = directory.resolve("results");
+
+        assertEquals(0, run("-i", example.resolve("genomes").toString(), "-o", output.toString(),
+                "-p", example.resolve("primers.fasta").toString(), "-t", "2"), err());
+
+        assertEquals(Files.readString(example.resolve("report.tsv")).replace("\r", ""),
+                Files.readString(output.resolve("consolidated_report").resolve("report.tsv")).replace("\r", ""));
     }
 
     @Test

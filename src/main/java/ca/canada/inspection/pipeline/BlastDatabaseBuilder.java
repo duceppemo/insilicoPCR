@@ -1,6 +1,5 @@
 package ca.canada.inspection.pipeline;
 
-import ca.canada.inspection.dispatchpcr.AppPaths;
 
 import java.util.List;
 

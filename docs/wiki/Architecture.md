@@ -12,11 +12,25 @@ One dispatcher starts the desktop GUI when it is given no arguments and the comm
 |---|---|
 | Dispatcher | `ca.canada.inspection.dispatchpcr.Dispatcher` |
 | GUI | `ca.canada.inspection.insilicopcr.MainRun` |
-| CLI | `ca.canada.inspection.commandpcr.CommandMain` |
+| CLI | `ca.canada.inspection.dispatchpcr.CliConfig` (options to a `PipelineConfig`) |
 | Pipeline | `ca.canada.inspection.pipeline.InSilicoPcrPipeline` |
 | Analysis core | `ca.canada.inspection.pcr` |
 
-The dispatcher starts the GUI when no command-line arguments are provided. When CLI arguments are present, it runs the command-line pipeline.
+The dispatcher starts the GUI when no command-line arguments are provided. When CLI arguments are present, it reads them into a `CliConfig` and runs the pipeline with its `pipelineConfig()`.
+
+## Packages
+
+Each package depends only on those below it in this table, so there are no cycles:
+
+| Package | Holds | Uses |
+|---|---|---|
+| `dispatchpcr` | The entry point and the command-line options | everything below |
+| `insilicopcr` (and `insilicopcr.ui`) | The application window and its dialogs | `pipeline`, `pcr`, `gel`, `model`, `util` |
+| `pipeline` | The run: its steps, the external programs, the runtime layout (`AppPaths`) | `pcr`, `gel`, `model`, `util` |
+| `gel` | The synthetic gel: its geometry, the viewers, the image files | `model` |
+| `pcr` | The analysis core: primer IDs, hit filtering, amplicon calling, read-level calls, reports | `model`, `util` |
+| `util` | Input checks, sequence file helpers, the version (`Version`, filled in from `pom.xml` at build time) | `model` |
+| `model` | `Sample` and `BlastResult` | nothing |
 
 The GUI runs the same pipeline: `PcrPipelineTask` runs `InSilicoPcrPipeline` on a background thread and gives it a `RunMonitor` that sends messages, program output and progress to the window, and stops the run when the window closes. The command line gives it `RunMonitor.CONSOLE`. Every external program (BLAST+, BBTools) is started by one class, `pipeline.ExternalProgram`.
 
@@ -63,7 +77,7 @@ Three classes outside this package take part in every run as well:
 | `util.FastqCheck` | Reads a FASTQ file to its end and names the first fault (empty, gzip damaged or cut short, file ending inside a read, malformed read) |
 | `pipeline.RunFailure` | Tells a failure the user can act on (reported as `Error:` and `Cause:` lines) from one that points at the program (reported with its stack trace) |
 
-## Synthetic gel (`ca.canada.inspection.insilicopcr.gel`)
+## Synthetic gel (`ca.canada.inspection.gel`)
 
 The two gel viewers (`InteractiveGelViewer`, `PaginatedGelViewer`) and the `--gel` image (`GelImageWriter`) share plain classes that need no window and have unit tests:
 
@@ -79,7 +93,7 @@ The two gel viewers (`InteractiveGelViewer`, `PaginatedGelViewer`) and the `--ge
 | `GelImages` | PNG and PDF files of the gel, their default names, snapshots of the viewer |
 | `SyntheticGelImage` | The `--gel` PNG, drawn without a window |
 
-`BlastResult` (in `insilicopcr`) carries full alignment context (strand, subject coordinates, aligned sequences) and computes the 3'-end mismatch counts and weighted penalties. The rules themselves are documented on the [Amplicon Calling](Amplicon-Calling) page, and covered by unit tests under `src/test/java`. `EndToEndTest` runs whole runs on the five-isolate example with the BLAST+ and BBTools of the checkout.
+`BlastResult` (in `model`) carries full alignment context (strand, subject coordinates, aligned sequences) and computes the 3'-end mismatch counts and weighted penalties. The rules themselves are documented on the [Amplicon Calling](Amplicon-Calling) page, and covered by unit tests under `src/test/java`. `EndToEndTest` runs whole runs on the five-isolate example with the BLAST+ and BBTools of the checkout.
 
 ## High-level layers
 
@@ -96,7 +110,7 @@ External programs: BBTools, BLAST+ (ExternalProgram, ParallelStageRunner)
    ↓
 Analysis core (pcr): hit filtering, amplicon calling, read-level calls
    ↓
-Reports and synthetic gel (insilicopcr.gel)
+Reports (pcr) and synthetic gel (gel)
 ```
 
 ## Design goals

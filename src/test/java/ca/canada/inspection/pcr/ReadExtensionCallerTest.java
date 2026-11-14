@@ -1,6 +1,6 @@
 package ca.canada.inspection.pcr;
 
-import ca.canada.inspection.insilicopcr.Sample;
+import ca.canada.inspection.model.Sample;
 import ca.canada.inspection.pcr.ReadExtensionCaller.Outcome;
 import ca.canada.inspection.pcr.ReadExtensionCaller.Product;
 import ca.canada.inspection.pcr.ReadExtensionCaller.Seed;

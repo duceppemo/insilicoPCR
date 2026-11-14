@@ -27,6 +27,11 @@
   (ControlsFX, FormsFX, Ikonli, BootstrapFX, JavaFX FXML): 1.7 MB less.
 - Code: the primer naming rule (`<assay>-F/-R/-P`) is read in one place
   (`PrimerId`) instead of seven.
+- Code: packages no longer depend on each other in a cycle. `Sample` and
+  `BlastResult` moved to a new `model` package, the gel code to `gel`, and
+  `AppPaths` to `pipeline`; the `commandpcr` wrapper is gone (the dispatcher
+  runs the pipeline). The version is written once, in `pom.xml`, and read at
+  run time (`util.Version`), instead of being copied into `Dispatcher.java`.
 
 ## 0.15.0 (2026-11-14)
 

@@ -1,7 +1,7 @@
 package ca.canada.inspection.pipeline;
 
-import ca.canada.inspection.dispatchpcr.Dispatcher;
-import ca.canada.inspection.insilicopcr.Sample;
+import ca.canada.inspection.util.Version;
+import ca.canada.inspection.model.Sample;
 import ca.canada.inspection.pcr.FastqDiagnosticsReport;
 import ca.canada.inspection.pcr.HtmlReport;
 import ca.canada.inspection.pcr.ReadExtensionCaller;
@@ -66,7 +66,7 @@ public final class ReportGenerator {
         splits.forEach(split -> monitor.warning("Warning: " + split.message()));
         Path html = HtmlReport.write(report, context.samples().keySet(), RunDetails.fastqSampleNames(context.samples()),
                 context.primers(), context.expectedSizes(), diagnostics.findings(),
-                RunDetails.of(Dispatcher.VERSION, context.config().input(), context.config().primers(),
+                RunDetails.of(Version.VERSION, context.config().input(), context.config().primers(),
                         context.config().output(), context.config().ampliconOptions(),
                         context.hasFastqSamples() ? context.config().readMinFraction() : null,
                         context.config().readExtension()),
@@ -77,7 +77,7 @@ public final class ReportGenerator {
         qaLines.addAll(diagnostics.qaLogLines(context.config().tadpole(), context.config().readMinFraction(),
                 context.config().readExtension()));
         splits.forEach(split -> qaLines.add("Primers at contig ends: " + split.message()));
-        qaLog.write(context, Dispatcher.VERSION, qaLines);
+        qaLog.write(context, Version.VERSION, qaLines);
         monitor.stepDone(Step.REPORTS);
     }
 

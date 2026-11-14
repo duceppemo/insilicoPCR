@@ -5,7 +5,8 @@ module ca.canada.inspection.insilicopcr {
     requires org.apache.commons.cli;
 
     exports ca.canada.inspection.insilicopcr;
-    exports ca.canada.inspection.commandpcr;
+    exports ca.canada.inspection.model;
+    exports ca.canada.inspection.gel;
     exports ca.canada.inspection.dispatchpcr;
     exports ca.canada.inspection.pcr;
     exports ca.canada.inspection.pipeline;

@@ -1,7 +1,7 @@
 package ca.canada.inspection.pcr;
 
-import ca.canada.inspection.insilicopcr.BlastResult;
-import ca.canada.inspection.insilicopcr.Sample;
+import ca.canada.inspection.model.BlastResult;
+import ca.canada.inspection.model.Sample;
 import ca.canada.inspection.pcr.ReadLevelCaller.ReadCall;
 import ca.canada.inspection.pcr.ReadLevelCaller.ReadEvidence;
 

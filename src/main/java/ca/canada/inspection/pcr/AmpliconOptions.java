@@ -10,7 +10,7 @@ package ca.canada.inspection.pcr;
  *                              and bind hotter than primers, so they tolerate more)
  * @param threePrimeWindow      number of bases at the primer 3' end checked separately
  * @param maxThreePrimePenalty  maximum weighted 3' penalty tolerated inside the window
- *                              (see {@link ca.canada.inspection.insilicopcr.BlastResult#threePrimePenalty(int)})
+ *                              (see {@link ca.canada.inspection.model.BlastResult#threePrimePenalty(int)})
  * @param maxFivePrimeTruncation maximum unaligned bases tolerated at the primer 5' end
  * @param minAmpliconLength     minimum reported amplicon length in bp (0 = no limit)
  * @param maxAmpliconLength     maximum reported amplicon length in bp (0 = no limit)

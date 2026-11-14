@@ -1,6 +1,6 @@
 package ca.canada.inspection.pipeline;
 
-import ca.canada.inspection.insilicopcr.gel.SyntheticGelImage;
+import ca.canada.inspection.gel.SyntheticGelImage;
 import javafx.application.Platform;
 
 import java.nio.file.Path;

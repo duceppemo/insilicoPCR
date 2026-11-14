@@ -1,5 +1,6 @@
 package ca.canada.inspection.dispatchpcr;
 
+import ca.canada.inspection.util.Version;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -38,7 +39,7 @@ class DispatcherTest {
     @Test
     void versionIsPrinted() {
         assertEquals(0, run("--version"));
-        assertEquals("insilicoPCR " + Dispatcher.VERSION, out().strip());
+        assertEquals("insilicoPCR " + Version.VERSION, out().strip());
     }
 
     @Test

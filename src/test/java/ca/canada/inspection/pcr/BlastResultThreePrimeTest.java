@@ -1,6 +1,6 @@
 package ca.canada.inspection.pcr;
 
-import ca.canada.inspection.insilicopcr.BlastResult;
+import ca.canada.inspection.model.BlastResult;
 import org.junit.jupiter.api.Test;
 
 import static ca.canada.inspection.pcr.TestHits.PRIMER_20;

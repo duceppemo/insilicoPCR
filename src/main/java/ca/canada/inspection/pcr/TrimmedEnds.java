@@ -1,6 +1,6 @@
 package ca.canada.inspection.pcr;
 
-import ca.canada.inspection.insilicopcr.BlastResult;
+import ca.canada.inspection.model.BlastResult;
 
 /**
  * Compares the oligo bases that BLAST trimmed off the ends of a local alignment

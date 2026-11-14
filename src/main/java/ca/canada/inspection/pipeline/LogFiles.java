@@ -1,6 +1,6 @@
 package ca.canada.inspection.pipeline;
 
-import ca.canada.inspection.dispatchpcr.Dispatcher;
+import ca.canada.inspection.util.Version;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -15,7 +15,7 @@ public final class LogFiles {
     /** Writes QAlog.txt for a run that stopped before writing its own (the window closed during the run). */
     public static void ensureQaLog(Path outDir, Path inputFile, Path primerFile, RuntimeDependencies dependencies) {
         if (!Files.exists(outDir.resolve("QAlog.txt"))) {
-            QaLogWriter.write(outDir, Dispatcher.VERSION, dependencies.bbmapDirectory(),
+            QaLogWriter.write(outDir, Version.VERSION, dependencies.bbmapDirectory(),
                     dependencies.blastBinDirectory(), primerFile, inputFile, List.of());
         }
     }

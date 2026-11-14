@@ -1,7 +1,6 @@
 package ca.canada.inspection.pipeline;
 
-import ca.canada.inspection.dispatchpcr.AppPaths;
-import ca.canada.inspection.dispatchpcr.Dispatcher;
+import ca.canada.inspection.util.Version;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -27,7 +26,7 @@ class LogFilesTest {
         LogFiles.ensureQaLog(directory, input, primers, dependencies());
 
         List<String> lines = Files.readAllLines(directory.resolve("QAlog.txt"));
-        assertEquals("In Silico PCR version: " + Dispatcher.VERSION, lines.getFirst());
+        assertEquals("In Silico PCR version: " + Version.VERSION, lines.getFirst());
         assertTrue(lines.contains("Primer File: " + primers), lines.toString());
         assertEquals(input.toString(), lines.getLast());
     }

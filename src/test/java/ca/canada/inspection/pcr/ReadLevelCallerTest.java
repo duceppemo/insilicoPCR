@@ -1,6 +1,6 @@
 package ca.canada.inspection.pcr;
 
-import ca.canada.inspection.insilicopcr.Sample;
+import ca.canada.inspection.model.Sample;
 import ca.canada.inspection.pcr.ReadLevelCaller.ReadCall;
 import ca.canada.inspection.pcr.ReadLevelCaller.ReadEvidence;
 import org.junit.jupiter.api.Test;

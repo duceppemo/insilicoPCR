@@ -1,6 +1,6 @@
 package ca.canada.inspection.pcr;
 
-import ca.canada.inspection.insilicopcr.BlastResult;
+import ca.canada.inspection.model.BlastResult;
 import ca.canada.inspection.util.SequenceFileUtils;
 
 import java.io.BufferedReader;

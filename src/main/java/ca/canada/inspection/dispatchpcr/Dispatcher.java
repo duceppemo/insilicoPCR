@@ -1,11 +1,12 @@
 package ca.canada.inspection.dispatchpcr;
 
-import ca.canada.inspection.commandpcr.CommandMain;
 import ca.canada.inspection.insilicopcr.MainRun;
 import ca.canada.inspection.pcr.ReadExtensionCaller;
 import ca.canada.inspection.pcr.ReadLevelCaller;
+import ca.canada.inspection.pipeline.InSilicoPcrPipeline;
 import ca.canada.inspection.pipeline.RunFailure;
 import ca.canada.inspection.pipeline.TadpoleOptions;
+import ca.canada.inspection.util.Version;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
@@ -16,16 +17,8 @@ import org.apache.commons.cli.ParseException;
 import java.io.PrintStream;
 import java.io.PrintWriter;
 
+/** The entry point: the application without arguments, the command line with them. */
 public final class Dispatcher {
-
-    public static final String VERSION = "0.15.0";
-
-    /**
-     * Compatibility alias for older code paths and release branches.
-     * Prefer {@link #VERSION} in new code.
-     */
-    @Deprecated(since = "0.6.1", forRemoval = false)
-    public static final String version = VERSION;
 
     private Dispatcher() {
     }
@@ -55,10 +48,10 @@ public final class Dispatcher {
                 return 0;
             }
             if (cmd.hasOption("version")) {
-                out.println("insilicoPCR " + VERSION);
+                out.println("insilicoPCR " + Version.VERSION);
                 return 0;
             }
-            CommandMain.from(CliConfig.from(cmd)).run();
+            new InSilicoPcrPipeline(CliConfig.from(cmd).pipelineConfig()).run();
             return 0;
         } catch (ParseException | IllegalArgumentException e) {
             err.println(e.getMessage());

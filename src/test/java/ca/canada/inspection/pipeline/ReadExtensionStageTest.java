@@ -1,6 +1,6 @@
 package ca.canada.inspection.pipeline;
 
-import ca.canada.inspection.insilicopcr.Sample;
+import ca.canada.inspection.model.Sample;
 import ca.canada.inspection.pcr.AmpliconOptions;
 import ca.canada.inspection.pcr.FastqDiagnostics.Assembly;
 import ca.canada.inspection.pcr.FastqDiagnostics.Finding;

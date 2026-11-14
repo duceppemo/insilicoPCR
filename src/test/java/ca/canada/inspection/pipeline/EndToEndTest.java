@@ -1,6 +1,5 @@
 package ca.canada.inspection.pipeline;
 
-import ca.canada.inspection.dispatchpcr.AppPaths;
 import ca.canada.inspection.pcr.AmpliconOptions;
 import ca.canada.inspection.pcr.ReadExtensionCaller;
 import ca.canada.inspection.pipeline.RunMonitor.Step;

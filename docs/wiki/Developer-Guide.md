@@ -41,10 +41,10 @@ java -jar target/insilicoPCR.jar -h
 |---|---|
 | Dispatcher | `ca.canada.inspection.dispatchpcr.Dispatcher` |
 | GUI | `ca.canada.inspection.insilicopcr.MainRun` |
-| CLI | `ca.canada.inspection.commandpcr.CommandMain` |
+| CLI | `ca.canada.inspection.dispatchpcr.CliConfig` |
 | Pipeline | `ca.canada.inspection.pipeline.InSilicoPcrPipeline` |
 
-The dispatcher starts the GUI when no arguments are provided and starts the CLI pipeline when command-line arguments are present.
+The dispatcher starts the GUI when no arguments are provided and starts the CLI pipeline when command-line arguments are present. The packages and how they depend on each other are on [Architecture](Architecture#packages).
 
 ## Documentation approach
 

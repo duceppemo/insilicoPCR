@@ -64,6 +64,11 @@
                 <directory>src/main/resources</directory>
                 <filtering>false</filtering>
             </resource>
+            <!-- Only this directory is filtered: version.properties takes the version from this pom. -->
+            <resource>
+                <directory>src/main/version</directory>
+                <filtering>true</filtering>
+            </resource>
         </resources>
 
         <plugins>

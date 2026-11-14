@@ -1,6 +1,6 @@
 package ca.canada.inspection.pcr;
 
-import ca.canada.inspection.insilicopcr.BlastResult;
+import ca.canada.inspection.model.BlastResult;
 
 /** Builders for BLAST hits used across the amplicon tests. */
 final class TestHits {

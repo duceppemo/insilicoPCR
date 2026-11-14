@@ -4,6 +4,14 @@
 
 ### Fixed
 
+- The gel viewer saved a PNG of the gel in the run's output folder each time it
+  opened: it could not open a run in a folder it cannot write to (someone
+  else's run, with **Open Previous Run** or **Open Report TSV**), and it
+  replaced the `--gel` picture of the same name with one drawn from other
+  lanes. It now writes only when asked (**Save PNG...**). The name it offers is
+  the one `--gel` writes, also for `report(1).tsv` (`synthetic_gel_report(1).png`;
+  the viewer offered `synthetic_gel_report_1_.png`).
+
 - Application: **View Gel Image** and **View HTML Report** showed the newest
   report in the output folder, which another run into the same folder (the
   command line, a second window) could have written; they now show the report

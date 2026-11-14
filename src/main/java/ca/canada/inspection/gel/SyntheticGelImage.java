@@ -25,6 +25,11 @@ public final class SyntheticGelImage {
     private SyntheticGelImage() {
     }
 
+    /** Where {@code --gel} writes the gel of {@code consolidatedReport}: see {@link GelImages#defaultOutput}. */
+    public static Path defaultPng(Path consolidatedReport) {
+        return GelImages.defaultOutput(consolidatedReport);
+    }
+
     /**
      * Renders the synthetic gel for a consolidated report straight to a PNG file,
      * without opening a window. The JavaFX toolkit must already be running and

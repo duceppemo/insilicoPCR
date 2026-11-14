@@ -179,8 +179,8 @@ public final class ConsolidatedReport {
     private static Set<String> assaysWithProbe(Iterable<String> primerIds) {
         Set<String> assays = new TreeSet<>();
         for (String primerId : primerIds) {
-            if (BlastHitParser.isProbe(primerId)) {
-                assays.add(primerId.substring(0, primerId.lastIndexOf('-')));
+            if (PrimerId.isProbe(primerId)) {
+                assays.add(PrimerId.parse(primerId).assay());
             }
         }
         return assays;
@@ -224,16 +224,16 @@ public final class ConsolidatedReport {
         // has one "contig" per read.
         Map<String, String> contigs = sample.contigs();
         HitIndex hits = new HitIndex(blastResults);
-        Map<String, PrimerGroup> assays = groupByAssay(blastResults.keySet());
-        for (Map.Entry<String, PrimerGroup> assayEntry : assays.entrySet()) {
+        Map<String, PrimerId.Assay> assays = PrimerId.byAssay(blastResults.keySet());
+        for (Map.Entry<String, PrimerId.Assay> assayEntry : assays.entrySet()) {
             String assayName = assayEntry.getKey();
-            PrimerGroup group = assayEntry.getValue();
-            if (group.forward.isEmpty() || group.reverse.isEmpty()) {
+            PrimerId.Assay group = assayEntry.getValue();
+            if (!group.isComplete()) {
                 continue;
             }
             boolean probeRequired = assaysWithProbe.contains(assayName);
-            for (String forwardPrimer : group.forward) {
-                for (String reversePrimer : group.reverse) {
+            for (String forwardPrimer : group.forward()) {
+                for (String reversePrimer : group.reverse()) {
                     writePrimerPairResults(writer, sampleName, contigs, hits, assayName, group,
                             forwardPrimer, reversePrimer, options, probeRequired, probeColumns);
                 }
@@ -273,7 +273,7 @@ public final class ConsolidatedReport {
 
     private static void writePrimerPairResults(RowSink writer, String sampleName, Map<String, String> contigs,
                                                HitIndex hits,
-                                               String assayName, PrimerGroup group, String forwardPrimer,
+                                               String assayName, PrimerId.Assay group, String forwardPrimer,
                                                String reversePrimer, AmpliconOptions options,
                                                boolean probeRequired, boolean probeColumns)
             throws IOException {
@@ -325,10 +325,10 @@ public final class ConsolidatedReport {
     }
 
     private static void writeProbeRows(RowSink writer, HitIndex hits,
-                                       PrimerGroup group, Amplicon amplicon, List<String> baseColumns,
+                                       PrimerId.Assay group, Amplicon amplicon, List<String> baseColumns,
                                        List<String> unaligned)
             throws IOException {
-        for (String probeId : group.probe) {
+        for (String probeId : group.probe()) {
             for (BlastResult probeHit : hits.on(probeId, amplicon.contig())) {
                 int probeStart = Math.min(probeHit.qstart(), probeHit.qend());
                 int probeEnd = Math.max(probeHit.qstart(), probeHit.qend());
@@ -345,42 +345,6 @@ public final class ConsolidatedReport {
                 writer.accept(columns);
             }
         }
-    }
-
-    /**
-     * Groups expanded primer IDs by assay name. {@code assay-F}, {@code assay-R_1}
-     * and {@code assay-P} all land under {@code assay} with their full IDs kept
-     * in the forward/reverse/probe buckets.
-     */
-    static Map<String, PrimerGroup> groupByAssay(Iterable<String> primerIds) {
-        Map<String, PrimerGroup> groups = new TreeMap<>();
-        for (String primerId : primerIds) {
-            // IDs are validated at load time (PrimerService); skip rather than
-            // abort mid-write if something nonconforming slips through anyway.
-            int lastDash = primerId.lastIndexOf('-');
-            if (lastDash <= 0 || lastDash == primerId.length() - 1) {
-                continue;
-            }
-            String assayName = primerId.substring(0, lastDash);
-            char type = primerId.charAt(lastDash + 1);
-            if (type != 'F' && type != 'R' && type != 'P') {
-                continue;
-            }
-            PrimerGroup group = groups.computeIfAbsent(assayName, ignored -> new PrimerGroup());
-            switch (type) {
-                case 'F' -> group.forward.add(primerId);
-                case 'R' -> group.reverse.add(primerId);
-                default -> group.probe.add(primerId);
-            }
-        }
-        return groups;
-    }
-
-    /** Expanded primer IDs of one assay, by role. */
-    static final class PrimerGroup {
-        final List<String> forward = new ArrayList<>();
-        final List<String> reverse = new ArrayList<>();
-        final List<String> probe = new ArrayList<>();
     }
 
     /** Receives one report row; lets row generation feed a file or an in-memory check. */

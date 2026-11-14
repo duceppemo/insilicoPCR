@@ -1,7 +1,6 @@
 package ca.canada.inspection.pcr;
 
 import ca.canada.inspection.insilicopcr.Sample;
-import ca.canada.inspection.pcr.ConsolidatedReport.PrimerGroup;
 import ca.canada.inspection.pcr.ReadLevelCaller.ReadEvidence;
 
 import java.util.ArrayList;
@@ -266,9 +265,9 @@ public final class ReadExtensionCaller {
         }
         Map<String, Set<Integer>> known = knownSizes(sample, primers, options, reads);
         List<String> assays = new ArrayList<>();
-        ConsolidatedReport.groupByAssay(primers.keySet()).forEach((assay, group) -> {
-            if (group.forward.isEmpty() || group.reverse.isEmpty()
-                    || reads.readsCarrying(group.forward) == 0 || reads.readsCarrying(group.reverse) == 0) {
+        PrimerId.byAssay(primers.keySet()).forEach((assay, group) -> {
+            if (!group.isComplete()
+                    || reads.readsCarrying(group.forward()) == 0 || reads.readsCarrying(group.reverse()) == 0) {
                 return;
             }
             Set<Integer> seen = known.getOrDefault(assay, Set.of());
@@ -313,15 +312,15 @@ public final class ReadExtensionCaller {
      * @param primers expanded primer IDs of the run
      */
     public static List<Seed> seeds(Collection<String> assays, Collection<String> primers, ReadEvidence reads) {
-        Map<String, PrimerGroup> groups = ConsolidatedReport.groupByAssay(primers);
+        Map<String, PrimerId.Assay> groups = PrimerId.byAssay(primers);
         List<Seed> seeds = new ArrayList<>();
         for (String assay : new TreeSet<>(assays)) {
-            PrimerGroup group = groups.get(assay);
+            PrimerId.Assay group = groups.get(assay);
             if (group == null) {
                 continue;
             }
             for (char role : new char[]{'F', 'R'}) {
-                for (String read : spread(carrying(reads, role == 'F' ? group.forward : group.reverse),
+                for (String read : spread(carrying(reads, role == 'F' ? group.forward() : group.reverse()),
                         MAX_SEEDS_PER_PRIMER)) {
                     seeds.add(new Seed("extended_read_" + seeds.size(), read, assay, role));
                 }

@@ -234,8 +234,8 @@ public final class HtmlReport {
         try {
             String page = render(reportTsv.getFileName().toString(), readProducts(reportTsv, sizes, primers),
                     sampleNames,
-                    fastqSamples, ConsolidatedReport.groupByAssay(primerIds).entrySet().stream()
-                            .filter(entry -> !entry.getValue().forward.isEmpty() && !entry.getValue().reverse.isEmpty())
+                    fastqSamples, PrimerId.byAssay(primerIds).entrySet().stream()
+                            .filter(entry -> entry.getValue().isComplete())
                             .map(Map.Entry::getKey).toList(),
                     sizes, findings, runDetails, inputIssues, splits);
             Files.writeString(html, page, StandardCharsets.UTF_8);

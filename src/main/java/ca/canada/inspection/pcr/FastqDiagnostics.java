@@ -2,7 +2,6 @@ package ca.canada.inspection.pcr;
 
 import ca.canada.inspection.insilicopcr.BlastResult;
 import ca.canada.inspection.insilicopcr.Sample;
-import ca.canada.inspection.pcr.ConsolidatedReport.PrimerGroup;
 import ca.canada.inspection.pcr.ReadLevelCaller.ReadCall;
 import ca.canada.inspection.pcr.ReadLevelCaller.ReadEvidence;
 
@@ -169,14 +168,14 @@ public final class FastqDiagnostics {
         Map<String, List<BlastResult>> hits = sample.blastResults();
         List<Finding> findings = new ArrayList<>();
 
-        for (Map.Entry<String, PrimerGroup> entry : ConsolidatedReport.groupByAssay(primers.keySet()).entrySet()) {
+        for (Map.Entry<String, PrimerId.Assay> entry : PrimerId.byAssay(primers.keySet()).entrySet()) {
             String assay = entry.getKey();
-            PrimerGroup group = entry.getValue();
-            if (group.forward.isEmpty() || group.reverse.isEmpty()) {
+            PrimerId.Assay group = entry.getValue();
+            if (!group.isComplete()) {
                 continue;
             }
-            ReadsWithOligo counts = new ReadsWithOligo(reads.readsCarrying(group.forward),
-                    reads.readsCarrying(group.reverse), reads.readsCarrying(group.probe));
+            ReadsWithOligo counts = new ReadsWithOligo(reads.readsCarrying(group.forward()),
+                    reads.readsCarrying(group.reverse()), reads.readsCarrying(group.probe()));
             int checkable = reads.checkableLength().getOrDefault(assay, 0);
             List<ReadCall> products = byStrength(reads.products(assay));
 
@@ -347,18 +346,18 @@ public final class FastqDiagnostics {
     private record AssemblyFinding(Assembly kind, String detail) {
     }
 
-    private static AssemblyFinding classifyAssembly(PrimerGroup group, Map<String, List<BlastResult>> hits,
+    private static AssemblyFinding classifyAssembly(PrimerId.Assay group, Map<String, List<BlastResult>> hits,
                                                     Map<String, Integer> contigLengths) {
-        List<BlastResult> forwardHits = hitsOf(hits, group.forward);
-        List<BlastResult> reverseHits = hitsOf(hits, group.reverse);
+        List<BlastResult> forwardHits = hitsOf(hits, group.forward());
+        List<BlastResult> reverseHits = hitsOf(hits, group.reverse());
 
         if (forwardHits.isEmpty() || reverseHits.isEmpty()) {
             List<String> absent = new ArrayList<>();
             if (forwardHits.isEmpty()) {
-                absent.add(String.join(",", group.forward));
+                absent.add(String.join(",", group.forward()));
             }
             if (reverseHits.isEmpty()) {
-                absent.add(String.join(",", group.reverse));
+                absent.add(String.join(",", group.reverse()));
             }
             return new AssemblyFinding(Assembly.NOT_ASSEMBLED,
                     "no accepted contig hit for " + String.join(" and ", absent));

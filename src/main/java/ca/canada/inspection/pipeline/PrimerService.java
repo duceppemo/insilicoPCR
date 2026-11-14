@@ -1,6 +1,7 @@
 package ca.canada.inspection.pipeline;
 
 import ca.canada.inspection.pcr.ExpectedSizes;
+import ca.canada.inspection.pcr.PrimerId;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -58,20 +59,17 @@ public final class PrimerService {
         return new PreparedPrimers(preparedPrimers, file.expectedSizes());
     }
 
-    /** Validates and expands degenerate primers; shared with the GUI pipeline. */
-    public static Map<String, String> expand(Map<String, String> rawPrimers) {
+    /** Validates the IDs and sequences and expands degenerate bases. */
+    static Map<String, String> expand(Map<String, String> rawPrimers) {
         return expandPrimers(rawPrimers);
     }
 
-    /** Writes a primer FASTA file; shared with the GUI pipeline. */
-    public static void writeFasta(Path output, Map<String, String> primers) {
-        writePrimerDatabase(output, primers);
-    }
-
     /**
-     * Reads a primer FASTA file; shared with the GUI pipeline. The primer ID is the
-     * header up to the first blank, as BLAST names the sequence; what follows is a
-     * description, read for product size declarations and otherwise ignored.
+     * Reads a primer FASTA file. The primer ID is the header up to the first blank, as
+     * BLAST names the sequence; what follows is a description, read for product size
+     * declarations and otherwise ignored. Every primer ID must follow the naming
+     * convention, and every assay must have a forward and a reverse primer: an assay
+     * without one could never give a product, and would look negative in every sample.
      */
     public static PrimerFile read(Path file) {
         Objects.requireNonNull(file, "file");
@@ -103,6 +101,8 @@ public final class PrimerService {
             throw new PipelineException("Could not parse primer FASTA file: " + file, e);
         }
         descriptions.keySet().retainAll(fasta.keySet());
+        fasta.keySet().forEach(PrimerService::validatePrimerId);
+        checkAssaysComplete(fasta.keySet(), file);
         try {
             return new PrimerFile(fasta, ExpectedSizes.fromHeaders(descriptions));
         } catch (IllegalArgumentException e) {
@@ -141,11 +141,26 @@ public final class PrimerService {
      * worse, silently never be reported.
      */
     private static void validatePrimerId(String id) {
-        int lastDash = id.lastIndexOf('-');
-        boolean valid = lastDash > 0 && lastDash < id.length() - 1
-                && (id.charAt(lastDash + 1) == 'F' || id.charAt(lastDash + 1) == 'R' || id.charAt(lastDash + 1) == 'P');
-        if (!valid) {
+        if (PrimerId.parse(id) == null) {
             throw new PipelineException("Primer ID must follow the <assay>-F / <assay>-R / <assay>-P naming convention: " + id);
+        }
+    }
+
+    /** Fails on an assay that lacks a forward or a reverse primer, naming the primers it lacks. */
+    private static void checkAssaysComplete(Iterable<String> ids, Path file) {
+        List<String> missing = new ArrayList<>();
+        PrimerId.byAssay(ids).forEach((assay, primers) -> {
+            if (primers.forward().isEmpty()) {
+                missing.add(assay + "-F");
+            }
+            if (primers.reverse().isEmpty()) {
+                missing.add(assay + "-R");
+            }
+        });
+        if (!missing.isEmpty()) {
+            throw new PipelineException("Every assay needs a forward (-F) and a reverse (-R) primer, but "
+                    + String.join(", ", missing) + (missing.size() == 1 ? " is" : " are") + " missing from the"
+                    + " primer file " + file);
         }
     }
 

@@ -142,4 +142,25 @@ class PrimerServiceTest {
         assertTrue(error.getMessage().endsWith("(primer file " + primerFile + ")"), error.getMessage());
     }
 
+    @Test
+    void anAssayWithoutAForwardOrAReversePrimerIsRejectedByName() throws java.io.IOException {
+        // Before, such an assay was left out of every report without a word: it looked negative.
+        java.nio.file.Path primerFile = java.nio.file.Files.writeString(dir.resolve("incomplete.fasta"),
+                ">toxA-F size=312\nACGT\n>stxQ-F\nACGT\n>stxQ-R\nACGT\n>stxQ-P\nACGT\n>probeOnly-P\nACGT\n");
+
+        PipelineException error = assertThrows(PipelineException.class, () -> PrimerService.read(primerFile));
+
+        assertEquals("Every assay needs a forward (-F) and a reverse (-R) primer, but probeOnly-F, probeOnly-R, toxA-R"
+                + " are missing from the primer file " + primerFile, error.getMessage());
+    }
+
+    @Test
+    void aBadPrimerIdIsRejectedWhenTheFileIsRead() throws java.io.IOException {
+        java.nio.file.Path primerFile = java.nio.file.Files.writeString(dir.resolve("badid.fasta"),
+                ">assay-F\nACGT\n>assay_R\nACGT\n");
+
+        PipelineException error = assertThrows(PipelineException.class, () -> PrimerService.read(primerFile));
+
+        assertTrue(error.getMessage().endsWith("naming convention: assay_R"), error.getMessage());
+    }
 }

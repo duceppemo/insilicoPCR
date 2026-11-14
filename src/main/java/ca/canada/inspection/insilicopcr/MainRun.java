@@ -415,7 +415,7 @@ public class MainRun extends Application {
 
             Throwable error = runningTask.getException();
             if (error == null) {
-                Methods.logMessage(outputField, "Run failed");
+                logMessage("Run failed");
                 return;
             }
 
@@ -424,12 +424,12 @@ public class MainRun extends Application {
             error.printStackTrace();
 
             if (RunFailure.isForTheUser(error)) {
-                Methods.logMessage(outputField, "Run failed\n" + String.join("\n", RunFailure.lines(error)));
+                logMessage("Run failed\n" + String.join("\n", RunFailure.lines(error)));
                 return;
             }
             StringWriter sw = new StringWriter();
             error.printStackTrace(new PrintWriter(sw));
-            Methods.logMessage(outputField, "Run failed:\n" + sw);
+            logMessage("Run failed:\n" + sw);
         });
 
         var thread = new Thread(runningTask, "insilico-pcr-run");
@@ -471,7 +471,7 @@ public class MainRun extends Application {
             LogFiles.ensureQaLog(lastRunOutDir, lastRunInput, lastRunPrimer, RuntimeDependencies.discover());
             LogFiles.appendRunLog(lastRunOutDir, outputField.getText());
         } catch (RuntimeException e) {
-            Methods.logMessage(outputField, "Unable to write shutdown logs: " + e.getMessage());
+            logMessage("Unable to write shutdown logs: " + e.getMessage());
         }
 
         Platform.exit();
@@ -600,5 +600,10 @@ public class MainRun extends Application {
 
     public static void main(String[] args) {
         Application.launch(MainRun.class);
+    }
+
+    /** Appends a message to the run log, from any thread. */
+    private void logMessage(String message) {
+        Platform.runLater(() -> outputField.appendText("\n" + message + "\n"));
     }
 }

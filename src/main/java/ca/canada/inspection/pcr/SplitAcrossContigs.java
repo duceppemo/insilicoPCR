@@ -74,15 +74,15 @@ public final class SplitAcrossContigs {
         Map<String, List<BlastResult>> hits = sample.blastResults();
         Map<String, Integer> lengths = null;
         List<Split> splits = new ArrayList<>();
-        for (Map.Entry<String, ConsolidatedReport.PrimerGroup> entry
-                : ConsolidatedReport.groupByAssay(primers.keySet()).entrySet()) {
+        for (Map.Entry<String, PrimerId.Assay> entry
+                : PrimerId.byAssay(primers.keySet()).entrySet()) {
             String assay = entry.getKey();
-            ConsolidatedReport.PrimerGroup group = entry.getValue();
-            if (reported.contains(assay) || group.forward.isEmpty() || group.reverse.isEmpty()) {
+            PrimerId.Assay group = entry.getValue();
+            if (reported.contains(assay) || !group.isComplete()) {
                 continue;
             }
-            List<BlastResult> forward = hitsOf(hits, group.forward);
-            List<BlastResult> reverse = hitsOf(hits, group.reverse);
+            List<BlastResult> forward = hitsOf(hits, group.forward());
+            List<BlastResult> reverse = hitsOf(hits, group.reverse());
             if (forward.isEmpty() || reverse.isEmpty()) {
                 continue; // a primer that does not bind: an ordinary negative
             }
@@ -92,7 +92,7 @@ public final class SplitAcrossContigs {
             Split best = null;
             for (BlastResult f : forward) {
                 for (BlastResult r : reverse) {
-                    Split split = split(sample.getName(), assay, f, r, lengths, !group.probe.isEmpty());
+                    Split split = split(sample.getName(), assay, f, r, lengths, group.hasProbe());
                     if (split != null && (best == null || split.minimumSize() < best.minimumSize())) {
                         best = split;
                     }

@@ -13,8 +13,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -76,20 +78,89 @@ class ExternalProgramTest {
         assertTrue(RunFailure.isForTheUser(error));
     }
 
+    /** The command that runs a one-class Java program with this {@code main} body. */
+    private List<String> program(String name, String main) throws IOException {
+        Path source = directory.resolve(name + ".java");
+        Files.writeString(source, "class " + name + " {\n public static void main(String[] args) throws Exception {\n"
+                + main + "\n }\n}\n");
+        return List.of(JAVA, source.toString());
+    }
+
     /** A program that prints BBTools' out-of-memory message and stops as BBTools then does. */
     private List<String> bbtoolsOutOfMemory() throws IOException {
-        Path source = directory.resolve("Stop.java");
-        Files.writeString(source, """
-                class Stop {
-                    public static void main(String[] args) {
-                        System.err.println("java.lang.OutOfMemoryError");
-                        System.err.println();
-                        System.err.println("%s");
-                        System.exit(1);
-                    }
-                }
+        return program("Stop", """
+                System.err.println("java.lang.OutOfMemoryError");
+                System.err.println();
+                System.err.println("%s");
+                System.exit(1);
                 """.formatted(BbtoolsCommands.OUT_OF_MEMORY_LINE));
-        return List.of(JAVA, source.toString());
+    }
+
+    /** Runs on the console with standard error captured; what was printed. */
+    private static byte[] onTheConsole(List<String> command, Class<? extends Throwable> expected) {
+        PrintStream console = System.err;
+        ByteArrayOutputStream printed = new ByteArrayOutputStream();
+        try {
+            System.setErr(new PrintStream(printed, true, StandardCharsets.UTF_8));
+            if (expected == null) {
+                ExternalProgram.run(RunMonitor.CONSOLE, null, command, "program");
+            } else {
+                assertThrows(expected, () -> ExternalProgram.run(RunMonitor.CONSOLE, null, command, "program"));
+            }
+        } finally {
+            System.setErr(console);
+        }
+        return printed.toByteArray();
+    }
+
+    @Test
+    void onTheConsoleTheErrorOutputIsPassedOnByteForByte() throws IOException {
+        // A carriage return and a byte that is not UTF-8 come out as they went in.
+        List<String> command = program("Bytes", """
+                System.err.write(new byte[] {'5', '%', '\\r', '9', (byte) 0xE9, '\\n'});
+                System.err.flush();
+                """);
+
+        assertArrayEquals(new byte[] {'5', '%', '\r', '9', (byte) 0xE9, '\n'}, onTheConsole(command, null));
+    }
+
+    @Test
+    void theMessageIsRecognisedWithOtherOutputOnItsLine() throws IOException {
+        // With standard output merged in, another thread's unfinished line may come first.
+        Recorder monitor = new Recorder();
+        List<String> command = program("Joined", """
+                System.out.print("Loading 40%%");
+                System.out.flush();
+                System.err.println("%s");
+                System.exit(1);
+                """.formatted(BbtoolsCommands.OUT_OF_MEMORY_LINE));
+
+        ProgramFailedException error = assertThrows(ProgramFailedException.class,
+                () -> ExternalProgram.run(monitor, null, command, "Tadpole"));
+
+        assertTrue(error.saidOutOfMemory(), monitor.lines.toString());
+    }
+
+    @Test
+    void anInterruptStopsAProgramOnTheConsole() throws Exception {
+        List<String> command = program("Sleep", "Thread.sleep(120_000);");
+        AtomicReference<Throwable> thrown = new AtomicReference<>();
+        Thread running = new Thread(() -> {
+            try {
+                ExternalProgram.run(RunMonitor.CONSOLE, null, command, "Sleep");
+            } catch (Throwable e) {
+                thrown.set(e);
+            }
+        });
+
+        running.start();
+        Thread.sleep(1000);
+        running.interrupt();
+        running.join(20_000);
+
+        assertFalse(running.isAlive(), "still waiting for the program");
+        assertTrue(thrown.get() instanceof PipelineException
+                && thrown.get().getMessage().startsWith("Interrupted while running Sleep"), String.valueOf(thrown.get()));
     }
 
     @Test
@@ -107,18 +178,18 @@ class ExternalProgramTest {
     @Test
     void onTheConsoleTheErrorOutputIsPassedOnAndReadToo() throws IOException {
         List<String> command = bbtoolsOutOfMemory();
+        AtomicReference<ProgramFailedException> error = new AtomicReference<>();
         PrintStream console = System.err;
         ByteArrayOutputStream printed = new ByteArrayOutputStream();
-        ProgramFailedException error;
         try {
             System.setErr(new PrintStream(printed, true, StandardCharsets.UTF_8));
-            error = assertThrows(ProgramFailedException.class,
-                    () -> ExternalProgram.run(RunMonitor.CONSOLE, null, command, "Tadpole"));
+            error.set(assertThrows(ProgramFailedException.class,
+                    () -> ExternalProgram.run(RunMonitor.CONSOLE, null, command, "Tadpole")));
         } finally {
             System.setErr(console);
         }
 
-        assertTrue(error.saidOutOfMemory());
+        assertTrue(error.get().saidOutOfMemory());
         assertTrue(printed.toString(StandardCharsets.UTF_8).contains(BbtoolsCommands.OUT_OF_MEMORY_LINE),
                 printed.toString(StandardCharsets.UTF_8));
     }

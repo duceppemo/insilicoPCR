@@ -187,12 +187,13 @@ class EndToEndTest {
         }
     }
 
-    @Test
-    void aSampleThatRunsOutOfMemoryAloneFailsTheRunWithAHint() throws IOException {
+    @ParameterizedTest
+    @EnumSource(OutOfMemory.class)
+    void aSampleThatRunsOutOfMemoryAloneFailsTheRunWithAHint(OutOfMemory how) throws IOException {
         Recorder monitor = new Recorder();
         // 4 GiB: one sample at a time already, with all of it.
         PipelineContext context = readContext(twoSamples("big", "small"), directory.resolve("results"), 4, monitor,
-                OutOfMemory.BBTOOLS);
+                how);
 
         StageException error = assertThrows(StageException.class, () -> new FastqProcessor().process(context));
 

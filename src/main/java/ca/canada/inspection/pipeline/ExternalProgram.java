@@ -2,11 +2,14 @@ package ca.canada.inspection.pipeline;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.CancellationException;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.FutureTask;
 import java.util.function.Consumer;
 
 /**
@@ -30,14 +33,13 @@ final class ExternalProgram {
         if (workingDirectory != null) {
             builder.directory(workingDirectory.toFile());
         }
-        // Error output is read, so that a program saying it ran out of memory is recognised;
-        // on the console it is passed on to standard error as it comes.
+        // The output is read to recognise a program saying it ran out of memory: on the console
+        // only the error output, copied to standard error unchanged, byte for byte.
         Consumer<String> output = monitor.programOutput();
         boolean console = output == null;
         if (console) {
             builder.redirectInput(ProcessBuilder.Redirect.INHERIT);
             builder.redirectOutput(ProcessBuilder.Redirect.INHERIT);
-            output = System.err::println;
         } else {
             builder.redirectErrorStream(true);
         }
@@ -50,26 +52,34 @@ final class ExternalProgram {
         if (monitor.processes() != null) {
             monitor.processes().add(process);
         }
-        boolean ended = false;
-        boolean saidOutOfMemory = false;
-        try {
-            try (BufferedReader lines = new BufferedReader(new InputStreamReader(
-                    console ? process.getErrorStream() : process.getInputStream(), StandardCharsets.UTF_8))) {
-                String line;
-                while ((line = lines.readLine()) != null) {
-                    output.accept(line);
-                    saidOutOfMemory |= line.strip().equals(BbtoolsCommands.OUT_OF_MEMORY_LINE);
-                }
+        // Read on another thread, so that this one waits in waitFor(), which an interrupt stops
+        // (and the program is then killed below); a blocking read would not stop.
+        FutureTask<Boolean> reading = new FutureTask<>(() -> {
+            try {
+                return console ? copyToConsole(process.getErrorStream())
+                        : passLines(process.getInputStream(), output);
+            } catch (IOException | RuntimeException e) {
+                process.destroyForcibly(); // or it may block on a full pipe, and waitFor() with it
+                throw e;
             }
+        });
+        Thread.ofVirtual().name(program + " output").start(reading);
+        boolean ended = false;
+        try {
             int exit = process.waitFor();
             ended = true;
+            boolean saidOutOfMemory = reading.get();
             stopIfCancelled(monitor, program);
             if (exit != 0) {
                 throw new ProgramFailedException(program, exit, saidOutOfMemory,
                         program + " failed with exit code " + exit + ": " + String.join(" ", command));
             }
-        } catch (IOException e) {
-            throw new PipelineException("Could not read the output of " + program + ": " + String.join(" ", command), e);
+        } catch (ExecutionException e) {
+            if (e.getCause() instanceof RuntimeException unchecked) {
+                throw unchecked;
+            }
+            throw new PipelineException("Could not read the output of " + program + ": " + String.join(" ", command),
+                    e.getCause());
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new PipelineException("Interrupted while running " + program + ": " + String.join(" ", command), e);
@@ -82,6 +92,42 @@ final class ExternalProgram {
                 monitor.processes().remove(process);
             }
         }
+    }
+
+    /** Gives each line to {@code output}; whether one says the program ran out of memory. */
+    private static boolean passLines(InputStream stream, Consumer<String> output) throws IOException {
+        boolean saidOutOfMemory = false;
+        try (BufferedReader lines = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))) {
+            String line;
+            while ((line = lines.readLine()) != null) {
+                output.accept(line);
+                // contains: with standard output merged in, another thread's text may share its line
+                saidOutOfMemory |= line.contains(BbtoolsCommands.OUT_OF_MEMORY_LINE);
+            }
+        }
+        return saidOutOfMemory;
+    }
+
+    /** Copies to standard error as it comes; whether it says the program ran out of memory. */
+    private static boolean copyToConsole(InputStream stream) throws IOException {
+        String sought = BbtoolsCommands.OUT_OF_MEMORY_LINE;
+        StringBuilder recent = new StringBuilder();
+        boolean saidOutOfMemory = false;
+        byte[] buffer = new byte[8192];
+        try (stream) {
+            int read;
+            while ((read = stream.read(buffer)) != -1) {
+                System.err.write(buffer, 0, read);
+                System.err.flush();
+                if (!saidOutOfMemory) {
+                    // The message is ASCII: one char per byte, whatever the rest is in.
+                    recent.append(new String(buffer, 0, read, StandardCharsets.ISO_8859_1));
+                    saidOutOfMemory = recent.indexOf(sought) >= 0;
+                    recent.delete(0, Math.max(0, recent.length() - sought.length()));
+                }
+            }
+        }
+        return saidOutOfMemory;
     }
 
     private static void stopIfCancelled(RunMonitor monitor, String program) {

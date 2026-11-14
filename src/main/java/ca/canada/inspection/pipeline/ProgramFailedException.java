@@ -6,10 +6,6 @@ public final class ProgramFailedException extends PipelineException {
     private final int exitCode;
     private final boolean saidOutOfMemory;
 
-    public ProgramFailedException(String program, int exitCode, String message) {
-        this(program, exitCode, false, message);
-    }
-
     /** @param saidOutOfMemory the program printed that it ran out of memory */
     public ProgramFailedException(String program, int exitCode, boolean saidOutOfMemory, String message) {
         super(message);

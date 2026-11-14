@@ -35,7 +35,8 @@ public interface RunMonitor {
 
     /**
      * Receives what external programs print, line by line; {@code null} lets them write
-     * to the console.
+     * to the console (their error output through insilicoPCR, unchanged, which reads it
+     * for a program saying it ran out of memory).
      */
     default Consumer<String> programOutput() {
         return null;

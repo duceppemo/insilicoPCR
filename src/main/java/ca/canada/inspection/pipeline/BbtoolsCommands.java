@@ -16,9 +16,11 @@ import java.util.Objects;
  */
 record BbtoolsCommands(String javaCommand, Path bbtoolsJar, int childMemoryGiB, int threads) {
     /**
-     * Makes a child that runs out of heap exit with {@link #OUT_OF_MEMORY_EXIT}. Without it
-     * the exit code is that of any other error (BBTools catches the error only to stop),
-     * and an error in a worker thread may even leave the program running on.
+     * Makes a child whose Java runtime runs out of heap exit with {@link #OUT_OF_MEMORY_EXIT}.
+     * Without it the exit code is that of any other error (BBTools catches the error only to
+     * stop), and an error in a worker thread may even leave the program running on. It is
+     * one of two signals: BBTools also stops itself, with exit code 1, when a k-mer table is
+     * full ({@link #OUT_OF_MEMORY_LINE}); {@link #ranOutOfMemory} takes both.
      */
     private static final String EXIT_ON_OUT_OF_MEMORY = "-XX:+ExitOnOutOfMemoryError";
     /** Exit code of the Java runtime when {@code -XX:+ExitOnOutOfMemoryError} stops it. */

@@ -52,7 +52,10 @@ public final class PrimerService {
     public record PreparedPrimers(Map<String, String> primers, ExpectedSizes expectedSizes) {
     }
 
-    public PreparedPrimers loadAndPrepare(PipelineConfig config, PipelineDirectories directories) {
+    private PrimerService() {
+    }
+
+    public static PreparedPrimers loadAndPrepare(PipelineConfig config, PipelineDirectories directories) {
         PrimerFile file = read(config.primers());
         Map<String, String> preparedPrimers = expandPrimers(file.sequences());
         writePrimerDatabase(directories.primerDatabase(), preparedPrimers);

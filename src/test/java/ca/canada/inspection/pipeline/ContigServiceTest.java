@@ -34,7 +34,7 @@ class ContigServiceTest {
         }
         Map<String, Sample> samples = new LinkedHashMap<>(SequenceFileUtils.createSampleMap(directory));
 
-        new ContigService().load(contextOf(samples));
+        ContigService.load(contextOf(samples));
 
         Map<String, String> expected = Map.of("contig_1", "chromosome", "contig_2", "", "contig_3", "plasmid");
         assertEquals(expected, samples.get("plain").contigs());
@@ -48,7 +48,7 @@ class ContigServiceTest {
         Sample reads = samples.get("reads");
         reads.setAssemblyFile(Files.writeString(directory.resolve("reads_assembly.fasta"), ">contig_9 cov=3\nACGT\n"));
 
-        new ContigService().load(contextOf(samples));
+        ContigService.load(contextOf(samples));
 
         assertEquals(Map.of("contig_9", "cov=3"), reads.contigs());
     }
@@ -59,7 +59,7 @@ class ContigServiceTest {
         Map<String, Sample> samples = new LinkedHashMap<>(SequenceFileUtils.createSampleMap(directory));
 
         PipelineException error = assertThrows(PipelineException.class,
-                () -> new ContigService().load(contextOf(samples)));
+                () -> ContigService.load(contextOf(samples)));
 
         assertEquals("Sample has no FASTA/assembly file for contig loading: reads", error.getMessage());
         assertTrue(RunFailure.isForTheUser(error));
@@ -72,7 +72,7 @@ class ContigServiceTest {
         Files.delete(fasta);
 
         PipelineException error = assertThrows(PipelineException.class,
-                () -> new ContigService().load(contextOf(samples)));
+                () -> ContigService.load(contextOf(samples)));
 
         assertEquals("Could not parse contigs from: " + fasta, error.getMessage());
         assertTrue(RunFailure.isForTheUser(error));

@@ -41,6 +41,12 @@
   baited and assembled at once, the ones left over now go to some of those
   samples, one each, instead of sitting idle (`-t 16` with 3 samples: 5 or 6
   threads each, 16 in all, where it was 5 each).
+- Code: `InSilicoPcrPipeline.run` now calls every step of a run in order;
+  the read-level search and the read extension, which ran inside the report
+  step, are steps of their own, and `ReportGenerator` only writes the reports.
+  Every step is a class with a static entry point, and three wrapper classes
+  are gone. The HTML report and the gel read `report.tsv` with one reader
+  (`ReportTsv`) into `ReportRow`s, instead of each with its own.
 - Code: the primer naming rule (`<assay>-F/-R/-P`) is read in one place
   (`PrimerId`) instead of seven.
 - Code: products pass between the steps of a run as `ReportRow` records,

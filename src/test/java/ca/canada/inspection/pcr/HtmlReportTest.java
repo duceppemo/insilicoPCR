@@ -35,7 +35,7 @@ class HtmlReportTest {
     Path dir;
 
     private static Product product(String assay, int size) {
-        return new Product("S", assay, size, Map.of(), SIZES.label(assay, size));
+        return new Product(TestRows.row("S", assay, 11, 10 + size, "c1", ""), 0, 0, SIZES.label(assay, size));
     }
 
     private static Finding finding(Status status, int checkable) {

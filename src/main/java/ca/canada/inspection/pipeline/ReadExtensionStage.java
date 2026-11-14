@@ -52,6 +52,14 @@ public final class ReadExtensionStage {
      */
     record Settings(ReadLevelStage.Settings search, BbtoolsCommands bbtools, Path bbtoolsDirectory,
                     ReadExtensionCaller.Mode mode, ExpectedSizes sizes) {
+
+        /** The settings of a run: one sample at a time, so each BBTools child gets everything. */
+        static Settings of(PipelineContext context, ReadLevelStage.Settings search) {
+            return new Settings(search, BbtoolsCommands.of(context.dependencies(),
+                    ChildJavaMemory.forOneChild(context.childJavaMemoryBudgetGiB()), context.config().threads()),
+                    context.dependencies().bbmapDirectory(), context.config().readExtension(),
+                    context.expectedSizes());
+        }
     }
 
     /**

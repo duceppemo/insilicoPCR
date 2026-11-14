@@ -21,9 +21,9 @@ final class GelImageWriter {
     private GelImageWriter() {
     }
 
-    static void write(Path consolidatedReport, Path outputFile, Collection<String> sampleNames) {
+    static void write(Path consolidatedReport, Path outputFile, Collection<String> sampleNames, RunMonitor monitor) {
         if (TOOLKIT_SHUT_DOWN.get()) {
-            System.err.println("Warning: the JavaFX toolkit was already shut down in this process;"
+            monitor.warning("Warning: the JavaFX toolkit was already shut down in this process;"
                     + " the synthetic gel can only be rendered once per run.");
             return;
         }
@@ -37,9 +37,9 @@ final class GelImageWriter {
                 // Toolkit already initialized (e.g. running inside the GUI); reuse it.
             }
             Path written = SyntheticGelImage.exportPng(consolidatedReport, outputFile, sampleNames);
-            System.out.println("Synthetic gel image written to " + written);
+            monitor.info("Synthetic gel image written to " + written);
         } catch (RuntimeException | NoClassDefFoundError | UnsatisfiedLinkError e) {
-            System.err.println("Warning: could not render the synthetic gel image (a graphical environment is required): "
+            monitor.warning("Warning: could not render the synthetic gel image (a graphical environment is required): "
                     + rootMessage(e));
         } finally {
             if (startedHere) {

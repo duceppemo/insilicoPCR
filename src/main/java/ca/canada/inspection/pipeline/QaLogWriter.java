@@ -15,7 +15,10 @@ final class QaLogWriter {
     private static final DateTimeFormatter QA_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss");
 
     /** @param extraLines run-specific lines appended after the input list (e.g. FASTQ-mode diagnostics) */
-    void write(PipelineContext context, String version, List<String> extraLines) {
+    private QaLogWriter() {
+    }
+
+    static void write(PipelineContext context, String version, List<String> extraLines) {
         write(context.directories().output(), version, context.dependencies().bbmapDirectory(),
                 context.dependencies().blastBinDirectory(), context.config().primers(), context.config().input(),
                 extraLines);

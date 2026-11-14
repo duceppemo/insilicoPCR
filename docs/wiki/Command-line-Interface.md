@@ -122,6 +122,12 @@ usage: java -jar insilicoPCR.jar -i <input> -o <output> -p <primers> [-t
 
 The `--read-min-fraction`, `--read-extension` and `--tadpole-*` options only affect FASTQ input, where reads are baited and micro-assembled before BLAST; see [FASTQ mode and false negatives](Reports#fastq-mode-and-false-negatives). In the GUI they are under **FASTQ settings…**.
 
+### Threads and memory in FASTQ mode
+
+The BBTools programs that bait and assemble the reads run as separate Java processes. Their heap comes out of half of insilicoPCR's own heap, which the Java `-Xmx` option sets (`java -Xmx96g -jar insilicoPCR.jar ...`, or `JDK_JAVA_OPTIONS=-Xmx96g ./run-insilicoPCR.sh ...` with the launcher, which also works for the application; on Windows, `set JDK_JAVA_OPTIONS=-Xmx96g` before `run-insilicoPCR.bat`); without it, Java takes a quarter of the computer's memory. Samples are processed several at a time, and those running at once share the `-t` threads and that heap. No sample gets less than 4 GB: with less to share, fewer samples run at once. A sample alone gets all the threads and the whole half, up to 64 GB. Each step is split anew (BBMerge runs on paired samples only), and the read extension, which runs one sample at a time, gives each sample everything. The log says how it was split, for example `BBTools: 2 samples at a time, each with 4 threads and -Xmx4g`.
+
+A sample whose BBTools program runs out of its share of memory is set aside with a warning, and once the other samples are done, it is run again alone, with all the threads and the whole half, from the step that ran out. Only if it runs out of memory alone too does the run fail, saying to give insilicoPCR more memory; see [Troubleshooting](Troubleshooting#fastq-run-fails-with-ran-out-of-memory-on-sample).
+
 See [Amplicon Calling](Amplicon-Calling) for exactly how the mismatch budget, the 3'-end penalty, and the size limits decide which amplicons are reported.
 
 ## Example: assembly folder

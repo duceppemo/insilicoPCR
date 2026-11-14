@@ -26,7 +26,7 @@
 
   <rect width="1180" height="600" rx="28" fill="#F8FAFC"/>
   <text x="590" y="54" text-anchor="middle" class="title">How insilicoPCR works</text>
-  <text x="590" y="85" text-anchor="middle" class="sub">Assemblies are BLASTed directly; reads are baited and assembled first. Hits are filtered, then paired into realistic amplicons.</text>
+  <text x="590" y="85" text-anchor="middle" class="sub">Assemblies are BLASTed directly; reads are baited and assembled first, and searched too. Hits are filtered, then paired into realistic amplicons.</text>
 
   <g text-anchor="middle">
     <!-- column 1: inputs, stacked -->
@@ -63,8 +63,8 @@
       <circle cx="450" cy="430" r="17" fill="#64748B"/>
       <text x="450" y="437" class="num">4</text>
       <text x="450" y="472" class="label">Bait &amp; assemble</text>
-      <text x="450" y="496" class="small">BBDuk read baiting (2 rounds)</text>
-      <text x="450" y="515" class="small">Tadpole micro-assembly</text>
+      <text x="450" y="496" class="small">BBDuk baiting ×2, BBMerge</text>
+      <text x="450" y="515" class="small">Tadpole mini-assembly</text>
     </g>
 
     <g filter="url(#shadow)">
@@ -91,8 +91,8 @@
       <circle cx="1020" cy="280" r="17" fill="#D97706"/>
       <text x="1020" y="287" class="num">7</text>
       <text x="1020" y="322" class="label">Amplicon calling</text>
-      <text x="1020" y="346" class="small">convergent F/R orientation</text>
-      <text x="1020" y="365" class="small">size limits, probe in product</text>
+      <text x="1020" y="346" class="small">convergent F/R, size, probe</text>
+      <text x="1020" y="365" class="small">FASTQ: also from the reads</text>
     </g>
 
     <g filter="url(#shadow)">

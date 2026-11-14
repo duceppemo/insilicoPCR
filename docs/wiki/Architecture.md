@@ -18,9 +18,26 @@ One dispatcher starts the desktop GUI when it is given no arguments and the comm
 
 The dispatcher starts the GUI when no command-line arguments are provided. When CLI arguments are present, it runs the command-line pipeline.
 
+The GUI runs the same pipeline: `PcrPipelineTask` runs `InSilicoPcrPipeline` on a background thread and gives it a `RunMonitor` that sends messages, program output and progress to the window, and stops the run when the window closes. The command line gives it `RunMonitor.CONSOLE`. Every external program (BLAST+, BBTools) is started by one class, `pipeline.ExternalProgram`.
+
+## Pipeline stages (`ca.canada.inspection.pipeline`)
+
+`InSilicoPcrPipeline.run` goes through the steps of `RunMonitor.Step` in order, reporting each one to the monitor:
+
+| Step | Classes | What happens |
+|---|---|---|
+| Dependencies, input check | `RuntimeDependencies`, `SampleRepository` (`util.InputCheck`) | Find the bundled tools; find the samples and check their files |
+| Primers | `PrimerService` | Read the primer FASTA, expand degenerate bases, write `primer_tmp.fasta` |
+| Reads | `FastqProcessor`, `BbtoolsCommands`, `ChildJavaMemory` | FASTQ samples: two rounds of BBDuk baiting, Tadpole mini-assembly, BBMerge of baited pairs |
+| BLAST database, BLAST | `BlastDatabaseBuilder`, `BlastRunner` | `makeblastdb` on the primers; `blastn` of every sample, one thread each, several samples at a time |
+| Read search, read extension | `ReadLevelStage`, `ReadExtensionStage` | FASTQ samples: amplicons called on the baited reads; reads extended for products longer than a read |
+| Reports | `ReportGenerator` | `report.tsv`, FASTQ diagnostics, HTML report, `QAlog.txt`, `--gel` image |
+
+Samples are processed several at a time by `ParallelStageRunner`, which stops starting new samples once one has failed, or once the run is cancelled. For the BBTools steps, `ChildJavaMemory.share` splits the threads and the memory between the samples running at once: half of insilicoPCR's heap in all, at least 4 GB and at most 64 GB per program. BBTools runs with `-XX:+ExitOnOutOfMemoryError`, so running out of memory is exit code 3 (`ProgramFailedException.exitCode`). `FastqProcessor` sets such a sample aside and, after the others, runs it again alone with everything, from the step that ran out. The user-facing behaviour is on [Threads and memory in FASTQ mode](Command-line-Interface#threads-and-memory-in-fastq-mode).
+
 ## Shared analysis core (`ca.canada.inspection.pcr`)
 
-Both the GUI pipeline (`PcrPipelineTask`) and the CLI pipeline (`InSilicoPcrPipeline`) delegate the scientific decisions to one shared, JavaFX-free package, so the two interfaces cannot drift apart:
+The pipeline delegates the scientific decisions to one JavaFX-free package:
 
 | Class | Responsibility |
 |---|---|
@@ -38,7 +55,7 @@ Both the GUI pipeline (`PcrPipelineTask`) and the CLI pipeline (`InSilicoPcrPipe
 | `ExpectedSizes` | Product sizes declared in primer FASTA headers (`size=`, `other=`); labels report rows `target` / `other` / `unexpected` and never filters |
 | `HtmlReport` | Writes the self-contained HTML report from the consolidated TSV: sample-by-assay grid, per-assay summary, amplicon table |
 
-Three classes outside this package are shared by both pipelines as well:
+Three classes outside this package take part in every run as well:
 
 | Class | Responsibility |
 |---|---|
@@ -46,24 +63,40 @@ Three classes outside this package are shared by both pipelines as well:
 | `util.FastqCheck` | Reads a FASTQ file to its end and names the first fault (empty, gzip damaged or cut short, file ending inside a read, malformed read) |
 | `pipeline.RunFailure` | Tells a failure the user can act on (reported as `Error:` and `Cause:` lines) from one that points at the program (reported with its stack trace) |
 
-`BlastResult` (in `insilicopcr`) carries full alignment context (strand, subject coordinates, aligned sequences) and computes the 3'-end mismatch counts and weighted penalties. The rules themselves are documented on the [Amplicon Calling](Amplicon-Calling) page, and covered by unit tests under `src/test/java`.
+## Synthetic gel (`ca.canada.inspection.insilicopcr.gel`)
+
+The two gel viewers (`InteractiveGelViewer`, `PaginatedGelViewer`) and the `--gel` image (`GelImageWriter`) share plain classes that need no window and have unit tests:
+
+| Class | Responsibility |
+|---|---|
+| `GelScale` | The gel's log scale (base pairs to position), the ladder, and the small per-band variations |
+| `GelLayout` | Geometry of a gel picture: where the gel sits, lane width, picture size, the baseline of the slanted lane labels |
+| `LaneBand` | One band of a sample lane: the amplicons it stands for, where it sits, how strong it looks |
+| `BandPaint` | Colours of the gel and of the bands |
+| `GelText` | Text about the amplicons of a band: tooltips, details, selection and search |
+| `GelPages` | Splitting the lanes of a large run into pages of samples |
+| `GelSvg` | The viewers' gel as an SVG document |
+| `GelImages` | PNG and PDF files of the gel, their default names, snapshots of the viewer |
+| `SyntheticGelImage` | The `--gel` PNG, drawn without a window |
+
+`BlastResult` (in `insilicopcr`) carries full alignment context (strand, subject coordinates, aligned sequences) and computes the 3'-end mismatch counts and weighted penalties. The rules themselves are documented on the [Amplicon Calling](Amplicon-Calling) page, and covered by unit tests under `src/test/java`. `EndToEndTest` runs whole runs on the five-isolate example with the BLAST+ and BBTools of the checkout.
 
 ## High-level layers
 
 ```text
-GUI / CLI
-   ↓
 Dispatcher
    ↓
-Shared pipeline
+GUI (PcrPipelineTask + window RunMonitor)  /  CLI (RunMonitor.CONSOLE)
    ↓
-Input services, primer service, FASTQ processing, BLAST database building
+Shared pipeline (InSilicoPcrPipeline)
    ↓
-BBMap / BLAST+ runners
+Input check, primers, FASTQ processing, BLAST database, BLAST, read search and extension
    ↓
-Parsers and domain model
+External programs: BBTools, BLAST+ (ExternalProgram, ParallelStageRunner)
    ↓
-Reports and synthetic gel visualization
+Analysis core (pcr): hit filtering, amplicon calling, read-level calls
+   ↓
+Reports and synthetic gel (insilicopcr.gel)
 ```
 
 ## Design goals

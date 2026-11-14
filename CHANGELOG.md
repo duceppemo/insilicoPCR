@@ -1,5 +1,49 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- The application now runs the same pipeline as the command line, instead of a
+  copy of it. Results are unchanged (the five-isolate example gives the same
+  report from both). What the application does differently:
+  - FASTQ samples are baited, merged and assembled several at a time, as on the
+    command line, instead of one after the other;
+  - the primer BLAST database (`primer_tmp.fasta*`) stays in the output folder,
+    as on the command line, instead of a `.tmp` folder deleted after the run.
+- FASTQ mode: the samples baited, merged and assembled at the same time now
+  share the threads and the memory. Each BBTools process used to get all of
+  `-t` and half of the heap, so 40 samples on 64 threads started 40 processes
+  of 64 threads at once, each allowed half the heap. Now as many samples run
+  at once as each can have 4 GB of that half, at most one per thread, and each
+  gets its share of the threads and of the half (up to 64 GB). Each step is
+  split anew, so BBMerge, on the paired samples only, gets what they leave. A
+  single sample still gets everything. The log says how it was split.
+- FASTQ mode: a sample whose BBTools program runs out of its share of memory
+  is set aside with a warning and run again at the end, alone, with all the
+  threads and memory, from the step that ran out. If it runs out alone too,
+  the run stops with `<program> ran out of memory on sample <name>` and says
+  to raise `-Xmx` (or, at the 64 GB cap, that more does not help), instead of
+  `failed with exit code 1`. When the read extension runs out of memory, its warning says so. BBTools programs now
+  run with `-XX:+ExitOnOutOfMemoryError`, so running out of memory in any of
+  their threads stops them (exit code 3) rather than possibly leaving them
+  running on without that thread's work.
+- A failed BLAST+ or BBTools command is reported as
+  `<program> failed with exit code <n>: <command line>`, from the command line
+  and from the application alike.
+
+### Tests
+
+- Whole runs of the five-isolate example (assemblies, reads, read extension,
+  faulty input files, a cancelled run) are now part of the unit tests, with the
+  BLAST+ and BBTools of the checkout.
+- The synthetic gel's layout, colours, text, paging and SVG/PDF/PNG writing
+  are now plain classes with unit tests, and the three gel pictures (the
+  viewer, the paged viewer and the `--gel` image) no longer keep copies of the
+  same code. Every picture is byte-for-byte what it was.
+- Line coverage went from 48% to 70% (72% where a display lets the gel be
+  drawn), and the build fails if it drops below the floors set in `pom.xml`.
+
 ## 0.13.0 (2026-11-13)
 
 ### Added

@@ -1,19 +1,20 @@
 package ca.canada.inspection.pipeline;
 
 import ca.canada.inspection.dispatchpcr.AppPaths;
-import ca.canada.inspection.util.ProcessRunner;
+
+import java.util.List;
 
 /** Creates the BLAST nucleotide database used by the PCR search stage. */
 public final class BlastDatabaseBuilder {
     public void build(PipelineContext context) {
         if (!AppPaths.isWindows()) {
-            ProcessRunner.run(context.dependencies().blastBinDirectory(), "chmod", "+x", "makeblastdb", "blastn");
+            ExternalProgram.run(context.monitor(), context.dependencies().blastBinDirectory(),
+                    List.of("chmod", "+x", "makeblastdb", "blastn"), "chmod");
         }
-
-        ProcessRunner.run(null,
+        ExternalProgram.run(context.monitor(), null, List.of(
                 context.dependencies().makeblastdb().toString(),
                 "-dbtype", "nucl",
                 "-hash_index",
-                "-in", context.directories().primerDatabase().toString());
+                "-in", context.directories().primerDatabase().toString()), "makeblastdb");
     }
 }

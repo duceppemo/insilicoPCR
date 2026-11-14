@@ -1,7 +1,6 @@
 package ca.canada.inspection.pipeline;
 
 import ca.canada.inspection.insilicopcr.Sample;
-import ca.canada.inspection.util.ProcessRunner;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -13,7 +12,8 @@ import java.util.List;
 public final class BlastRunner {
     public void run(PipelineContext context) {
         List<Path> queries = blastQueries(context);
-        ParallelStageRunner.run("BLAST", queries, context.config().threads(), query -> blast(context, query));
+        ParallelStageRunner.run("BLAST", queries, context.config().threads(), context.monitor(),
+                query -> blast(context, query), context.monitor()::blastProgress);
     }
 
     private static List<Path> blastQueries(PipelineContext context) {
@@ -44,7 +44,7 @@ public final class BlastRunner {
         Path blastTsv = blastOutput.resolve(name + ".tsv");
 
         try (BlastQuery blastQuery = BlastQuery.of(query, blastOutput)) {
-            ProcessRunner.run(null,
+            ExternalProgram.run(context.monitor(), null, List.of(
                     context.dependencies().blastn().toString(),
                     "-task", "blastn-short",
                     "-query", blastQuery.path().toString(),
@@ -53,7 +53,7 @@ public final class BlastRunner {
                     "-num_alignments", "1000000",
                     "-num_threads", "1",
                     "-outfmt", BlastTsv.OUTFMT,
-                    "-out", blastTsv.toString());
+                    "-out", blastTsv.toString()), "blastn");
         } catch (IOException e) {
             throw new PipelineException("Unable to prepare the BLAST query for " + query, e);
         }

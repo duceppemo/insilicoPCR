@@ -68,6 +68,18 @@ Upgrade to 0.9.0 or newer, which bundles BBTools 40.04. The files are then read 
 
 Releases before 0.9.0 ran the second baiting pass with the `-m` mismatch budget as BBDuk's `hdist`, and on large samples with `-m 2` or more its k-mer table outgrew any heap. Since 0.9.0 that pass runs with `hdist=0`, and `-m` still applies to primer baiting and amplicon calling. Upgrade.
 
+## FASTQ run fails with `ran out of memory on sample`
+
+The message is `Tadpole ran out of memory on sample <name> with -Xmx<n>g` (or `BBDuk`, `BBMerge`). The sample had all the memory insilicoPCR gives a BBTools program: half of its own heap, up to 64 GB. (Samples that run out of only their share, when several run at once, are run again alone automatically; see [Threads and memory in FASTQ mode](Command-line-Interface#threads-and-memory-in-fastq-mode).)
+
+- Below 64 GB (`all it could have`): give insilicoPCR more memory with Java's `-Xmx` option (`java -Xmx96g -jar insilicoPCR.jar ...`, or `JDK_JAVA_OPTIONS=-Xmx96g` before the launcher or the application).
+- At 64 GB (`the most insilicoPCR gives a BBTools program`): more memory does not help. The sample holds too many reads that match the primers; check the primers and the `-m` and `--5p-truncation` settings.
+- If the program's output above the message says `unable to create native thread`, it is the computer's limit on threads, not memory: use fewer threads with `-t`.
+
+When the read extension runs out of memory, the run goes on: the sample's assays stay as the read-level search left them, and a `Warning:` line in the log, and in `QAlog.txt`, says `read extension could not be run for sample <name> (Tadpole ran out of memory ...)`.
+
+Releases before 0.14.0 reported this as `Tadpole failed with exit code 1`, with `java.lang.OutOfMemoryError` in the program's output above it.
+
 ## An assay is negative in FASTQ mode but positive on an assembly
 
 A FASTQ-mode negative is weaker evidence than an assembly-mode one: the mini-assembly can miss the target region or break inside the amplicon. Since 0.10.0 such assays are, where the reads support them, called from the reads themselves (`FASTQ read-level call` in `report.tsv`), and since 0.13.0 products longer than a read are looked for by extending the reads (`FASTQ read-extension call`). Every missed assay whose oligos are in the reads is listed in `consolidated_report/report_fastq_diagnostics.tsv`, with the reason. See [FASTQ mode and false negatives](Reports#fastq-mode-and-false-negatives).

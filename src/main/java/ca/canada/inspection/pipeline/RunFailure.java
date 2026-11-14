@@ -1,6 +1,5 @@
 package ca.canada.inspection.pipeline;
 
-import ca.canada.inspection.util.ProcessRunner;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -30,7 +29,6 @@ public final class RunFailure {
     public static boolean isForTheUser(Throwable error) {
         for (Throwable link = error; link != null; link = link.getCause()) {
             boolean expected = link instanceof PipelineException
-                    || link instanceof ProcessRunner.ProcessException
                     || link instanceof IllegalArgumentException
                     || link instanceof IOException
                     || link instanceof UncheckedIOException;

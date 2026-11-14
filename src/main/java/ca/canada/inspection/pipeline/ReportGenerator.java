@@ -2,7 +2,9 @@ package ca.canada.inspection.pipeline;
 
 import ca.canada.inspection.dispatchpcr.Dispatcher;
 import ca.canada.inspection.pcr.HtmlReport;
+import ca.canada.inspection.pcr.ReadExtensionCaller;
 import ca.canada.inspection.pcr.ReadLevelCaller.ReadEvidence;
+import ca.canada.inspection.pipeline.RunMonitor.Step;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -19,23 +21,31 @@ public final class ReportGenerator {
         contigs.load(context);
         blastReports.parse(context);
 
+        RunMonitor monitor = context.monitor();
         ReadLevelStage.Settings search = new ReadLevelStage.Settings(context.dependencies().blastn(),
                 context.directories().primerDatabase(), context.config().evalue(), context.config().threads(),
-                context.config().readMinFraction());
-        Map<String, ReadEvidence> readEvidence = context.hasFastqSamples()
-                ? ReadLevelStage.run(search, context.directories().detailed(), context.samples(), context.primers(),
-                        context.config().ampliconOptions())
-                : Map.of();
-        ReadExtensionStage.Result extension = ReadExtensionStage.Result.NONE;
+                context.config().readMinFraction(), monitor);
+        Map<String, ReadEvidence> readEvidence = Map.of();
         if (context.hasFastqSamples()) {
+            readEvidence = ReadLevelStage.run(search, context.directories().detailed(), context.samples(),
+                    context.primers(), context.config().ampliconOptions());
+            monitor.info("Completed read-level amplicon search");
+        }
+        monitor.stepDone(Step.READ_SEARCH);
+        ReadExtensionStage.Result extension = ReadExtensionStage.Result.NONE;
+        if (context.hasFastqSamples() && context.config().readExtension() != ReadExtensionCaller.Mode.OFF) {
             extension = ReadExtensionStage.run(new ReadExtensionStage.Settings(search,
-                            new BbtoolsCommands(context.dependencies().javaCommand(), context.dependencies().bbtoolsJar(),
-                                    context.childJavaMemoryGiB(), context.config().threads()),
+                            // One sample at a time: each child gets everything.
+                            BbtoolsCommands.of(context.dependencies(),
+                                    ChildJavaMemory.forOneChild(context.childJavaMemoryBudgetGiB()),
+                                    context.config().threads()),
                             context.dependencies().bbmapDirectory(), context.config().readExtension(),
                             context.expectedSizes()),
                     context.directories().detailed(), context.samples(), context.primers(),
                     context.config().ampliconOptions(), readEvidence);
+            monitor.info("Completed read extension");
         }
+        monitor.stepDone(Step.READ_EXTENSION);
 
         Path report = consolidatedReport.write(context, FastqDiagnosticsStage.extraRows(
                 context.samples(), context.primers(), context.config().ampliconOptions(), readEvidence, extension));
@@ -46,7 +56,7 @@ public final class ReportGenerator {
         }
         FastqDiagnosticsStage.Result diagnostics = FastqDiagnosticsStage.run(report, context.samples(),
                 context.primers(), context.config().ampliconOptions(), readEvidence, extension);
-        diagnostics.logLines().forEach(System.err::println);
+        diagnostics.logLines().forEach(monitor::warning);
         Path html = HtmlReport.write(report, context.samples().keySet(), RunDetails.fastqSampleNames(context.samples()),
                 context.primers(), context.expectedSizes(), diagnostics.findings(),
                 RunDetails.of(Dispatcher.VERSION, context.config().input(), context.config().primers(),
@@ -54,11 +64,12 @@ public final class ReportGenerator {
                         context.hasFastqSamples() ? context.config().readMinFraction() : null,
                         context.config().readExtension()),
                 context.inputIssues());
-        System.out.println("HTML report written to " + html);
+        monitor.info("HTML report written to " + html);
         List<String> qaLines = new ArrayList<>(RunDetails.inputIssueLines(context.inputIssues()));
         qaLines.addAll(context.expectedSizes().qaLogLines());
         qaLines.addAll(diagnostics.qaLogLines(context.config().tadpole(), context.config().readMinFraction(),
                 context.config().readExtension()));
         qaLog.write(context, Dispatcher.VERSION, qaLines);
+        monitor.stepDone(Step.REPORTS);
     }
 }

@@ -7,12 +7,14 @@ import ca.canada.inspection.pcr.ReadLevelCaller;
 import ca.canada.inspection.pipeline.RunFailure;
 import ca.canada.inspection.pipeline.TadpoleOptions;
 import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+
+import java.io.PrintStream;
+import java.io.PrintWriter;
 
 public final class Dispatcher {
 
@@ -33,35 +35,44 @@ public final class Dispatcher {
             MainRun.main(args);
             return;
         }
+        int exitCode = run(args, System.out, System.err);
+        if (exitCode != 0) {
+            System.exit(exitCode);
+        }
+    }
 
+    /**
+     * Runs the command line.
+     *
+     * @return the exit code: 0 done, 1 the run failed, 2 the command line is wrong
+     */
+    static int run(String[] args, PrintStream out, PrintStream err) {
         Options options = options();
-        HelpFormatter formatter = new HelpFormatter();
-
         try {
-            CommandLineParser parser = new DefaultParser();
-            CommandLine cmd = parser.parse(options, args);
+            CommandLine cmd = new DefaultParser().parse(options, args);
             if (cmd.hasOption("help")) {
-                printHelp(formatter, options);
-                return;
+                printHelp(out, options);
+                return 0;
             }
             if (cmd.hasOption("version")) {
-                System.out.println("insilicoPCR " + VERSION);
-                return;
+                out.println("insilicoPCR " + VERSION);
+                return 0;
             }
             CommandMain.from(CliConfig.from(cmd)).run();
+            return 0;
         } catch (ParseException | IllegalArgumentException e) {
-            System.err.println(e.getMessage());
-            printHelp(formatter, options);
-            System.exit(2);
+            err.println(e.getMessage());
+            printHelp(out, options);
+            return 2;
         } catch (RuntimeException e) {
             // A failure the user can act on is its message; anything else is a bug and
             // keeps the stack trace a report of it needs.
             if (RunFailure.isForTheUser(e)) {
-                RunFailure.lines(e).forEach(System.err::println);
+                RunFailure.lines(e).forEach(err::println);
             } else {
-                e.printStackTrace(System.err);
+                e.printStackTrace(err);
             }
-            System.exit(1);
+            return 1;
         }
     }
 
@@ -129,7 +140,12 @@ public final class Dispatcher {
         return options;
     }
 
-    private static void printHelp(HelpFormatter formatter, Options options) {
-        formatter.printHelp("java -jar insilicoPCR.jar -i <input> -o <output> -p <primers> [-t n] [-m n] [-e value] [-l bp]", options);
+    private static void printHelp(PrintStream out, Options options) {
+        HelpFormatter formatter = new HelpFormatter();
+        PrintWriter writer = new PrintWriter(out);
+        formatter.printHelp(writer, formatter.getWidth(),
+                "java -jar insilicoPCR.jar -i <input> -o <output> -p <primers> [-t n] [-m n] [-e value] [-l bp]",
+                null, options, formatter.getLeftPadding(), formatter.getDescPadding(), null);
+        writer.flush();
     }
 }

@@ -9,14 +9,15 @@ import ca.canada.inspection.insilicopcr.ui.AmpliconSettingsDialog.AmpliconSettin
 import ca.canada.inspection.insilicopcr.ui.FastqSettingsDialog;
 import ca.canada.inspection.insilicopcr.ui.FastqSettingsDialog.FastqSettings;
 import ca.canada.inspection.insilicopcr.ui.PathFieldBinder;
-import ca.canada.inspection.pipeline.DependencyContext;
 import ca.canada.inspection.pipeline.ExternalProcessTracker;
 import ca.canada.inspection.pipeline.InputValidator;
 import ca.canada.inspection.pipeline.LogFiles;
 import ca.canada.inspection.pipeline.PcrPipelineTask;
-import ca.canada.inspection.pipeline.PcrRunConfig;
+import ca.canada.inspection.pipeline.PipelineConfig;
 import ca.canada.inspection.pipeline.QaLogInputs;
 import ca.canada.inspection.pipeline.RunFailure;
+import ca.canada.inspection.pipeline.RuntimeDependencies;
+import ca.canada.inspection.util.InputCheck;
 import ca.canada.inspection.util.SequenceFileUtils;
 import javafx.application.Application;
 import javafx.application.Platform;
@@ -77,7 +78,6 @@ public class MainRun extends Application {
     private final ExternalProcessTracker processTracker = new ExternalProcessTracker();
     private final AtomicBoolean currentlyRunning = new AtomicBoolean(false);
     private PcrPipelineTask runningTask;
-    private DependencyContext dependencies;
     private FastqSettings fastqSettings = FastqSettings.DEFAULTS;
     /** Paths of the last run started; the fields may have been edited since. */
     private Path lastRunInput;
@@ -376,21 +376,23 @@ public class MainRun extends Application {
         lastRunInput = inputFile;
         lastRunPrimer = primerFile;
         lastRunOutDir = outDir;
-        var config = new PcrRunConfig(
+        // The window has its own gel viewer, and checks every read as the command line does
+        // by default.
+        var config = new PipelineConfig(
                 inputFile,
                 outDir,
                 primerFile,
                 threadField.getSelectionModel().getSelectedItem(),
                 evalue,
                 ampliconOptions,
-                outputField,
-                blastProgress,
+                false,
                 fastqSettings.tadpole(),
                 fastqSettings.readMinFraction(),
-                fastqSettings.readExtension()
+                fastqSettings.readExtension(),
+                InputCheck.Depth.FULL
         );
 
-        runningTask = new PcrPipelineTask(config, processTracker);
+        runningTask = new PcrPipelineTask(config, outputField, blastProgress, processTracker);
         mainProgress.progressProperty().bind(runningTask.progressProperty());
         runningTask.setOnCancelled(event -> {
             currentlyRunning.set(false);
@@ -400,7 +402,6 @@ public class MainRun extends Application {
         runningTask.setOnSucceeded(event -> {
             runButton.setDisable(false);
             currentlyRunning.set(false);
-            dependencies = runningTask.dependencies();
             gelButton.setDisable(false);
             htmlButton.setDisable(false);
             showProgressBars(false);
@@ -467,11 +468,8 @@ public class MainRun extends Application {
         }
 
         try {
-            if (dependencies == null) {
-                dependencies = DependencyContext.discover(outputField);
-            }
-            LogFiles.ensureQaLog(lastRunOutDir, lastRunInput, lastRunPrimer, dependencies);
-            LogFiles.appendRunLog(lastRunOutDir, outputField);
+            LogFiles.ensureQaLog(lastRunOutDir, lastRunInput, lastRunPrimer, RuntimeDependencies.discover());
+            LogFiles.appendRunLog(lastRunOutDir, outputField.getText());
         } catch (RuntimeException e) {
             Methods.logMessage(outputField, "Unable to write shutdown logs: " + e.getMessage());
         }

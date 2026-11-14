@@ -43,9 +43,7 @@ public record RuntimeDependencies(AppPaths.RuntimeLayout layout) {
         Path jar = bbmapDirectory().resolve("bbtools.jar");
 
         if (!Files.isRegularFile(jar)) {
-            throw new IllegalStateException(
-                    "Missing BBMap runtime: " + jar.toAbsolutePath()
-            );
+            throw new PipelineException("Missing BBMap runtime: " + jar.toAbsolutePath());
         }
 
         return jar;

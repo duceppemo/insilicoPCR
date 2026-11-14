@@ -34,6 +34,8 @@ After the inputs are selected, click **Run** to start the analysis. The run firs
 
 The application displays progress and log output during the run, including the output of the external tools (BBDuk, Tadpole, BBMerge, BLAST).
 
+The application runs the same pipeline as the command line (since 0.14.0), so FASTQ samples are baited and assembled several at a time, sharing the threads and memory; the log says how (`BBTools: 2 samples at a time, each with 4 threads and -Xmx4g`). To give the application more memory, start it with `JDK_JAVA_OPTIONS=-Xmx96g ./run-insilicoPCR.sh` (on Windows, `set JDK_JAVA_OPTIONS=-Xmx96g` before `run-insilicoPCR.bat`); see [Threads and memory in FASTQ mode](Command-line-Interface#threads-and-memory-in-fastq-mode).
+
 On Linux, starting the launcher from a terminal is recommended because startup messages and errors are also visible in the console.
 
 `QAlog.txt` is rewritten at the end of every run, as on the command line. Closing the window writes `QAlog.txt` and `log.txt` to the output folder of the last run started (nothing is written if no run was started), and stops any external tool still running.

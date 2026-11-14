@@ -14,8 +14,9 @@ public record PipelineContext(
         Map<String, Sample> samples,
         Map<String, String> primers,
         ExpectedSizes expectedSizes,
-        int childJavaMemoryGiB,
-        List<InputCheck.Issue> inputIssues
+        int childJavaMemoryBudgetGiB,
+        List<InputCheck.Issue> inputIssues,
+        RunMonitor monitor
 ) {
     public boolean hasFastqSamples() {
         return samples.values().stream().anyMatch(Sample::isFastq);

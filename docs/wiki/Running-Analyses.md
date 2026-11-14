@@ -81,7 +81,7 @@ Standard PCR assays and qPCR/probe assays can be mixed in the same primer FASTA 
 
 | Parameter | Purpose |
 |---|---|
-| Threads | Number of worker threads |
+| Threads | Number of worker threads; FASTQ samples processed at once share them, and the memory: see [Threads and memory in FASTQ mode](Command-line-Interface#threads-and-memory-in-fastq-mode) |
 | Mismatches | Allowed mismatches + indels per primer (3' bases that do not pair with the template count) |
 | E-value | BLASTN e-value threshold |
 | Amplicon settings… | Probe mismatches, 3'-end check, 5' truncation, min/max amplicon length (default max 5000; 0 disables the limit) |
@@ -98,5 +98,7 @@ Every GUI setting has a command-line equivalent; see [Command-line Interface](Co
 | `consolidated_report/report_fastq_diagnostics.tsv` | FASTQ input only: why an assay was not reported although its primers are in the reads |
 | `detailed_report/<sample>/` | Raw BLAST hits per sample and, for FASTQ input, the baited reads and mini-assembly |
 | `QAlog.txt` | Version, inputs and the settings that decide calls |
+| `primer_tmp.fasta*` | The primers as a BLAST database; the application deletes it no longer, since 0.14.0 |
+| `log.txt` | Application only: the run log, written when the window is closed |
 
 A run into a folder that already holds a report writes `report(1).tsv` and `report(1).html`, and so on. See [Reports](Reports).

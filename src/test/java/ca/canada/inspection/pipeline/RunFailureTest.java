@@ -1,11 +1,9 @@
 package ca.canada.inspection.pipeline;
 
-import ca.canada.inspection.util.ProcessRunner;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.nio.file.NoSuchFileException;
-import java.time.Duration;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -47,15 +45,13 @@ class RunFailureTest {
     @Test
     void aFailedExternalToolIsItsCommandLine() {
         // blastn has printed its own message; the stage names itself and the command follows.
-        ProcessRunner.Result result = new ProcessRunner.Result(1, Duration.ofSeconds(2),
-                List.of("blastn", "-query", "/data/sample.fasta"));
-        ProcessRunner.ProcessException failed = new ProcessRunner.ProcessException(
-                "External command failed: " + result.commandLine() + " (exit 1, 2s)", result);
-        PipelineException error = new PipelineException("BLAST failed", failed);
+        PipelineException failed = new PipelineException(
+                "blastn failed with exit code 1: blastn -query /data/sample.fasta");
+        StageException error = new StageException("BLAST failed", failed);
 
         assertTrue(RunFailure.isForTheUser(error));
         assertEquals(List.of("Error: BLAST failed",
-                "  Cause: External command failed: blastn -query /data/sample.fasta (exit 1, 2s)"),
+                "  Cause: blastn failed with exit code 1: blastn -query /data/sample.fasta"),
                 RunFailure.lines(error));
     }
 

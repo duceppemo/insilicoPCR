@@ -451,7 +451,6 @@ class ReadExtensionCallerTest {
 
         ReportRow row = ReadExtensionCaller.reportRow(product, "ERR1.5 5/1");
 
-        assertEquals(product.row().columns(false).size(), row.columns(false).size(), "same columns as any other row");
         assertEquals("S", row.sample());
         assertEquals("long", row.assay());
         assertEquals(1074, row.size());

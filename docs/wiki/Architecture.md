@@ -28,7 +28,7 @@ Each package depends only on those below it in this table, so there are no cycle
 | `insilicopcr` (and `insilicopcr.ui`) | The application window and its dialogs | `pipeline`, `gel`, `report`, `pcr`, `util` |
 | `pipeline` | The run: its steps, the external programs, the runtime layout (`AppPaths`) | `gel`, `report`, `pcr`, `model`, `util` |
 | `gel` | The synthetic gel: its geometry, the viewers, the image files | `report` (to read `report.tsv`), `pcr` |
-| `report` | The files a run writes and reads back: `report.tsv` (`ConsolidatedReport`, `ReportTsv`), the HTML report, the FASTQ diagnostics | `pcr`, `model`, `util` |
+| `report` | The files a run writes and reads back: `report.tsv` (its columns in `ReportColumn`, written by `ConsolidatedReport`, read by `ReportTsv`), the HTML report, the FASTQ diagnostics | `pcr`, `model`, `util` |
 | `pcr` | The analysis core: primer IDs, hit filtering, amplicon calling, read-level calls; no report file | `model`, `util` |
 | `util` | Input checks, sequence file helpers, the version (`Version`, filled in from `pom.xml` at build time) | `model` |
 | `model` | `Sample` and `BlastResult` | nothing |

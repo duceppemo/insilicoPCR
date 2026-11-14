@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+### Added
+
+- Assembly (FASTA) input: an assay with no product whose primers point off the
+  ends of two contigs, or off both ends of one, is now warned about when
+  joining them would give a product within `--max-length`. A product is called
+  on one contig only, so one that spans a break in the assembly, or the start
+  of a circular plasmid or chromosome, used to be a silent negative. The
+  warning gives the hits and the smallest product (`Warning:` in the log and in
+  `QAlog.txt`), and the HTML report marks the cell `◇ Primers at contig ends`
+  and lists them in their own section. On 48 SKESA assemblies of Brucella with
+  a 4-assay qPCR panel it fired once.
+
+### Changed
+
+- CI: the GitHub Actions used by the build and release workflows are updated
+  to their Node 24 versions (checkout v7, setup-java v6, upload-artifact v7,
+  download-artifact v8, codecov v7, action-gh-release v3), before GitHub
+  removes Node 20.
+
 ### Documentation
 
 - New Limitations page, with a figure: insilicoPCR applies sequence rules only

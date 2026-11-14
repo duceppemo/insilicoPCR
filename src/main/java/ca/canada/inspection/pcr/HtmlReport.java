@@ -51,6 +51,10 @@ public final class HtmlReport {
         /** Extended reads join the primers, but read pairs do not confirm the product (FASTQ input). */
         UNCONFIRMED("Not confirmed by read pairs", "Reads extended from both primers hold a product, but the read"
                 + " pairs do not confirm it; not reported", "?"),
+        /** No product on any one contig, but the primers point off contig ends: one could span them (FASTA input). */
+        ACROSS_ENDS("Primers at contig ends", "No product on any one contig, but the primers point off the ends of two"
+                + " contigs, or both ends of one: a product could span the break, or the end of a circular sequence",
+                "\u25c7"),
         /** No product, and the reads could not have shown one of the declared size (FASTQ input). */
         UNCHECKED("Not checkable from reads", "No product, but one of the declared size is longer than the reads"
                 + " could hold, so its absence proves nothing", "\u25cb"),
@@ -212,6 +216,19 @@ public final class HtmlReport {
     public static Path write(Path reportTsv, Collection<String> sampleNames, Set<String> fastqSamples,
                              Map<String, String> primers, ExpectedSizes sizes, List<Finding> findings,
                              Map<String, String> runDetails, List<InputCheck.Issue> inputIssues) {
+        return write(reportTsv, sampleNames, fastqSamples, primers, sizes, findings, runDetails, inputIssues, List.of());
+    }
+
+    /**
+     * As {@link #write(Path, Collection, Set, Map, ExpectedSizes, List, Map, List)}, with the
+     * assays of assembly samples whose primers point off contig ends.
+     *
+     * @param splits assays without a product whose product could span a break in the assembly
+     */
+    public static Path write(Path reportTsv, Collection<String> sampleNames, Set<String> fastqSamples,
+                             Map<String, String> primers, ExpectedSizes sizes, List<Finding> findings,
+                             Map<String, String> runDetails, List<InputCheck.Issue> inputIssues,
+                             List<SplitAcrossContigs.Split> splits) {
         Path html = pathFor(reportTsv);
         Collection<String> primerIds = primers.keySet();
         try {
@@ -220,7 +237,7 @@ public final class HtmlReport {
                     fastqSamples, ConsolidatedReport.groupByAssay(primerIds).entrySet().stream()
                             .filter(entry -> !entry.getValue().forward.isEmpty() && !entry.getValue().reverse.isEmpty())
                             .map(Map.Entry::getKey).toList(),
-                    sizes, findings, runDetails, inputIssues);
+                    sizes, findings, runDetails, inputIssues, splits);
             Files.writeString(html, page, StandardCharsets.UTF_8);
         } catch (IOException e) {
             throw new IllegalStateException("Unable to write HTML report: " + html, e);
@@ -284,6 +301,12 @@ public final class HtmlReport {
 
     /** Decides what a sample shows for an assay from its products and, without any, from the reads. */
     static Cell cell(String assay, List<Product> products, ExpectedSizes sizes, Finding finding) {
+        return cell(assay, products, sizes, finding, null);
+    }
+
+    /** As {@link #cell(String, List, ExpectedSizes, Finding)}; {@code split} says where a product could span contigs. */
+    static Cell cell(String assay, List<Product> products, ExpectedSizes sizes, Finding finding,
+                     SplitAcrossContigs.Split split) {
         if (!products.isEmpty()) {
             State state;
             if (products.stream().allMatch(product -> product.label() == null)) {
@@ -296,6 +319,9 @@ public final class HtmlReport {
                 state = State.UNEXPECTED;
             }
             return new Cell(state, products, "");
+        }
+        if (split != null) {
+            return new Cell(State.ACROSS_ENDS, products, split.note() + " Check with a more complete assembly.");
         }
         if (finding != null && finding.status() == Status.WEAK_READ_SUPPORT) {
             return new Cell(State.INCONCLUSIVE, products, "Not reported: " + finding.readDetail());
@@ -330,6 +356,14 @@ public final class HtmlReport {
                          Set<String> fastqSamples, List<String> assays, ExpectedSizes sizes,
                          List<Finding> findings, Map<String, String> runDetails,
                          List<InputCheck.Issue> inputIssues) {
+        return render(reportName, products, sampleNames, fastqSamples, assays, sizes, findings, runDetails, inputIssues,
+                List.of());
+    }
+
+    static String render(String reportName, List<Product> products, Collection<String> sampleNames,
+                         Set<String> fastqSamples, List<String> assays, ExpectedSizes sizes,
+                         List<Finding> findings, Map<String, String> runDetails,
+                         List<InputCheck.Issue> inputIssues, List<SplitAcrossContigs.Split> splits) {
         Set<String> samples = new TreeSet<>(sampleNames);
         Set<String> assayOrder = new TreeSet<>(assays);
         Map<String, List<Product>> byPair = new HashMap<>();
@@ -342,6 +376,10 @@ public final class HtmlReport {
         for (Finding finding : findings) {
             findingByPair.putIfAbsent(key(finding.sample(), finding.assay()), finding);
         }
+        Map<String, SplitAcrossContigs.Split> splitByPair = new HashMap<>();
+        for (SplitAcrossContigs.Split split : splits) {
+            splitByPair.putIfAbsent(key(split.sample(), split.assay()), split);
+        }
         // sample -> assay -> cell, in display order
         Map<String, Map<String, Cell>> grid = new LinkedHashMap<>();
         Map<State, Integer> totals = new EnumMap<>(State.class);
@@ -349,7 +387,8 @@ public final class HtmlReport {
             Map<String, Cell> row = new LinkedHashMap<>();
             for (String assay : assayOrder) {
                 String key = key(sample, assay);
-                Cell cell = cell(assay, byPair.getOrDefault(key, List.of()), sizes, findingByPair.get(key));
+                Cell cell = cell(assay, byPair.getOrDefault(key, List.of()), sizes, findingByPair.get(key),
+                        splitByPair.get(key));
                 row.put(assay, cell);
                 totals.merge(cell.state(), 1, Integer::sum);
             }
@@ -373,6 +412,7 @@ public final class HtmlReport {
         assaySection(html, grid, assayOrder, sizes);
         productSection(html, products, sizes);
         readSection(html, findings);
+        splitSection(html, splits);
         detailSection(html, runDetails, reportName, anyDeclared);
 
         html.append("</main>\n<script>\n").append(SCRIPT).append("</script>\n</body>\n</html>\n");
@@ -414,6 +454,9 @@ public final class HtmlReport {
         }
         if (totals.getOrDefault(State.UNCONFIRMED, 0) > 0) {
             tile(html, totals.get(State.UNCONFIRMED), "not confirmed by read pairs, not reported", "inconclusive");
+        }
+        if (totals.getOrDefault(State.ACROSS_ENDS, 0) > 0) {
+            tile(html, totals.get(State.ACROSS_ENDS), "no product, primers at contig ends", "inconclusive");
         }
         tile(html, products, products == 1 ? "amplicon in the report" : "amplicons in the report", "");
         html.append("</section>\n");
@@ -588,11 +631,15 @@ public final class HtmlReport {
                 }
                 html.append("</ul>\n");
             }
-            for (State state : List.of(State.UNCHECKED, State.NONE)) {
+            for (State state : List.of(State.ACROSS_ENDS, State.UNCHECKED, State.NONE)) {
                 List<String> names = byState.getOrDefault(state, List.of());
                 if (!names.isEmpty()) {
                     html.append("<details><summary>").append(names.size())
-                            .append(state == State.NONE ? " with no product" : " not checkable from reads")
+                            .append(switch (state) {
+                                case NONE -> " with no product";
+                                case ACROSS_ENDS -> " with the primers at contig ends";
+                                default -> " not checkable from reads";
+                            })
                             .append("</summary><ul class=\"names muted\">");
                     names.forEach(sample -> html.append("<li>").append(escape(sample)).append("</li>"));
                     html.append("</ul></details>\n");
@@ -717,6 +764,25 @@ public final class HtmlReport {
         html.append("</section>\n");
     }
 
+    /** Assembly samples whose product could span a break in the assembly; nothing when there are none. */
+    private static void splitSection(StringBuilder html, List<SplitAcrossContigs.Split> splits) {
+        if (splits.isEmpty()) {
+            return;
+        }
+        html.append("<section>\n<h2>Primers at contig ends (FASTA input)</h2>\n<p class=\"hint\">A product is")
+                .append(" called on one contig only. For these assays no contig holds one, but the primers point off")
+                .append(" the ends of two contigs, or off both ends of one: a product could span a break in the")
+                .append(" assembly, or the end of a circular sequence. Neither positive nor negative: check with a more")
+                .append(" complete assembly, or with the reads.</p>\n<div class=\"scroll\"><table class=\"rows\">\n")
+                .append("<thead><tr><th>Sample</th><th>Assay</th><th>At least</th><th>Where</th></tr></thead>\n<tbody>\n");
+        for (SplitAcrossContigs.Split split : splits) {
+            html.append("<tr><td>").append(escape(split.sample())).append("</td><td>").append(escape(split.assay()))
+                    .append("</td><td class=\"num\">").append(split.minimumSize()).append(" bp</td><td class=\"wrap\">")
+                    .append(escape(split.note())).append("</td></tr>\n");
+        }
+        html.append("</tbody></table></div>\n</section>\n");
+    }
+
     private static void detailSection(StringBuilder html, Map<String, String> runDetails, String reportName,
                                       boolean anyDeclared) {
         html.append("<section>\n<h2>Run details</h2>\n<dl class=\"details\">\n");
@@ -819,6 +885,7 @@ public final class HtmlReport {
             .chip.unexpected { border-color: var(--unexpected); border-style: dashed; }
             .chip.inconclusive, .chip.unconfirmed { border: 2px dotted var(--ink-3); color: var(--ink-2); }
             .chip.unchecked { color: var(--ink-3); min-width: 0; padding: 0; font-weight: 400; }
+            .chip.across_ends { color: var(--ink-2); min-width: 0; padding: 0; font-weight: 400; }
             .chip.none { color: var(--line-2); min-width: 0; padding: 0; font-weight: 400; }
             .chip sup { font-size: 10px; line-height: 1; margin-left: 1px; }
             .part { font-size: 12px; line-height: 1; } .key .part, .rows td .part, li .part { color: var(--ink-2); }

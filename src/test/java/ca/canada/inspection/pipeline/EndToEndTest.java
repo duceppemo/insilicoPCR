@@ -82,10 +82,39 @@ class EndToEndTest {
         assertEquals(lines(EXAMPLE.resolve("report.tsv")), lines(report(output)));
         assertTrue(Files.size(output.resolve("consolidated_report").resolve("report.html")) > 0);
         assertTrue(Files.readString(output.resolve("QAlog.txt")).contains("isolate_05.fasta"));
+        assertFalse(Files.readString(output.resolve("QAlog.txt")).contains("Primers at contig ends"));
         try (Stream<Path> files = Files.walk(output)) {
             assertEquals(List.of(), files.filter(file -> file.getFileName().toString().startsWith("blast_query_"))
                     .toList(), "decompressed BLAST queries left in the results");
         }
+    }
+
+    @Test
+    void aProductAcrossABreakInTheAssemblyIsWarnedAbout() throws IOException {
+        // isolate_01 gives toxA at 4001-4312 of its one contig; cut the contig at 4150.
+        List<String> lines = lines(EXAMPLE.resolve("genomes").resolve("isolate_01.fasta"));
+        String sequence = String.join("", lines.subList(1, lines.size()));
+        Path genomes = Files.createDirectory(directory.resolve("broken"));
+        Files.writeString(genomes.resolve("isolate_01.fasta"), ">part_a\n" + sequence.substring(0, 4150) + "\n>part_b\n"
+                + sequence.substring(4150) + "\n");
+        Recorder monitor = new Recorder();
+        Path output = directory.resolve("broken-results");
+
+        new InSilicoPcrPipeline(config(genomes, output), monitor).run();
+
+        assertEquals(List.of("isolate_01 stxQ 118 target"), products(report(output)));
+        List<String> warnings = monitor.warnings.stream().filter(line -> line.contains("contig")).toList();
+        assertEquals(1, warnings.size(), monitor.warnings.toString());
+        // Nothing is lost at the cut, so the smallest product across it is the real one.
+        assertTrue(warnings.getFirst().startsWith("Warning: sample isolate_01, assay toxA: no product, but the"
+                + " primers bind near the ends of two contigs:"), warnings.getFirst());
+        assertTrue(warnings.getFirst().contains("Joined, they would give a product of at least 312 bp"),
+                warnings.getFirst());
+        assertTrue(Files.readString(output.resolve("QAlog.txt"))
+                .contains("Primers at contig ends: sample isolate_01, assay toxA:"));
+        String html = Files.readString(output.resolve("consolidated_report").resolve("report.html"));
+        assertTrue(html.contains("Primers at contig ends (FASTA input)"));
+        assertTrue(html.contains("no product, primers at contig ends"));
     }
 
     @Test

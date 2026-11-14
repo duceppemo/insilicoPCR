@@ -3,7 +3,7 @@ package ca.canada.inspection.insilicopcr;
 import ca.canada.inspection.util.Version;
 import ca.canada.inspection.gel.PaginatedGelViewer;
 import ca.canada.inspection.pcr.AmpliconOptions;
-import ca.canada.inspection.pcr.HtmlReport;
+import ca.canada.inspection.report.HtmlReport;
 import ca.canada.inspection.insilicopcr.ui.AmpliconSettingsDialog;
 import ca.canada.inspection.insilicopcr.ui.AmpliconSettingsDialog.AmpliconSettings;
 import ca.canada.inspection.insilicopcr.ui.FastqSettingsDialog;

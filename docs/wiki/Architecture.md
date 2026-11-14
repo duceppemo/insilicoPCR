@@ -25,10 +25,11 @@ Each package depends only on those below it in this table, so there are no cycle
 | Package | Holds | Uses |
 |---|---|---|
 | `dispatchpcr` | The entry point and the command-line options | everything below |
-| `insilicopcr` (and `insilicopcr.ui`) | The application window and its dialogs | `pipeline`, `pcr`, `gel`, `model`, `util` |
-| `pipeline` | The run: its steps, the external programs, the runtime layout (`AppPaths`) | `pcr`, `gel`, `model`, `util` |
-| `gel` | The synthetic gel: its geometry, the viewers, the image files | `pcr` (to read `report.tsv`) |
-| `pcr` | The analysis core: primer IDs, hit filtering, amplicon calling, read-level calls, reports | `model`, `util` |
+| `insilicopcr` (and `insilicopcr.ui`) | The application window and its dialogs | `pipeline`, `gel`, `report`, `pcr`, `util` |
+| `pipeline` | The run: its steps, the external programs, the runtime layout (`AppPaths`) | `gel`, `report`, `pcr`, `model`, `util` |
+| `gel` | The synthetic gel: its geometry, the viewers, the image files | `report` (to read `report.tsv`), `pcr` |
+| `report` | The files a run writes and reads back: `report.tsv` (`ConsolidatedReport`, `ReportTsv`), the HTML report, the FASTQ diagnostics | `pcr`, `model`, `util` |
+| `pcr` | The analysis core: primer IDs, hit filtering, amplicon calling, read-level calls; no report file | `model`, `util` |
 | `util` | Input checks, sequence file helpers, the version (`Version`, filled in from `pom.xml` at build time) | `model` |
 | `model` | `Sample` and `BlastResult` | nothing |
 
@@ -63,17 +64,24 @@ The pipeline delegates the scientific decisions to one JavaFX-free package:
 | `AmpliconCaller` | Pairs forward/reverse hits: same contig, opposite strands, convergent orientation, size limits |
 | `TrimmedEnds` | Compares the oligo bases BLAST trimmed off the ends of an alignment with the template: probe ends and primer 3' ends count only where they do not pair |
 | `QueryTemplates` | Reads the contig or read a hit lies on from the FASTA that was searched, one query at a time and at one byte per base (`PackedBases`), for `TrimmedEnds` |
-| `ConsolidatedReport` | Finds the products of a sample as `ReportRow`s and writes the consolidated TSV (standard and qPCR modes) |
+| `Products` | Finds the products of a sample as `ReportRow`s: its hits paired into amplicons, an assay with a probe only where its probe binds within; the same rules for contigs, reads and extended reads |
 | `ReportRow` | One product as the report lists it (amplicon, primers, mismatches, probe); passed between the steps of a run, and turned into TSV columns only when the report is written |
-| `ReportTsv` | Reads a `report.tsv` back into `ReportRow`s, by column name, for the HTML report, the gel and a past run opened in the application |
 | `ReadLevelCaller` | FASTQ mode: calls amplicons on baited reads treated as tiny contigs, one call per product size, with the support rules (≥ 2 fragments, `--read-min-fraction` of the informative ones: reads carrying a primer at the product's locus) |
 | `ReadExtensionCaller` | FASTQ mode: for assays in no contig and in no read, picks the primer-carrying reads to extend and finds products on the extended reads (at least 2 reads seeded from each primer), reported when `PairSupport` confirms them |
 | `PairSupport` | FASTQ mode: checks a product found on extended reads against the sample's read pairs (every window inside enough fragments; no repeat longer than the window), so that a wrong turn through a repeat is not reported |
 | `FastqDiagnostics` | FASTQ mode: explains assays the mini-assembly did not report though their oligos are in the reads |
 | `ExpectedSizes` | Product sizes declared in primer FASTA headers (`size=`, `other=`); labels report rows `target` / `other` / `unexpected` and never filters |
-| `HtmlReport` | Writes the self-contained HTML report from the consolidated TSV: sample-by-assay grid, per-assay summary, amplicon table; its style and script are the resources `report.css` and `report.js` |
 
-Three classes outside this package take part in every run as well:
+The files are written and read by `ca.canada.inspection.report`:
+
+| Class | Responsibility |
+|---|---|
+| `ConsolidatedReport` | Writes `report.tsv` (standard and qPCR modes) from `Products` and the rows called from reads |
+| `ReportTsv` | Reads a `report.tsv` back into `ReportRow`s, by column name, for the HTML report, the gel and a past run opened in the application |
+| `HtmlReport` | Writes the self-contained HTML report from the consolidated TSV: sample-by-assay grid, per-assay summary, amplicon table; its style and script are the resources `report.css` and `report.js` |
+| `FastqDiagnosticsReport` | Writes `report_fastq_diagnostics.tsv` from the `FastqDiagnostics` findings |
+
+Three classes outside these packages take part in every run as well:
 
 | Class | Responsibility |
 |---|---|

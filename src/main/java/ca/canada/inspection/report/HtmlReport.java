@@ -1,7 +1,13 @@
-package ca.canada.inspection.pcr;
+package ca.canada.inspection.report;
 
+import ca.canada.inspection.pcr.AmpliconOptions;
+import ca.canada.inspection.pcr.ExpectedSizes;
 import ca.canada.inspection.pcr.FastqDiagnostics.Finding;
 import ca.canada.inspection.pcr.FastqDiagnostics.Status;
+import ca.canada.inspection.pcr.PrimerPanel;
+import ca.canada.inspection.pcr.ReadExtensionCaller;
+import ca.canada.inspection.pcr.ReportRow;
+import ca.canada.inspection.pcr.SplitAcrossContigs;
 import ca.canada.inspection.util.InputCheck;
 
 import java.io.IOException;

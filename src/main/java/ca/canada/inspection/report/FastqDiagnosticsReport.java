@@ -1,55 +1,24 @@
-package ca.canada.inspection.pcr;
+package ca.canada.inspection.report;
 
 import ca.canada.inspection.pcr.FastqDiagnostics.Finding;
-import ca.canada.inspection.util.SequenceFileUtils;
+import ca.canada.inspection.pcr.FastqDiagnostics;
 
-import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
-/** File I/O around {@link FastqDiagnostics}: contig lengths in, TSV out. */
+/** Writes the findings of {@link FastqDiagnostics} as {@code report_fastq_diagnostics.tsv}. */
 public final class FastqDiagnosticsReport {
 
-    static final String HEADER = String.join("\t",
+    public static final String HEADER = String.join("\t",
             "Sample", "Gene", "Status", "Assembly", "ReadsWithForward", "ReadsWithReverse", "ReadsWithProbe",
             "CheckableLength", "ReadDetail", "AssemblyDetail");
 
     private FastqDiagnosticsReport() {
-    }
-
-    /** Sequence lengths of a FASTA file keyed by ID (header up to the first whitespace, as BLAST reports it). */
-    public static Map<String, Integer> contigLengths(Path fasta) {
-        Map<String, Integer> lengths = new HashMap<>();
-        try (BufferedReader reader = SequenceFileUtils.openMaybeGzip(fasta)) {
-            String id = null;
-            int length = 0;
-            String line;
-            while ((line = reader.readLine()) != null) {
-                if (line.startsWith(">")) {
-                    if (id != null) {
-                        lengths.put(id, length);
-                    }
-                    String header = line.substring(1).trim();
-                    id = header.split("\\s+", 2)[0];
-                    length = 0;
-                } else {
-                    length += line.strip().length();
-                }
-            }
-            if (id != null) {
-                lengths.put(id, length);
-            }
-        } catch (IOException e) {
-            throw new UncheckedIOException("Unable to read contigs: " + fasta, e);
-        }
-        return lengths;
     }
 
     /** Writes the findings as TSV; the header is written even when there are none. */

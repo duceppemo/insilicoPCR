@@ -47,6 +47,13 @@
   Every step is a class with a static entry point, and three wrapper classes
   are gone. The HTML report and the gel read `report.tsv` with one reader
   (`ReportTsv`) into `ReportRow`s, instead of each with its own.
+- Code: the files a run writes and reads back (`report.tsv`, the HTML
+  report, the FASTQ diagnostics) are in a `report` package, apart from the
+  analysis in `pcr`; finding a sample's products moves from
+  `ConsolidatedReport` to `pcr.Products`, which the TSV writer and the
+  calls from reads both use. `Sample`'s leftover accessors that handed out
+  its own collections (`getFiles`, `getBlastResults`, `getContigDict`) and
+  its duplicate methods are gone.
 - Code: the primers of a run travel as one `PrimerPanel` (sequences, assays,
   which have a probe, declared sizes), built once, instead of as a map of
   sequences that each step grouped by assay again, with the declared sizes

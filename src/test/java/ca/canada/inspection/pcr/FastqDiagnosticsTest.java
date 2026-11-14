@@ -7,6 +7,8 @@ import ca.canada.inspection.pcr.FastqDiagnostics.ReadsWithOligo;
 import ca.canada.inspection.pcr.FastqDiagnostics.Status;
 import ca.canada.inspection.pcr.ReadLevelCaller.ReadCall;
 import ca.canada.inspection.pcr.ReadLevelCaller.ReadEvidence;
+import ca.canada.inspection.report.FastqDiagnosticsReport;
+import ca.canada.inspection.util.SequenceFileUtils;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -368,7 +370,7 @@ class FastqDiagnosticsTest {
     void readsContigLengths() throws IOException {
         Path fasta = Files.writeString(tempDir.resolve("asm.fasta"),
                 ">contig_0,len=12,cov=3.0\nACGTACGT\nACGT\n>contig_1 desc\nAC\n");
-        assertEquals(Map.of("contig_0,len=12,cov=3.0", 12, "contig_1", 2), FastqDiagnosticsReport.contigLengths(fasta));
+        assertEquals(Map.of("contig_0,len=12,cov=3.0", 12, "contig_1", 2), SequenceFileUtils.sequenceLengths(fasta));
     }
 
     @Test

@@ -70,7 +70,7 @@ public final class SplitAcrossContigs {
      */
     public static List<Split> find(Sample sample, PrimerPanel primers, AmpliconOptions options,
                                    Supplier<Map<String, Integer>> contigLengths) {
-        Set<String> reported = ConsolidatedReport.reportedSizes(sample, primers, options).keySet();
+        Set<String> reported = Products.sizes(sample, primers, options).keySet();
         Map<String, List<BlastResult>> hits = sample.blastResults();
         Map<String, Integer> lengths = null;
         List<Split> splits = new ArrayList<>();

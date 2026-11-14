@@ -1,12 +1,12 @@
 package ca.canada.inspection.pipeline;
 
-import ca.canada.inspection.util.Version;
 import ca.canada.inspection.model.Sample;
-import ca.canada.inspection.pcr.ConsolidatedReport;
-import ca.canada.inspection.pcr.FastqDiagnosticsReport;
-import ca.canada.inspection.pcr.HtmlReport;
 import ca.canada.inspection.pcr.ReadLevelCaller.ReadEvidence;
 import ca.canada.inspection.pcr.SplitAcrossContigs;
+import ca.canada.inspection.report.ConsolidatedReport;
+import ca.canada.inspection.report.HtmlReport;
+import ca.canada.inspection.util.SequenceFileUtils;
+import ca.canada.inspection.util.Version;
 
 import java.nio.file.Path;
 import java.nio.file.Files;
@@ -76,7 +76,7 @@ public final class ReportGenerator {
     private static Map<String, Integer> sequenceLengths(Sample sample) {
         Map<String, Integer> lengths = new HashMap<>();
         sample.files().stream().filter(Files::isRegularFile)
-                .forEach(file -> lengths.putAll(FastqDiagnosticsReport.contigLengths(file)));
+                .forEach(file -> lengths.putAll(SequenceFileUtils.sequenceLengths(file)));
         return lengths;
     }
 }

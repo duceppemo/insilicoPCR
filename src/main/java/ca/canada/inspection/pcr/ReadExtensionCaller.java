@@ -129,14 +129,14 @@ public final class ReadExtensionCaller {
      * @param support        what the sample's read pairs say about the product ({@link PairSupport})
      */
     public record Product(String assay, int size, Set<Integer> sizes, int forwardClosing, int forwardSeeds,
-                          int reverseClosing, int reverseSeeds, List<String> row, PairSupport.Verdict support) {
+                          int reverseClosing, int reverseSeeds, ReportRow row, PairSupport.Verdict support) {
         public Product {
             sizes = Collections.unmodifiableSortedSet(new TreeSet<>(sizes));
         }
 
         /** A product not yet checked against the read pairs. */
         public Product(String assay, int size, Set<Integer> sizes, int forwardClosing, int forwardSeeds,
-                       int reverseClosing, int reverseSeeds, List<String> row) {
+                       int reverseClosing, int reverseSeeds, ReportRow row) {
             this(assay, size, sizes, forwardClosing, forwardSeeds, reverseClosing, reverseSeeds, row,
                     PairSupport.Verdict.NOT_CHECKED);
         }
@@ -395,10 +395,10 @@ public final class ReadExtensionCaller {
 
         // A product must lie wholly on the extended read, primers included, as on a read.
         Sample contained = ReadLevelCaller.withContainedHits(extended, lengths);
-        Map<String, List<List<String>>> rowsByAssay = new HashMap<>();
-        for (List<String> row : ConsolidatedReport.rows(contained, primers, options)) {
-            Seed seed = seedById.get(row.get(ConsolidatedReport.CONTIG_COLUMN));
-            String assay = row.get(ConsolidatedReport.GENE_COLUMN);
+        Map<String, List<ReportRow>> rowsByAssay = new HashMap<>();
+        for (ReportRow row : ConsolidatedReport.rows(contained, primers, options)) {
+            Seed seed = seedById.get(row.contig());
+            String assay = row.assay();
             // Only the assay the read was seeded for: a seed can wander through another assay's locus.
             if (seed != null && seed.assay().equals(assay)) {
                 rowsByAssay.computeIfAbsent(assay, ignored -> new ArrayList<>()).add(row);
@@ -408,7 +408,7 @@ public final class ReadExtensionCaller {
         Map<String, Outcome> outcomes = new LinkedHashMap<>();
         seedCounts.forEach((assay, counts) -> {
             List<Product> products = new ArrayList<>();
-            for (List<List<String>> rows : ReadLevelCaller.splitBySize(rowsByAssay.getOrDefault(assay, List.of()))) {
+            for (List<ReportRow> rows : ReadLevelCaller.splitBySize(rowsByAssay.getOrDefault(assay, List.of()))) {
                 products.add(product(assay, rows, seedById, counts[0], counts[1]));
             }
             outcomes.put(assay, new Outcome(assay, counts[0], counts[1], reach, products,
@@ -417,16 +417,16 @@ public final class ReadExtensionCaller {
         return outcomes;
     }
 
-    private static Product product(String assay, List<List<String>> rows, Map<String, Seed> seedById,
+    private static Product product(String assay, List<ReportRow> rows, Map<String, Seed> seedById,
                                    int forwardSeeds, int reverseSeeds) {
         Set<String> forward = new HashSet<>();
         Set<String> reverse = new HashSet<>();
         // Each extended read counts once per size it holds the product at.
         Map<Integer, Set<String>> readsBySize = new TreeMap<>();
-        for (List<String> row : rows) {
-            String read = row.get(ConsolidatedReport.CONTIG_COLUMN);
+        for (ReportRow row : rows) {
+            String read = row.contig();
             (seedById.get(read).role() == 'F' ? forward : reverse).add(read);
-            readsBySize.computeIfAbsent(size(row), ignored -> new HashSet<>()).add(read);
+            readsBySize.computeIfAbsent(row.size(), ignored -> new HashSet<>()).add(read);
         }
         int size = readsBySize.entrySet().stream()
                 .max(Comparator.<Map.Entry<Integer, Set<String>>>comparingInt(entry -> entry.getValue().size())
@@ -434,20 +434,17 @@ public final class ReadExtensionCaller {
                 .orElseThrow().getKey();
         // Representative: of the reported size, fewest primer mismatches, then fewest probe
         // mismatches, then a stable order of reads, places and probe variants.
-        List<String> best = rows.stream()
-                .filter(row -> size(row) == size)
-                .min(ConsolidatedReport.BEST_BOUND
-                        .thenComparingLong(row -> readNumber(row.get(ConsolidatedReport.CONTIG_COLUMN)))
-                        .thenComparing(row -> row.get(ConsolidatedReport.LOCATION_COLUMN))
-                        .thenComparing(ConsolidatedReport.VARIANT_ORDER))
+        ReportRow best = rows.stream()
+                .filter(row -> row.size() == size)
+                .min(ReportRow.BEST_BOUND
+                        .thenComparingLong(row -> readNumber(row.contig()))
+                        .thenComparing(ReportRow::location) // as text, as the report shows it
+                        .thenComparing(ReportRow.VARIANT_ORDER))
                 .orElseThrow();
         return new Product(assay, size, readsBySize.keySet(), forward.size(), forwardSeeds, reverse.size(),
                 reverseSeeds, best);
     }
 
-    private static int size(List<String> row) {
-        return Integer.parseInt(row.get(ConsolidatedReport.AMPLICON_SIZE_COLUMN));
-    }
 
     /**
      * The report row for a product called by extension: the representative extended
@@ -455,8 +452,7 @@ public final class ReadExtensionCaller {
      *
      * @param seedDescription original header of the read the representative was extended from; may be empty
      */
-    public static List<String> reportRow(Product product, String seedDescription) {
-        List<String> row = new ArrayList<>(product.row());
+    public static ReportRow reportRow(Product product, String seedDescription) {
         StringBuilder description = new StringBuilder(ROW_PREFIX).append(": no read holds the product; ")
                 .append(product.supportSummary()).append(", extended through the baited reads (k=").append(K)
                 .append("), hold it");
@@ -470,7 +466,6 @@ public final class ReadExtensionCaller {
         if (seedDescription != null && !seedDescription.isEmpty()) {
             description.append("; representative extended from read ").append(seedDescription);
         }
-        row.set(ConsolidatedReport.CONTIG_DESCRIPTION_COLUMN, description.toString());
-        return row;
+        return product.row().withContigDescription(description.toString());
     }
 }

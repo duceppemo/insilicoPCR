@@ -109,7 +109,7 @@ public final class ReadLevelStage {
                                      double minSupportFraction) {
         Sample readSample = new Sample();
         readSample.setName(name);
-        readSample.setFileType("reads");
+        readSample.setFileType(Sample.FileType.READS);
         reads.descriptions().forEach(readSample::addContig);
         // Trimmed hit ends are compared with the reads (see TrimmedEnds), read
         // alongside the hits one read at a time.

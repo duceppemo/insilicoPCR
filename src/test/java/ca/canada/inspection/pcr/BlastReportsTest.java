@@ -31,7 +31,7 @@ class BlastReportsTest {
     private Sample sample(String name) {
         Sample sample = new Sample();
         sample.setName(name);
-        sample.setFileType("fasta");
+        sample.setFileType(Sample.FileType.FASTA);
         return sample;
     }
 

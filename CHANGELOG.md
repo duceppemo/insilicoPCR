@@ -20,13 +20,27 @@
   stops when it reads the primer file and names the missing primers (`Every
   assay needs a forward (-F) and a reverse (-R) primer, but toxA-R is missing
   ...`). The application checks the same before a run.
+- FASTQ mode: the read a call from reads names in the report's Contig column
+  (`read_<n>`) could change from one run of the same data to the next, as
+  BBDuk and BBMerge wrote the baited reads in a different order each time
+  with several threads. They now keep the order they read them in
+  (`ordered=t`), so the same data gives the same report.
 
 ### Changed
 
 - The portable releases no longer ship five libraries that nothing used
   (ControlsFX, FormsFX, Ikonli, BootstrapFX, JavaFX FXML): 1.7 MB less.
+- FASTQ mode: when the `-t` threads do not divide evenly between the samples
+  baited and assembled at once, the ones left over now go to some of those
+  samples, one each, instead of sitting idle (`-t 16` with 3 samples: 5 or 6
+  threads each, 16 in all, where it was 5 each).
 - Code: the primer naming rule (`<assay>-F/-R/-P`) is read in one place
   (`PrimerId`) instead of seven.
+- Code: products pass between the steps of a run as `ReportRow` records,
+  turned into report columns only when `report.tsv` is written, instead of as
+  lists of strings read back by column number. The HTML report's style and
+  script are resource files instead of Java strings, and a sample's file type
+  is an enum. `report.tsv` and the HTML report are unchanged.
 - Code: packages no longer depend on each other in a cycle. `Sample` and
   `BlastResult` moved to a new `model` package, the gel code to `gel`, and
   `AppPaths` to `pipeline`; the `commandpcr` wrapper is gone (the dispatcher

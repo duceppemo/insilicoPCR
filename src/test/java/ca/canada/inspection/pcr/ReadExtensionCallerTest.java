@@ -43,7 +43,7 @@ class ReadExtensionCallerTest {
     private static Sample fastqSample() {
         Sample sample = new Sample();
         sample.setName("S");
-        sample.setFileType("fastq");
+        sample.setFileType(Sample.FileType.FASTQ);
         return sample;
     }
 
@@ -226,7 +226,7 @@ class ReadExtensionCallerTest {
     private static Sample extended() {
         Sample sample = new Sample();
         sample.setName("S");
-        sample.setFileType("reads");
+        sample.setFileType(Sample.FileType.READS);
         return sample;
     }
 
@@ -264,8 +264,8 @@ class ReadExtensionCallerTest {
         assertEquals(2, product.forwardClosing());
         assertEquals(3, product.reverseClosing());
         assertEquals("2 of 3 forward-seeded and 3 of 3 reverse-seeded reads", product.supportSummary());
-        assertEquals("extended_read_0", product.row().get(ConsolidatedReport.CONTIG_COLUMN));
-        assertEquals("101-1174", product.row().get(ConsolidatedReport.LOCATION_COLUMN));
+        assertEquals("extended_read_0", product.row().contig());
+        assertEquals("101-1174", product.row().location());
     }
 
     @Test
@@ -306,7 +306,7 @@ class ReadExtensionCallerTest {
         assertEquals("1072,1074", product.sizeSummary());
         assertEquals(3, product.forwardClosing());
         assertEquals(2, product.reverseClosing());
-        assertEquals("1074", product.row().get(ConsolidatedReport.AMPLICON_SIZE_COLUMN));
+        assertEquals(1074, product.row().size());
     }
 
     @Test
@@ -436,7 +436,7 @@ class ReadExtensionCallerTest {
                 .get("long").products().isEmpty());
         Product product = ReadExtensionCaller.evaluate(withProbe, lengths(seeds), seeds, primers, DEFAULTS, REACH)
                 .get("long").closed().getFirst();
-        assertEquals("long-P", product.row().get(13));
+        assertEquals("long-P", product.row().probeId());
     }
 
     // --- the report row ---
@@ -448,22 +448,22 @@ class ReadExtensionCallerTest {
         seeds.forEach(seed -> product(extended, seed.id(), seed.role() == 'F' ? 1074 : 1072));
         Product product = evaluate(extended, seeds).closed().getFirst();
 
-        List<String> row = ReadExtensionCaller.reportRow(product, "ERR1.5 5/1");
+        ReportRow row = ReadExtensionCaller.reportRow(product, "ERR1.5 5/1");
 
-        assertEquals(product.row().size(), row.size(), "same columns as any other row");
-        assertEquals("S", row.getFirst());
-        assertEquals("long", row.get(ConsolidatedReport.GENE_COLUMN));
-        assertEquals("1074", row.get(ConsolidatedReport.AMPLICON_SIZE_COLUMN));
+        assertEquals(product.row().columns(false).size(), row.columns(false).size(), "same columns as any other row");
+        assertEquals("S", row.sample());
+        assertEquals("long", row.assay());
+        assertEquals(1074, row.size());
         assertEquals("FASTQ read-extension call: no read holds the product; 3 of 3 forward-seeded and 2 of 2"
                         + " reverse-seeded reads, extended through the baited reads (k=31), hold it at 1072,1074 bp;"
                         + " the extended read is the best-supported path, not an assembled consensus;"
                         + " representative extended from read ERR1.5 5/1",
-                row.get(ConsolidatedReport.CONTIG_DESCRIPTION_COLUMN));
-        assertTrue(ReadExtensionCaller.reportRow(product, "").get(ConsolidatedReport.CONTIG_DESCRIPTION_COLUMN)
+                row.contigDescription());
+        assertTrue(ReadExtensionCaller.reportRow(product, "").contigDescription()
                 .endsWith("not an assembled consensus"));
         // Once checked, the row states the window the read pairs verified.
         assertTrue(ReadExtensionCaller.reportRow(product.withSupport(SUPPORTED), "")
-                .get(ConsolidatedReport.CONTIG_DESCRIPTION_COLUMN).contains("hold it at 1072,1074 bp; every 300-base"
+                .contigDescription().contains("hold it at 1072,1074 bp; every 300-base"
                         + " window held by at least 9 read pairs; the extended read is the best-supported path"));
     }
 }

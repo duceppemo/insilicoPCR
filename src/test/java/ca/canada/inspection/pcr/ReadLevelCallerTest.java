@@ -43,18 +43,18 @@ class ReadLevelCallerTest {
 
         assertEquals(2, call.supportingReads());
         assertEquals(Set.of(70), call.sizes());
-        assertEquals("read_1", call.row().get(ConsolidatedReport.CONTIG_COLUMN));
+        assertEquals("read_1", call.row().contig());
         assertEquals(Set.of("read_1", "read_2"), evidence.readsWithOligo().get("assay-F"));
 
-        List<String> row = ReadLevelCaller.reportRow(call);
-        assertEquals("70", row.get(ConsolidatedReport.AMPLICON_SIZE_COLUMN));
+        ReportRow row = ReadLevelCaller.reportRow(call);
+        assertEquals(70, row.size());
         assertEquals(2, call.informativeReads());
         assertTrue(call.isReportable());
-        assertTrue(row.get(ConsolidatedReport.CONTIG_DESCRIPTION_COLUMN).startsWith(
+        assertTrue(row.contigDescription().startsWith(
                 "FASTQ read-level call: complete amplicon in 2 of 2 informative read(s) (100%), not in the mini-assembly"),
-                row.get(ConsolidatedReport.CONTIG_DESCRIPTION_COLUMN));
-        assertTrue(row.get(ConsolidatedReport.CONTIG_DESCRIPTION_COLUMN).endsWith("representative read ERR1.5 5/1"));
-        assertEquals("assay-P", row.get(13), "probe columns are kept");
+                row.contigDescription());
+        assertTrue(row.contigDescription().endsWith("representative read ERR1.5 5/1"));
+        assertEquals("assay-P", row.probeId(), "probe columns are kept");
     }
 
     @Test
@@ -310,14 +310,14 @@ class ReadLevelCallerTest {
         assertEquals(2, offTarget.supportingReads());
         assertEquals(10, offTarget.informativeReads());
         assertTrue(!offTarget.isReportable(), "2 of 10 reads at its own locus");
-        assertEquals("40", offTarget.row().get(ConsolidatedReport.AMPLICON_SIZE_COLUMN));
+        assertEquals(40, offTarget.row().size());
 
         ReadCall target = products.get(1);
         assertEquals(Set.of(70), target.sizes());
         assertEquals(6, target.supportingReads());
         assertEquals(6, target.informativeReads(), "the other locus does not count against the target");
         assertTrue(target.isReportable());
-        assertEquals("70", target.row().get(ConsolidatedReport.AMPLICON_SIZE_COLUMN));
+        assertEquals(70, target.row().size());
     }
 
     @Test
@@ -346,7 +346,7 @@ class ReadLevelCallerTest {
         return (PRIMER_20.charAt(0) == 'A' ? 'C' : 'A') + PRIMER_20.substring(1);
     }
 
-    private static List<String> representativeRow(String exactVariant, String otherVariant, List<String> readsOfExact) {
+    private static ReportRow representativeRow(String exactVariant, String otherVariant, List<String> readsOfExact) {
         Map<String, String> primers = Map.of("assay-F", PRIMER_20, "assay-R", PRIMER_20,
                 exactVariant, PRIMER_20, otherVariant, PRIMER_20);
         Sample reads = reads();
@@ -368,22 +368,22 @@ class ReadLevelCallerTest {
         // Both variants hit both reads, one exactly and one with a mismatch. Whatever their
         // names and the order they are met in, the row shows the exact one.
         for (String[] names : new String[][] {{"assay-P_0", "assay-P_1"}, {"assay-P_1", "assay-P_0"}}) {
-            List<String> row = representativeRow(names[0], names[1], List.of("read_1", "read_2"));
+            ReportRow row = representativeRow(names[0], names[1], List.of("read_1", "read_2"));
 
-            assertEquals(names[0], ConsolidatedReport.probe(row));
-            assertEquals(0, ConsolidatedReport.probeMismatches(row));
-            assertEquals("read_1", row.get(ConsolidatedReport.CONTIG_COLUMN));
+            assertEquals(names[0], row.probeId());
+            assertEquals(0, row.probeMismatches());
+            assertEquals("read_1", row.contig());
         }
     }
 
     @Test
     void aReadWhereTheProbeMatchesExactlyIsTheRepresentative() {
         // read_1 comes first by name, but only read_2 carries the allele one variant matches exactly.
-        List<String> row = representativeRow("assay-P_1", "assay-P_0", List.of("read_2"));
+        ReportRow row = representativeRow("assay-P_1", "assay-P_0", List.of("read_2"));
 
-        assertEquals("read_2", row.get(ConsolidatedReport.CONTIG_COLUMN));
-        assertEquals("assay-P_1", ConsolidatedReport.probe(row));
-        assertEquals(0, ConsolidatedReport.probeMismatches(row));
+        assertEquals("read_2", row.contig());
+        assertEquals("assay-P_1", row.probeId());
+        assertEquals(0, row.probeMismatches());
     }
 
     @Test
@@ -395,11 +395,11 @@ class ReadLevelCallerTest {
         }
         ReadEvidence evidence = ReadLevelCaller.evaluate(reads, Map.of("read_1", 101, "read_2", 101),
                 Map.of("plain-F", PRIMER_20, "plain-R", PRIMER_20), DEFAULTS);
-        List<String> row = evidence.products("plain").getFirst().row();
+        ReportRow row = evidence.products("plain").getFirst().row();
 
-        assertEquals("", ConsolidatedReport.probe(row));
-        assertEquals(0, ConsolidatedReport.probeMismatches(row));
-        assertEquals("read_1", row.get(ConsolidatedReport.CONTIG_COLUMN));
+        assertEquals("", row.probeId());
+        assertEquals(0, row.probeMismatches());
+        assertEquals("read_1", row.contig());
     }
 
     @Test
@@ -418,10 +418,10 @@ class ReadLevelCallerTest {
             }
             ReadEvidence evidence = ReadLevelCaller.evaluate(reads, Map.of("read_1", 101, "read_2", 101), primers,
                     DEFAULTS);
-            List<String> row = evidence.products("deg").getFirst().row();
+            ReportRow row = evidence.products("deg").getFirst().row();
 
-            assertEquals("deg-F_0", row.get(ConsolidatedReport.FORWARD_PRIMERS_COLUMN));
-            assertEquals("read_1", row.get(ConsolidatedReport.CONTIG_COLUMN));
+            assertEquals("deg-F_0", row.forwardPrimer());
+            assertEquals("read_1", row.contig());
         }
     }
 }

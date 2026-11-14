@@ -10,11 +10,23 @@ import java.util.Map;
 /** Mutable per-sample state collected during one PCR run. */
 public class Sample {
 
+	/** What a sample's files hold. */
+	public enum FileType {
+		/** Assemblies or other sequences: searched as they are. */
+		FASTA,
+		/** Sequencing reads: baited and assembled first. */
+		FASTQ,
+		/** Reads already baited, searched one by one (a step of FASTQ mode, not an input). */
+		READS,
+		/** Neither by its name. */
+		UNKNOWN
+	}
+
 	private final ArrayList<Path> sampleFiles = new ArrayList<>();
 	private final HashMap<String, ArrayList<BlastResult>> blastResults = new HashMap<>();
 	private final HashMap<String, String> contigDict = new HashMap<>();
 	private String name;
-	private String fileType;
+	private FileType fileType;
 	private Path assemblyFile;
 
 	public String getName() { return name; }
@@ -44,8 +56,8 @@ public class Sample {
 
 	private void sortFiles() { sampleFiles.sort(Comparator.comparing(Path::toString)); }
 
-	public String getFileType() { return fileType; }
-	public void setFileType(String fileType) { this.fileType = fileType; }
+	public FileType getFileType() { return fileType; }
+	public void setFileType(FileType fileType) { this.fileType = fileType; }
 
 	/** Compatibility accessor for legacy GUI/helper code. Prefer blastResults(). */
 	public HashMap<String, ArrayList<BlastResult>> getBlastResults() { return blastResults; }
@@ -72,5 +84,5 @@ public class Sample {
 	public HashMap<String, String> getContigDict() { return contigDict; }
 	public Map<String, String> contigs() { return Map.copyOf(contigDict); }
 
-	public boolean isFastq() { return "fastq".equals(fileType); }
+	public boolean isFastq() { return fileType == FileType.FASTQ; }
 }

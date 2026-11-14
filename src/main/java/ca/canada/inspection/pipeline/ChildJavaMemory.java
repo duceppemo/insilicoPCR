@@ -39,14 +39,17 @@ public final class ChildJavaMemory {
      */
     static Share share(int budgetGiB, int threads, int items) {
         int atOnce = Math.clamp(Math.min(threads, items), 1, Math.max(1, budgetGiB / MIN_SHARED_CHILD_GIB));
-        return new Share(atOnce, Math.max(1, threads / atOnce), forOneChild(budgetGiB / atOnce));
+        int each = Math.max(1, threads / atOnce);
+        return new Share(atOnce, each, Math.max(0, threads - each * atOnce), forOneChild(budgetGiB / atOnce));
     }
 
     /**
-     * @param atOnce    children running at the same time
-     * @param threads   threads of each child
-     * @param memoryGiB heap of each child
+     * @param atOnce       children running at the same time
+     * @param threads      threads of each child
+     * @param spareThreads threads left over when {@code atOnce} does not divide them: as many
+     *                     children at a time run with one more
+     * @param memoryGiB    heap of each child
      */
-    record Share(int atOnce, int threads, int memoryGiB) {
+    record Share(int atOnce, int threads, int spareThreads, int memoryGiB) {
     }
 }

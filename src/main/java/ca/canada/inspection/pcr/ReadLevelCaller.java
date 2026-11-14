@@ -101,7 +101,7 @@ public final class ReadLevelCaller {
      * @param minSupportFraction share of informative reads required to report the call
      */
     public record ReadCall(String assay, int supportingReads, int informativeReads, int elsewhereReads,
-                           List<String> row, Set<Integer> sizes, double minSupportFraction) {
+                           ReportRow row, Set<Integer> sizes, double minSupportFraction) {
         public ReadCall {
             sizes = Collections.unmodifiableSortedSet(new TreeSet<>(sizes));
         }
@@ -239,9 +239,9 @@ public final class ReadLevelCaller {
             readsWithOligo.put(oligo, ids);
         });
 
-        Map<String, List<List<String>>> rowsByAssay = new TreeMap<>();
-        for (List<String> row : ConsolidatedReport.rows(reads, primers, options)) {
-            rowsByAssay.computeIfAbsent(row.get(ConsolidatedReport.GENE_COLUMN), ignored -> new ArrayList<>()).add(row);
+        Map<String, List<ReportRow>> rowsByAssay = new TreeMap<>();
+        for (ReportRow row : ConsolidatedReport.rows(reads, primers, options)) {
+            rowsByAssay.computeIfAbsent(row.assay(), ignored -> new ArrayList<>()).add(row);
         }
         Map<String, PrimerId.Assay> groups = PrimerId.byAssay(primers.keySet());
 
@@ -257,7 +257,7 @@ public final class ReadLevelCaller {
             Evidence evidence = new Evidence(pcrPrimerHits(hits, groups.get(assay)), readLengths, fragments,
                     readSequences, minSupportFraction);
             List<ReadCall> products = new ArrayList<>();
-            for (List<List<String>> productRows : splitBySize(rows)) {
+            for (List<ReportRow> productRows : splitBySize(rows)) {
                 products.add(call(assay, productRows, evidence));
             }
             calls.put(assay, products);
@@ -289,23 +289,19 @@ public final class ReadLevelCaller {
      * Splits an assay's amplicons into products: runs of sizes with no gap above
      * {@link #PRODUCT_SIZE_GAP}, by increasing size.
      */
-    static List<List<List<String>>> splitBySize(List<List<String>> rows) {
-        List<List<String>> sorted = new ArrayList<>(rows);
-        sorted.sort(Comparator.comparingInt(ReadLevelCaller::size));
-        List<List<List<String>>> products = new ArrayList<>();
+    static List<List<ReportRow>> splitBySize(List<ReportRow> rows) {
+        List<ReportRow> sorted = new ArrayList<>(rows);
+        sorted.sort(Comparator.comparingInt(ReportRow::size));
+        List<List<ReportRow>> products = new ArrayList<>();
         int previous = Integer.MIN_VALUE;
-        for (List<String> row : sorted) {
-            if (products.isEmpty() || size(row) - previous > PRODUCT_SIZE_GAP) {
+        for (ReportRow row : sorted) {
+            if (products.isEmpty() || row.size() - previous > PRODUCT_SIZE_GAP) {
                 products.add(new ArrayList<>());
             }
             products.getLast().add(row);
-            previous = size(row);
+            previous = row.size();
         }
         return products;
-    }
-
-    private static int size(List<String> row) {
-        return Integer.parseInt(row.get(ConsolidatedReport.AMPLICON_SIZE_COLUMN));
     }
 
     /**
@@ -367,17 +363,16 @@ public final class ReadLevelCaller {
         return Math.round(100 * fraction) + "%";
     }
 
-    private static ReadCall call(String assay, List<List<String>> rows, Evidence evidence) {
+    private static ReadCall call(String assay, List<ReportRow> rows, Evidence evidence) {
         // Evidence is counted per fragment: two unmerged mates of one pair are one molecule.
         Set<String> supporting = new HashSet<>();
         Set<Integer> sizes = new TreeSet<>();
         Map<String, int[]> spans = new HashMap<>();
-        for (List<String> row : rows) {
-            String read = row.get(ConsolidatedReport.CONTIG_COLUMN);
+        for (ReportRow row : rows) {
+            String read = row.contig();
             supporting.add(evidence.fragment(read));
-            sizes.add(size(row));
-            String[] location = row.get(ConsolidatedReport.LOCATION_COLUMN).split("-");
-            spans.putIfAbsent(read, new int[]{Integer.parseInt(location[0]), Integer.parseInt(location[1])});
+            sizes.add(row.size());
+            spans.putIfAbsent(read, new int[]{row.start(), row.end()});
         }
         int shortest = sizes.iterator().next();
         Map<Character, List<String>> flanks = productFlanks(spans, evidence, shortest);
@@ -406,10 +401,10 @@ public final class ReadLevelCaller {
         // Representative: fewest primer mismatches, then fewest probe mismatches (of the
         // variants of a degenerate probe that hit a read, the one that matches best), then
         // a stable order of reads and of probe variants.
-        List<String> best = rows.stream()
-                .min(ConsolidatedReport.BEST_BOUND
-                        .thenComparing(row -> row.get(ConsolidatedReport.CONTIG_COLUMN))
-                        .thenComparing(ConsolidatedReport.VARIANT_ORDER))
+        ReportRow best = rows.stream()
+                .min(ReportRow.BEST_BOUND
+                        .thenComparing(ReportRow::contig)
+                        .thenComparing(ReportRow.VARIANT_ORDER))
                 .orElseThrow();
         return new ReadCall(assay, supporting.size(), informative.size(), elsewhere.size(), best, sizes,
                 evidence.minSupportFraction());
@@ -549,12 +544,9 @@ public final class ReadLevelCaller {
      * The report row for a read-level call: the representative read's row, with the
      * description saying where the call comes from.
      */
-    public static List<String> reportRow(ReadCall call) {
-        List<String> row = new ArrayList<>(call.row());
-        String original = row.get(ConsolidatedReport.CONTIG_DESCRIPTION_COLUMN);
-        row.set(ConsolidatedReport.CONTIG_DESCRIPTION_COLUMN,
-                "FASTQ read-level call: complete amplicon in " + call.supportSummary() + ", "
-                        + "not in the mini-assembly" + (original.isEmpty() ? "" : "; representative read " + original));
-        return row;
+    public static ReportRow reportRow(ReadCall call) {
+        String original = call.row().contigDescription();
+        return call.row().withContigDescription("FASTQ read-level call: complete amplicon in " + call.supportSummary()
+                + ", not in the mini-assembly" + (original.isEmpty() ? "" : "; representative read " + original));
     }
 }

@@ -46,14 +46,14 @@ class SampleTest {
     void legacyAliasesDelegate() {
         Sample sample = new Sample();
         sample.setName("s1");
-        sample.setFileType("fastq");
+        sample.setFileType(Sample.FileType.FASTQ);
         sample.addNewBlastResult("assay-F", hit("assay-F"));
 
         assertEquals("s1", sample.getName());
         assertTrue(sample.isFastq());
         assertEquals(1, sample.getBlastResults().get("assay-F").size());
 
-        sample.setFileType("fasta");
+        sample.setFileType(Sample.FileType.FASTA);
         assertFalse(sample.isFastq());
 
         sample.setAssemblyFile("assembly.fasta");

@@ -83,17 +83,17 @@ public final class SequenceFileUtils {
         return siblingExists.test(mateName) && !siblingExists.test(stem + "_3" + extension);
     }
 
-    public static String fileType(Path file) {
+    public static Sample.FileType fileType(Path file) {
         if (hasExtension(file, FASTA_EXTENSIONS)) {
-            return "fasta";
+            return Sample.FileType.FASTA;
         }
         if (hasExtension(file, FASTQ_EXTENSIONS)) {
-            return "fastq";
+            return Sample.FileType.FASTQ;
         }
-        return "unknown";
+        return Sample.FileType.UNKNOWN;
     }
 
-    public static String fileType(java.io.File file) {
+    public static Sample.FileType fileType(java.io.File file) {
         return fileType(file.toPath());
     }
 

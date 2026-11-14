@@ -11,7 +11,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -38,12 +37,12 @@ public final class ConsolidatedReport {
 
     /**
      * As {@link #write(Path, Map, Map, AmpliconOptions)}, appending {@code extraRows}
-     * (keyed by sample name, already in report column order) after each sample's
+     * (keyed by sample name) after each sample's
      * own rows; used for FASTQ-mode amplicons called on reads rather than contigs.
      */
     public static Path write(Path consolidatedDir, Map<String, Sample> samples,
                              Map<String, String> primers, AmpliconOptions options,
-                             Map<String, List<List<String>>> extraRows) {
+                             Map<String, List<ReportRow>> extraRows) {
         return write(consolidatedDir, samples, primers, options, extraRows, ExpectedSizes.NONE);
     }
 
@@ -54,7 +53,7 @@ public final class ConsolidatedReport {
      */
     public static Path write(Path consolidatedDir, Map<String, Sample> samples,
                              Map<String, String> primers, AmpliconOptions options,
-                             Map<String, List<List<String>>> extraRows, ExpectedSizes expectedSizes) {
+                             Map<String, List<ReportRow>> extraRows, ExpectedSizes expectedSizes) {
         // Probe requirement is decided per assay from the primer FILE, so standard
         // PCR and qPCR assays can be mixed in one run: an assay whose probe is
         // defined but never hits must stay negative, while a probe-less assay is
@@ -69,18 +68,16 @@ public final class ConsolidatedReport {
             writer.write(header(probeColumns, sizeColumn));
             writer.newLine();
             // TreeMap keeps samples in a stable, alphabetical order.
-            RowSink sink = columns -> {
-                writer.write(String.join("\t", columns));
+            RowSink sink = row -> {
+                writer.write(String.join("\t", row.columns(probeColumns)));
                 if (sizeColumn) {
-                    writer.write("\t" + expectedSizes.labelText(columns.get(GENE_COLUMN),
-                            Integer.parseInt(columns.get(AMPLICON_SIZE_COLUMN))));
+                    writer.write("\t" + expectedSizes.labelText(row.assay(), row.size()));
                 }
                 writer.newLine();
             };
             for (Map.Entry<String, Sample> sampleEntry : new TreeMap<>(samples).entrySet()) {
-                writeSampleResults(sink, sampleEntry.getKey(), sampleEntry.getValue(),
-                        options, assaysWithProbe, probeColumns);
-                for (List<String> row : extraRows.getOrDefault(sampleEntry.getKey(), List.of())) {
+                writeSampleResults(sink, sampleEntry.getKey(), sampleEntry.getValue(), options, assaysWithProbe);
+                for (ReportRow row : extraRows.getOrDefault(sampleEntry.getKey(), List.of())) {
                     sink.accept(row);
                 }
             }
@@ -98,71 +95,22 @@ public final class ConsolidatedReport {
     public static Map<String, Set<Integer>> reportedSizes(Sample sample, Map<String, String> primers,
                                                           AmpliconOptions options) {
         Map<String, Set<Integer>> sizes = new TreeMap<>();
-        for (List<String> row : rows(sample, primers, options)) {
-            sizes.computeIfAbsent(row.get(GENE_COLUMN), ignored -> new TreeSet<>())
-                    .add(Integer.parseInt(row.get(AMPLICON_SIZE_COLUMN)));
+        for (ReportRow row : rows(sample, primers, options)) {
+            sizes.computeIfAbsent(row.assay(), ignored -> new TreeSet<>()).add(row.size());
         }
         return sizes;
     }
 
-    /** The rows {@link #write} would write for {@code sample}, in report column order. */
-    public static List<List<String>> rows(Sample sample, Map<String, String> primers, AmpliconOptions options) {
-        Set<String> assaysWithProbe = assaysWithProbe(primers.keySet());
-        List<List<String>> rows = new ArrayList<>();
+    /** The rows {@link #write} would write for {@code sample}, in report order. */
+    public static List<ReportRow> rows(Sample sample, Map<String, String> primers, AmpliconOptions options) {
+        List<ReportRow> rows = new ArrayList<>();
         try {
-            writeSampleResults(columns -> rows.add(List.copyOf(columns)), sample.getName(), sample,
-                    options, assaysWithProbe, !assaysWithProbe.isEmpty());
+            writeSampleResults(rows::add, sample.getName(), sample, options, assaysWithProbe(primers.keySet()));
         } catch (IOException e) {
             throw new IllegalStateException("Collecting rows in memory cannot fail", e);
         }
         return rows;
     }
-
-    /** Report column indexes used by callers that post-process rows. */
-    public static final int GENE_COLUMN = 1;
-    public static final int LOCATION_COLUMN = 2;
-    public static final int CONTIG_COLUMN = 4;
-    public static final int CONTIG_DESCRIPTION_COLUMN = 5;
-    public static final int FORWARD_PRIMERS_COLUMN = 6;
-    public static final int REVERSE_PRIMERS_COLUMN = 7;
-    public static final int FORWARD_MISMATCHES_COLUMN = 8;
-    public static final int REVERSE_MISMATCHES_COLUMN = 9;
-    public static final int AMPLICON_SIZE_COLUMN = 3;
-    /** Probe columns; present in every row of a run whose primer file has a probe, empty for an assay without one. */
-    public static final int PROBE_COLUMN = 13;
-    public static final int PROBE_MISMATCHES_COLUMN = 16;
-
-    /** The probe ID of a row, or the empty string when the row has none. */
-    public static String probe(List<String> row) {
-        return row.size() > PROBE_MISMATCHES_COLUMN ? row.get(PROBE_COLUMN) : "";
-    }
-
-    /** The probe mismatches of a row; 0 when the row has no probe. */
-    public static int probeMismatches(List<String> row) {
-        return probe(row).isEmpty() ? 0 : Integer.parseInt(row.get(PROBE_MISMATCHES_COLUMN));
-    }
-
-    /**
-     * Which of several rows of one product best shows how the oligos bind: fewest primer
-     * mismatches, then fewest probe mismatches. A degenerate probe is searched as several
-     * variants, and more than one can hit the same place within the mismatch budget; the
-     * variant that matches best is the one to show. Rows that compare equal still differ
-     * (another read, another variant): callers add their own order after this one, and
-     * end it with {@link #VARIANT_ORDER}.
-     */
-    public static final Comparator<List<String>> BEST_BOUND = Comparator
-            .<List<String>>comparingInt(row -> Integer.parseInt(row.get(FORWARD_MISMATCHES_COLUMN))
-                    + Integer.parseInt(row.get(REVERSE_MISMATCHES_COLUMN)))
-            .thenComparingInt(ConsolidatedReport::probeMismatches);
-
-    /**
-     * A last, arbitrary but fixed order among rows that differ only by which variant of a
-     * degenerate primer or probe they name, so that the same run always shows the same one.
-     */
-    public static final Comparator<List<String>> VARIANT_ORDER = Comparator
-            .<List<String>, String>comparing(row -> row.get(FORWARD_PRIMERS_COLUMN))
-            .thenComparing(row -> row.get(REVERSE_PRIMERS_COLUMN))
-            .thenComparing(ConsolidatedReport::probe);
 
     /**
      * Columns giving, per primer, the bases at its 5' end that do not pair with the
@@ -214,8 +162,7 @@ public final class ConsolidatedReport {
     }
 
     private static void writeSampleResults(RowSink writer, String sampleName, Sample sample,
-                                           AmpliconOptions options, Set<String> assaysWithProbe,
-                                           boolean probeColumns) throws IOException {
+                                           AmpliconOptions options, Set<String> assaysWithProbe) throws IOException {
         Map<String, List<BlastResult>> blastResults = sample.blastResults();
         if (blastResults.isEmpty()) {
             return;
@@ -236,7 +183,7 @@ public final class ConsolidatedReport {
             for (String forwardPrimer : group.forward()) {
                 for (String reversePrimer : group.reverse()) {
                     writePrimerPairResults(writer, sampleName, contigs, hits, assayName, group,
-                            forwardPrimer, reversePrimer, options, probeRequired, probeColumns);
+                            forwardPrimer, reversePrimer, options, probeRequired);
                 }
             }
         }
@@ -275,8 +222,7 @@ public final class ConsolidatedReport {
     private static void writePrimerPairResults(RowSink writer, String sampleName, Map<String, String> contigs,
                                                HitIndex hits,
                                                String assayName, PrimerId.Assay group, String forwardPrimer,
-                                               String reversePrimer, AmpliconOptions options,
-                                               boolean probeRequired, boolean probeColumns)
+                                               String reversePrimer, AmpliconOptions options, boolean probeRequired)
             throws IOException {
         for (BlastResult forwardHit : hits.of(forwardPrimer)) {
             for (BlastResult reverseHit : hits.on(reversePrimer, forwardHit.queryID())) {
@@ -284,37 +230,16 @@ public final class ConsolidatedReport {
                 if (amplicon == null) {
                     continue;
                 }
-                String contigDescription = contigs.getOrDefault(amplicon.contig(), "");
-                List<String> baseColumns = List.of(
-                        sampleName,
-                        assayName,
-                        amplicon.location(),
-                        String.valueOf(amplicon.size()),
-                        amplicon.contig(),
-                        contigDescription,
-                        forwardPrimer,
-                        reversePrimer,
-                        String.valueOf(effectiveMismatches(forwardHit)),
-                        String.valueOf(effectiveMismatches(reverseHit)),
-                        String.valueOf(forwardHit.threePrimeMismatches(options.threePrimeWindow())),
-                        String.valueOf(reverseHit.threePrimeMismatches(options.threePrimeWindow())),
-                        String.valueOf(amplicon.forwardStrand())
-                );
-
-                List<String> unaligned = List.of(
-                        String.valueOf(forwardHit.fivePrimeUnpairedBases()),
-                        String.valueOf(reverseHit.fivePrimeUnpairedBases()));
-
+                ReportRow row = new ReportRow(sampleName, assayName, amplicon.start(), amplicon.end(), amplicon.size(),
+                        amplicon.contig(), contigs.getOrDefault(amplicon.contig(), ""), forwardPrimer, reversePrimer,
+                        effectiveMismatches(forwardHit), effectiveMismatches(reverseHit),
+                        forwardHit.threePrimeMismatches(options.threePrimeWindow()),
+                        reverseHit.threePrimeMismatches(options.threePrimeWindow()), amplicon.forwardStrand(), null,
+                        forwardHit.fivePrimeUnpairedBases(), reverseHit.fivePrimeUnpairedBases());
                 if (probeRequired) {
-                    writeProbeRows(writer, hits, group, amplicon, baseColumns, unaligned);
+                    writeProbeRows(writer, hits, group, amplicon, row);
                 } else {
-                    List<String> columns = new ArrayList<>(baseColumns);
-                    if (probeColumns) {
-                        // Probe-less assay in a mixed run: pad the probe columns.
-                        columns.addAll(List.of("", "", "", ""));
-                    }
-                    columns.addAll(unaligned);
-                    writer.accept(columns);
+                    writer.accept(row);
                 }
             }
         }
@@ -325,10 +250,9 @@ public final class ConsolidatedReport {
         return hit.mismatch() + hit.gaps() + hit.threePrimeUncovered();
     }
 
-    private static void writeProbeRows(RowSink writer, HitIndex hits,
-                                       PrimerId.Assay group, Amplicon amplicon, List<String> baseColumns,
-                                       List<String> unaligned)
-            throws IOException {
+    /** One row per probe hit within the amplicon; none when the probe does not bind there. */
+    private static void writeProbeRows(RowSink writer, HitIndex hits, PrimerId.Assay group, Amplicon amplicon,
+                                       ReportRow pair) throws IOException {
         for (String probeId : group.probe()) {
             for (BlastResult probeHit : hits.on(probeId, amplicon.contig())) {
                 int probeStart = Math.min(probeHit.qstart(), probeHit.qend());
@@ -337,13 +261,8 @@ public final class ConsolidatedReport {
                 if (!amplicon.contains(probeStart, probeEnd)) {
                     continue;
                 }
-                List<String> columns = new ArrayList<>(baseColumns);
-                columns.add(probeId);
-                columns.add(probeStart + "-" + probeEnd);
-                columns.add(String.valueOf(probeEnd - probeStart + 1));
-                columns.add(String.valueOf(probeHit.mismatch() + probeHit.gaps()));
-                columns.addAll(unaligned);
-                writer.accept(columns);
+                writer.accept(pair.withProbe(new ReportRow.Probe(probeId, probeStart, probeEnd,
+                        probeHit.mismatch() + probeHit.gaps())));
             }
         }
     }
@@ -351,6 +270,6 @@ public final class ConsolidatedReport {
     /** Receives one report row; lets row generation feed a file or an in-memory check. */
     @FunctionalInterface
     private interface RowSink {
-        void accept(List<String> columns) throws IOException;
+        void accept(ReportRow row) throws IOException;
     }
 }

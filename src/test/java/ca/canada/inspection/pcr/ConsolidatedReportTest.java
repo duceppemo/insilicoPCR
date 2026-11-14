@@ -25,7 +25,7 @@ class ConsolidatedReportTest {
     private static Sample sampleWithHits() {
         Sample sample = new Sample();
         sample.setName("sampleA");
-        sample.setFileType("fasta");
+        sample.setFileType(Sample.FileType.FASTA);
         sample.addContig("contig1", "chromosome");
         // Productive pair: 500 bp product.
         sample.addBlastResult("assay-F", TestHits.plusHit("assay-F", "contig1", 101));
@@ -148,7 +148,7 @@ class ConsolidatedReportTest {
     void degeneratePrimerVariantsPairAcrossSuffixes() throws IOException {
         Sample sample = new Sample();
         sample.setName("sampleA");
-        sample.setFileType("fasta");
+        sample.setFileType(Sample.FileType.FASTA);
         sample.addBlastResult("assay-F_0", TestHits.plusHit("assay-F_0", "contig1", 101));
         sample.addBlastResult("assay-R_1", TestHits.minusHit("assay-R_1", "contig1", 581));
         Map<String, Sample> samples = new HashMap<>(Map.of("sampleA", sample));
@@ -179,7 +179,7 @@ class ConsolidatedReportTest {
     void samplesWithoutHitsProduceNoRows() throws IOException {
         Sample silent = new Sample();
         silent.setName("silent");
-        silent.setFileType("fasta");
+        silent.setFileType(Sample.FileType.FASTA);
         Map<String, Sample> samples = new HashMap<>(Map.of("silent", silent, "sampleA", sampleWithHits()));
         Map<String, String> primers = Map.of("assay-F", PRIMER_20, "assay-R", PRIMER_20);
 
@@ -230,7 +230,7 @@ class ConsolidatedReportTest {
         // alignment, which --5p-truncation 8 accepts and the mismatch columns do not count.
         Sample sample = new Sample();
         sample.setName("sampleA");
-        sample.setFileType("fasta");
+        sample.setFileType(Sample.FileType.FASTA);
         sample.addContig("contig1", "chromosome");
         sample.addBlastResult("assay-F", TestHits.truncatedPlusHit("assay-F", "contig1", 109, 9, 20, PRIMER_20));
         sample.addBlastResult("assay-R", TestHits.minusHit("assay-R", "contig1", 581));
@@ -257,9 +257,9 @@ class ConsolidatedReportTest {
         Map<String, Sample> samples = new HashMap<>(Map.of("sampleA", sample));
         Map<String, String> primers = Map.of("assay-F", PRIMER_20, "assay-R", PRIMER_20, "assay-P", PRIMER_20);
         ExpectedSizes sizes = ExpectedSizes.fromHeaders(Map.of("assay-F", "size=70 other=500"));
-        // A read-level row, as FASTQ mode adds them: already in report column order.
-        List<String> readRow = List.of("sampleA", "assay", "11-80", "70", "read_1", "FASTQ read-level call: ...",
-                "assay-F", "assay-R", "0", "0", "0", "0", "+", "assay-P", "35-54", "20", "0", "0", "0");
+        // A read-level row, as FASTQ mode adds them.
+        ReportRow readRow = new ReportRow("sampleA", "assay", 11, 80, 70, "read_1", "FASTQ read-level call: ...",
+                "assay-F", "assay-R", 0, 0, 0, 0, '+', new ReportRow.Probe("assay-P", 35, 54, 0), 0, 0);
 
         List<String> lines = Files.readAllLines(ConsolidatedReport.write(tempDir, samples, primers, DEFAULTS,
                 Map.of("sampleA", List.of(readRow)), sizes));

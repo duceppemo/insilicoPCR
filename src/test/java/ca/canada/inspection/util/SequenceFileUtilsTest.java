@@ -1,5 +1,6 @@
 package ca.canada.inspection.util;
 
+import ca.canada.inspection.model.Sample;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -77,8 +78,8 @@ class SequenceFileUtilsTest {
         var samples = SequenceFileUtils.createSampleMap(dir);
         assertEquals(java.util.Set.of("genomeA", "run"), samples.keySet());
         assertEquals(2, samples.get("run").files().size());
-        assertEquals("fastq", samples.get("run").getFileType());
-        assertEquals("fasta", samples.get("genomeA").getFileType());
+        assertEquals(Sample.FileType.FASTQ, samples.get("run").getFileType());
+        assertEquals(Sample.FileType.FASTA, samples.get("genomeA").getFileType());
     }
 
     @Test
@@ -105,14 +106,14 @@ class SequenceFileUtilsTest {
             out.write("@r1\nACGT\n+\nIIII\n".getBytes());
         }
         assertEquals(true, SequenceFileUtils.looksLikeSequenceFile(gz));
-        assertEquals("fastq", SequenceFileUtils.fileType(gz));
+        assertEquals(Sample.FileType.FASTQ, SequenceFileUtils.fileType(gz));
     }
 
     @Test
     void fileTypeClassifiesByExtension() {
-        assertEquals("fasta", SequenceFileUtils.fileType(Path.of("x.fna")));
-        assertEquals("fastq", SequenceFileUtils.fileType(Path.of("x.fq.gz")));
-        assertEquals("unknown", SequenceFileUtils.fileType(Path.of("x.txt")));
+        assertEquals(Sample.FileType.FASTA, SequenceFileUtils.fileType(Path.of("x.fna")));
+        assertEquals(Sample.FileType.FASTQ, SequenceFileUtils.fileType(Path.of("x.fq.gz")));
+        assertEquals(Sample.FileType.UNKNOWN, SequenceFileUtils.fileType(Path.of("x.txt")));
     }
 
     private Path write(String name, String content) throws IOException {

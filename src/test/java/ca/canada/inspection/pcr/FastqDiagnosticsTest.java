@@ -37,7 +37,7 @@ class FastqDiagnosticsTest {
     private static Sample fastqSample() {
         Sample sample = new Sample();
         sample.setName("reads");
-        sample.setFileType("fastq");
+        sample.setFileType(Sample.FileType.FASTQ);
         return sample;
     }
 
@@ -148,7 +148,7 @@ class FastqDiagnosticsTest {
 
     @Test
     void detailListsEachProductAndTheReadsCarryingAPrimerElsewhere() {
-        ReadCall weak = new ReadCall("assay", 16, 63, 554, List.of(), Set.of(100), 0.3);
+        ReadCall weak = new ReadCall("assay", 16, 63, 554, TestRows.any(), Set.of(100), 0.3);
         ReadEvidence evidence = new ReadEvidence(Map.of("assay-F", Set.of("read_1"), "assay-R", Set.of("read_2")),
                 Map.of("assay", List.of(weak)), Map.of("assay", 240));
 
@@ -160,8 +160,8 @@ class FastqDiagnosticsTest {
                 + " 554 more read(s) carry a primer elsewhere in the genome", finding.readDetail());
 
         // A reportable product comes first; a weak one is listed after it.
-        ReadCall strong = new ReadCall("assay", 1553, 1799, 0, List.of(), Set.of(258, 266, 267), 0.3);
-        ReadCall offTarget = new ReadCall("assay", 3, 3924, 0, List.of(), Set.of(119), 0.3);
+        ReadCall strong = new ReadCall("assay", 1553, 1799, 0, TestRows.any(), Set.of(258, 266, 267), 0.3);
+        ReadCall offTarget = new ReadCall("assay", 3, 3924, 0, TestRows.any(), Set.of(119), 0.3);
         evidence = new ReadEvidence(Map.of("assay-F", Set.of("read_1"), "assay-R", Set.of("read_2")),
                 Map.of("assay", List.of(offTarget, strong)), Map.of("assay", 240));
 
@@ -192,7 +192,7 @@ class FastqDiagnosticsTest {
         List<ReadExtensionCaller.Product> list = new java.util.ArrayList<>();
         for (int[] product : products) {
             list.add(new ReadExtensionCaller.Product("assay", product[0], Set.of(product[0]), product[1], 150,
-                    product[2], 150, List.of(), PAIRS_SUPPORT_IT));
+                    product[2], 150, TestRows.any(), PAIRS_SUPPORT_IT));
         }
         return new ReadExtensionCaller.Outcome("assay", 150, 150, 2000, list);
     }
@@ -238,9 +238,9 @@ class FastqDiagnosticsTest {
         sample.addBlastResult("assay-R", TestHits.minusHit("assay-R", "contig_0", 262));
         sample.addBlastResult("assay-P", TestHits.plusHit("assay-P", "contig_0", 200));
         ReadExtensionCaller.Product found = new ReadExtensionCaller.Product("assay", 1074, Set.of(1074), 12, 150,
-                9, 150, List.of(), PAIRS_SUPPORT_IT);
+                9, 150, TestRows.any(), PAIRS_SUPPORT_IT);
         ReadExtensionCaller.Product again = new ReadExtensionCaller.Product("assay", 183, Set.of(183), 40, 150,
-                38, 150, List.of(), PAIRS_SUPPORT_IT);
+                38, 150, TestRows.any(), PAIRS_SUPPORT_IT);
 
         Finding finding = FastqDiagnostics.assess(sample, PRIMERS, DEFAULTS, noReadCall(ALL_IN_READS), Map.of(),
                 Map.of("assay", new ReadExtensionCaller.Outcome("assay", 150, 150, 2000, List.of(again, found),
@@ -262,7 +262,7 @@ class FastqDiagnosticsTest {
     void productTheReadPairsDoNotSupportIsWithheldWithTheReason() {
         // A wrong turn through a repeat: closed from both sides, but no read pair spans one window.
         ReadExtensionCaller.Product wrongTurn = new ReadExtensionCaller.Product("assay", 727, Set.of(727), 44, 52,
-                37, 46, List.of(), new PairSupport.Verdict(PairSupport.Kind.UNSUPPORTED_WINDOW, true, 300, 1, 191, 14,
+                37, 46, TestRows.any(), new PairSupport.Verdict(PairSupport.Kind.UNSUPPORTED_WINDOW, true, 300, 1, 191, 14,
                 0, 0, 0, 0, 30));
         Finding finding = FastqDiagnostics.assess(fastqSample(), PRIMERS, DEFAULTS, noReadCall(ALL_IN_READS), Map.of(),
                 Map.of("assay", new ReadExtensionCaller.Outcome("assay", 52, 46, 2000, List.of(wrongTurn)))).getFirst();
@@ -287,7 +287,7 @@ class FastqDiagnosticsTest {
     @Test
     void productThroughARepeatLongerThanTheReadPairsIsWithheldAsUnresolved() {
         ReadExtensionCaller.Product through = new ReadExtensionCaller.Product("assay", 1047, Set.of(1047), 40, 50,
-                38, 50, List.of(), new PairSupport.Verdict(PairSupport.Kind.UNRESOLVED_REPEAT, true, 250, 5, 310, 10,
+                38, 50, TestRows.any(), new PairSupport.Verdict(PairSupport.Kind.UNRESOLVED_REPEAT, true, 250, 5, 310, 10,
                 228, 827, 16, 10, 50));
         Finding finding = FastqDiagnostics.assess(fastqSample(), PRIMERS, DEFAULTS, noReadCall(ALL_IN_READS), Map.of(),
                 Map.of("assay", new ReadExtensionCaller.Outcome("assay", 50, 50, 2000, List.of(through)))).getFirst();
@@ -381,7 +381,7 @@ class FastqDiagnosticsTest {
     static Sample readsSample() {
         Sample reads = new Sample();
         reads.setName("reads");
-        reads.setFileType("reads");
+        reads.setFileType(Sample.FileType.READS);
         return reads;
     }
 

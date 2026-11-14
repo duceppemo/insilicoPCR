@@ -212,9 +212,7 @@ public final class HtmlReport {
         ExpectedSizes sizes = primers.expectedSizes();
         try {
             String page = render(reportTsv.getFileName().toString(), readProducts(reportTsv, primers), sampleNames,
-                    fastqSamples, primers.assays().entrySet().stream()
-                            .filter(entry -> entry.getValue().isComplete())
-                            .map(Map.Entry::getKey).toList(),
+                    fastqSamples, List.copyOf(primers.completeAssays().keySet()),
                     sizes, findings, runDetails, inputIssues, splits);
             Files.writeString(html, page, StandardCharsets.UTF_8);
         } catch (IOException e) {
@@ -348,7 +346,7 @@ public final class HtmlReport {
         StringBuilder html = new StringBuilder(64_000);
         html.append("<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n")
                 .append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n")
-                .append("<title>insilicoPCR report</title>\n<style>\n").append(CSS).append("</style>\n</head>\n<body>\n")
+                .append("<title>insilicoPCR report</title>\n<style>\n").append(Page.CSS).append("</style>\n</head>\n<body>\n")
                 .append("<main>\n<header>\n<h1>insilicoPCR report</h1>\n<p class=\"sub\">")
                 .append(escape(String.join(" · ", headline(runDetails, reportName)))).append("</p>\n</header>\n");
 
@@ -363,7 +361,7 @@ public final class HtmlReport {
         splitSection(html, splits);
         detailSection(html, runDetails, reportName, anyDeclared);
 
-        html.append("</main>\n<script>\n").append(SCRIPT).append("</script>\n</body>\n</html>\n");
+        html.append("</main>\n<script>\n").append(Page.SCRIPT).append("</script>\n</body>\n</html>\n");
         return html.toString();
     }
 
@@ -766,9 +764,14 @@ public final class HtmlReport {
         return escaped.toString();
     }
 
-    /** The page's style and script, kept as resources next to this class. */
-    private static final String CSS = resource("report.css");
-    private static final String SCRIPT = resource("report.js");
+    /**
+     * The page's style and script, kept as resources next to this class; read the first time a
+     * page is written, so that a build missing one fails that write, not every use of the class.
+     */
+    private static final class Page {
+        static final String CSS = resource("report.css");
+        static final String SCRIPT = resource("report.js");
+    }
 
     private static String resource(String name) {
         try (InputStream in = HtmlReport.class.getResourceAsStream(name)) {

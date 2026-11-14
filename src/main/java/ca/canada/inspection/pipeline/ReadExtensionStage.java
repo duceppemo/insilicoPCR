@@ -47,7 +47,6 @@ public final class ReadExtensionStage {
      * @param bbtools          builds the Tadpole command
      * @param bbtoolsDirectory working directory of BBTools child processes
      * @param mode             which assays reads are extended for
-     * @param sizes            product sizes declared in the primer file
      */
     record Settings(ReadLevelStage.Settings search, BbtoolsCommands bbtools, Path bbtoolsDirectory,
                     ReadExtensionCaller.Mode mode) {
@@ -140,7 +139,7 @@ public final class ReadExtensionStage {
         if (!Files.isRegularFile(baitedReads)) {
             throw new PipelineException("no baited reads file " + baitedReads.getFileName());
         }
-        List<Seed> seeds = ReadExtensionCaller.seeds(assays, primers.ids(), reads);
+        List<Seed> seeds = ReadExtensionCaller.seeds(assays, primers, reads);
         Map<String, ReadLevelStage.ReadRecord> seedReads = writeSeeds(seeds,
                 BbtoolsCommands.baitedReadsFasta(sampleDir, name), seedsFile);
         int reach = options.maxAmpliconLength() > 0 ? options.maxAmpliconLength() : ReadExtensionCaller.DEFAULT_REACH;

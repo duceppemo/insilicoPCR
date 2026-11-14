@@ -74,11 +74,10 @@ public final class SplitAcrossContigs {
         Map<String, List<BlastResult>> hits = sample.blastResults();
         Map<String, Integer> lengths = null;
         List<Split> splits = new ArrayList<>();
-        for (Map.Entry<String, PrimerId.Assay> entry
-                : primers.assays().entrySet()) {
+        for (Map.Entry<String, PrimerId.Assay> entry : primers.completeAssays().entrySet()) {
             String assay = entry.getKey();
             PrimerId.Assay group = entry.getValue();
-            if (reported.contains(assay) || !group.isComplete()) {
+            if (reported.contains(assay)) {
                 continue;
             }
             List<BlastResult> forward = hitsOf(hits, group.forward());

@@ -94,19 +94,27 @@ public record ReportRow(String sample, String assay, int start, int end, int siz
      */
     public List<String> columns(boolean probeColumns) {
         List<String> columns = new ArrayList<>(List.of(
-                sample, assay, location(), String.valueOf(size), contig, contigDescription,
-                forwardPrimer, reversePrimer, String.valueOf(forwardMismatches), String.valueOf(reverseMismatches),
+                cell(sample), cell(assay), location(), String.valueOf(size), cell(contig), cell(contigDescription),
+                cell(forwardPrimer), cell(reversePrimer), String.valueOf(forwardMismatches), String.valueOf(reverseMismatches),
                 String.valueOf(forwardThreePrime), String.valueOf(reverseThreePrime), String.valueOf(strand)));
         if (probeColumns) {
             if (probe == null) {
                 columns.addAll(List.of("", "", "", ""));
             } else {
-                columns.addAll(List.of(probe.id(), probe.start() + "-" + probe.end(), String.valueOf(probe.size()),
+                columns.addAll(List.of(cell(probe.id()), probe.start() + "-" + probe.end(), String.valueOf(probe.size()),
                         String.valueOf(probe.mismatches())));
             }
         }
         columns.add(String.valueOf(forwardUnpaired));
         columns.add(String.valueOf(reverseUnpaired));
         return columns;
+    }
+
+    /**
+     * Text as one TSV cell: a tab or a line break (a FASTA header's description may hold one)
+     * would start another column or row, so each becomes a space.
+     */
+    private static String cell(String text) {
+        return text.replace('\t', ' ').replace('\r', ' ').replace('\n', ' ');
     }
 }

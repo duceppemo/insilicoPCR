@@ -257,11 +257,27 @@ class EndToEndTest {
     }
 
     @Test
+    void aPrimerFileWithAnIncompleteAssayStopsTheRunBeforeTheInputIsRead() throws IOException {
+        Path primers = Files.writeString(directory.resolve("primers.fasta"), ">toxA-F\nACGTACGTACGTACGTACGT\n");
+        Recorder monitor = new Recorder();
+        PipelineConfig config = new PipelineConfig(EXAMPLE.resolve("reads"), directory.resolve("results"), primers, 2,
+                1e5, AmpliconOptions.withMismatches(0), false);
+
+        PipelineException error = assertThrows(PipelineException.class,
+                () -> new InSilicoPcrPipeline(config, monitor).run());
+
+        assertTrue(error.getMessage().contains("toxA-R is missing"), error.getMessage());
+        assertEquals(List.of(Step.DEPENDENCIES), monitor.steps);
+        assertTrue(monitor.messages.stream().noneMatch(line -> line.startsWith("Checking the input files")),
+                monitor.messages.toString());
+    }
+
+    @Test
     void aCancelledRunStopsBeforeTheNextProgramAndWritesNoReport() {
         Recorder monitor = new Recorder() {
             @Override
             public boolean isCancelled() {
-                return steps.contains(Step.PRIMERS);
+                return steps.contains(Step.INPUT_CHECK);
             }
         };
         Path output = directory.resolve("cancelled");
@@ -275,7 +291,7 @@ class EndToEndTest {
             assertTrue(expected.getCause() instanceof CancellationException, expected.toString());
         }
         assertFalse(Files.exists(output.resolve("consolidated_report").resolve("report.tsv")));
-        assertEquals(List.of(Step.DEPENDENCIES, Step.INPUT_CHECK, Step.PRIMERS, Step.READS), monitor.steps);
+        assertEquals(List.of(Step.DEPENDENCIES, Step.PRIMERS, Step.INPUT_CHECK, Step.READS), monitor.steps);
     }
 
     /** Copies of the example reads under the given sample names. */

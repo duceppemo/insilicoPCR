@@ -188,7 +188,7 @@ public final class ReadLevelCaller {
     }
 
     /**
-     * As {@link #evaluate(Sample, Map, Map, Map, AmpliconOptions, double, ReadSequences)} with every
+     * As {@link #evaluate(Sample, Map, Map, PrimerPanel, AmpliconOptions, double, ReadSequences)} with every
      * read its own fragment, the default support fraction and no read sequences.
      *
      * @param reads       pseudo-sample whose "contigs" are the baited reads: accepted

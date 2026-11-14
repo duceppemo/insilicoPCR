@@ -41,8 +41,9 @@ The GUI runs the same pipeline: `PcrPipelineTask` runs `InSilicoPcrPipeline` on 
 
 | Step | Classes | What happens |
 |---|---|---|
-| Dependencies, input check | `RuntimeDependencies`, `util.InputCheck` | Find the bundled tools; find the samples and check their files |
-| Primers | `PrimerService` | Read the primer FASTA, expand degenerate bases, write `primer_tmp.fasta` |
+| Dependencies | `RuntimeDependencies` | Find the bundled tools |
+| Primers | `PrimerService` | Read the primer FASTA (every assay needs `-F` and `-R`), expand degenerate bases, write `primer_tmp.fasta`; first, so that a mistake there is found before the input is read |
+| Input check | `util.InputCheck` | Find the samples and check their files |
 | Reads | `FastqProcessor`, `BbtoolsCommands`, `ChildJavaMemory` | FASTQ samples: two rounds of BBDuk baiting, Tadpole mini-assembly, BBMerge of baited pairs |
 | BLAST database, BLAST | `BlastDatabaseBuilder`, `BlastRunner`, `ContigService`, `pcr.BlastReports` | `makeblastdb` on the primers; `blastn` of every sample, one thread each, several samples at a time; the accepted hits attached to their samples |
 | Read search, read extension | `ReadLevelStage`, `ReadExtensionStage` | FASTQ samples: amplicons called on the baited reads; reads extended for products longer than a read |
@@ -116,7 +117,7 @@ GUI (PcrPipelineTask + window RunMonitor)  /  CLI (RunMonitor.CONSOLE)
    ↓
 Shared pipeline (InSilicoPcrPipeline)
    ↓
-Input check, primers, FASTQ processing, BLAST database, BLAST, read search and extension
+Primers, input check, FASTQ processing, BLAST database, BLAST, read search and extension
    ↓
 External programs: BBTools, BLAST+ (ExternalProgram, ParallelStageRunner)
    ↓

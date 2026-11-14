@@ -38,18 +38,19 @@ public final class InSilicoPcrPipeline {
         PipelineDirectories directories = PipelineDirectories.create(config.output());
         monitor.stepDone(Step.DEPENDENCIES);
 
+        // The primer file first: a mistake there is found at once, not after reading every input.
+        PrimerPanel primers = PrimerService.loadAndPrepare(config, directories);
+        monitor.stepDone(Step.PRIMERS);
+
         monitor.info("Checking the input files (" + (config.inputCheck() == InputCheck.Depth.FULL
                 ? "every read; --input-check quick reads the first one only" : "first read only") + ")");
         InputCheck.Result checked = InputCheck.scan(config.input(), config.inputCheck(), config.threads());
         checked.warnings().forEach(line -> monitor.warning("Warning: " + line));
         Map<String, Sample> sampleMap = new LinkedHashMap<>(checked.samples());
-        monitor.stepDone(Step.INPUT_CHECK);
-
-        PrimerPanel primers = PrimerService.loadAndPrepare(config, directories);
         PipelineContext context = new PipelineContext(config, dependencies, directories, sampleMap, primers,
                 ChildJavaMemory.budgetGiB(), checked.issues(), monitor);
         logRuntime(context);
-        monitor.stepDone(Step.PRIMERS);
+        monitor.stepDone(Step.INPUT_CHECK);
 
         // FASTQ samples: baited and assembled into a mini-assembly, searched like an assembly.
         FastqProcessor.process(context);

@@ -2,6 +2,7 @@ package ca.canada.inspection.pcr;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -19,12 +20,20 @@ public final class PrimerPanel {
 
     private final Map<String, String> sequences;
     private final Map<String, PrimerId.Assay> assays;
+    private final Map<String, PrimerId.Assay> completeAssays;
     private final Set<String> assaysWithProbe;
     private final ExpectedSizes expectedSizes;
 
     private PrimerPanel(Map<String, String> sequences, ExpectedSizes expectedSizes) {
         this.sequences = Collections.unmodifiableMap(new LinkedHashMap<>(sequences));
-        this.assays = Collections.unmodifiableMap(PrimerId.byAssay(this.sequences.keySet()));
+        // Read-only all the way down: every step shares these groups.
+        Map<String, PrimerId.Assay> grouped = new LinkedHashMap<>();
+        PrimerId.byAssay(this.sequences.keySet()).forEach((assay, primers) -> grouped.put(assay, new PrimerId.Assay(
+                List.copyOf(primers.forward()), List.copyOf(primers.reverse()), List.copyOf(primers.probe()))));
+        this.assays = Collections.unmodifiableMap(grouped);
+        Map<String, PrimerId.Assay> complete = new LinkedHashMap<>(grouped);
+        complete.values().removeIf(primers -> !primers.isComplete());
+        this.completeAssays = Collections.unmodifiableMap(complete);
         Set<String> withProbe = new TreeSet<>();
         assays.forEach((assay, primers) -> {
             if (primers.hasProbe()) {
@@ -67,6 +76,15 @@ public final class PrimerPanel {
     /** The assays, by name in name order, with their oligo IDs by role. */
     public Map<String, PrimerId.Assay> assays() {
         return assays;
+    }
+
+    /**
+     * The assays that can give a product: a forward and a reverse primer. {@code PrimerService}
+     * rejects a primer file with any other, so in a run these are all of them; a panel built in
+     * a test may hold fewer primers.
+     */
+    public Map<String, PrimerId.Assay> completeAssays() {
+        return completeAssays;
     }
 
     /**

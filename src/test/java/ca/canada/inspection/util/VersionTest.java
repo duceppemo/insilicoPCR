@@ -37,6 +37,14 @@ class VersionTest {
     }
 
     @Test
+    void withoutAFilledInFileTheVersionIsUnknownAndNothingFails() {
+        // An IDE's own build leaves the placeholder: the window must still open.
+        assertEquals(Version.UNKNOWN, Version.orUnknown(null));
+        assertEquals(Version.UNKNOWN, Version.orUnknown(new ByteArrayInputStream("version=${project.version}".getBytes())));
+        assertEquals("1.2.3", Version.orUnknown(new ByteArrayInputStream("version=1.2.3".getBytes())));
+    }
+
+    @Test
     void theVersionIsReadFromTheFile() throws IOException {
         assertEquals("1.2.3", Version.parse(new ByteArrayInputStream("# comment\nversion=1.2.3\n".getBytes())));
     }

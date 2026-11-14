@@ -95,12 +95,14 @@ public final class ConsolidatedReport {
         return report;
     }
 
+    /** The columns every report starts with, in order; the probe and 5' columns follow. */
+    public static final List<String> FIRST_COLUMNS = List.of(
+            "Sample", "Gene", "GenomeLocation", "AmpliconSize", "Contig", "Contig Description",
+            "ForwardPrimers", "ReversePrimers", "ForwardMismatches", "ReverseMismatches",
+            "Forward3PrimeMismatches", "Reverse3PrimeMismatches", "Strand");
+
     private static String header(boolean probeColumns, boolean sizeColumn) {
-        List<String> columns = new ArrayList<>(List.of(
-                "Sample", "Gene", "GenomeLocation", "AmpliconSize", "Contig", "Contig Description",
-                "ForwardPrimers", "ReversePrimers", "ForwardMismatches", "ReverseMismatches",
-                "Forward3PrimeMismatches", "Reverse3PrimeMismatches", "Strand"
-        ));
+        List<String> columns = new ArrayList<>(FIRST_COLUMNS);
         if (probeColumns) {
             columns.addAll(List.of("Probe", "ProbeLocation", "ProbeSize", "ProbeMismatches"));
         }

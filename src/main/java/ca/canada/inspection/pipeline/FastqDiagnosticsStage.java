@@ -200,7 +200,7 @@ public final class FastqDiagnosticsStage {
     }
 
     /**
-     * As {@link #run(Path, Map, Map, AmpliconOptions, Map)}, taking into account what the read extension showed.
+     * As {@link #run(Path, Map, PrimerPanel, AmpliconOptions, Map)}, taking into account what the read extension showed.
      */
     public static Result run(Path consolidatedReport, Map<String, Sample> samples, PrimerPanel primers,
                              AmpliconOptions options, Map<String, ReadEvidence> evidence,

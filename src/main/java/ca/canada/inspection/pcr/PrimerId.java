@@ -48,6 +48,20 @@ public record PrimerId(String assay, Role role) {
         return role == null ? null : new PrimerId(id.substring(0, lastDash), role);
     }
 
+    /**
+     * The ID of a primer the run already holds, which follows the convention ({@code PrimerService}
+     * rejects any other).
+     *
+     * @throws IllegalArgumentException when it does not
+     */
+    public static PrimerId of(String id) {
+        PrimerId parsed = parse(id);
+        if (parsed == null) {
+            throw new IllegalArgumentException("Not a primer ID of the <assay>-F/-R/-P convention: " + id);
+        }
+        return parsed;
+    }
+
     /** True when the ID names a probe, such as {@code assay-P} or {@code assay-P_3}. */
     public static boolean isProbe(String id) {
         PrimerId parsed = parse(id);

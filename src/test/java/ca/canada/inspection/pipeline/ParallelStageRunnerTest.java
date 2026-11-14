@@ -97,10 +97,17 @@ class ParallelStageRunnerTest {
 
     @Test
     void anInterruptedWaitStopsTheStage() {
+        // The item takes a while, so the stage is still waiting for it when it sees the interrupt;
+        // an item already done would be returned without one.
         Thread.currentThread().interrupt();
         try {
             StageException error = assertThrows(StageException.class, () -> ParallelStageRunner.run("BLAST",
                     List.of("a"), 1, item -> {
+                        try {
+                            Thread.sleep(1000);
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                        }
                     }));
             assertEquals("BLAST interrupted", error.getMessage());
             assertTrue(Thread.currentThread().isInterrupted());

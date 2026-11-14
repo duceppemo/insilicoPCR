@@ -188,6 +188,7 @@ public class MainRun extends Application {
 
         var field = new ComboBox<Integer>();
         field.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
+        // One processor fewer than the command line's default, so the window stays responsive.
         int maxThreads = Math.max(1, Runtime.getRuntime().availableProcessors() - 1);
         for (var i = 1; i <= maxThreads; i++) {
             field.getItems().add(i);
@@ -223,10 +224,10 @@ public class MainRun extends Application {
         box.setAlignment(Pos.TOP_LEFT);
         pane.add(box, 38, 15, 5, 1);
 
-        var field = new TextField("1e5");
+        var field = new TextField(PipelineConfig.DEFAULT_EVALUE_TEXT);
         var tip = new Tooltip("BLAST e-value. Deliberately permissive: primer hits are filtered by the mismatch and "
                 + "3'/5'-end rules instead. A short primer's e-value grows with contig length, so a strict value "
-                + "such as 1e-5 drops valid hits. Default 1e5 (-e on the command line).");
+                + "such as 1e-5 drops valid hits. Default " + PipelineConfig.DEFAULT_EVALUE_TEXT + " (-e on the command line).");
         tip.setWrapText(true);
         tip.setMaxWidth(380);
         field.setTooltip(tip);
@@ -366,19 +367,14 @@ public class MainRun extends Application {
         lastResult = null;
         // The window has its own gel viewer, and checks every read as the command line does
         // by default.
-        var config = new PipelineConfig(
-                inputFile,
-                outDir,
-                primerFile,
-                threadField.getSelectionModel().getSelectedItem(),
-                evalue,
-                ampliconOptions,
-                false,
-                fastqSettings.tadpole(),
-                fastqSettings.readMinFraction(),
-                fastqSettings.readExtension(),
-                InputCheck.Depth.FULL
-        );
+        var config = PipelineConfig.builder(inputFile, outDir, primerFile)
+                .threads(threadField.getSelectionModel().getSelectedItem())
+                .evalue(evalue)
+                .ampliconOptions(ampliconOptions)
+                .tadpole(fastqSettings.tadpole())
+                .readMinFraction(fastqSettings.readMinFraction())
+                .readExtension(fastqSettings.readExtension())
+                .build();
 
         runningTask = new PcrPipelineTask(config, outputField, blastProgress);
         mainProgress.progressProperty().bind(runningTask.progressProperty());

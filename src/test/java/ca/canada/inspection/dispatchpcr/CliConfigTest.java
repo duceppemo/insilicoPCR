@@ -3,6 +3,7 @@ package ca.canada.inspection.dispatchpcr;
 import ca.canada.inspection.pcr.AmpliconOptions;
 import ca.canada.inspection.pcr.ReadExtensionCaller;
 import ca.canada.inspection.pcr.ReadLevelCaller;
+import ca.canada.inspection.pipeline.PipelineConfig;
 import ca.canada.inspection.pipeline.TadpoleOptions;
 import ca.canada.inspection.util.InputCheck;
 import org.apache.commons.cli.CommandLine;
@@ -28,7 +29,7 @@ class CliConfigTest {
     private Path input;
     private Path primers;
 
-    private CliConfig parse(String... extra) throws ParseException, IOException {
+    private PipelineConfig parse(String... extra) throws ParseException, IOException {
         if (input == null) {
             input = Files.writeString(dir.resolve("genome.fasta"), ">c1\nACGT\n");
             primers = Files.writeString(dir.resolve("primers.fasta"), ">a-F\nACGT\n>a-R\nACGT\n");
@@ -43,7 +44,7 @@ class CliConfigTest {
 
     @Test
     void defaultsMatchDocumentedValues() throws Exception {
-        CliConfig config = parse();
+        PipelineConfig config = parse();
         AmpliconOptions options = config.ampliconOptions();
         assertEquals(0, options.maxTotalMismatches());
         assertEquals(0, options.maxProbeMismatches());
@@ -52,7 +53,7 @@ class CliConfigTest {
         assertEquals(AmpliconOptions.DEFAULT_FIVE_PRIME_TRUNCATION, options.maxFivePrimeTruncation());
         assertEquals(AmpliconOptions.DEFAULT_MAX_AMPLICON_LENGTH, options.maxAmpliconLength());
         assertEquals(0, options.minAmpliconLength());
-        assertEquals(CliConfig.DEFAULT_EVALUE, config.evalue());
+        assertEquals(PipelineConfig.DEFAULT_EVALUE, config.evalue());
         assertTrue(config.threads() >= 1);
         assertFalse(config.gel());
     }
@@ -84,7 +85,7 @@ class CliConfigTest {
     @Test
     void tadpoleSettingsDefaultAndParse() throws Exception {
         assertEquals(TadpoleOptions.DEFAULTS, parse().tadpole());
-        CliConfig config = parse("--tadpole-k", "25", "--tadpole-min-seed", "3",
+        PipelineConfig config = parse("--tadpole-k", "25", "--tadpole-min-seed", "3",
                 "--tadpole-min-cov", "2", "--tadpole-min-contig", "100");
         assertEquals(new TadpoleOptions(25, 3, 2, 100), config.tadpole());
         assertThrows(IllegalArgumentException.class, () -> parse("--tadpole-k", "0"));
@@ -93,7 +94,7 @@ class CliConfigTest {
 
     @Test
     void allFlagsAreParsed() throws Exception {
-        CliConfig config = parse("-t", "3", "-m", "2", "--probe-mismatches", "3", "-e", "1e3",
+        PipelineConfig config = parse("-t", "3", "-m", "2", "--probe-mismatches", "3", "-e", "1e3",
                 "-l", "0", "--min-length", "80", "--3p-window", "6", "--3p-penalty", "4",
                 "--5p-truncation", "1", "-g");
         assertEquals(3, config.threads());

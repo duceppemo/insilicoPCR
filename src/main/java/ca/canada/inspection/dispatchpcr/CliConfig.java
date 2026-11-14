@@ -2,7 +2,6 @@ package ca.canada.inspection.dispatchpcr;
 
 import ca.canada.inspection.pcr.AmpliconOptions;
 import ca.canada.inspection.pcr.ReadExtensionCaller;
-import ca.canada.inspection.pcr.ReadLevelCaller;
 import ca.canada.inspection.pipeline.PipelineConfig;
 import ca.canada.inspection.pipeline.TadpoleOptions;
 import ca.canada.inspection.util.InputCheck;
@@ -11,35 +10,18 @@ import org.apache.commons.cli.CommandLine;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-/** Immutable, validated command-line configuration. */
-public record CliConfig(
-        Path input,
-        Path output,
-        Path primers,
-        int threads,
-        double evalue,
-        AmpliconOptions ampliconOptions,
-        boolean gel,
-        TadpoleOptions tadpole,
-        double readMinFraction,
-        ReadExtensionCaller.Mode readExtension,
-        InputCheck.Depth inputCheck
-) {
-    public static final double DEFAULT_EVALUE = 1e5;
-
-    public CliConfig {
-        input = input.toAbsolutePath().normalize();
-        output = output.toAbsolutePath().normalize();
-        primers = primers.toAbsolutePath().normalize();
-        if (threads < 1) {
-            throw new IllegalArgumentException("threads must be >= 1");
-        }
-        if (!(evalue > 0.0)) {
-            throw new IllegalArgumentException("evalue must be > 0");
-        }
+/**
+ * Reads the run a command line asks for. The defaults and the checks of the settings are
+ * {@link PipelineConfig}'s ({@link PipelineConfig#builder}); this class reads the options and
+ * checks what only the command line can get wrong: a missing option, a value that is not a
+ * number, a path that does not exist.
+ */
+public final class CliConfig {
+    private CliConfig() {
     }
 
-    public static CliConfig from(CommandLine cmd) {
+    /** @throws IllegalArgumentException for a wrong command line, with a message saying what is wrong */
+    public static PipelineConfig from(CommandLine cmd) {
         Path input = requiredPath(cmd, "input");
         Path output = requiredPath(cmd, "output");
         Path primers = requiredPath(cmd, "primers");
@@ -62,31 +44,27 @@ public record CliConfig(
                 parseNonNegative(cmd, "max-length", AmpliconOptions.DEFAULT_MAX_AMPLICON_LENGTH)
         );
 
-        return new CliConfig(
-                input,
-                output,
-                primers,
-                parseThreads(cmd.getOptionValue("threads")),
-                parseEvalue(cmd.getOptionValue("evalue")),
-                options,
-                cmd.hasOption("gel"),
-                tadpoleOptions(cmd),
-                parseFraction(cmd, "read-min-fraction", ReadLevelCaller.DEFAULT_MIN_SUPPORT_FRACTION),
-                readExtension(cmd.getOptionValue("read-extension")),
-                InputCheck.Depth.parse(cmd.getOptionValue("input-check", "full"))
-        );
-    }
-
-    /** The run these options ask for. */
-    public PipelineConfig pipelineConfig() {
-        return new PipelineConfig(input, output, primers, threads, evalue, ampliconOptions, gel, tadpole,
-                readMinFraction, readExtension, inputCheck);
+        PipelineConfig.Builder config = PipelineConfig.builder(input, output, primers)
+                .ampliconOptions(options)
+                .gel(cmd.hasOption("gel"))
+                .tadpole(tadpoleOptions(cmd))
+                .inputCheck(InputCheck.Depth.parse(cmd.getOptionValue("input-check", "full")));
+        if (cmd.hasOption("threads")) {
+            config.threads(parseInt(cmd, "threads"));
+        }
+        if (cmd.hasOption("evalue")) {
+            config.evalue(parseDouble(cmd, "evalue"));
+        }
+        if (cmd.hasOption("read-min-fraction")) {
+            config.readMinFraction(parseFraction(cmd, "read-min-fraction"));
+        }
+        if (cmd.hasOption("read-extension")) {
+            config.readExtension(readExtension(cmd.getOptionValue("read-extension")));
+        }
+        return config.build();
     }
 
     private static ReadExtensionCaller.Mode readExtension(String value) {
-        if (value == null) {
-            return ReadExtensionCaller.Mode.DEFAULT;
-        }
         try {
             return ReadExtensionCaller.Mode.parse(value);
         } catch (IllegalArgumentException e) {
@@ -94,11 +72,8 @@ public record CliConfig(
         }
     }
 
-    private static double parseFraction(CommandLine cmd, String option, double defaultValue) {
+    private static double parseFraction(CommandLine cmd, String option) {
         String value = cmd.getOptionValue(option);
-        if (value == null) {
-            return defaultValue;
-        }
         double parsed;
         try {
             parsed = Double.parseDouble(value);
@@ -132,12 +107,22 @@ public record CliConfig(
         return Path.of(value).toAbsolutePath().normalize();
     }
 
-    private static int parseThreads(String value) {
-        int threads = value == null ? Runtime.getRuntime().availableProcessors() : Integer.parseInt(value);
-        if (threads < 1) {
-            throw new IllegalArgumentException("threads must be >= 1");
+    private static int parseInt(CommandLine cmd, String option) {
+        String value = cmd.getOptionValue(option);
+        try {
+            return Integer.parseInt(value);
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("--" + option + " must be an integer, got: " + value);
         }
-        return threads;
+    }
+
+    private static double parseDouble(CommandLine cmd, String option) {
+        String value = cmd.getOptionValue(option);
+        try {
+            return Double.parseDouble(value);
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("--" + option + " must be a number, got: " + value);
+        }
     }
 
     private static int parseNonNegative(CommandLine cmd, String option, int defaultValue) {
@@ -155,16 +140,5 @@ public record CliConfig(
             throw new IllegalArgumentException("--" + option + " must be >= 0, got: " + value);
         }
         return parsed;
-    }
-
-    private static double parseEvalue(String value) {
-        if (value == null) {
-            return DEFAULT_EVALUE;
-        }
-        double evalue = Double.parseDouble(value);
-        if (!(evalue > 0.0)) {
-            throw new IllegalArgumentException("evalue must be > 0");
-        }
-        return evalue;
     }
 }

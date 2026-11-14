@@ -61,8 +61,7 @@ class PrimerServiceTest {
                 ">assay-F\nACGT\nacgt\n\n>assay-R\nACRT\n");
         java.nio.file.Path input = java.nio.file.Files.writeString(dir.resolve("in.fasta"), ">c\nACGT\n");
         java.nio.file.Path out = dir.resolve("out");
-        var config = new PipelineConfig(input, out, primerFile, 1, 1e5,
-                ca.canada.inspection.pcr.AmpliconOptions.withMismatches(0), false);
+        var config = PipelineConfig.builder(input, out, primerFile).build();
         var directories = PipelineDirectories.create(out);
 
         PrimerPanel prepared = PrimerService.loadAndPrepare(config, directories);
@@ -118,8 +117,7 @@ class PrimerServiceTest {
         java.nio.file.Path primerFile = java.nio.file.Files.writeString(dir.resolve("sized.fasta"),
                 ">its-F size=420-450 other=575\nACGT\n>its-R\nACRT\n>plain-F\nACGT\n>plain-R\nACGT\n");
         java.nio.file.Path input = java.nio.file.Files.writeString(dir.resolve("in2.fasta"), ">c\nACGT\n");
-        var config = new PipelineConfig(input, dir.resolve("out2"), primerFile, 1, 1e5,
-                ca.canada.inspection.pcr.AmpliconOptions.withMismatches(0), false);
+        var config = PipelineConfig.builder(input, dir.resolve("out2"), primerFile).build();
 
         PrimerPanel prepared = PrimerService.loadAndPrepare(config,
                 PipelineDirectories.create(dir.resolve("out2")));

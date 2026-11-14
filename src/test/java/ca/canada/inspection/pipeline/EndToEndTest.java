@@ -1,7 +1,6 @@
 package ca.canada.inspection.pipeline;
 
 import ca.canada.inspection.pcr.PrimerPanel;
-import ca.canada.inspection.pcr.AmpliconOptions;
 import ca.canada.inspection.pcr.ReadExtensionCaller;
 import ca.canada.inspection.pipeline.RunMonitor.Step;
 import ca.canada.inspection.util.InputCheck;
@@ -214,9 +213,9 @@ class EndToEndTest {
         Path primers = Files.writeString(directory.resolve("primers.fasta"),
                 Files.readString(PRIMERS).replace(">toxA-F size=312", ">toxA-F size=500"));
         Path output = directory.resolve("extension-results");
-        PipelineConfig config = new PipelineConfig(EXAMPLE.resolve("reads"), output, primers, 2, 1e5,
-                AmpliconOptions.withMismatches(0), false, TadpoleOptions.DEFAULTS, 0.3,
-                ReadExtensionCaller.Mode.TARGET, InputCheck.Depth.QUICK);
+        PipelineConfig config = PipelineConfig.builder(EXAMPLE.resolve("reads"), output, primers).threads(2)
+                .readMinFraction(0.3).readExtension(ReadExtensionCaller.Mode.TARGET).inputCheck(InputCheck.Depth.QUICK)
+                .build();
         Recorder monitor = new Recorder();
 
         new InSilicoPcrPipeline(config, monitor).run();
@@ -264,8 +263,8 @@ class EndToEndTest {
     void aPrimerFileWithAnIncompleteAssayStopsTheRunBeforeTheInputIsRead() throws IOException {
         Path primers = Files.writeString(directory.resolve("primers.fasta"), ">toxA-F\nACGTACGTACGTACGTACGT\n");
         Recorder monitor = new Recorder();
-        PipelineConfig config = new PipelineConfig(EXAMPLE.resolve("reads"), directory.resolve("results"), primers, 2,
-                1e5, AmpliconOptions.withMismatches(0), false);
+        PipelineConfig config = PipelineConfig.builder(EXAMPLE.resolve("reads"), directory.resolve("results"), primers)
+                .threads(2).build();
 
         PipelineException error = assertThrows(PipelineException.class,
                 () -> new InSilicoPcrPipeline(config, monitor).run());
@@ -363,7 +362,7 @@ class EndToEndTest {
     }
 
     private static PipelineConfig config(Path input, Path output) {
-        return new PipelineConfig(input, output, PRIMERS, 2, 1e5, AmpliconOptions.withMismatches(0), false);
+        return PipelineConfig.builder(input, output, PRIMERS).threads(2).build();
     }
 
     private static Path report(Path output) {

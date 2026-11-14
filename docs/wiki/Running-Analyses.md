@@ -109,8 +109,8 @@ Every GUI setting has a command-line equivalent; see [Command-line Interface](Co
 | `consolidated_report/report.tsv` | One row per amplicon; the source of the HTML report and of the synthetic gel |
 | `consolidated_report/report_fastq_diagnostics.tsv` | FASTQ input only: why an assay was not reported although its primers are in the reads |
 | `detailed_report/<sample>/` | Raw BLAST hits per sample and, for FASTQ input, the baited reads and mini-assembly |
-| `QAlog.txt` | Version, inputs and the settings that decide calls |
+| `QAlog.txt` | Version, inputs, the samples analysed, the report written and the settings that decide calls; written when a run finishes |
 | `primer_tmp.fasta*` | The primers as a BLAST database; the application deletes it no longer, since 0.14.0 |
-| `log.txt` | Application only: the run log, written when the window is closed |
+| `log.txt` | Application only: what the window showed of each run, added at the end of the run, also one that failed or was stopped |
 
 A run into a folder that already holds a report writes `report(1).tsv` and `report(1).html`, and so on. See [Reports](Reports).

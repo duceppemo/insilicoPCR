@@ -5,11 +5,14 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 public record PipelineDirectories(Path output, Path detailed, Path consolidated) {
+    /** The folder of a run's consolidated reports, in its output folder. */
+    static final String CONSOLIDATED = "consolidated_report";
+
     public static PipelineDirectories create(Path output) {
         PipelineDirectories directories = new PipelineDirectories(
                 output,
                 output.resolve("detailed_report"),
-                output.resolve("consolidated_report")
+                output.resolve(CONSOLIDATED)
         );
         directories.createAll();
         return directories;

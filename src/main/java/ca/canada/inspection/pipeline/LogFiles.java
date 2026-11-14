@@ -1,24 +1,14 @@
 package ca.canada.inspection.pipeline;
 
-import ca.canada.inspection.util.Version;
-
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.util.List;
 
+/** {@code log.txt}: what the application's window showed of each run, appended run after run. */
 public final class LogFiles {
     private LogFiles() {}
-
-    /** Writes QAlog.txt for a run that stopped before writing its own (the window closed during the run). */
-    public static void ensureQaLog(Path outDir, Path inputFile, Path primerFile, RuntimeDependencies dependencies) {
-        if (!Files.exists(outDir.resolve("QAlog.txt"))) {
-            QaLogWriter.write(outDir, Version.VERSION, dependencies.bbmapDirectory(),
-                    dependencies.blastBinDirectory(), primerFile, inputFile, List.of());
-        }
-    }
 
     /** Appends the text of the application's log to log.txt. */
     public static void appendRunLog(Path outDir, String text) {

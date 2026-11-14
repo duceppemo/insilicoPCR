@@ -38,15 +38,15 @@ The application runs the same pipeline as the command line (since 0.14.0), so FA
 
 On Linux, starting the launcher from a terminal is recommended because startup messages and errors are also visible in the console.
 
-`QAlog.txt` is rewritten at the end of every run, as on the command line. Closing the window writes `QAlog.txt` and `log.txt` to the output folder of the last run started (nothing is written if no run was started), and stops any external tool still running.
+`QAlog.txt` is rewritten at the end of every run that finishes, as on the command line; it names the report the run wrote and the samples it analysed. At the end of every run, finished, failed or stopped, what the window showed of it is added to `log.txt` in its output folder (before 0.15.1, `log.txt` was written for the last run only, when the window closed). Closing the window during a run stops it and the external tools it runs; the run still adds to `log.txt` (`Run cancelled`) and leaves the `QAlog.txt` of the last finished run in the folder.
 
 ## Post-run actions
 
 | Button | What it does |
 |---|---|
-| **View Gel Image** | Shows the synthetic gel of the last run started in this window, whatever the output field holds by then |
-| **View HTML Report** | Opens the [HTML report](Reports#html-report) of the last run started in this window in your web browser. Enabled once a run has finished; the report of an earlier run is `consolidated_report/report.html` in its output folder |
-| **Open Previous Run** | Asks for an earlier run's output folder and shows the gel of its latest consolidated report. The lanes come from the run's own input list in `QAlog.txt`, one per sample: paired FASTQ mates form a single lane and non-sequence files are left out, even if the inputs have since been moved |
+| **View Gel Image** | Shows the synthetic gel of the last run of this window, whatever the output field holds by then: the report that run wrote, with a lane for every sample it analysed, with or without a band, as `--gel` draws it (before 0.15.1, the newest report in the folder, and lanes for the samples with a band only) |
+| **View HTML Report** | Opens the [HTML report](Reports#html-report) of the last run of this window in your web browser. Enabled once a run has finished; the report of an earlier run is `consolidated_report/report.html` in its output folder |
+| **Open Previous Run** | Asks for an earlier run's output folder and shows the gel of the last run that finished there: the report and the samples its `QAlog.txt` names, one lane per sample, even if the inputs have since been moved or other files added to their folder. For a run before 0.15.1, whose log names neither, the newest report in the folder and the samples worked out from the logged input list |
 | **Open Report TSV** | Asks for any consolidated report `.tsv` and shows it as a gel; lanes are only the samples the report has rows for |
 
 ## Synthetic gel viewer

@@ -39,7 +39,10 @@ final class ParallelStageRunner {
         int poolSize = Math.clamp(requestedThreads, 1, items.size());
         AtomicInteger done = new AtomicInteger();
         AtomicBoolean failed = new AtomicBoolean();
-        try (ExecutorService executor = Executors.newFixedThreadPool(poolSize)) {
+        // Daemon threads: work in flight when the application's window closes does not keep
+        // the program running.
+        try (ExecutorService executor = Executors.newFixedThreadPool(poolSize,
+                Thread.ofPlatform().name(stageName, 1).daemon().factory())) {
             List<Future<?>> futures = new ArrayList<>(items.size());
             for (T item : items) {
                 futures.add(executor.submit(() -> {

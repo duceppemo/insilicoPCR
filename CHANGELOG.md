@@ -4,6 +4,29 @@
 
 ### Fixed
 
+- Application: **View Gel Image** and **View HTML Report** showed the newest
+  report in the output folder, which another run into the same folder (the
+  command line, a second window) could have written; they now show the report
+  the window's own run wrote. The gel has a lane for every sample of the run,
+  with or without a band, as `--gel` draws it; it had lanes for the samples
+  with a band only.
+- Application: `log.txt` was written when the window closed, for the last run
+  only, so an earlier run of the same window into another folder got none. What
+  the window showed of a run is now added to `log.txt` at the end of that run,
+  also when it fails or is stopped.
+- Closing the application during a run: the run was left to the Java runtime to
+  end, possibly in the middle of writing a report, and its worker threads could
+  keep the program running after the window had gone. The window now stops the
+  run and its programs and waits for it (20 seconds at most) before closing.
+  It no longer writes a `QAlog.txt` of its own for a stopped run: the folder
+  keeps the log of the last run that finished there.
+- `QAlog.txt` names the report the run wrote (`Consolidated report:`) and the
+  samples it analysed (`Sample analysed:`), and its input list holds the files
+  of those samples instead of everything in the input folder when the log was
+  written. **Open Previous Run** reads them back, so it shows that run's
+  report, without lanes for files added to the input folder later. Logs
+  written before 0.15.1 are read as before.
+
 - An assembly named `<name>_R1.fasta`, `<name>_R2.fasta` or `<name>_assembly.fasta`,
   or with an upper-case extension (`ISO2.FASTA`), was searched but reported
   with no product, whatever it held: its BLAST results were filed under a name

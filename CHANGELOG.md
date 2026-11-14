@@ -4,6 +4,24 @@
 
 ### Fixed
 
+- The rows of a degenerate primer's or probe's variants were listed in
+  `report.tsv` and the HTML report in an order that could change from one run
+  of the same data to the next (also in 0.15.0 and 0.15.1); they now follow the
+  primer file.
+- A read pair whose mate suffixes differ in case (`s_r1.fastq.gz`,
+  `s_R2.fastq.gz`) was left out as two files with the same sample name: read 2
+  sorted first. A sample's files are now in name order whatever the case.
+- Application: closing the window while a run wrote its reports left a
+  `QAlog.txt` naming that stopped run as the folder's last finished one; it now
+  writes none, so the folder's log still names the last finished run (reports
+  the stopped run had written may remain, unnamed). `QAlog.txt` is written
+  whole or not at all: a write that stops partway leaves the previous log.
+  Closing the window during the input check is a cancelled run, not a failure
+  with a stack trace on the console.
+- **Open Previous Run** on a folder whose `QAlog.txt` was written before
+  0.15.1 took the newest report in the folder, which could be one a later,
+  unfinished run had left; it now takes the newest report no newer than the
+  log.
 - Application: closing the window while the read extension ran on the last
   FASTQ sample did not stop the run: the stopped program read as a failed
   one, the read extension went on to the next step, and the stopped run

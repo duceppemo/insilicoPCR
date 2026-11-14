@@ -10,6 +10,7 @@ import ca.canada.inspection.pcr.ReportRow;
 import ca.canada.inspection.pcr.SplitAcrossContigs;
 import ca.canada.inspection.util.InputCheck;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
@@ -779,7 +780,7 @@ public final class HtmlReport {
     private static String resource(String name) {
         try (InputStream in = HtmlReport.class.getResourceAsStream(name)) {
             if (in == null) {
-                throw new IllegalStateException(name + " is missing from the build");
+                throw new UncheckedIOException(new FileNotFoundException(name + " is missing from the build"));
             }
             return new String(in.readAllBytes(), StandardCharsets.UTF_8);
         } catch (IOException e) {

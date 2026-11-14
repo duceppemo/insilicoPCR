@@ -45,7 +45,7 @@ public record PreviousRun(Path report, List<String> samples) {
         }
         Optional<String> reportLine = valueOf(lines, QaLogWriter.REPORT_PREFIX).stream().findFirst();
         if (reportLine.isEmpty()) {
-            return new PreviousRun(latestReport(runDirectory), legacySamples(qaLog));
+            return new PreviousRun(latestReport(runDirectory, qaLog), legacySamples(qaLog));
         }
         Path report = runDirectory.resolve(reportLine.get());
         if (!Files.isRegularFile(report)) {
@@ -75,16 +75,23 @@ public record PreviousRun(Path report, List<String> samples) {
         return List.copyOf(samples);
     }
 
-    /** The newest consolidated report of a run folder written before 0.15.1. */
-    static Path latestReport(Path runDirectory) {
+    /**
+     * The report of a run folder whose log was written before 0.15.1: the newest consolidated
+     * report no newer than the log, which that run wrote last. A newer one is from a run that
+     * did not finish (it wrote no log), maybe cut short.
+     */
+    static Path latestReport(Path runDirectory, Path qaLog) {
         Path reportDir = runDirectory.resolve(PipelineDirectories.CONSOLIDATED);
         if (!Files.isDirectory(reportDir)) {
             throw new PipelineException("Consolidated report folder not found: " + reportDir);
         }
+        // A little slack for file systems that keep modification times coarsely.
+        long notAfter = lastModifiedMillis(qaLog) + 2_000;
         try (Stream<Path> reports = Files.list(reportDir)) {
             return reports
                     .filter(Files::isRegularFile)
                     .filter(ConsolidatedReport::isReportFile)
+                    .filter(report -> lastModifiedMillis(report) <= notAfter)
                     .max(Comparator.comparingLong(PreviousRun::lastModifiedMillis))
                     .orElseThrow(() -> new PipelineException("No consolidated report found in " + reportDir));
         } catch (IOException e) {

@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.function.Supplier;
 
@@ -58,12 +59,19 @@ public class Sample {
 		sortFiles();
 	}
 
-	private void sortFiles() { sampleFiles.sort(Comparator.comparing(Path::toString)); }
+	/** In name order, whatever the case: s_r1 before s_R2, so the first file of a pair is read 1. */
+	private void sortFiles() {
+		sampleFiles.sort(Comparator.comparing((Path file) -> file.toString().toLowerCase(Locale.ROOT))
+				.thenComparing(Path::toString));
+	}
 
 	public FileType getFileType() { return fileType; }
 	public void setFileType(FileType fileType) { this.fileType = fileType; }
 
-	/** The accepted hits of each oligo, by oligo ID; a copy. */
+	/**
+	 * The accepted hits of each oligo, by oligo ID; a copy, in no particular order (the report
+	 * lists products in the primer file's order).
+	 */
 	public synchronized Map<String, List<BlastResult>> blastResults() {
 		HashMap<String, List<BlastResult>> copy = new HashMap<>();
 		blastResults.forEach((key, value) -> copy.put(key, List.copyOf(value)));

@@ -40,32 +40,25 @@ public record PrimerId(String assay, Role role) {
 
     /** The ID read by the convention, or {@code null} when it does not follow it. */
     public static PrimerId parse(String id) {
-        int lastDash = id.lastIndexOf('-');
-        if (lastDash <= 0 || lastDash == id.length() - 1) {
-            return null;
-        }
-        Role role = Role.of(id.charAt(lastDash + 1));
-        return role == null ? null : new PrimerId(id.substring(0, lastDash), role);
-    }
-
-    /**
-     * The ID of a primer the run already holds, which follows the convention ({@code PrimerService}
-     * rejects any other).
-     *
-     * @throws IllegalArgumentException when it does not
-     */
-    public static PrimerId of(String id) {
-        PrimerId parsed = parse(id);
-        if (parsed == null) {
-            throw new IllegalArgumentException("Not a primer ID of the <assay>-F/-R/-P convention: " + id);
-        }
-        return parsed;
+        Role role = roleOf(id);
+        return role == null ? null : new PrimerId(id.substring(0, id.lastIndexOf('-')), role);
     }
 
     /** True when the ID names a probe, such as {@code assay-P} or {@code assay-P_3}. */
     public static boolean isProbe(String id) {
-        PrimerId parsed = parse(id);
-        return parsed != null && parsed.role() == Role.PROBE;
+        return roleOf(id) == Role.PROBE;
+    }
+
+    /**
+     * The role of {@code id}, or {@code null} when it does not follow the convention; as
+     * {@link #parse} reads it, without making the assay name (it runs once per BLAST hit).
+     */
+    public static Role roleOf(String id) {
+        int lastDash = id.lastIndexOf('-');
+        if (lastDash <= 0 || lastDash == id.length() - 1) {
+            return null;
+        }
+        return Role.of(id.charAt(lastDash + 1));
     }
 
     /** The primer IDs of one assay, by role, as written (or as expanded). */

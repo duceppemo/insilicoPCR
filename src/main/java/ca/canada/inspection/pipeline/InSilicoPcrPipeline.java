@@ -91,7 +91,8 @@ public final class InSilicoPcrPipeline {
         done(Step.READ_EXTENSION);
 
         RunResult result = ReportGenerator.write(context, readEvidence, extension);
-        done(Step.REPORTS);
+        // QAlog.txt is written: the run is finished, whatever happens from here.
+        monitor.stepDone(Step.REPORTS);
 
         long seconds = TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - startTime);
         monitor.info("Done in " + seconds + " seconds");

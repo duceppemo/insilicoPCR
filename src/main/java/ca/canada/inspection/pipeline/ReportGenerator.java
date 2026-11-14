@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CancellationException;
 
 /**
  * The last step of a run: writes {@code report.tsv}, the FASTQ diagnostics, the HTML report,
@@ -57,6 +58,11 @@ public final class ReportGenerator {
         qaLines.addAll(diagnostics.qaLogLines(context.config().tadpole(), context.config().readMinFraction(),
                 context.config().readExtension()));
         splits.forEach(split -> qaLines.add("Primers at contig ends: " + split.message()));
+        // QAlog.txt marks the run finished and names its report: a run stopped before it does not
+        // write it, and the folder's log still names the last finished run's report.
+        if (monitor.isCancelled()) {
+            throw new CancellationException("The run was cancelled (reports).");
+        }
         QaLogWriter.write(context, Version.VERSION, report, qaLines);
         return new RunResult(report, html, List.copyOf(context.samples().keySet()));
     }

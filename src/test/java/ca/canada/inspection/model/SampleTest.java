@@ -75,4 +75,12 @@ class SampleTest {
         assertEquals("products 3", sample.derived("key", compute), "so does a new hit");
         assertEquals("products 4", sample.derived("other key", compute));
     }
+
+    @Test
+    void theFirstFileOfAPairIsReadOneWhateverTheCase() {
+        Sample sample = new Sample();
+        sample.addFile(Path.of("s_R2.fastq.gz"));
+        sample.addFile(Path.of("s_r1.fastq.gz"));
+        assertEquals(List.of(Path.of("s_r1.fastq.gz"), Path.of("s_R2.fastq.gz")), sample.files());
+    }
 }

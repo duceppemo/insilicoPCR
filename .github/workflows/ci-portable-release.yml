@@ -22,12 +22,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           lfs: true
 
       - name: Set up JDK 26
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '26'
@@ -59,7 +59,7 @@ jobs:
           test -f target/site/jacoco/jacoco.xml || { echo "JaCoCo report missing"; exit 1; }
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: target/site/jacoco/jacoco.xml
@@ -86,7 +86,7 @@ jobs:
           scripts/ci/smoke-test.sh release/*linux-x64.zip
 
       - name: Upload Linux artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: insilicoPCR-linux-x64
           path: |
@@ -100,12 +100,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           lfs: true
 
       - name: Set up JDK 26
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '26'
@@ -145,7 +145,7 @@ jobs:
           scripts/ci/smoke-test.sh release/*windows-x64.zip
 
       - name: Upload Windows artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: insilicoPCR-windows-x64
           path: |
@@ -161,7 +161,7 @@ jobs:
 
     steps:
       - name: Download release artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: dist
           merge-multiple: true
@@ -171,7 +171,7 @@ jobs:
         run: find dist -maxdepth 2 -type f -print -exec ls -lh {} \;
 
       - name: Publish portable ZIPs only
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: |
             dist/*linux-x64.zip

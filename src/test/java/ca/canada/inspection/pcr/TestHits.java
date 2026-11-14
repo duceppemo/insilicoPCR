@@ -3,21 +3,21 @@ package ca.canada.inspection.pcr;
 import ca.canada.inspection.model.BlastResult;
 
 /** Builders for BLAST hits used across the amplicon tests. */
-final class TestHits {
+public final class TestHits {
 
-    static final String PRIMER_20 = "ACGTACGTACGTACGTACGT"; // 20-mer ending in T
-    static final String PRIMER_GC = "ACGTACGTACGTACGTACGC"; // 20-mer ending in C
+    public static final String PRIMER_20 = "ACGTACGTACGTACGTACGT"; // 20-mer ending in T
+    public static final String PRIMER_GC = "ACGTACGTACGTACGTACGC"; // 20-mer ending in C
 
     private TestHits() {
     }
 
     /** Perfect full-length hit on the plus strand: primer occupies [qstart, qstart+19]. */
-    static BlastResult plusHit(String primerId, String contig, int qstart) {
+    public static BlastResult plusHit(String primerId, String contig, int qstart) {
         return plusHit(primerId, contig, qstart, PRIMER_20, PRIMER_20);
     }
 
     /** Full-length plus-strand hit with explicit aligned sequences. */
-    static BlastResult plusHit(String primerId, String contig, int qstart, String qseq, String sseq) {
+    public static BlastResult plusHit(String primerId, String contig, int qstart, String qseq, String sseq) {
         int slen = sseq.replace("-", "").length();
         return new BlastResult("sample", contig, primerId,
                 countMismatches(qseq, sseq), countGaps(qseq, sseq),
@@ -26,12 +26,12 @@ final class TestHits {
     }
 
     /** Perfect full-length hit on the minus strand: primer occupies [qstart, qstart+19]. */
-    static BlastResult minusHit(String primerId, String contig, int qstart) {
+    public static BlastResult minusHit(String primerId, String contig, int qstart) {
         return minusHit(primerId, contig, qstart, PRIMER_20, PRIMER_20);
     }
 
     /** Full-length minus-strand hit (sstart > send) with explicit aligned sequences. */
-    static BlastResult minusHit(String primerId, String contig, int qstart, String qseq, String sseq) {
+    public static BlastResult minusHit(String primerId, String contig, int qstart, String qseq, String sseq) {
         int slen = sseq.replace("-", "").length();
         return new BlastResult("sample", contig, primerId,
                 countMismatches(qseq, sseq), countGaps(qseq, sseq),
@@ -40,7 +40,7 @@ final class TestHits {
     }
 
     /** Hit whose alignment covers primer positions [sstart, send] only (plus strand). */
-    static BlastResult truncatedPlusHit(String primerId, String contig, int qstart,
+    public static BlastResult truncatedPlusHit(String primerId, String contig, int qstart,
                                         int sstart, int send, String primerSeq) {
         String aligned = primerSeq.substring(sstart - 1, send);
         return new BlastResult("sample", contig, primerId,

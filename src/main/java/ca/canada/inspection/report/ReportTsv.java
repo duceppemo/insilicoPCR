@@ -1,5 +1,6 @@
-package ca.canada.inspection.pcr;
+package ca.canada.inspection.report;
 
+import ca.canada.inspection.pcr.ReportRow;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.UncheckedIOException;

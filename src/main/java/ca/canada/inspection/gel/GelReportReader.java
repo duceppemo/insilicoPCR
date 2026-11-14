@@ -1,7 +1,7 @@
 package ca.canada.inspection.gel;
 
 import ca.canada.inspection.pcr.ReportRow;
-import ca.canada.inspection.pcr.ReportTsv;
+import ca.canada.inspection.report.ReportTsv;
 
 import java.nio.file.Files;
 import java.nio.file.Path;

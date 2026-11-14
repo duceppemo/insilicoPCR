@@ -2,7 +2,7 @@ package ca.canada.inspection.pipeline;
 
 import ca.canada.inspection.model.Sample;
 import ca.canada.inspection.pcr.AmpliconOptions;
-import ca.canada.inspection.pcr.HtmlReport;
+import ca.canada.inspection.report.HtmlReport;
 import ca.canada.inspection.pcr.ReadExtensionCaller;
 import ca.canada.inspection.pcr.ReadLevelCaller;
 import ca.canada.inspection.util.InputCheck;

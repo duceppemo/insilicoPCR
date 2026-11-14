@@ -4,7 +4,7 @@ import ca.canada.inspection.pcr.PrimerPanel;
 import ca.canada.inspection.model.Sample;
 import ca.canada.inspection.pcr.AmpliconOptions;
 import ca.canada.inspection.pcr.BlastReports;
-import ca.canada.inspection.pcr.ConsolidatedReport;
+import ca.canada.inspection.report.ConsolidatedReport;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 

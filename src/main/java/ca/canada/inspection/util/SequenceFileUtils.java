@@ -8,6 +8,7 @@ import java.io.InputStreamReader;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.HashMap;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -184,5 +185,33 @@ public final class SequenceFileUtils {
             }
         }
         return -1;
+    }
+
+    /** Sequence lengths of a FASTA file keyed by ID (header up to the first whitespace, as BLAST reports it). */
+    public static Map<String, Integer> sequenceLengths(Path fasta) {
+        Map<String, Integer> lengths = new HashMap<>();
+        try (BufferedReader reader = openMaybeGzip(fasta)) {
+            String id = null;
+            int length = 0;
+            String line;
+            while ((line = reader.readLine()) != null) {
+                if (line.startsWith(">")) {
+                    if (id != null) {
+                        lengths.put(id, length);
+                    }
+                    String header = line.substring(1).trim();
+                    id = header.split("\\s+", 2)[0];
+                    length = 0;
+                } else {
+                    length += line.strip().length();
+                }
+            }
+            if (id != null) {
+                lengths.put(id, length);
+            }
+        } catch (IOException e) {
+            throw new UncheckedIOException("Unable to read contigs: " + fasta, e);
+        }
+        return lengths;
     }
 }

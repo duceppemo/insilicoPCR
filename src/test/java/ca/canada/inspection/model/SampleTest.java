@@ -43,20 +43,21 @@ class SampleTest {
     }
 
     @Test
-    void legacyAliasesDelegate() {
+    void whatTheRunLearnsIsKept() {
         Sample sample = new Sample();
         sample.setName("s1");
         sample.setFileType(Sample.FileType.FASTQ);
-        sample.addNewBlastResult("assay-F", hit("assay-F"));
+        sample.addBlastResult("assay-F", hit("assay-F"));
+        sample.addBlastResult("assay-F", hit("assay-F"));
 
         assertEquals("s1", sample.getName());
         assertTrue(sample.isFastq());
-        assertEquals(1, sample.getBlastResults().get("assay-F").size());
+        assertEquals(2, sample.blastResults().get("assay-F").size());
 
         sample.setFileType(Sample.FileType.FASTA);
         assertFalse(sample.isFastq());
 
-        sample.setAssemblyFile("assembly.fasta");
+        sample.setAssemblyFile(Path.of("assembly.fasta"));
         assertEquals(Path.of("assembly.fasta"), sample.getAssemblyFile());
     }
 }

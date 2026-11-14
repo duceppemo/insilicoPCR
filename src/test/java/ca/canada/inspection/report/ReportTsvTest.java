@@ -1,6 +1,11 @@
-package ca.canada.inspection.pcr;
+package ca.canada.inspection.report;
 
 import ca.canada.inspection.model.Sample;
+import ca.canada.inspection.pcr.AmpliconOptions;
+import ca.canada.inspection.pcr.ExpectedSizes;
+import ca.canada.inspection.pcr.PrimerPanel;
+import ca.canada.inspection.pcr.ReportRow;
+import ca.canada.inspection.pcr.TestRows;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 

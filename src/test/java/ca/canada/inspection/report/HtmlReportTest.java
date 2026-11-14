@@ -1,12 +1,16 @@
-package ca.canada.inspection.pcr;
+package ca.canada.inspection.report;
 
+import ca.canada.inspection.pcr.AmpliconOptions;
+import ca.canada.inspection.pcr.ExpectedSizes;
 import ca.canada.inspection.pcr.FastqDiagnostics.Assembly;
 import ca.canada.inspection.pcr.FastqDiagnostics.Finding;
 import ca.canada.inspection.pcr.FastqDiagnostics.ReadsWithOligo;
 import ca.canada.inspection.pcr.FastqDiagnostics.Status;
-import ca.canada.inspection.pcr.HtmlReport.Cell;
-import ca.canada.inspection.pcr.HtmlReport.Product;
-import ca.canada.inspection.pcr.HtmlReport.State;
+import ca.canada.inspection.pcr.PrimerPanel;
+import ca.canada.inspection.pcr.TestRows;
+import ca.canada.inspection.report.HtmlReport.Cell;
+import ca.canada.inspection.report.HtmlReport.Product;
+import ca.canada.inspection.report.HtmlReport.State;
 import ca.canada.inspection.util.InputCheck;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;

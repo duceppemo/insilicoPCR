@@ -290,7 +290,7 @@ public final class ReadExtensionCaller {
     public static Map<String, Set<Integer>> knownSizes(Sample sample, PrimerPanel primers,
                                                        AmpliconOptions options, ReadEvidence reads) {
         Map<String, Set<Integer>> known = new TreeMap<>();
-        ConsolidatedReport.reportedSizes(sample, primers, options).forEach((assay, sizes) ->
+        Products.sizes(sample, primers, options).forEach((assay, sizes) ->
                 known.computeIfAbsent(assay, ignored -> new TreeSet<>()).addAll(sizes));
         reads.calls().forEach((assay, products) -> products.forEach(product ->
                 known.computeIfAbsent(assay, ignored -> new TreeSet<>()).addAll(product.sizes())));
@@ -396,7 +396,7 @@ public final class ReadExtensionCaller {
         // A product must lie wholly on the extended read, primers included, as on a read.
         Sample contained = ReadLevelCaller.withContainedHits(extended, lengths);
         Map<String, List<ReportRow>> rowsByAssay = new HashMap<>();
-        for (ReportRow row : ConsolidatedReport.rows(contained, primers, options)) {
+        for (ReportRow row : Products.of(contained, primers, options)) {
             Seed seed = seedById.get(row.contig());
             String assay = row.assay();
             // Only the assay the read was seeded for: a seed can wander through another assay's locus.

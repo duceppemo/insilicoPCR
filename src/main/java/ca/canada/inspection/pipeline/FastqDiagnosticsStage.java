@@ -2,17 +2,19 @@ package ca.canada.inspection.pipeline;
 
 import ca.canada.inspection.model.Sample;
 import ca.canada.inspection.pcr.AmpliconOptions;
-import ca.canada.inspection.pcr.ConsolidatedReport;
-import ca.canada.inspection.pcr.FastqDiagnostics;
 import ca.canada.inspection.pcr.FastqDiagnostics.Finding;
 import ca.canada.inspection.pcr.FastqDiagnostics.Status;
-import ca.canada.inspection.pcr.FastqDiagnosticsReport;
+import ca.canada.inspection.pcr.FastqDiagnostics;
 import ca.canada.inspection.pcr.PairSupport;
 import ca.canada.inspection.pcr.PrimerPanel;
+import ca.canada.inspection.pcr.Products;
 import ca.canada.inspection.pcr.ReadExtensionCaller;
-import ca.canada.inspection.pcr.ReadLevelCaller;
 import ca.canada.inspection.pcr.ReadLevelCaller.ReadEvidence;
+import ca.canada.inspection.pcr.ReadLevelCaller;
 import ca.canada.inspection.pcr.ReportRow;
+import ca.canada.inspection.report.ConsolidatedReport;
+import ca.canada.inspection.report.FastqDiagnosticsReport;
+import ca.canada.inspection.util.SequenceFileUtils;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -149,7 +151,7 @@ public final class FastqDiagnosticsStage {
 
     /**
      * Report rows for products the mini-assembly did not report but reads hold, keyed
-     * by sample name; pass them to {@link ConsolidatedReport#write(Path, Map, Map, AmpliconOptions, Map)}.
+     * by sample name; pass them to {@link ConsolidatedReport#write(Path, Map, PrimerPanel, AmpliconOptions, Map)}.
      * A product the assembly reports is not repeated, but an assay the assembly reports
      * at another size only (both primers landing elsewhere) still gets its read-level
      * product.
@@ -164,7 +166,7 @@ public final class FastqDiagnosticsStage {
             if (sample == null) {
                 return;
             }
-            Map<String, Set<Integer>> assembled = ConsolidatedReport.reportedSizes(sample, primers, options);
+            Map<String, Set<Integer>> assembled = Products.sizes(sample, primers, options);
             List<ReportRow> sampleRows = new ArrayList<>();
             new TreeMap<>(reads.calls()).forEach((assay, products) ->
                     FastqDiagnostics.missingFromAssembly(products, assembled.get(assay)).stream()
@@ -218,7 +220,7 @@ public final class FastqDiagnosticsStage {
                 continue;
             }
             Map<String, Integer> lengths = sample.getAssemblyFile() != null && Files.isRegularFile(sample.getAssemblyFile())
-                    ? FastqDiagnosticsReport.contigLengths(sample.getAssemblyFile())
+                    ? SequenceFileUtils.sequenceLengths(sample.getAssemblyFile())
                     : Map.of();
             findings.addAll(FastqDiagnostics.assess(sample, primers, options, reads, lengths,
                     extension.of(sample.getName())));

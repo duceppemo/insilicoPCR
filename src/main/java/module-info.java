@@ -9,6 +9,7 @@ module ca.canada.inspection.insilicopcr {
     exports ca.canada.inspection.gel;
     exports ca.canada.inspection.dispatchpcr;
     exports ca.canada.inspection.pcr;
+    exports ca.canada.inspection.report;
     exports ca.canada.inspection.pipeline;
     exports ca.canada.inspection.util;
 }

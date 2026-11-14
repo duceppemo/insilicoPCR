@@ -26,7 +26,7 @@ import java.util.stream.Collectors;
  * (#7), yet single reads, or merged read pairs, are often long enough to hold
  * a complete qPCR amplicon. Each read is treated as a tiny contig and run through
  * the same hit filters and amplicon/probe rules as the assembly
- * ({@link ConsolidatedReport#rows}), so a read-level call means exactly what a
+ * ({@link Products#of}), so a read-level call means exactly what a
  * contig-level call means.</p>
  *
  * <p>An assay can give more than one product in a sample (the target, and another
@@ -240,7 +240,7 @@ public final class ReadLevelCaller {
         });
 
         Map<String, List<ReportRow>> rowsByAssay = new TreeMap<>();
-        for (ReportRow row : ConsolidatedReport.rows(reads, primers, options)) {
+        for (ReportRow row : Products.of(reads, primers, options)) {
             rowsByAssay.computeIfAbsent(row.assay(), ignored -> new ArrayList<>()).add(row);
         }
         Map<String, PrimerId.Assay> groups = primers.assays();

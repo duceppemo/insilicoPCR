@@ -2,12 +2,12 @@ package ca.canada.inspection.pipeline;
 
 import ca.canada.inspection.pcr.PrimerPanel;
 import ca.canada.inspection.model.Sample;
+import ca.canada.inspection.util.SequenceFileUtils;
 import ca.canada.inspection.pcr.AmpliconOptions;
 import ca.canada.inspection.pcr.FastqDiagnostics.Assembly;
 import ca.canada.inspection.pcr.FastqDiagnostics.Finding;
 import ca.canada.inspection.pcr.FastqDiagnostics.ReadsWithOligo;
 import ca.canada.inspection.pcr.FastqDiagnostics.Status;
-import ca.canada.inspection.pcr.FastqDiagnosticsReport;
 import ca.canada.inspection.pcr.ReadExtensionCaller;
 import ca.canada.inspection.pcr.ReportRow;
 import ca.canada.inspection.pcr.TestRows;
@@ -77,7 +77,7 @@ class ReadExtensionStageTest {
                 new Seed("extended_read_3", "read_8", "long", 'R'));
         AmpliconOptions options = AmpliconOptions.withMismatches(0);
 
-        Map<String, Integer> lengths = FastqDiagnosticsReport.contigLengths(extended);
+        Map<String, Integer> lengths = SequenceFileUtils.sequenceLengths(extended);
         Sample sample = ReadExtensionStage.extendedSample("S", hitsFile, extended, lengths, PRIMERS, options);
         Outcome outcome = ReadExtensionCaller.evaluate(sample, lengths, seeds, PRIMERS, options, 5000).get("long");
 

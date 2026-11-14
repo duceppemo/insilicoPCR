@@ -3,17 +3,17 @@ package ca.canada.inspection.pipeline;
 import ca.canada.inspection.model.Sample;
 import ca.canada.inspection.pcr.AmpliconOptions;
 import ca.canada.inspection.pcr.BlastHitParser;
+import ca.canada.inspection.pcr.PairSupport;
 import ca.canada.inspection.pcr.PrimerPanel;
 import ca.canada.inspection.pcr.QueryTemplates;
-import ca.canada.inspection.pcr.FastqDiagnosticsReport;
-import ca.canada.inspection.pcr.PairSupport;
-import ca.canada.inspection.pcr.ReadExtensionCaller;
 import ca.canada.inspection.pcr.ReadExtensionCaller.Outcome;
 import ca.canada.inspection.pcr.ReadExtensionCaller.Product;
 import ca.canada.inspection.pcr.ReadExtensionCaller.Seed;
+import ca.canada.inspection.pcr.ReadExtensionCaller;
 import ca.canada.inspection.pcr.ReadLevelCaller.ReadEvidence;
-import ca.canada.inspection.util.SequenceFileUtils;
 import ca.canada.inspection.pcr.ReportRow;
+import ca.canada.inspection.pcr.TrimmedEnds;
+import ca.canada.inspection.util.SequenceFileUtils;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -151,7 +151,7 @@ public final class ReadExtensionStage {
         if (!Files.isRegularFile(extendedFile)) {
             throw new PipelineException("Tadpole wrote no extended reads");
         }
-        Map<String, Integer> lengths = FastqDiagnosticsReport.contigLengths(extendedFile);
+        Map<String, Integer> lengths = SequenceFileUtils.sequenceLengths(extendedFile);
         ReadLevelStage.runBlast(settings.search(), settings.search().threads(), extendedFile, hitsFile);
         BlastTsv.prependHeader(hitsFile);
 

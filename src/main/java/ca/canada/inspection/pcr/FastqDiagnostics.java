@@ -164,7 +164,7 @@ public final class FastqDiagnostics {
     public static List<Finding> assess(Sample sample, PrimerPanel primers, AmpliconOptions options,
                                        ReadEvidence reads, Map<String, Integer> contigLengths,
                                        Map<String, ReadExtensionCaller.Outcome> extension) {
-        Map<String, Set<Integer>> assembled = ConsolidatedReport.reportedSizes(sample, primers, options);
+        Map<String, Set<Integer>> assembled = Products.sizes(sample, primers, options);
         Map<String, List<BlastResult>> hits = sample.blastResults();
         List<Finding> findings = new ArrayList<>();
 

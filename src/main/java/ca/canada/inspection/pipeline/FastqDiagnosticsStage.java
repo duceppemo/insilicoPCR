@@ -149,51 +149,6 @@ public final class FastqDiagnosticsStage {
     private FastqDiagnosticsStage() {
     }
 
-    /**
-     * Report rows for products the mini-assembly did not report but reads hold, keyed
-     * by sample name; pass them to {@link ConsolidatedReport#write(Path, Map, PrimerPanel, AmpliconOptions, Map)}.
-     * A product the assembly reports is not repeated, but an assay the assembly reports
-     * at another size only (both primers landing elsewhere) still gets its read-level
-     * product.
-     */
-    public static Map<String, List<ReportRow>> readLevelRows(Map<String, Sample> samples,
-                                                                PrimerPanel primers,
-                                                                AmpliconOptions options,
-                                                                Map<String, ReadEvidence> evidence) {
-        Map<String, List<ReportRow>> rows = new HashMap<>();
-        evidence.forEach((sampleName, reads) -> {
-            Sample sample = samples.get(sampleName);
-            if (sample == null) {
-                return;
-            }
-            Map<String, Set<Integer>> assembled = Products.sizes(sample, primers, options);
-            List<ReportRow> sampleRows = new ArrayList<>();
-            new TreeMap<>(reads.calls()).forEach((assay, products) ->
-                    FastqDiagnostics.missingFromAssembly(products, assembled.get(assay)).stream()
-                            .map(ReadLevelCaller::reportRow)
-                            .forEach(sampleRows::add));
-            if (!sampleRows.isEmpty()) {
-                rows.put(sampleName, sampleRows);
-            }
-        });
-        return rows;
-    }
-
-    /**
-     * The rows to append to each sample's own: those called from single reads
-     * ({@link #readLevelRows}), then those called by extending reads.
-     */
-    public static Map<String, List<ReportRow>> extraRows(Map<String, Sample> samples, PrimerPanel primers,
-                                                            AmpliconOptions options, Map<String, ReadEvidence> evidence,
-                                                            ReadExtensionStage.Result extension) {
-        Map<String, List<ReportRow>> rows = new HashMap<>();
-        readLevelRows(samples, primers, options, evidence).forEach((sample, list) ->
-                rows.put(sample, new ArrayList<>(list)));
-        extension.rows().forEach((sample, list) ->
-                rows.computeIfAbsent(sample, ignored -> new ArrayList<>()).addAll(list));
-        return rows;
-    }
-
     public static Result run(Path consolidatedReport, Map<String, Sample> samples, PrimerPanel primers,
                              AmpliconOptions options, Map<String, ReadEvidence> evidence) {
         return run(consolidatedReport, samples, primers, options, evidence, ReadExtensionStage.Result.NONE);

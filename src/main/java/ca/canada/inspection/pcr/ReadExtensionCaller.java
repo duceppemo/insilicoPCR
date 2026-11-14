@@ -226,14 +226,7 @@ public final class ReadExtensionCaller {
 
         /** Whether the sample already shows the product, give or take a length variant. */
         public boolean isReported(Product product) {
-            for (int size : product.sizes()) {
-                for (int known : reported) {
-                    if (Math.abs(size - known) <= ReadLevelCaller.PRODUCT_SIZE_GAP) {
-                        return true;
-                    }
-                }
-            }
-            return false;
+            return reported.stream().anyMatch(known -> ReadLevelCaller.sameProduct(product.sizes(), known));
         }
     }
 
@@ -259,11 +252,16 @@ public final class ReadExtensionCaller {
      */
     public static List<String> candidates(Sample sample, PrimerPanel primers, AmpliconOptions options,
                                           ReadEvidence reads, Mode mode) {
+        return candidates(knownSizes(sample, primers, options, reads), primers, reads, mode);
+    }
+
+    /** As {@link #candidates(Sample, PrimerPanel, AmpliconOptions, ReadEvidence, Mode)}, from the sample's {@link #knownSizes}. */
+    public static List<String> candidates(Map<String, Set<Integer>> known, PrimerPanel primers, ReadEvidence reads,
+                                          Mode mode) {
         ExpectedSizes sizes = primers.expectedSizes();
         if (mode == Mode.OFF) {
             return List.of();
         }
-        Map<String, Set<Integer>> known = knownSizes(sample, primers, options, reads);
         List<String> assays = new ArrayList<>();
         primers.completeAssays().forEach((assay, group) -> {
             if (reads.readsCarrying(group.forward()) == 0 || reads.readsCarrying(group.reverse()) == 0) {

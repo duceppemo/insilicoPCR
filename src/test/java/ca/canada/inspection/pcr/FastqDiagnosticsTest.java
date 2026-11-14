@@ -122,7 +122,7 @@ class FastqDiagnosticsTest {
         assertEquals("reports 181 bp only", finding.assemblyDetail());
         assertTrue(finding.readDetail().startsWith("complete amplicon in 3 of 3 informative read(s) (100%), size(s) 70 bp"),
                 finding.readDetail());
-        assertEquals(1, FastqDiagnostics.missingFromAssembly(evidence.products("assay"), Set.of(181)).size());
+        assertEquals(1, ReadLevelCaller.missingFromAssembly(evidence.products("assay"), Set.of(181)).size());
     }
 
     @Test
@@ -135,7 +135,7 @@ class FastqDiagnosticsTest {
         ReadEvidence evidence = readsWithAmplicon(3);
 
         assertTrue(assess(sample, evidence, Map.of()).isEmpty());
-        assertTrue(FastqDiagnostics.missingFromAssembly(evidence.products("assay"), Set.of(72)).isEmpty());
+        assertTrue(ReadLevelCaller.missingFromAssembly(evidence.products("assay"), Set.of(72)).isEmpty());
     }
 
     @Test

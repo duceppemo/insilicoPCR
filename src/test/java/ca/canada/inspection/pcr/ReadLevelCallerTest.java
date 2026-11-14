@@ -424,4 +424,13 @@ class ReadLevelCallerTest {
             assertEquals("read_1", row.contig());
         }
     }
+
+    @Test
+    void aProductCoversItsSizesGiveOrTakeALengthVariant() {
+        // The one rule for calls from reads and from extended reads alike.
+        assertEquals(true, ReadLevelCaller.sameProduct(List.of(300, 310, 318), 328));
+        assertEquals(true, ReadLevelCaller.sameProduct(Set.of(300), 290));
+        assertEquals(false, ReadLevelCaller.sameProduct(List.of(300, 310, 318), 329));
+        assertEquals(false, ReadLevelCaller.sameProduct(Set.of(300), 289));
+    }
 }

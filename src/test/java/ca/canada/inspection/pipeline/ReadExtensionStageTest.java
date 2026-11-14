@@ -133,9 +133,9 @@ class ReadExtensionStageTest {
         ReadExtensionStage.Result extension = new ReadExtensionStage.Result(Map.of(), Map.of("S", List.of(row)),
                 List.of());
 
-        Map<String, List<ReportRow>> rows = FastqDiagnosticsStage.extraRows(Map.of("S", sample), PRIMERS,
-                AmpliconOptions.withMismatches(0), Map.of("S", new ReadEvidence(Map.of(), Map.of(), Map.of())),
-                extension);
+        Map<String, List<ReportRow>> rows = ReportGenerator.extraRows(
+                TestContexts.writingTo(java.nio.file.Path.of("unused"), Map.of("S", sample)),
+                Map.of("S", new ReadEvidence(Map.of(), Map.of(), Map.of())), extension);
 
         assertEquals(Map.of("S", List.of(row)), rows);
         assertTrue(ReadExtensionStage.Result.NONE.of("S").isEmpty());

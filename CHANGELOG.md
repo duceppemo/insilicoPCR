@@ -98,6 +98,12 @@
 
 ### Changed
 
+- Code (FASTQ mode): whether a product called from reads or from extended reads
+  is one the sample already shows is decided by one rule
+  (`ReadLevelCaller.sameProduct`), where the two callers each had their own;
+  the report rows of read-level calls are made next to the read-level caller
+  instead of in the diagnostics step, and what a sample already shows is
+  worked out once per sample for the read extension, instead of twice.
 - The synthetic gel is drawn by one piece of code (`gel.GelScene`) for the
   viewer, the paged viewer of runs of more than 100 samples, the `--gel` image
   and the SVG files, which each drew their own: the paged viewer and the SVG

@@ -132,7 +132,9 @@ public final class ReadExtensionStage {
         deleteQuietly(BbtoolsCommands.extensionCandidates(sampleDir, name));
         deleteQuietly(BbtoolsCommands.candidateReads(sampleDir, name));
 
-        List<String> assays = ReadExtensionCaller.candidates(sample, primers, options, reads, settings.mode());
+        // What the sample shows already, on contigs and in reads: worked out once for the sample.
+        Map<String, Set<Integer>> known = ReadExtensionCaller.knownSizes(sample, primers, options, reads);
+        List<String> assays = ReadExtensionCaller.candidates(known, primers, reads, settings.mode());
         if (assays.isEmpty()) {
             return;
         }
@@ -157,7 +159,7 @@ public final class ReadExtensionStage {
 
         Map<String, Outcome> sampleOutcomes = checkAgainstReadPairs(settings, ReadExtensionCaller.evaluate(
                 extendedSample(name, hitsFile, extendedFile, lengths, primers, options), lengths, seeds, primers, options, reach,
-                ReadExtensionCaller.knownSizes(sample, primers, options, reads)),
+                known),
                 extendedFile, sampleDir, sample);
         outcomes.put(name, sampleOutcomes);
 

@@ -125,21 +125,6 @@ public final class FastqDiagnostics {
     }
 
     /**
-     * The read-level products to report next to the assembly's own rows: those with
-     * enough support that the assembly does not already report.
-     *
-     * @param products       an assay's products seen in reads
-     * @param assembledSizes amplicon sizes the assembly reports for the assay; {@code null}
-     *                       or empty when it reports none
-     */
-    public static List<ReadCall> missingFromAssembly(List<ReadCall> products, Set<Integer> assembledSizes) {
-        return products.stream()
-                .filter(ReadCall::isReportable)
-                .filter(product -> assembledSizes == null || !product.matchesAny(assembledSizes))
-                .toList();
-    }
-
-    /**
      * @param sample        FASTQ sample with its accepted contig hits attached
      * @param primers       expanded primer IDs and sequences of the run
      * @param reads         read-level evidence for the sample
@@ -187,7 +172,7 @@ public final class FastqDiagnostics {
             Set<Integer> assembledSizes = assembled.get(assay);
             if (assembledSizes != null) {
                 // The assembly reports the assay: only a product it lacks needs explaining.
-                List<ReadCall> missing = missingFromAssembly(products, assembledSizes);
+                List<ReadCall> missing = ReadLevelCaller.missingFromAssembly(products, assembledSizes);
                 String extended = added.isEmpty() ? withheld : added + (withheld.isEmpty() ? "" : "; " + withheld);
                 if (!missing.isEmpty() || !extended.isEmpty()) {
                     findings.add(new Finding(sample.getName(), assay,

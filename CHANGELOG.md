@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- FASTQ input: a sample whose Tadpole ran out of its share of memory, when
+  several samples ran at once, stopped the run with `Tadpole failed with exit
+  code 1` instead of being run again alone. Tadpole's k-mer table is sized
+  from its heap, and when it is full BBTools stops the program itself, after
+  printing `This program ran out of memory.`, without the Java runtime running
+  out of memory; only the runtime's exit code 3 was recognised. That line is
+  now recognised too: such a sample is set aside and run again alone, and a
+  sample that runs out alone gets the `ran out of memory` message and its
+  advice. Found on 4 Globodera read sets sharing 48 GB (12 GB each): one
+  stopped with 5.8 of its 12 GB in use.
+
 ## 0.15.0 (2026-11-14)
 
 ### Added

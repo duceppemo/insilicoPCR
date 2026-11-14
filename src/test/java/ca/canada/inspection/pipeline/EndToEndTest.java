@@ -9,6 +9,8 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -156,12 +158,13 @@ class EndToEndTest {
                 "second stxQ 118 target", "second toxA 312 target"), products(report(output)));
     }
 
-    @Test
-    void aSampleThatRunsOutOfMemoryIsRunAgainAloneWithAllTheMemory() throws IOException {
+    @ParameterizedTest
+    @EnumSource(OutOfMemory.class)
+    void aSampleThatRunsOutOfMemoryIsRunAgainAloneWithAllTheMemory(OutOfMemory how) throws IOException {
         Recorder monitor = new Recorder();
         Path output = directory.resolve("out-of-memory-results");
         // 8 GiB and 2 threads: the two samples get 4 GiB and 1 thread each, alone 8 GiB and 2 threads.
-        PipelineContext context = readContext(twoSamples("big", "small"), output, 8, monitor);
+        PipelineContext context = readContext(twoSamples("big", "small"), output, 8, monitor, how);
 
         new FastqProcessor().process(context);
 
@@ -184,11 +187,13 @@ class EndToEndTest {
         }
     }
 
-    @Test
-    void aSampleThatRunsOutOfMemoryAloneFailsTheRunWithAHint() throws IOException {
+    @ParameterizedTest
+    @EnumSource(OutOfMemory.class)
+    void aSampleThatRunsOutOfMemoryAloneFailsTheRunWithAHint(OutOfMemory how) throws IOException {
         Recorder monitor = new Recorder();
         // 4 GiB: one sample at a time already, with all of it.
-        PipelineContext context = readContext(twoSamples("big", "small"), directory.resolve("results"), 4, monitor);
+        PipelineContext context = readContext(twoSamples("big", "small"), directory.resolve("results"), 4, monitor,
+                how);
 
         StageException error = assertThrows(StageException.class, () -> new FastqProcessor().process(context));
 
@@ -285,12 +290,28 @@ class EndToEndTest {
         return reads;
     }
 
+    /** How a BBTools child stops for lack of memory. */
+    enum OutOfMemory {
+        /** The Java runtime, with {@code -XX:+ExitOnOutOfMemoryError}: exit code 3. */
+        JAVA_RUNTIME("echo 'Exception in thread \"main\" java.lang.OutOfMemoryError: Java heap space (stand-in)'"
+                + " >&2; exit " + BbtoolsCommands.OUT_OF_MEMORY_EXIT),
+        /** BBTools itself, when a k-mer table sized from the heap is full: its message, exit code 1. */
+        BBTOOLS("echo 'java.lang.OutOfMemoryError' >&2; echo >&2; echo '" + BbtoolsCommands.OUT_OF_MEMORY_LINE
+                + "' >&2; echo 'Try increasing the -Xmx flag (stand-in).' >&2; exit 1");
+
+        final String script;
+
+        OutOfMemory(String script) {
+            this.script = script;
+        }
+    }
+
     /**
      * What the FASTQ stage needs, with a {@code java} that stands in for running out of
-     * memory: Tadpole on sample {@code big} with a 4 GiB heap exits as the Java runtime
-     * does with {@code -XX:+ExitOnOutOfMemoryError}.
+     * memory: Tadpole on sample {@code big} with a 4 GiB heap stops as {@code how} says.
      */
-    private PipelineContext readContext(Path reads, Path output, int budgetGiB, RunMonitor monitor) throws IOException {
+    private PipelineContext readContext(Path reads, Path output, int budgetGiB, RunMonitor monitor, OutOfMemory how)
+            throws IOException {
         assumeTrue(!AppPaths.isWindows(), "the stand-in java is a shell script");
         AppPaths.RuntimeLayout real = AppPaths.discover();
         Path java = directory.resolve("java");
@@ -298,11 +319,10 @@ class EndToEndTest {
                 #!/bin/sh
                 case "$*" in
                   *-Xmx4g*assemble.Tadpole*big_doubleTargetMatches*)
-                    echo 'Exception in thread "main" java.lang.OutOfMemoryError: Java heap space (stand-in)'
-                    exit %d ;;
+                    %s ;;
                 esac
                 exec '%s' "$@"
-                """.formatted(BbtoolsCommands.OUT_OF_MEMORY_EXIT, real.javaExecutable()));
+                """.formatted(how.script, real.javaExecutable()));
         assertTrue(java.toFile().setExecutable(true));
         AppPaths.RuntimeLayout layout = new AppPaths.RuntimeLayout(real.appRoot(), real.runtimeRoot(),
                 real.platformRoot(), real.bbmapDirectory(), real.blastBinDirectory(), java, real.javafxLibDirectory());

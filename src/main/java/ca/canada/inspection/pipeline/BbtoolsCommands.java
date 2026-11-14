@@ -16,13 +16,22 @@ import java.util.Objects;
  */
 record BbtoolsCommands(String javaCommand, Path bbtoolsJar, int childMemoryGiB, int threads) {
     /**
-     * Makes a child that runs out of heap exit with {@link #OUT_OF_MEMORY_EXIT}. Without it
-     * the exit code is that of any other error (BBTools catches the error only to stop),
-     * and an error in a worker thread may even leave the program running on.
+     * Makes a child whose Java runtime runs out of heap exit with {@link #OUT_OF_MEMORY_EXIT}.
+     * Without it the exit code is that of any other error (BBTools catches the error only to
+     * stop), and an error in a worker thread may even leave the program running on. It is
+     * one of two signals: BBTools also stops itself, with exit code 1, when a k-mer table is
+     * full ({@link #OUT_OF_MEMORY_LINE}); {@link #ranOutOfMemory} takes both.
      */
     private static final String EXIT_ON_OUT_OF_MEMORY = "-XX:+ExitOnOutOfMemoryError";
     /** Exit code of the Java runtime when {@code -XX:+ExitOnOutOfMemoryError} stops it. */
     static final int OUT_OF_MEMORY_EXIT = 3;
+    /**
+     * What BBTools prints when it stops for lack of memory ({@code KillSwitch.memKill}, then
+     * exit code 1). Its k-mer tables are sized from the heap and throw their own
+     * {@code OutOfMemoryError} when full, which the Java runtime does not see: Tadpole on a
+     * large sample stops this way with heap to spare.
+     */
+    static final String OUT_OF_MEMORY_LINE = "This program ran out of memory.";
 
     /** Commands for the bundled BBTools, each child with this heap and these threads. */
     static BbtoolsCommands of(RuntimeDependencies dependencies, int childMemoryGiB, int threads) {
@@ -31,7 +40,8 @@ record BbtoolsCommands(String javaCommand, Path bbtoolsJar, int childMemoryGiB, 
 
     /** Whether a BBTools child stopped because it ran out of memory. */
     static boolean ranOutOfMemory(Throwable error) {
-        return error instanceof ProgramFailedException failed && failed.exitCode() == OUT_OF_MEMORY_EXIT;
+        return error instanceof ProgramFailedException failed
+                && (failed.exitCode() == OUT_OF_MEMORY_EXIT || failed.saidOutOfMemory());
     }
 
     /**

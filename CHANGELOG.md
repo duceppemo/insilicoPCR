@@ -15,6 +15,19 @@
   advice. Found on 4 Globodera read sets sharing 48 GB (12 GB each): one
   stopped with 5.8 of its 12 GB in use.
 
+- An assay missing its forward or its reverse primer was left out of every
+  report without a word, so it looked negative in every sample. The run now
+  stops when it reads the primer file and names the missing primers (`Every
+  assay needs a forward (-F) and a reverse (-R) primer, but toxA-R is missing
+  ...`). The application checks the same before a run.
+
+### Changed
+
+- The portable releases no longer ship five libraries that nothing used
+  (ControlsFX, FormsFX, Ikonli, BootstrapFX, JavaFX FXML): 1.7 MB less.
+- Code: the primer naming rule (`<assay>-F/-R/-P`) is read in one place
+  (`PrimerId`) instead of seven.
+
 ## 0.15.0 (2026-11-14)
 
 ### Added

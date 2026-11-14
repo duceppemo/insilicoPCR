@@ -120,15 +120,6 @@ class BlastHitParserTest {
     }
 
     @Test
-    void probeIdDetectionHandlesDegenerateSuffixes() {
-        assertTrue(BlastHitParser.isProbe("assay-P"));
-        assertTrue(BlastHitParser.isProbe("assay-P_3"));
-        assertFalse(BlastHitParser.isProbe("assay-F"));
-        assertFalse(BlastHitParser.isProbe("assay-R_1"));
-        assertFalse(BlastHitParser.isProbe("plainname"));
-    }
-
-    @Test
     void malformedLinesAreIgnored() {
         assertTrue(BlastHitParser.parse("too\tfew\tfields", "sample1", PRIMERS, STRICT).isEmpty());
         assertTrue(BlastHitParser.parse(

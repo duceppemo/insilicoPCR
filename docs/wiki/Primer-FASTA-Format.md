@@ -22,6 +22,8 @@ targetA-P
 
 all belong to the same target, `targetA`.
 
+Every assay needs a forward (`-F`) and a reverse (`-R`) primer; the probe is optional. An assay missing either could never give a product, so the run stops at once and names what is missing, for example `Every assay needs a forward (-F) and a reverse (-R) primer, but toxA-R is missing from the primer file primers.fasta`. (Before 0.15.1, such an assay was left out of the reports without a word, and looked negative in every sample.)
+
 Primer files in this convention can also be generated rather than written by hand: [primer-finder](https://github.com/duceppemo/primer-finder) designs selective (q)PCR assays against a group of genomes and writes them as `assays_qpcr.fasta` (the probe assays, with their `-P` entries) and `assays_pcr.fasta` (every assay, primers only), ready to pass to `-p`.
 
 ## Standard PCR mode

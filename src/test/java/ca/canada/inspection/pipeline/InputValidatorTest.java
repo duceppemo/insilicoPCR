@@ -19,6 +19,10 @@ class InputValidatorTest {
         return Files.writeString(dir.resolve(name), ">seq1\nACGTACGT\n");
     }
 
+    private Path primers() throws IOException {
+        return Files.writeString(dir.resolve("primers.fasta"), ">a-F\nACGT\n>a-R\nACGT\n");
+    }
+
     @Test
     void validSingleFileInputPasses() throws IOException {
         Path input = fasta("genome.fasta");
@@ -36,7 +40,7 @@ class InputValidatorTest {
 
     @Test
     void nullsAreReported() throws IOException {
-        Path primers = fasta("primers.fasta");
+        Path primers = primers();
         assertTrue(InputValidator.validate(null, dir, primers).contains("Please enter"));
         assertTrue(InputValidator.validate(primers, dir, null).contains("Please enter"));
     }
@@ -44,7 +48,7 @@ class InputValidatorTest {
     @Test
     void nonFastaInputIsReported() throws IOException {
         Path notFasta = Files.writeString(dir.resolve("notes.fasta"), "this is not fasta\n");
-        Path primers = fasta("primers.fasta");
+        Path primers = primers();
         assertTrue(InputValidator.validate(notFasta, dir, primers).contains("fasta format"));
         assertTrue(InputValidator.validate(primers, dir, notFasta).contains("fasta format"));
     }
@@ -53,13 +57,14 @@ class InputValidatorTest {
     void probeWithoutPrimersIsReported() throws IOException {
         Path input = fasta("genome.fasta");
         Path primers = Files.writeString(dir.resolve("probe_only.fasta"), ">assay-P\nACGTACGT\n");
-        assertTrue(InputValidator.validate(input, dir, primers).contains("probe"));
+        assertTrue(InputValidator.validate(input, dir, primers).contains("assay-F, assay-R are missing"),
+                InputValidator.validate(input, dir, primers));
     }
 
     @Test
     void emptyInputDirectoryIsReported() throws IOException {
         Path inputDir = Files.createDirectories(dir.resolve("empty"));
-        Path primers = fasta("primers.fasta");
+        Path primers = primers();
         assertTrue(InputValidator.validate(inputDir, dir, primers).contains("at least one"));
     }
 
@@ -70,7 +75,7 @@ class InputValidatorTest {
         Files.writeString(inputDir.resolve("good.fasta"), ">seq1\nACGT\n");
         Files.writeString(inputDir.resolve("bad.fasta"), "no header here\n");
         Files.writeString(inputDir.resolve("empty_R1.fastq"), "");
-        Path primers = fasta("primers.fasta");
+        Path primers = primers();
         assertEquals("", InputValidator.validate(inputDir, dir, primers));
     }
 
@@ -78,7 +83,7 @@ class InputValidatorTest {
     void aFolderOfFaultyFilesOnlyIsReported() throws IOException {
         Path inputDir = Files.createDirectories(dir.resolve("allbad"));
         Files.writeString(inputDir.resolve("empty_R1.fastq"), "");
-        Path primers = fasta("primers.fasta");
+        Path primers = primers();
         assertTrue(InputValidator.validate(inputDir, dir, primers).contains("at least one"));
     }
 

@@ -2,7 +2,6 @@ package ca.canada.inspection.pcr;
 
 import ca.canada.inspection.insilicopcr.BlastResult;
 import ca.canada.inspection.insilicopcr.Sample;
-import ca.canada.inspection.pcr.ConsolidatedReport.PrimerGroup;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -244,7 +243,7 @@ public final class ReadLevelCaller {
         for (List<String> row : ConsolidatedReport.rows(reads, primers, options)) {
             rowsByAssay.computeIfAbsent(row.get(ConsolidatedReport.GENE_COLUMN), ignored -> new ArrayList<>()).add(row);
         }
-        Map<String, PrimerGroup> groups = ConsolidatedReport.groupByAssay(primers.keySet());
+        Map<String, PrimerId.Assay> groups = PrimerId.byAssay(primers.keySet());
 
         // Only reads carrying a primer of an assay with a product are compared by sequence.
         Set<String> wanted = new HashSet<>();
@@ -265,7 +264,7 @@ public final class ReadLevelCaller {
         });
 
         Map<String, Integer> checkable = new HashMap<>();
-        for (Map.Entry<String, PrimerGroup> entry : groups.entrySet()) {
+        for (Map.Entry<String, PrimerId.Assay> entry : groups.entrySet()) {
             int longest = 0;
             for (BlastResult hit : pcrPrimerHits(hits, entry.getValue())) {
                 longest = Math.max(longest, containableLength(hit, readLengths.get(hit.queryID())));
@@ -343,13 +342,13 @@ public final class ReadLevelCaller {
         return hit.qend() + rightUnaligned;
     }
 
-    private static List<BlastResult> pcrPrimerHits(Map<String, List<BlastResult>> hits, PrimerGroup group) {
+    private static List<BlastResult> pcrPrimerHits(Map<String, List<BlastResult>> hits, PrimerId.Assay group) {
         List<BlastResult> result = new ArrayList<>();
         if (group != null) {
-            for (String primer : group.forward) {
+            for (String primer : group.forward()) {
                 result.addAll(hits.getOrDefault(primer, List.of()));
             }
-            for (String primer : group.reverse) {
+            for (String primer : group.reverse()) {
                 result.addAll(hits.getOrDefault(primer, List.of()));
             }
         }
@@ -529,8 +528,7 @@ public final class ReadLevelCaller {
 
     /** {@code F} or {@code R}: the role letter of the primer a hit belongs to. */
     private static char role(BlastResult hit) {
-        String id = hit.subjectID();
-        return id.charAt(id.lastIndexOf('-') + 1);
+        return PrimerId.of(hit.subjectID()).role().letter();
     }
 
     /**

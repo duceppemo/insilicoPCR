@@ -60,7 +60,7 @@ public final class TrimmedEnds {
         if (trimmedFive + trimmedThree == 0 || hit.primerSeq() == null || hit.primerSeq().length() != hit.slen()) {
             return false;
         }
-        if (BlastHitParser.isProbe(hit.subjectID())) {
+        if (PrimerId.isProbe(hit.subjectID())) {
             return hit.mismatch() + hit.gaps() <= options.maxProbeMismatches();
         }
         // Comparing can only lower the count of trimmed 3' bases; the 5' rule is unchanged.
@@ -80,7 +80,7 @@ public final class TrimmedEnds {
             return hit;
         }
         boolean plus = hit.isPlusStrand();
-        boolean probe = BlastHitParser.isProbe(hit.subjectID());
+        boolean probe = PrimerId.isProbe(hit.subjectID());
 
         // The query side left of qstart holds the oligo's 5' end on the plus strand, its 3' end on the minus strand.
         Side left = side(hit, template, plus, true);

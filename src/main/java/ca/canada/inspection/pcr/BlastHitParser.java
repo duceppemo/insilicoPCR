@@ -99,7 +99,7 @@ public final class BlastHitParser {
 
     /** Applies the acceptance rules to an already-parsed hit. */
     public static boolean accepts(BlastResult hit, AmpliconOptions options) {
-        if (isProbe(hit.subjectID())) {
+        if (PrimerId.isProbe(hit.subjectID())) {
             // Probes anneal without extension: no 3'-specific rules. Bases left
             // unaligned here are bases the template does not have (or that were not
             // looked up); trimmed bases the template has were already compared.
@@ -118,11 +118,5 @@ public final class BlastHitParser {
             return false;
         }
         return hit.threePrimePenalty(options.threePrimeWindow()) <= options.maxThreePrimePenalty();
-    }
-
-    /** True when the primer ID names a probe, e.g. {@code assay-P} or {@code assay-P_3}. */
-    public static boolean isProbe(String primerId) {
-        int lastDash = primerId.lastIndexOf('-');
-        return lastDash >= 0 && lastDash < primerId.length() - 1 && primerId.charAt(lastDash + 1) == 'P';
     }
 }

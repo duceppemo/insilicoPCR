@@ -88,8 +88,8 @@ public final class ExpectedSizes {
         // assay -> key -> the primer that declared it and its value as written
         Map<String, Map<String, String[]>> declared = new TreeMap<>();
         descriptions.forEach((primerId, description) -> {
-            int lastDash = primerId.lastIndexOf('-');
-            String assay = lastDash > 0 ? primerId.substring(0, lastDash) : primerId;
+            PrimerId parsed = PrimerId.parse(primerId);
+            String assay = parsed == null ? primerId : parsed.assay();
             for (String word : description.trim().split("\\s+")) {
                 int equals = word.indexOf('=');
                 String key = equals < 0 ? "" : word.substring(0, equals).toLowerCase(Locale.ROOT);

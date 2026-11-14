@@ -40,13 +40,15 @@ class IoFailureTest {
     }
 
     @Test
-    void blastReportsThatCannotBeListedAreAMessage() {
+    void aMissingBlastReportIsAMessage() {
+        Sample sample = new Sample();
+        sample.setName("s");
+
         RuntimeException error = assertThrows(RuntimeException.class, () -> BlastReports.attachHits(
-                dir.resolve("no-such-folder"), Map.of(), PrimerPanel.EMPTY, AmpliconOptions.withMismatches(0)));
+                dir, Map.of("s", sample), PrimerPanel.EMPTY, AmpliconOptions.withMismatches(0)));
 
         assertTrue(RunFailure.isForTheUser(error), error.toString());
-        assertEquals("Error: Unable to list BLAST reports in: " + dir.resolve("no-such-folder"),
+        assertEquals("Error: Unable to read BLAST report: " + dir.resolve("s").resolve("s.tsv"),
                 RunFailure.lines(error).getFirst());
-        assertFalse(RunFailure.lines(error).isEmpty());
     }
 }

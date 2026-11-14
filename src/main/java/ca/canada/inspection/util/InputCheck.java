@@ -54,7 +54,7 @@ public final class InputCheck {
      * An input file, or the two files of a read pair, that cannot be analysed.
      *
      * @param sample  the sample the files belong to; it is left out of the run
-     * @param files   file names, one or the two mates
+     * @param files   file names: one, the two mates, or the files that share a sample name
      * @param problem a few words: what kind of fault
      * @param detail  where and what
      */
@@ -125,6 +125,8 @@ public final class InputCheck {
                 rejected.add(sample);
             }
         }
+        rejectFilesThatAreNotOneSample(samples, issues, rejected);
+        rejectNamesThatDifferInCase(samples, issues, rejected);
         if (depth == Depth.FULL) {
             samples.forEach((name, sample) -> {
                 if (!rejected.contains(name) && sample.isFastq() && sample.files().size() == 2) {
@@ -144,6 +146,55 @@ public final class InputCheck {
         Map<String, Sample> kept = new LinkedHashMap<>(samples);
         kept.keySet().removeAll(rejected);
         return new Result(kept, List.copyOf(issues), input, files.size());
+    }
+
+    /**
+     * A sample is one FASTA file, one FASTQ file or the two mates of a read pair. Files that
+     * share a sample name otherwise ({@code x.fasta} and {@code x.fastq}, {@code x.fasta} and
+     * {@code x.fna}) would be searched as one, or overwrite each other's results.
+     */
+    private static void rejectFilesThatAreNotOneSample(Map<String, Sample> samples, List<Issue> issues,
+                                                       Set<String> rejected) {
+        samples.forEach((name, sample) -> {
+            if (!rejected.contains(name) && !isOneSample(sample.files())) {
+                issues.add(new Issue(name, fileNames(sample.files()), "these files have the same sample name",
+                        "a sample is one FASTA file, one FASTQ file or the _R1 and _R2 files of a read pair;"
+                                + " rename the files that are not"));
+                rejected.add(name);
+            }
+        });
+    }
+
+    private static boolean isOneSample(List<Path> files) {
+        if (files.size() == 1) {
+            return true;
+        }
+        return files.size() == 2
+                && files.stream().allMatch(file -> SequenceFileUtils.fileType(file) == Sample.FileType.FASTQ)
+                && SequenceFileUtils.mate(files.get(0)) == 1
+                && SequenceFileUtils.mate(files.get(1)) == 2;
+    }
+
+    /**
+     * Each sample's results go to a folder named after it, and two names that differ only in
+     * case ({@code iso2.fasta} and {@code ISO2.fna}) are one folder on Windows and macOS.
+     */
+    private static void rejectNamesThatDifferInCase(Map<String, Sample> samples, List<Issue> issues,
+                                                    Set<String> rejected) {
+        Map<String, List<String>> byFolder = new LinkedHashMap<>();
+        samples.keySet().forEach(name -> byFolder.computeIfAbsent(name.toLowerCase(Locale.ROOT),
+                folder -> new ArrayList<>()).add(name));
+        byFolder.values().stream().filter(names -> names.size() > 1).forEach(names -> names.forEach(name -> {
+            if (rejected.add(name)) {
+                issues.add(new Issue(name, fileNames(samples.get(name).files()),
+                        "the sample name differs only in case from another one",
+                        String.join(", ", names) + " would share a results folder; rename one"));
+            }
+        }));
+    }
+
+    private static List<String> fileNames(List<Path> files) {
+        return files.stream().map(file -> file.getFileName().toString()).toList();
     }
 
     /** The files of {@code input} named like sequence files, in path order. */

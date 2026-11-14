@@ -1,12 +1,10 @@
 package ca.canada.inspection.pipeline;
 
 import ca.canada.inspection.model.Sample;
+import ca.canada.inspection.pcr.BlastReports;
 
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 
 public final class BlastRunner {
@@ -14,37 +12,33 @@ public final class BlastRunner {
     }
 
     public static void run(PipelineContext context) {
-        List<Path> queries = blastQueries(context);
-        ParallelStageRunner.run("BLAST", queries, context.config().threads(), context.monitor(),
-                query -> blast(context, query), context.monitor()::blastProgress);
+        List<Sample> samples = List.copyOf(context.samples().values());
+        ParallelStageRunner.run("BLAST", samples, context.config().threads(), context.monitor(),
+                sample -> blast(context, sample), context.monitor()::blastProgress);
     }
 
-    private static List<Path> blastQueries(PipelineContext context) {
-        ArrayList<Path> queries = new ArrayList<>();
-        for (Sample sample : context.samples().values()) {
-            if (sample.isFastq()) {
-                Path assemblyFile = sample.getAssemblyFile();
-                if (assemblyFile == null) {
-                    throw new PipelineException("FASTQ sample has no assembly file: " + sample.getName());
-                }
-                queries.add(assemblyFile);
-            } else {
-                queries.addAll(sample.files());
+    /** The FASTA file searched for {@code sample}: its assembly, or the mini-assembly of its reads. */
+    private static Path query(Sample sample) {
+        if (sample.isFastq()) {
+            if (sample.getAssemblyFile() == null) {
+                throw new PipelineException("FASTQ sample has no assembly file: " + sample.getName());
             }
+            return sample.getAssemblyFile();
         }
-        return queries.stream()
-                .filter(Files::isRegularFile)
-                .sorted(Comparator.comparing(Path::toString))
-                .toList();
+        // The input check leaves out a FASTA sample of more than one file.
+        if (sample.files().size() != 1) {
+            throw new IllegalStateException("FASTA sample " + sample.getName() + " is not one file: " + sample.files());
+        }
+        return sample.files().getFirst();
     }
 
-    private static void blast(PipelineContext context, Path query) {
-        String name = query.getFileName().toString()
-                .replaceFirst("_assembly\\.fasta$", "")
-                .replaceFirst("\\.(fasta|fna|ffn|fa|fsa)(\\.gz)?$", "");
-        Path blastOutput = context.directories().detailed().resolve(name);
-        context.directories().createSampleDirectory(name);
-        Path blastTsv = blastOutput.resolve(name + ".tsv");
+    private static void blast(PipelineContext context, Sample sample) {
+        // The report is named after the sample, not the file, so that it is read back for that
+        // sample whatever the file is called (BlastReports.attachHits).
+        Path query = query(sample);
+        context.directories().createSampleDirectory(sample.getName());
+        Path blastTsv = BlastReports.reportFile(context.directories().detailed(), sample.getName());
+        Path blastOutput = blastTsv.getParent();
 
         try (BlastQuery blastQuery = BlastQuery.of(query, blastOutput)) {
             ExternalProgram.run(context.monitor(), null, List.of(

@@ -54,6 +54,53 @@ class InputCheckTest {
     }
 
     @Test
+    void filesThatShareASampleNameButAreNotAPairAreLeftOut() throws IOException {
+        write("both.fasta", ">c1\nACGT\n");
+        write("both.fastq", READ);
+        write("twice.fasta", ">c1\nACGT\n");
+        gzip("twice.fna.gz", ">c1\nACGT\n");
+        write("ones_R1.fastq", READ);
+        write("ones_R1_001.fastq", READ);
+        write("kept.fasta", ">c1\nACGT\n");
+
+        Result result = InputCheck.scan(dir, Depth.FULL, 2);
+
+        assertEquals(Set.of("kept"), result.samples().keySet());
+        assertEquals(List.of("both", "ones", "twice"),
+                result.issues().stream().map(Issue::sample).toList());
+        assertEquals(List.of("both.fasta", "both.fastq"), result.issues().getFirst().files());
+        assertTrue(result.warnings().getFirst().startsWith("both.fasta and both.fastq: these files have the same"
+                + " sample name (a sample is one FASTA file, one FASTQ file or the _R1 and _R2 files of a read"
+                + " pair; rename the files that are not). Sample both is not analysed."), result.warnings().getFirst());
+    }
+
+    @Test
+    void assembliesNamedLikeReadMatesAreSeparateSamples() throws IOException {
+        write("strain_R1.fasta", ">c1\nACGT\n");
+        write("strain_R2.fasta", ">c1\nACGT\n");
+
+        Result result = InputCheck.scan(dir, Depth.FULL, 2);
+
+        assertEquals(List.of("strain_R1", "strain_R2"), List.copyOf(result.samples().keySet()));
+        assertEquals(List.of(), result.issues());
+    }
+
+    @Test
+    void sampleNamesThatDifferOnlyInCaseAreLeftOut() throws IOException {
+        write("iso2.fasta", ">c1\nACGT\n");
+        write("ISO2.fna", ">c1\nACGT\n");
+        write("other.fasta", ">c1\nACGT\n");
+
+        Result result = InputCheck.scan(dir, Depth.FULL, 2);
+
+        assertEquals(Set.of("other"), result.samples().keySet());
+        assertEquals(Set.of("iso2", "ISO2"), result.samplesNotAnalysed());
+        assertTrue(result.issues().getFirst().describe().endsWith(
+                ": the sample name differs only in case from another one (ISO2, iso2 would share a results"
+                        + " folder; rename one)"), result.issues().getFirst().describe());
+    }
+
+    @Test
     void anEmptyLibraryIsLeftOutAndTheOthersRun() throws IOException {
         write("good_R1.fastq", READ);
         write("good_R2.fastq", READ);

@@ -59,8 +59,21 @@ class SequenceFileUtilsTest {
         Path a1 = touch("strain_1.fasta");
         touch("strain_2.fasta");
         assertEquals("strain_1", SequenceFileUtils.sampleName(a1));
-        // The Illumina _R1/_R2 convention is still stripped for FASTA.
-        assertEquals("strain", SequenceFileUtils.sampleName(Path.of("strain_R1.fasta")));
+        // So is _R1/_R2: an assembly is one file, and a FASTA sample is never a read pair.
+        assertEquals("strain_R1", SequenceFileUtils.sampleName(Path.of("strain_R1.fasta")));
+        assertEquals(0, SequenceFileUtils.mate(Path.of("strain_R1.fasta")));
+    }
+
+    @Test
+    void mateIsTheReadOfAPairAFastqFileHolds() throws IOException {
+        assertEquals(1, SequenceFileUtils.mate(Path.of("s_R1.fastq.gz")));
+        assertEquals(2, SequenceFileUtils.mate(Path.of("s_r2_001.FQ")));
+        assertEquals(0, SequenceFileUtils.mate(Path.of("single.fastq")));
+        Path first = touch("run_1.fastq");
+        Path second = touch("run_2.fastq");
+        assertEquals(1, SequenceFileUtils.mate(first));
+        assertEquals(2, SequenceFileUtils.mate(second));
+        assertEquals("ISO2", SequenceFileUtils.sampleName(Path.of("ISO2.FASTA")));
     }
 
     @Test

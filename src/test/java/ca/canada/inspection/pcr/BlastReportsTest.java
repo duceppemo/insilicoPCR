@@ -52,8 +52,10 @@ class BlastReportsTest {
     }
 
     @Test
-    void reportsWithoutMatchingSampleAreSkippedWithoutFailing() throws IOException {
-        Files.writeString(detailedDir.resolve("stale.tsv"), hitLine(0) + "\n");
+    void reportsOfOtherSamplesAreNotRead() throws IOException {
+        // A report left in the output folder by an earlier run, with a hit that would be accepted.
+        Files.writeString(Files.createDirectories(detailedDir.resolve("stale")).resolve("stale.tsv"), hitLine(0) + "\n");
+        Files.writeString(Files.createDirectories(detailedDir.resolve("sampleA")).resolve("sampleA.tsv"), "");
         Map<String, Sample> samples = new HashMap<>();
         samples.put("sampleA", sample("sampleA"));
 
@@ -62,10 +64,26 @@ class BlastReportsTest {
     }
 
     @Test
-    void missingDirectoryFailsLoudly() {
-        Map<String, Sample> samples = new HashMap<>();
+    void theReportIsReadForTheSampleWhateverItsFileIsCalled() throws IOException {
+        // The file ISO2.FASTA is the sample ISO2: its report is ISO2/ISO2.tsv (it was looked
+        // for under the file name, and its hits dropped, before 0.15.1).
+        Path report = BlastReports.reportFile(detailedDir, "ISO2");
+        assertEquals(detailedDir.resolve("ISO2").resolve("ISO2.tsv"), report);
+        Files.createDirectories(report.getParent());
+        Files.writeString(report, hitLine(0) + "\n");
+        Sample sample = sample("ISO2");
+        sample.setFile(detailedDir.resolve("ISO2.FASTA"));
+        Map<String, Sample> samples = Map.of("ISO2", sample);
+
+        BlastReports.attachHits(detailedDir, samples, PRIMERS, OPTIONS);
+        assertEquals(1, sample.blastResults().get("assay-F").size());
+    }
+
+    @Test
+    void aMissingReportFailsLoudly() {
+        Map<String, Sample> samples = Map.of("ghost", sample("ghost"));
         org.junit.jupiter.api.Assertions.assertThrows(java.io.UncheckedIOException.class,
-                () -> BlastReports.attachHits(detailedDir.resolve("ghost"), samples, PRIMERS, OPTIONS));
+                () -> BlastReports.attachHits(detailedDir, samples, PRIMERS, OPTIONS));
     }
 
     @Test

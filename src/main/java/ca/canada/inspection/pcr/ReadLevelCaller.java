@@ -55,6 +55,51 @@ public final class ReadLevelCaller {
     public static final int PRODUCT_SIZE_GAP = 10;
 
     /**
+     * Whether an amplicon of {@code size} bp is the product seen at {@code productSizes}, give
+     * or take a length variant: the one rule for "the same product" when a call from reads is
+     * compared with what the sample already shows.
+     */
+    public static boolean sameProduct(Collection<Integer> productSizes, int size) {
+        int smallest = productSizes.stream().mapToInt(Integer::intValue).min().orElseThrow();
+        int largest = productSizes.stream().mapToInt(Integer::intValue).max().orElseThrow();
+        return size >= smallest - PRODUCT_SIZE_GAP && size <= largest + PRODUCT_SIZE_GAP;
+    }
+
+    /**
+     * The read-level products to report next to the assembly's own rows: those with
+     * enough support that the assembly does not already report.
+     *
+     * @param products       an assay's products seen in reads
+     * @param assembledSizes amplicon sizes the assembly reports for the assay; {@code null}
+     *                       or empty when it reports none
+     */
+    public static List<ReadCall> missingFromAssembly(List<ReadCall> products, Set<Integer> assembledSizes) {
+        return products.stream()
+                .filter(ReadCall::isReportable)
+                .filter(product -> assembledSizes == null || !product.matchesAny(assembledSizes))
+                .toList();
+    }
+
+    /**
+     * The report rows of {@code sample}'s products that its reads hold and its mini-assembly
+     * does not report, by assay. A product the assembly reports is not repeated, but an assay
+     * the assembly reports at another size only (both primers landing elsewhere) still gets
+     * its read-level product.
+     *
+     * @param sample FASTQ sample with its accepted contig hits attached
+     */
+    public static List<ReportRow> reportRows(Sample sample, PrimerPanel primers, AmpliconOptions options,
+                                             ReadEvidence reads) {
+        Map<String, Set<Integer>> assembled = Products.sizes(sample, primers, options);
+        List<ReportRow> rows = new ArrayList<>();
+        new TreeMap<>(reads.calls()).forEach((assay, products) ->
+                missingFromAssembly(products, assembled.get(assay)).stream()
+                        .map(ReadLevelCaller::reportRow)
+                        .forEach(rows::add));
+        return rows;
+    }
+
+    /**
      * Bases next to a primer's 3' end, inside the product, compared to tell whether a
      * read carrying the primer comes from the product's locus.
      */
@@ -117,8 +162,7 @@ public final class ReadLevelCaller {
 
         /** Whether an amplicon of {@code size} bp is this product, give or take a length variant. */
         public boolean matches(int size) {
-            SortedSet<Integer> sorted = (SortedSet<Integer>) sizes;
-            return size >= sorted.first() - PRODUCT_SIZE_GAP && size <= sorted.last() + PRODUCT_SIZE_GAP;
+            return sameProduct(sizes, size);
         }
 
         /** Whether any of {@code otherSizes} is this product. */

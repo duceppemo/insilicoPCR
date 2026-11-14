@@ -2,7 +2,9 @@ package ca.canada.inspection.pipeline;
 
 import ca.canada.inspection.gel.SyntheticGelImage;
 import ca.canada.inspection.model.Sample;
+import ca.canada.inspection.pcr.ReadLevelCaller;
 import ca.canada.inspection.pcr.ReadLevelCaller.ReadEvidence;
+import ca.canada.inspection.pcr.ReportRow;
 import ca.canada.inspection.pcr.SplitAcrossContigs;
 import ca.canada.inspection.report.ConsolidatedReport;
 import ca.canada.inspection.report.HtmlReport;
@@ -34,8 +36,7 @@ public final class ReportGenerator {
         RunMonitor monitor = context.monitor();
         Path report = ConsolidatedReport.write(context.directories().consolidated(), context.samples(),
                 context.primers(), context.config().ampliconOptions(),
-                FastqDiagnosticsStage.extraRows(context.samples(), context.primers(), context.config().ampliconOptions(),
-                        readEvidence, extension));
+                extraRows(context, readEvidence, extension));
         if (context.config().gel()) {
             GelImageWriter.write(report, SyntheticGelImage.defaultPng(report), context.samples().keySet(), monitor);
         }
@@ -59,6 +60,29 @@ public final class ReportGenerator {
         splits.forEach(split -> qaLines.add("Primers at contig ends: " + split.message()));
         QaLogWriter.write(context, Version.VERSION, report, qaLines);
         return new RunResult(report, html, List.copyOf(context.samples().keySet()));
+    }
+
+    /**
+     * The rows to append to each FASTQ sample's own, keyed by sample name: the products called
+     * from single reads that the mini-assembly does not report, then those called by
+     * extending reads.
+     */
+    static Map<String, List<ReportRow>> extraRows(PipelineContext context, Map<String, ReadEvidence> readEvidence,
+                                                  ReadExtensionStage.Result extension) {
+        Map<String, List<ReportRow>> rows = new HashMap<>();
+        readEvidence.forEach((sampleName, reads) -> {
+            Sample sample = context.samples().get(sampleName);
+            if (sample != null) {
+                List<ReportRow> sampleRows = ReadLevelCaller.reportRows(sample, context.primers(),
+                        context.config().ampliconOptions(), reads);
+                if (!sampleRows.isEmpty()) {
+                    rows.put(sampleName, new ArrayList<>(sampleRows));
+                }
+            }
+        });
+        extension.rows().forEach((sample, list) ->
+                rows.computeIfAbsent(sample, ignored -> new ArrayList<>()).addAll(list));
+        return rows;
     }
 
     /** Assays of the assembly samples with no product whose primers point off contig ends. */

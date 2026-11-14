@@ -1,6 +1,5 @@
 package ca.canada.inspection.gel;
 
-import ca.canada.inspection.gel.LaneBand.BandRect;
 import javafx.scene.paint.Color;
 import org.junit.jupiter.api.Test;
 import org.w3c.dom.Document;
@@ -11,7 +10,6 @@ import org.xml.sax.InputSource;
 import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.StringReader;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -38,95 +36,56 @@ class GelSvgTest {
         return elements(document, "title").stream().map(Element::getTextContent).toList();
     }
 
-    @Test
-    void windowSvgHoldsLanesLadderLabelsAndBands() throws Exception {
+    /** A gel of "A&B <x>" (two bands) and "plain" (none), coloured by gene. */
+    private static GelScene scene() {
         List<String> samples = List.of("A&B <x>", "plain");
         GelLayout layout = GelLayout.window(1000, 700, samples);
-        BandRect rect = BandRect.inLane(layout.laneX(1), 300, layout.laneWidth(), 0.5);
-        List<GelSvg.Band> bands = List.of(
-                new GelSvg.Band(rect, Color.rgb(31, 119, 180), 0.2, "Sample: A&B <x>"),
-                new GelSvg.Band(rect, Color.BLACK, 0.9, null));
+        List<LaneBand> bands = LaneBand.window(layout, 1, "A&B <x>",
+                List.of(new GelBand("A&B <x>", "toxA", 312), new GelBand("A&B <x>", "stxQ", 118)), 2.0);
+        Map<String, Color> colors = Map.of("toxA", Color.rgb(31, 119, 180), "stxQ", Color.rgb(214, 39, 40));
+        return GelScene.of(layout, samples, bands, band -> colors.get(band.gene()), 10.0);
+    }
 
-        String svg = GelSvg.window(layout, samples, bands);
+    @Test
+    void theSvgHoldsEveryPartOfTheScene() throws Exception {
+        GelScene scene = scene();
+        String svg = GelSvg.of(scene);
         Document document = parse(svg);
         Element root = document.getDocumentElement();
         assertEquals("svg", root.getTagName());
-        assertEquals(GelSvg.format(layout.width()), root.getAttribute("width"));
-        assertEquals(GelSvg.format(layout.height()), root.getAttribute("height"));
+        assertEquals(GelSvg.format(scene.width()), root.getAttribute("width"));
+        assertEquals(GelSvg.format(scene.height()), root.getAttribute("height"));
 
-        // white page + gel + 2 per lane + 15 ladder bands + border + 2 sample bands
-        assertEquals(1 + 1 + 2 * 3 + 15 + 1 + 2, elements(document, "rect").size());
+        // Four rectangles per band (halo, band, highlight, shadow).
+        assertEquals(scene.background().size() + 4 * (15 + 2) + 1, elements(document, "rect").size());
         List<Element> texts = elements(document, "text");
-        assertEquals(15 + 1 + 2, texts.size());
+        assertEquals(15 + 3, texts.size());
         assertEquals("20kb", texts.getFirst().getTextContent());
-        assertEquals("10", texts.getFirst().getAttribute("font-size"));
-        assertEquals("#000000", texts.getFirst().getAttribute("fill"));
+        assertEquals("end", texts.getFirst().getAttribute("text-anchor"));
+        assertEquals("10.000", texts.getFirst().getAttribute("font-size"));
         assertEquals("A&B <x>", texts.get(16).getTextContent());
         assertTrue(texts.get(16).getAttribute("transform").startsWith("rotate(45 "));
 
         List<String> titles = titles(document);
         assertEquals("Ladder 20kb", titles.getFirst());
-        assertEquals("Sample: A&B <x>", titles.getLast());
-
-        // Thin and faint bands are made visible in the SVG.
-        assertTrue(svg.contains("height=\"1.200\" fill=\"#1f77b4\" opacity=\"0.350\""));
-        assertTrue(svg.contains("fill=\"#000000\" opacity=\"0.900\"></rect>"));
+        assertTrue(titles.getLast().startsWith("Sample: A&B <x>"), titles.getLast());
         assertTrue(svg.endsWith("</svg>\n"));
     }
 
     @Test
-    void windowSvgDrawsTheGelBackgroundAndLaneColours() throws Exception {
-        GelLayout layout = GelLayout.window(800, 500, List.of("s1"));
-        Document document = parse(GelSvg.window(layout, List.of("s1"), List.of()));
+    void coloursAndTheirOpacityAreWrittenApart() throws Exception {
+        Document document = parse(GelSvg.of(scene()));
         List<Element> rects = elements(document, "rect");
+        assertEquals("#ffffff", rects.get(0).getAttribute("fill"));
         assertEquals("#eeeeee", rects.get(1).getAttribute("fill"));
-        assertEquals("#f4f4f4", rects.get(2).getAttribute("fill"));
-        assertEquals("white", rects.get(3).getAttribute("fill"));
-        assertEquals("3", rects.get(3).getAttribute("width"));
-        assertEquals("#e8e8e8", rects.get(4).getAttribute("fill"));
+        assertEquals("", rects.get(1).getAttribute("fill-opacity"));
         assertEquals("none", rects.getLast().getAttribute("fill"));
-    }
-
-    @Test
-    void pageSvgDrawsEachSampleWithItsBandsAndLabel() throws Exception {
-        Map<String, List<GelBand>> lanes = new LinkedHashMap<>();
-        lanes.put("s1", List.of(new GelBand("s1", "toxA", 312), new GelBand("s1", "stxQ", 118)));
-        lanes.put("s2", List.of(new GelBand("s2", "stxQ", 118)));
-        List<String> samples = List.of("s1", "s2", "empty");
-        Map<String, Color> colors = GelColors.assignGeneColors(lanes);
-        GelLayout layout = GelLayout.page(1000, 700, samples);
-
-        Document plain = parse(GelSvg.page(layout, samples, lanes, colors, false));
-        // white page + 2 per lane + 15 ladder bands + 3 sample bands + border
-        assertEquals(1 + 2 * 4 + 15 + 3 + 1, elements(plain, "rect").size());
-        List<Element> texts = elements(plain, "text");
-        assertEquals(15 + 3 + 1, texts.size());
-        assertEquals("10.000", texts.getFirst().getAttribute("font-size"));
-        assertEquals("black", texts.getFirst().getAttribute("fill"));
-        assertEquals("s1", texts.get(15).getTextContent());
-        assertEquals("14.000", texts.get(15).getAttribute("font-size"));
-        assertEquals("Ladder", texts.getLast().getTextContent());
-        assertEquals(List.of("#000000"), elements(plain, "rect").stream()
-                .filter(rect -> rect.getElementsByTagName("title").getLength() > 0)
-                .map(rect -> rect.getAttribute("fill")).distinct().toList());
-
-        String coloured = GelSvg.page(layout, samples, lanes, colors, true);
-        assertTrue(coloured.contains("fill=\"" + GelSvg.toHex(colors.get("toxA")) + "\""));
-        assertTrue(coloured.contains("fill=\"" + GelSvg.toHex(colors.get("stxQ")) + "\""));
-    }
-
-    @Test
-    void pageSvgPlacesBandsOnTheScale() throws Exception {
-        Map<String, List<GelBand>> lanes = Map.of("s1", List.of(new GelBand("s1", "toxA", 500)));
-        GelLayout layout = GelLayout.page(800, 500, List.of("s1"));
-        Document document = parse(GelSvg.page(layout, List.of("s1"), lanes, Map.of(), false));
-        Element band = elements(document, "rect").stream()
-                .filter(rect -> rect.getTextContent().startsWith("Sample: s1"))
-                .findFirst().orElseThrow();
-        assertEquals(GelSvg.format(layout.laneX(1) + layout.laneWidth() * 0.17), band.getAttribute("x"));
-        assertEquals(GelSvg.format(layout.bandY(500) - 1.0), band.getAttribute("y"));
-        assertEquals(GelSvg.format(2.0 + GelColors.bandIntensity(1)), band.getAttribute("height"));
-        assertEquals(GelSvg.format(GelColors.bandIntensity(1)), band.getAttribute("opacity"));
+        assertEquals("#000000", rects.getLast().getAttribute("stroke"));
+        GelScene.Band band = scene().bands().getFirst();
+        String body = GelSvg.toHex(band.body().fill());
+        assertTrue(rects.stream().anyMatch(rect -> rect.getAttribute("fill").equals(body)
+                && rect.getAttribute("fill-opacity").equals(GelSvg.format(band.body().fill().getOpacity()))),
+                "a translucent band in a shade of its gene's colour");
     }
 
     @Test

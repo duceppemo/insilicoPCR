@@ -98,6 +98,11 @@
 
 ### Changed
 
+- The synthetic gel is drawn by one piece of code (`gel.GelScene`) for the
+  viewer, the paged viewer of runs of more than 100 samples, the `--gel` image
+  and the SVG files, which each drew their own: the paged viewer and the SVG
+  files now show bands, the ladder and the gel's texture as the viewer and the
+  image do.
 - Code: the columns of `report.tsv` are one list, `report.ReportColumn`, from
   which the report's header and rows are written and by whose names it is read
   back; they were written in `ReportRow`, named in `ConsolidatedReport` and read

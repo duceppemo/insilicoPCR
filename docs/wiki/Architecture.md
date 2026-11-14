@@ -102,9 +102,11 @@ The two gel viewers (`InteractiveGelViewer`, `PaginatedGelViewer`) and the `--ge
 | `BandPaint` | Colours of the gel and of the bands |
 | `GelText` | Text about the amplicons of a band: tooltips, details, selection and search |
 | `GelPages` | Splitting the lanes of a large run into pages of samples |
-| `GelSvg` | The viewers' gel as an SVG document |
+| `GelScene` | What a gel picture is made of (gel, lanes, ladder, bands, labels), whatever draws it |
+| `GelNodes` | A `GelScene` as JavaFX nodes, for both viewers |
+| `GelSvg` | A `GelScene` as an SVG document |
 | `GelImages` | PNG and PDF files of the gel, their default names, snapshots of the viewer |
-| `SyntheticGelImage` | The `--gel` PNG, drawn without a window |
+| `SyntheticGelImage` | The `--gel` PNG: a `GelScene` drawn on a canvas, without a window |
 
 `BlastResult` (in `model`) carries full alignment context (strand, subject coordinates, aligned sequences) and computes the 3'-end mismatch counts and weighted penalties. The rules themselves are documented on the [Amplicon Calling](Amplicon-Calling) page, and covered by unit tests under `src/test/java`. `EndToEndTest` runs whole runs on the five-isolate example with the BLAST+ and BBTools of the checkout.
 

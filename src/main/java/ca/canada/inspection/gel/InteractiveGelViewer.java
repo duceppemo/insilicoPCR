@@ -30,9 +30,6 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
-import javafx.scene.text.Font;
-import javafx.scene.text.Text;
-import javafx.scene.transform.Rotate;
 import javafx.stage.FileChooser;
 import javafx.stage.Popup;
 import javafx.stage.Screen;
@@ -54,6 +51,7 @@ import java.util.Set;
 /** Interactive synthetic gel viewer backed by JavaFX scene-graph nodes. */
 public final class InteractiveGelViewer {
     private static final double BAND_HOVER_TARGET_HEIGHT = 14.0;
+    private static final double BAND_HEIGHT = 2.0;
     private static final double MIN_ZOOM = 0.45;
     private static final double MAX_ZOOM = 3.0;
 
@@ -111,7 +109,7 @@ public final class InteractiveGelViewer {
         scrollPane.setFitToWidth(false);
         scrollPane.setPannable(true);
 
-        VBox legend = buildLegend(gelView.geneColors());
+        VBox legend = GelNodes.legend(gelView.geneColors());
         legend.setVisible(false);
         legend.setManaged(false);
 
@@ -180,180 +178,48 @@ public final class InteractiveGelViewer {
 
     private static GelView buildGel(Scene ownerScene, LinkedHashMap<String, List<GelBand>> lanes) {
         GelLayout layout = GelLayout.window(ownerScene.getWidth(), ownerScene.getHeight(), lanes.keySet());
-        double bandHeight = 2.0;
-
-        Pane pane = new Pane();
-        pane.setPrefSize(layout.width(), layout.height());
-        pane.setMinSize(layout.width(), layout.height());
-        pane.setMaxSize(layout.width(), layout.height());
-        pane.setStyle("-fx-background-color: white;");
-
-        List<String> laneNames = new ArrayList<>(lanes.keySet());
-        Map<String, Rectangle> laneHighlights = drawGelBackground(pane, lanes, layout);
-        drawLadder(pane, layout, bandHeight);
-        drawLadderLabels(pane, layout);
+        List<String> laneNames = List.copyOf(lanes.keySet());
         Map<String, Color> geneColors = GelColors.assignGeneColors(lanes);
-        List<BandNode> bandNodes = drawSampleBands(pane, lanes, laneHighlights, geneColors, layout, bandHeight);
-        drawGelBorder(pane, layout);
-        drawLaneLabels(pane, lanes, layout);
-
-        return new GelView(pane, bandNodes, geneColors, laneNames, layout);
-    }
-
-    private static Map<String, Rectangle> drawGelBackground(Pane pane,
-                                                            LinkedHashMap<String, List<GelBand>> lanes,
-                                                            GelLayout layout) {
-        double x = layout.gelLeft();
-        double y = layout.gelTop();
-        double width = layout.gelWidth();
-        double height = layout.gelHeight();
-        double laneWidth = layout.laneWidth();
-        int laneCount = lanes.size() + 1;
-        Map<String, Rectangle> laneHighlights = new LinkedHashMap<>();
-        Rectangle background = new Rectangle(x, y, width, height);
-        background.setFill(BandPaint.GEL);
-        pane.getChildren().add(background);
-
-        for (int i = 0; i < laneCount; i++) {
-            double laneX = layout.laneX(i);
-            Rectangle lane = new Rectangle(laneX, y, laneWidth, height);
-            lane.setFill(BandPaint.laneFill(i));
-            lane.setMouseTransparent(true);
-            Rectangle separator = new Rectangle(laneX, y, 3.0, height);
-            separator.setFill(Color.WHITE);
-            separator.setMouseTransparent(true);
-            pane.getChildren().addAll(lane, separator);
-        }
-
-        int laneIndex = 1;
-        for (String sampleName : lanes.keySet()) {
-            Rectangle highlight = new Rectangle(layout.laneX(laneIndex), y, laneWidth, height);
+        List<LaneBand> laneBands = new ArrayList<>();
+        // Behind each sample lane, a highlight shown while one of its bands is hovered or selected.
+        List<Rectangle> laneHighlights = new ArrayList<>();
+        for (int lane = 1; lane <= laneNames.size(); lane++) {
+            laneBands.addAll(LaneBand.window(layout, lane, laneNames.get(lane - 1),
+                    lanes.get(laneNames.get(lane - 1)), BAND_HEIGHT));
+            Rectangle highlight = new Rectangle(layout.laneX(lane), layout.gelTop(), layout.laneWidth(), layout.gelHeight());
             highlight.setFill(Color.TRANSPARENT);
             highlight.setMouseTransparent(true);
-            pane.getChildren().add(highlight);
-            laneHighlights.put(sampleName, highlight);
-            laneIndex++;
+            laneHighlights.add(highlight);
         }
 
-        for (int row = 24; row < height; row += 42) {
-            Rectangle lightTexture = new Rectangle(x, y + row, width, 1.0);
-            lightTexture.setFill(BandPaint.LIGHT_TEXTURE);
-            lightTexture.setMouseTransparent(true);
-            Rectangle darkTexture = new Rectangle(x, y + row + 2, width, 1.0);
-            darkTexture.setFill(BandPaint.DARK_TEXTURE);
-            darkTexture.setMouseTransparent(true);
-            pane.getChildren().addAll(lightTexture, darkTexture);
-        }
-        return laneHighlights;
-    }
-
-    private static void drawGelBorder(Pane pane, GelLayout layout) {
-        Rectangle border = new Rectangle(layout.gelLeft(), layout.gelTop(), layout.gelWidth(), layout.gelHeight());
-        border.setFill(Color.TRANSPARENT);
-        border.setStroke(Color.BLACK);
-        border.setStrokeWidth(3.0);
-        border.setMouseTransparent(true);
-        pane.getChildren().add(border);
-    }
-
-    private static void drawLaneLabels(Pane pane, LinkedHashMap<String, List<GelBand>> lanes, GelLayout layout) {
-        addRotatedLaneLabel(pane, "Ladder", layout.laneCenterX(0), layout.labelY());
-        int laneIndex = 1;
-        for (String sampleName : lanes.keySet()) {
-            addRotatedLaneLabel(pane, sampleName, layout.laneCenterX(laneIndex), layout.labelY());
-            laneIndex++;
-        }
-    }
-
-    private static void addRotatedLaneLabel(Pane pane, String label, double centerX, double y) {
-        Text text = new Text(label);
-        text.setFont(Font.font("Verdana", 10));
-        text.setFill(Color.BLACK);
-        text.setX(centerX);
-        text.setY(y);
-        text.getTransforms().add(new Rotate(45, centerX, y));
-        text.setMouseTransparent(true);
-        pane.getChildren().add(text);
-    }
-
-    private static void drawLadder(Pane pane, GelLayout layout, double bandHeight) {
-        for (GelScale.LadderBand ladderBand : GelScale.LADDER) {
-            double centerY = layout.bandY(ladderBand.size());
-            addGelBandShape(pane, List.of(), null, Color.BLACK, centerY,
-                    BandRect.inLane(layout.gelLeft(), centerY, layout.laneWidth(), bandHeight), 0.45, null);
-        }
-    }
-
-    private static void drawLadderLabels(Pane pane, GelLayout layout) {
-        for (GelScale.LadderBand ladderBand : GelScale.LADDER) {
-            Text text = new Text(ladderBand.label());
-            text.setFont(Font.font("Verdana", 10));
-            text.setFill(Color.BLACK);
-            text.setX(layout.gelLeft() - 8 - GelScale.approximateTextWidth(ladderBand.label()));
-            text.setY(layout.bandY(ladderBand.size()) + 4);
-            text.setMouseTransparent(true);
-            pane.getChildren().add(text);
-        }
-    }
-
-    private static List<BandNode> drawSampleBands(Pane pane,
-                                                  LinkedHashMap<String, List<GelBand>> lanes,
-                                                  Map<String, Rectangle> laneHighlights,
-                                                  Map<String, Color> geneColors,
-                                                  GelLayout layout,
-                                                  double baseBandHeight) {
         List<BandNode> bandNodes = new ArrayList<>();
-        int laneIndex = 1;
-        for (Map.Entry<String, List<GelBand>> laneEntry : lanes.entrySet()) {
-            String sampleName = laneEntry.getKey();
-            Rectangle laneHighlight = laneHighlights.get(sampleName);
-            for (LaneBand band : LaneBand.window(layout, laneIndex, sampleName, laneEntry.getValue(), baseBandHeight)) {
-                bandNodes.add(addGelBandShape(pane, band.bands(), laneHighlight,
-                        geneColors.getOrDefault(band.gene(), Color.BLACK), band.centerY(), band.rect(),
-                        band.intensity(), band.tooltip()));
-            }
-            laneIndex++;
-        }
-        return bandNodes;
+        GelScene scene = GelScene.of(layout, laneNames, laneBands, band -> BandPaint.BAND, GelScene.LADDER_FONT_SIZE);
+        Pane pane = GelNodes.pane(scene, laneHighlights, band -> {
+            BandNode node = bandNode(band, laneHighlights.get(band.lane().lane() - 1),
+                    geneColors.getOrDefault(band.lane().gene(), Color.BLACK));
+            bandNodes.add(node);
+            return node.group;
+        });
+        pane.setStyle("-fx-background-color: white;");
+        return new GelView(pane, bandNodes, geneColors, laneNames, layout, laneBands);
     }
 
-    private static BandNode addGelBandShape(Pane pane,
-                                            List<GelBand> bands,
-                                            Rectangle laneHighlight,
-                                            Color geneColor,
-                                            double centerY,
-                                            BandRect rect,
-                                            double intensity,
-                                            String popupText) {
-        double bandX = rect.x();
-        double bandY = rect.y();
-        double bandWidth = rect.width();
-        double bandHeight = rect.height();
+    private static BandNode bandNode(GelScene.Band sceneBand, Rectangle laneHighlight, Color geneColor) {
+        GelNodes.BandShape shape = GelNodes.band(sceneBand);
+        BandRect rect = sceneBand.rect();
+        double centerY = sceneBand.lane().centerY();
+        String popupText = sceneBand.title();
 
-        Rectangle halo = new Rectangle(bandX - 1.5, bandY - 2.0, bandWidth + 3.0, bandHeight + 4.0);
-        halo.setFill(BandPaint.halo(intensity));
-        halo.setMouseTransparent(true);
-
-        Rectangle band = new Rectangle(bandX, bandY, bandWidth, bandHeight);
-        band.setFill(Color.rgb(8, 8, 8, intensity));
-        band.setMouseTransparent(true);
-
-        Rectangle highlight = new Rectangle(bandX, bandY + 0.5, bandWidth, Math.max(0.75, bandHeight * 0.22));
-        highlight.setFill(BandPaint.highlight(intensity));
-        highlight.setMouseTransparent(true);
-
-        Rectangle shadow = new Rectangle(bandX, bandY + bandHeight - 0.75, bandWidth, 0.75);
-        shadow.setFill(BandPaint.shadow(intensity));
-        shadow.setMouseTransparent(true);
-
-        Rectangle hitBox = new Rectangle(bandX - 5.0, centerY - (BAND_HOVER_TARGET_HEIGHT / 2.0), bandWidth + 10.0, BAND_HOVER_TARGET_HEIGHT);
+        Rectangle hitBox = new Rectangle(rect.x() - 5.0, centerY - (BAND_HOVER_TARGET_HEIGHT / 2.0), rect.width() + 10.0,
+                BAND_HOVER_TARGET_HEIGHT);
         hitBox.setFill(BandPaint.HIT_BOX);
         hitBox.setStroke(Color.TRANSPARENT);
         hitBox.setCursor(Cursor.HAND);
 
-        Group group = new Group(halo, band, highlight, shadow, hitBox);
+        Group group = new Group(shape.group(), hitBox);
         group.setPickOnBounds(false);
-        BandNode bandNode = new BandNode(group, hitBox, band, halo, laneHighlight, bands, intensity, popupText, rect, geneColor);
+        BandNode bandNode = new BandNode(group, hitBox, shape.body(), shape.halo(), laneHighlight,
+                sceneBand.lane().bands(), sceneBand.intensity(), popupText, rect, geneColor);
 
         if (popupText != null && !popupText.isBlank()) {
             Popup popup = createMetadataPopup(popupText);
@@ -379,8 +245,6 @@ public final class InteractiveGelViewer {
         } else {
             hitBox.setMouseTransparent(true);
         }
-
-        pane.getChildren().add(group);
         return bandNode;
     }
 
@@ -634,23 +498,6 @@ public final class InteractiveGelViewer {
         });
     }
 
-    private static VBox buildLegend(Map<String, Color> geneColors) {
-        VBox legend = new VBox(5);
-        legend.setPadding(new Insets(10));
-        legend.setStyle("-fx-background-color: rgba(255,255,255,0.94); -fx-border-color: #bbbbbb;");
-        Label title = new Label("Gene legend");
-        title.setStyle("-fx-font-weight: bold;");
-        legend.getChildren().add(title);
-        for (Map.Entry<String, Color> entry : geneColors.entrySet()) {
-            Rectangle swatch = new Rectangle(12, 12, entry.getValue());
-            Label label = new Label(entry.getKey());
-            HBox row = new HBox(6, swatch, label);
-            row.setAlignment(Pos.CENTER_LEFT);
-            legend.getChildren().add(row);
-        }
-        return legend;
-    }
-
     private static void chooseAndSavePng(Pane gelPane, Path automaticOutput) {
         FileChooser chooser = new FileChooser();
         chooser.setTitle("Save Synthetic Gel Image");
@@ -703,11 +550,13 @@ public final class InteractiveGelViewer {
     }
 
     private static void saveSvg(GelView gelView, Path outputFile) {
-        List<GelSvg.Band> bands = gelView.bands().stream()
-                .map(band -> new GelSvg.Band(band.rect, band.colorByGene ? band.geneColor : Color.BLACK, band.intensity, band.popupText))
-                .toList();
+        // As shown: black bands, or each in its gene's colour.
+        boolean colorByGene = !gelView.bands().isEmpty() && gelView.bands().getFirst().colorByGene;
+        GelScene scene = GelScene.of(gelView.layout(), gelView.laneNames(), gelView.laneBands(),
+                band -> colorByGene ? gelView.geneColors().getOrDefault(band.gene(), Color.BLACK) : BandPaint.BAND,
+                GelScene.LADDER_FONT_SIZE);
         try {
-            GelImages.writeText(GelSvg.window(gelView.layout(), gelView.laneNames(), bands), outputFile);
+            GelImages.writeText(GelSvg.of(scene), outputFile);
         } catch (IOException e) {
             throw new UncheckedIOException("Unable to save synthetic gel SVG: " + outputFile, e);
         }
@@ -734,7 +583,8 @@ public final class InteractiveGelViewer {
                            List<BandNode> bands,
                            Map<String, Color> geneColors,
                            List<String> laneNames,
-                           GelLayout layout) {
+                           GelLayout layout,
+                           List<LaneBand> laneBands) {
     }
 
     private record SearchResult(boolean searching, int matchCount, BandNode firstMatch) {

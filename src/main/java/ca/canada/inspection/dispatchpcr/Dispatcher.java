@@ -54,7 +54,7 @@ public final class Dispatcher {
                 out.println("insilicoPCR " + Version.VERSION);
                 return 0;
             }
-            config = CliConfig.from(cmd).pipelineConfig();
+            config = CliConfig.from(cmd);
         } catch (ParseException | IllegalArgumentException e) {
             err.println(e.getMessage());
             printHelp(out, options);
@@ -89,7 +89,8 @@ public final class Dispatcher {
         options.addOption(Option.builder("m").longOpt("mismatches").hasArg().argName("n")
                 .desc("Allowed mismatches+indels per primer (3' bases that do not pair with the template count); default: 0").build());
         options.addOption(Option.builder("e").longOpt("evalue").hasArg().argName("value")
-                .desc("blastn e-value; deliberately permissive, since primer hits are filtered by the mismatch and 3'/5' rules instead, and lowering it (e.g. to 1e-5) drops valid hits; default: 1e5").build());
+                .desc("blastn e-value; deliberately permissive, since primer hits are filtered by the mismatch and 3'/5' rules instead, and lowering it (e.g. to 1e-5) drops valid hits; default: "
+                        + PipelineConfig.DEFAULT_EVALUE_TEXT).build());
         options.addOption(Option.builder("l").longOpt("max-length").hasArg().argName("bp")
                 .desc("Maximum amplicon length in bp, 0 = unlimited; default: 5000").build());
         options.addOption(Option.builder().longOpt("min-length").hasArg().argName("bp")

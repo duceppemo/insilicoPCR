@@ -1,7 +1,6 @@
 package ca.canada.inspection.pipeline;
 
 import ca.canada.inspection.model.Sample;
-import ca.canada.inspection.pcr.AmpliconOptions;
 import ca.canada.inspection.pcr.PrimerPanel;
 
 import java.nio.file.Path;
@@ -15,8 +14,7 @@ final class TestContexts {
 
     /** A context writing to {@code output}, with stand-in tool folders and no primer. */
     static PipelineContext writingTo(Path output, Map<String, Sample> samples) {
-        PipelineConfig config = new PipelineConfig(output, output, output.resolve("primers.fasta"), 1, 1e5,
-                AmpliconOptions.withMismatches(0), false);
+        PipelineConfig config = PipelineConfig.builder(output, output, output.resolve("primers.fasta")).threads(1).build();
         RuntimeDependencies dependencies = new RuntimeDependencies(new AppPaths.RuntimeLayout(output, output, output,
                 output.resolve("bbmap"), output.resolve("blast"), output.resolve("java"), null));
         PipelineDirectories directories = new PipelineDirectories(output, output.resolve("detailed_report"),

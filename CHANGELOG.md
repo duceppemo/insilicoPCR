@@ -98,6 +98,10 @@
 
 ### Changed
 
+- Code: the defaults of a run and the checks of its settings are in one place,
+  `PipelineConfig.builder`, which the command line and the application both
+  start from (the command line kept a copy of every setting, and the
+  application its own e-value default).
 - The application's dialogs (errors, the exit confirmation) are JavaFX
   dialogs owned by its window, instead of Swing ones.
 - The portable releases no longer ship five libraries that nothing used

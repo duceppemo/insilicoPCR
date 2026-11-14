@@ -16,7 +16,7 @@ One dispatcher starts the desktop GUI when it is given no arguments and the comm
 | Pipeline | `ca.canada.inspection.pipeline.InSilicoPcrPipeline` |
 | Analysis core | `ca.canada.inspection.pcr` |
 
-The dispatcher starts the GUI when no command-line arguments are provided. When CLI arguments are present, it reads them into a `CliConfig` and runs the pipeline with its `pipelineConfig()`.
+The dispatcher starts the GUI when no command-line arguments are provided. When CLI arguments are present, `CliConfig` reads them into a `PipelineConfig` and runs the pipeline with it. The defaults of a run and the checks of its settings are in one place, `PipelineConfig.builder`, which the command line, the application and the tests all start from.
 
 ## Packages
 

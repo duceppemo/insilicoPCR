@@ -265,9 +265,8 @@ public final class ReadExtensionCaller {
         }
         Map<String, Set<Integer>> known = knownSizes(sample, primers, options, reads);
         List<String> assays = new ArrayList<>();
-        primers.assays().forEach((assay, group) -> {
-            if (!group.isComplete()
-                    || reads.readsCarrying(group.forward()) == 0 || reads.readsCarrying(group.reverse()) == 0) {
+        primers.completeAssays().forEach((assay, group) -> {
+            if (reads.readsCarrying(group.forward()) == 0 || reads.readsCarrying(group.reverse()) == 0) {
                 return;
             }
             Set<Integer> seen = known.getOrDefault(assay, Set.of());
@@ -311,8 +310,8 @@ public final class ReadExtensionCaller {
      * @param assays  assays to seed, as given by {@link #candidates}
      * @param primers expanded primer IDs of the run
      */
-    public static List<Seed> seeds(Collection<String> assays, Collection<String> primers, ReadEvidence reads) {
-        Map<String, PrimerId.Assay> groups = PrimerId.byAssay(primers);
+    public static List<Seed> seeds(Collection<String> assays, PrimerPanel primers, ReadEvidence reads) {
+        Map<String, PrimerId.Assay> groups = primers.assays();
         List<Seed> seeds = new ArrayList<>();
         for (String assay : new TreeSet<>(assays)) {
             PrimerId.Assay group = groups.get(assay);

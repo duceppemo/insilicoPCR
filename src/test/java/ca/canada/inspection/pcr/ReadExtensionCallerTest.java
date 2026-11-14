@@ -169,7 +169,7 @@ class ReadExtensionCallerTest {
 
     @Test
     void everyReadIsASeedWhenFewCarryThePrimer() {
-        List<Seed> seeds = ReadExtensionCaller.seeds(List.of("long"), PRIMERS.ids(), primersInReads(3, 2));
+        List<Seed> seeds = ReadExtensionCaller.seeds(List.of("long"), PRIMERS, primersInReads(3, 2));
 
         assertEquals(List.of(new Seed("extended_read_0", "read_0", "long", 'F'),
                 new Seed("extended_read_1", "read_1", "long", 'F'),
@@ -180,7 +180,7 @@ class ReadExtensionCallerTest {
 
     @Test
     void seedsAreCappedPerPrimerAndSpreadOverTheReads() {
-        List<Seed> seeds = ReadExtensionCaller.seeds(List.of("long"), PRIMERS.ids(), primersInReads(600, 40));
+        List<Seed> seeds = ReadExtensionCaller.seeds(List.of("long"), PRIMERS, primersInReads(600, 40));
 
         List<Seed> forward = seeds.stream().filter(seed -> seed.role() == 'F').toList();
         assertEquals(ReadExtensionCaller.MAX_SEEDS_PER_PRIMER, forward.size());
@@ -202,7 +202,7 @@ class ReadExtensionCallerTest {
         ids.put("long-R", readIds(1000, 3));
         ReadEvidence evidence = new ReadEvidence(ids, Map.of(), Map.of());
 
-        List<Seed> seeds = ReadExtensionCaller.seeds(List.of("long"), primers.ids(), evidence);
+        List<Seed> seeds = ReadExtensionCaller.seeds(List.of("long"), primers, evidence);
 
         List<Seed> forward = seeds.stream().filter(seed -> seed.role() == 'F').toList();
         assertEquals(ReadExtensionCaller.MAX_SEEDS_PER_PRIMER, forward.size(), "220 distinct reads, capped once");
@@ -221,7 +221,7 @@ class ReadExtensionCallerTest {
 
     /** Seeds: {@code forward} forward-seeded reads then {@code reverse} reverse-seeded ones. */
     private static List<Seed> seeds(int forward, int reverse) {
-        return ReadExtensionCaller.seeds(List.of("long"), PRIMERS.ids(), primersInReads(forward, reverse));
+        return ReadExtensionCaller.seeds(List.of("long"), PRIMERS, primersInReads(forward, reverse));
     }
 
     private static Sample extended() {

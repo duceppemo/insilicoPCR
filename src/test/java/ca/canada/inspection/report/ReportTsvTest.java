@@ -42,6 +42,33 @@ class ReportTsvTest {
     }
 
     @Test
+    void aTabInADescriptionIsWrittenAsASpaceAndTheColumnsStayInPlace() {
+        Sample sample = new Sample();
+        sample.setName("S");
+        ReportRow row = TestRows.row("S", "plain", 11, 80, "ctg1", "len=5000\tcov=12.3");
+
+        Path report = ConsolidatedReport.write(dir, Map.of("S", sample),
+                PrimerPanel.of(Map.of("plain-F", "ACGT", "plain-R", "ACGT")), AmpliconOptions.withMismatches(0),
+                Map.of("S", List.of(row)));
+
+        assertEquals(List.of(TestRows.row("S", "plain", 11, 80, "ctg1", "len=5000 cov=12.3")), ReportTsv.read(report));
+    }
+
+    @Test
+    void aFileSavedByASpreadsheetReads() throws IOException {
+        String header = String.join("\t", ConsolidatedReport.FIRST_COLUMNS);
+        String product = "S\tits\t11-444\t434\tcontig_1\t\tits-F\tits-R\t0\t0\t0\t0\t+";
+        // With a byte order mark before the header...
+        Path withMark = Files.writeString(dir.resolve("mark.tsv"), "\uFEFF" + header + "\n" + product + "\n");
+        // ...and without the header line.
+        Path withoutHeader = Files.writeString(dir.resolve("bare.tsv"), product + "\n" + product.replace("S\t", "T\t") + "\n");
+
+        assertEquals(List.of("S"), ReportTsv.read(withMark).stream().map(ReportRow::sample).toList());
+        assertEquals(List.of("S", "T"), ReportTsv.read(withoutHeader).stream().map(ReportRow::sample).toList());
+        assertEquals(434, ReportTsv.read(withoutHeader).getFirst().size());
+    }
+
+    @Test
     void aReportOfAnEarlierReleaseReadsWithTheMissingColumnsEmpty() throws IOException {
         // Before 0.12: no 5' columns; no probe columns without a probe in the panel.
         Path report = Files.write(dir.resolve("report.tsv"), List.of(

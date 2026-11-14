@@ -17,7 +17,8 @@ import java.util.Map;
  * past run opened in the application. Columns are found by their header, so a report of an
  * earlier release (without the probe or the 5' columns) reads too, with those left empty.
  * A line that is not a product (blank, a header again, a size that is not a number) is
- * skipped.
+ * skipped. A file without an insilicoPCR header (saved from a spreadsheet without it) is read
+ * in the report's column order, its first line as a product.
  */
 public final class ReportTsv {
 
@@ -31,14 +32,24 @@ public final class ReportTsv {
             if (headerLine == null) {
                 return rows;
             }
+            // A spreadsheet may save the file with a byte order mark before the first name.
+            headerLine = headerLine.startsWith("\uFEFF") ? headerLine.substring(1) : headerLine;
+            List<String> header = List.of(headerLine.split("\t", -1));
+            boolean hasHeader = header.contains("AmpliconSize");
             Map<String, Integer> columns = new HashMap<>();
-            String[] header = headerLine.split("\t", -1);
-            for (int i = 0; i < header.length; i++) {
-                columns.putIfAbsent(header[i], i);
+            List<String> names = hasHeader ? header : ConsolidatedReport.FIRST_COLUMNS;
+            for (int i = 0; i < names.size(); i++) {
+                columns.putIfAbsent(names.get(i), i);
+            }
+            if (!hasHeader) {
+                ReportRow first = row(new Fields(columns, headerLine.split("\t", -1)));
+                if (first != null) {
+                    rows.add(first);
+                }
             }
             String line;
             while ((line = reader.readLine()) != null) {
-                if (!line.isBlank() && !line.equals(headerLine)) {
+                if (!line.isBlank() && !(hasHeader && line.equals(headerLine))) {
                     ReportRow row = row(new Fields(columns, line.split("\t", -1)));
                     if (row != null) {
                         rows.add(row);

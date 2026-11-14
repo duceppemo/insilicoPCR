@@ -31,6 +31,15 @@
   ended the run with a Java stack trace, as if insilicoPCR itself had failed.
   It is now an `Error:` line naming the file.
 
+- `report.tsv`: a tab or line break in a contig's description (a FASTA header
+  holding one) shifted the columns after it; it is written as a space.
+- Opening a report TSV in the application: a file saved by a spreadsheet with a
+  byte order mark, or without the header line, drew no gel or a wrong one; both
+  read now.
+- A primer file with an incomplete assay was only rejected after the whole
+  input check, which reads every read of every FASTQ file: the primer file is
+  now read first.
+
 ### Changed
 
 - The application's dialogs (errors, the exit confirmation) are JavaFX

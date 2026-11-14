@@ -168,12 +168,9 @@ public final class FastqDiagnostics {
         Map<String, List<BlastResult>> hits = sample.blastResults();
         List<Finding> findings = new ArrayList<>();
 
-        for (Map.Entry<String, PrimerId.Assay> entry : primers.assays().entrySet()) {
+        for (Map.Entry<String, PrimerId.Assay> entry : primers.completeAssays().entrySet()) {
             String assay = entry.getKey();
             PrimerId.Assay group = entry.getValue();
-            if (!group.isComplete()) {
-                continue;
-            }
             ReadsWithOligo counts = new ReadsWithOligo(reads.readsCarrying(group.forward()),
                     reads.readsCarrying(group.reverse()), reads.readsCarrying(group.probe()));
             int checkable = reads.checkableLength().getOrDefault(assay, 0);

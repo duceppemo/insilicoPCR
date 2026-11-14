@@ -75,6 +75,18 @@ class InputCheckTest {
     }
 
     @Test
+    void matesWhoseSuffixesDifferInCaseAreAPair() throws IOException {
+        write("s_r1.fastq", READ);
+        write("s_R2.fastq", READ);
+
+        Result result = InputCheck.scan(dir, Depth.FULL, 2);
+
+        assertEquals(List.of(), result.issues());
+        assertEquals(List.of("s_r1.fastq", "s_R2.fastq"), result.samples().get("s").files().stream()
+                .map(file -> file.getFileName().toString()).toList());
+    }
+
+    @Test
     void assembliesNamedLikeReadMatesAreSeparateSamples() throws IOException {
         write("strain_R1.fasta", ">c1\nACGT\n");
         write("strain_R2.fasta", ">c1\nACGT\n");
@@ -250,9 +262,10 @@ class InputCheckTest {
 
         Thread.currentThread().interrupt();
         try {
-            IllegalStateException error = assertThrows(IllegalStateException.class,
-                    () -> InputCheck.scan(dir, Depth.FULL, 2));
-            assertEquals("Interrupted while checking the input files", error.getMessage());
+            // The application interrupts the run thread to cancel the run.
+            java.util.concurrent.CancellationException error = assertThrows(
+                    java.util.concurrent.CancellationException.class, () -> InputCheck.scan(dir, Depth.FULL, 2));
+            assertEquals("The run was cancelled (input check).", error.getMessage());
         } finally {
             Thread.interrupted();
         }

@@ -5,11 +5,12 @@ import ca.canada.inspection.model.Sample;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -37,7 +38,10 @@ final class QaLogWriter {
     static void write(PipelineContext context, String version, Path report, List<String> extraLines) {
         Path output = context.directories().output();
         Path qLog = output.resolve("QAlog.txt");
-        try (BufferedWriter writer = Files.newBufferedWriter(qLog, StandardCharsets.UTF_8)) {
+        // Written beside it, then moved over it: a write that stops partway (a full disk, the
+        // program ending) leaves the last finished run's log whole, not half of this one.
+        Path written = output.resolve("QAlog.txt.part");
+        try (BufferedWriter writer = Files.newBufferedWriter(written, StandardCharsets.UTF_8)) {
             writeLine(writer, "In Silico PCR version: " + version);
             writeLine(writer, "Date run: " + QA_DATE_FORMAT.format(LocalDateTime.now()));
             writeLine(writer, "Run by user: " + System.getProperty("user.name"));
@@ -50,7 +54,7 @@ final class QaLogWriter {
             // added to it after the run.
             writeLine(writer, "Input File(s) :");
             for (Path file : context.samples().values().stream().flatMap(sample -> sample.files().stream())
-                    .sorted(Comparator.comparing(Path::toString)).toList()) {
+                    .toList()) {
                 writeLine(writer, file.toAbsolutePath().toString());
             }
             // A blank line ends the input-file list; readers before 0.15.1 stop there.
@@ -61,8 +65,23 @@ final class QaLogWriter {
             for (String line : extraLines) {
                 writeLine(writer, line);
             }
+            writer.close();
+            try {
+                Files.move(written, qLog, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            } catch (AtomicMoveNotSupportedException e) {
+                Files.move(written, qLog, StandardCopyOption.REPLACE_EXISTING);
+            }
         } catch (IOException e) {
+            deleteQuietly(written);
             throw new PipelineException("Could not write QA log: " + qLog, e);
+        }
+    }
+
+    private static void deleteQuietly(Path file) {
+        try {
+            Files.deleteIfExists(file);
+        } catch (IOException ignored) {
+            // The failure to write the log is what the run reports.
         }
     }
 

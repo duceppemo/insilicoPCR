@@ -40,7 +40,7 @@ public final class Products {
             // Probe requirement is decided per assay from the primer FILE, so standard PCR and qPCR
             // assays can be mixed in one run: an assay whose probe is defined but never hits stays
             // negative, while a probe-less assay is reported on its primer pair alone.
-            find(rows::add, sampleName, sample, options, primers.assaysWithProbe());
+            find(rows::add, sampleName, sample, options, primers);
             return List.copyOf(rows);
         });
     }
@@ -59,7 +59,7 @@ public final class Products {
     }
 
     private static void find(Consumer<ReportRow> rows, String sampleName, Sample sample,
-                             AmpliconOptions options, Set<String> assaysWithProbe) {
+                             AmpliconOptions options, PrimerPanel primers) {
         Map<String, List<BlastResult>> blastResults = sample.blastResults();
         if (blastResults.isEmpty()) {
             return;
@@ -69,13 +69,13 @@ public final class Products {
         // has one "contig" per read.
         Map<String, String> contigs = sample.contigs();
         HitIndex hits = new HitIndex(blastResults);
-        Map<String, PrimerId.Assay> assays = PrimerId.byAssay(blastResults.keySet());
-        for (Map.Entry<String, PrimerId.Assay> assayEntry : assays.entrySet()) {
+        // The panel's assays (by name) and their oligos (in primer-file order, the variants of a
+        // degenerate oligo as expanded): the report lists products in this order on every run,
+        // whatever order the hits are held in.
+        Set<String> assaysWithProbe = primers.assaysWithProbe();
+        for (Map.Entry<String, PrimerId.Assay> assayEntry : primers.completeAssays().entrySet()) {
             String assayName = assayEntry.getKey();
             PrimerId.Assay group = assayEntry.getValue();
-            if (!group.isComplete()) {
-                continue;
-            }
             boolean probeRequired = assaysWithProbe.contains(assayName);
             for (String forwardPrimer : group.forward()) {
                 for (String reversePrimer : group.reverse()) {

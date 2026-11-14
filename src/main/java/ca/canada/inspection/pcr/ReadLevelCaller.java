@@ -567,7 +567,11 @@ public final class ReadLevelCaller {
 
     /** {@code F} or {@code R}: the role letter of the primer a hit belongs to. */
     private static char role(BlastResult hit) {
-        return PrimerId.of(hit.subjectID()).role().letter();
+        PrimerId.Role role = PrimerId.roleOf(hit.subjectID());
+        if (role == null) {
+            throw new IllegalArgumentException("Not a primer ID of the <assay>-F/-R/-P convention: " + hit.subjectID());
+        }
+        return role.letter();
     }
 
     /**

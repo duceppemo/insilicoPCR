@@ -41,6 +41,21 @@ class PipelineFailuresTest {
     }
 
     @Test
+    void aQaLogThatCannotReplaceTheOldOneLeavesNoPartialFile() throws IOException {
+        // A folder (not empty) where QAlog.txt goes: the log is written beside it, then cannot be moved.
+        Path output = Files.createDirectories(directory.resolve("results"));
+        Files.writeString(Files.createDirectories(output.resolve("QAlog.txt")).resolve("keep"), "");
+        PipelineContext context = TestContexts.writingTo(output, java.util.Map.of());
+
+        PipelineException error = assertThrows(PipelineException.class, () -> QaLogWriter.write(context, "0.0.0",
+                output.resolve("report.tsv"), List.of()));
+
+        assertEquals("Could not write QA log: " + output.resolve("QAlog.txt"), error.getMessage());
+        assertTrue(RunFailure.isForTheUser(error));
+        assertTrue(!Files.exists(output.resolve("QAlog.txt.part")), "the partial log is deleted");
+    }
+
+    @Test
     void aRunLogThatCannotBeWrittenIsForTheUser() throws IOException {
         Path notAFolder = Files.writeString(directory.resolve("results"), "a file where the folder should go");
 

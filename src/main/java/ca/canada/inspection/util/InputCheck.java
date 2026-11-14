@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -171,6 +172,8 @@ public final class InputCheck {
         }
         return files.size() == 2
                 && files.stream().allMatch(file -> SequenceFileUtils.fileType(file) == Sample.FileType.FASTQ)
+                // Read 1 first: the BBTools steps take the first file as in1. A sample's files are in
+                // name order whatever the case, so s_r1 comes before s_R2.
                 && SequenceFileUtils.mate(files.get(0)) == 1
                 && SequenceFileUtils.mate(files.get(1)) == 2;
     }
@@ -244,8 +247,11 @@ public final class InputCheck {
                 faults.put(entry.getKey(), entry.getValue().get());
             }
         } catch (InterruptedException e) {
+            // The run thread is interrupted when the application cancels the run.
             Thread.currentThread().interrupt();
-            throw new IllegalStateException("Interrupted while checking the input files", e);
+            CancellationException cancelled = new CancellationException("The run was cancelled (input check).");
+            cancelled.initCause(e);
+            throw cancelled;
         } catch (ExecutionException e) {
             // A file that cannot be read is a fault the check returns, not an exception: what is
             // thrown here is a bug, kept as it is.

@@ -59,9 +59,11 @@ class PreviousRunTest {
 
         List<String> lines = Files.readAllLines(output.resolve("QAlog.txt"));
         assertTrue(lines.contains("Consolidated report: consolidated_report/report(1).tsv"), lines.toString());
+        assertTrue(!Files.exists(output.resolve("QAlog.txt.part")), "written beside, then moved over QAlog.txt");
         int inputs = lines.indexOf("Input File(s) :");
-        assertEquals(List.of(reads.resolve("alpha.fasta").toString(), reads.resolve("zeta_R1.fastq.gz").toString(),
-                        reads.resolve("zeta_R2.fastq.gz").toString(), "", "Sample analysed: zeta",
+        // In the run's order, each sample's files as the sample holds them (read 1 first).
+        assertEquals(List.of(reads.resolve("zeta_R1.fastq.gz").toString(), reads.resolve("zeta_R2.fastq.gz").toString(),
+                        reads.resolve("alpha.fasta").toString(), "", "Sample analysed: zeta",
                         "Sample analysed: alpha", "FASTQ mode Tadpole settings: k=31"),
                 lines.subList(inputs + 1, lines.size()));
         // An application before 0.15.1 reads the input list up to the blank line.
@@ -99,8 +101,12 @@ class PreviousRunTest {
         Files.writeString(reports.resolve("report.tsv"), "Sample\n");
         Path latest = Files.writeString(reports.resolve("report(1).tsv"), "Sample\n");
         Files.setLastModifiedTime(latest, FileTime.from(Instant.now().plusSeconds(60)));
-        Files.writeString(run.resolve("QAlog.txt"), "In Silico PCR version: 0.15.0\nInput File(s) :\n"
+        Path log = Files.writeString(run.resolve("QAlog.txt"), "In Silico PCR version: 0.15.0\nInput File(s) :\n"
                 + "/gone/S_R1.fastq.gz\n/gone/S_R2.fastq.gz\n/gone/T.fasta\n\nSample not analysed: T\n");
+        // That run wrote its log last; a report newer than the log is from a run that did not finish.
+        Files.setLastModifiedTime(log, FileTime.from(Instant.now().plusSeconds(120)));
+        Path unfinished = Files.writeString(reports.resolve("report(2).tsv"), "Sample\n");
+        Files.setLastModifiedTime(unfinished, FileTime.from(Instant.now().plusSeconds(600)));
 
         PreviousRun previous = PreviousRun.open(run);
 

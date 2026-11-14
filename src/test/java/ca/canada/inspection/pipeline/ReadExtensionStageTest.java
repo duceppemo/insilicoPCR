@@ -8,6 +8,8 @@ import ca.canada.inspection.pcr.FastqDiagnostics.ReadsWithOligo;
 import ca.canada.inspection.pcr.FastqDiagnostics.Status;
 import ca.canada.inspection.pcr.FastqDiagnosticsReport;
 import ca.canada.inspection.pcr.ReadExtensionCaller;
+import ca.canada.inspection.pcr.ReportRow;
+import ca.canada.inspection.pcr.TestRows;
 import ca.canada.inspection.pcr.ReadExtensionCaller.Outcome;
 import ca.canada.inspection.pcr.ReadExtensionCaller.Seed;
 import ca.canada.inspection.pcr.ReadLevelCaller.ReadEvidence;
@@ -95,7 +97,7 @@ class ReadExtensionStageTest {
         Path extended = Files.writeString(dir.resolve("S_extendedReads.fasta"), ">other\nACGT\n>extended_read_3 x\n"
                 + extendedRead.substring(0, 350) + "\n" + extendedRead.substring(350) + "\n");
         ReadExtensionCaller.Product product = new ReadExtensionCaller.Product("long", 500, Set.of(500), 2, 2, 2, 2,
-                List.of("S", "long", "101-600", "500", "extended_read_3", ""));
+                TestRows.row("S", "long", 101, 600, "extended_read_3", ""));
 
         List<String> sequences = ReadExtensionStage.candidateSequences(List.of(product), extended);
         assertEquals(List.of(extendedRead.substring(100, 600)), sequences);
@@ -125,12 +127,12 @@ class ReadExtensionStageTest {
     void rowsCalledByExtensionFollowTheReadLevelRowsOfASample() {
         Sample sample = new Sample();
         sample.setName("S");
-        sample.setFileType("fastq");
-        List<String> row = List.of("S", "long", "101-1174", "1074", "extended_read_0", "FASTQ read-extension call");
+        sample.setFileType(Sample.FileType.FASTQ);
+        ReportRow row = TestRows.row("S", "long", 101, 1174, "extended_read_0", "FASTQ read-extension call");
         ReadExtensionStage.Result extension = new ReadExtensionStage.Result(Map.of(), Map.of("S", List.of(row)),
                 List.of());
 
-        Map<String, List<List<String>>> rows = FastqDiagnosticsStage.extraRows(Map.of("S", sample), PRIMERS,
+        Map<String, List<ReportRow>> rows = FastqDiagnosticsStage.extraRows(Map.of("S", sample), PRIMERS,
                 AmpliconOptions.withMismatches(0), Map.of("S", new ReadEvidence(Map.of(), Map.of(), Map.of())),
                 extension);
 

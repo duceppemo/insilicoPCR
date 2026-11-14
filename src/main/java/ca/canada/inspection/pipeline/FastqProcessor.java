@@ -7,6 +7,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Semaphore;
 
 /**
  * Baits, assembles and merges the reads of the FASTQ samples, several samples at a time.
@@ -65,11 +66,16 @@ public final class FastqProcessor {
                 previous = share;
             }
             BbtoolsCommands commands = BbtoolsCommands.of(context.dependencies(), share.memoryGiB(), share.threads());
+            BbtoolsCommands withSpare = BbtoolsCommands.of(context.dependencies(), share.memoryGiB(),
+                    share.threads() + 1);
+            // A child takes a spare thread while it runs, if one is free, and gives it back after.
+            Semaphore spare = new Semaphore(share.spareThreads());
             // Only worth setting a sample aside if it gets more memory alone.
             boolean runAgainAlone = share.memoryGiB() < alone.memoryGiB();
             ParallelStageRunner.run(step.stageName, stepSamples, share.atOnce(), monitor, sample -> {
+                boolean extra = spare.tryAcquire();
                 try {
-                    runStep(step, context, commands, sample, kLength);
+                    runStep(step, context, extra ? withSpare : commands, sample, kLength);
                 } catch (ProgramFailedException e) {
                     if (!runAgainAlone || !BbtoolsCommands.ranOutOfMemory(e)) {
                         throw outOfMemoryOrAsIs(e, sample, share);
@@ -78,6 +84,10 @@ public final class FastqProcessor {
                     monitor.warning("Warning: " + e.program() + " ran out of memory on sample " + sample.getName()
                             + " with -Xmx" + share.memoryGiB() + "g; it will be run again after the other samples,"
                             + " alone, with -Xmx" + alone.memoryGiB() + "g");
+                } finally {
+                    if (extra) {
+                        spare.release();
+                    }
                 }
             }, ParallelStageRunner.Progress.NONE);
             if (step.completed != null) {
@@ -108,7 +118,10 @@ public final class FastqProcessor {
     }
 
     private static String describe(ChildJavaMemory.Share share) {
-        return share.threads() + " threads and -Xmx" + share.memoryGiB() + "g";
+        String threads = share.spareThreads() == 0 ? share.threads() + " threads"
+                : share.threads() + " or " + (share.threads() + 1) + " threads ("
+                + (share.threads() * share.atOnce() + share.spareThreads()) + " in all)";
+        return threads + " and -Xmx" + share.memoryGiB() + "g";
     }
 
     /** A failure that the user can do something about when it is a lack of memory. */

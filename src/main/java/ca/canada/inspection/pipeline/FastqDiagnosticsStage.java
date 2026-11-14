@@ -11,6 +11,7 @@ import ca.canada.inspection.pcr.PairSupport;
 import ca.canada.inspection.pcr.ReadExtensionCaller;
 import ca.canada.inspection.pcr.ReadLevelCaller;
 import ca.canada.inspection.pcr.ReadLevelCaller.ReadEvidence;
+import ca.canada.inspection.pcr.ReportRow;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -152,18 +153,18 @@ public final class FastqDiagnosticsStage {
      * at another size only (both primers landing elsewhere) still gets its read-level
      * product.
      */
-    public static Map<String, List<List<String>>> readLevelRows(Map<String, Sample> samples,
+    public static Map<String, List<ReportRow>> readLevelRows(Map<String, Sample> samples,
                                                                 Map<String, String> primers,
                                                                 AmpliconOptions options,
                                                                 Map<String, ReadEvidence> evidence) {
-        Map<String, List<List<String>>> rows = new HashMap<>();
+        Map<String, List<ReportRow>> rows = new HashMap<>();
         evidence.forEach((sampleName, reads) -> {
             Sample sample = samples.get(sampleName);
             if (sample == null) {
                 return;
             }
             Map<String, Set<Integer>> assembled = ConsolidatedReport.reportedSizes(sample, primers, options);
-            List<List<String>> sampleRows = new ArrayList<>();
+            List<ReportRow> sampleRows = new ArrayList<>();
             new TreeMap<>(reads.calls()).forEach((assay, products) ->
                     FastqDiagnostics.missingFromAssembly(products, assembled.get(assay)).stream()
                             .map(ReadLevelCaller::reportRow)
@@ -179,10 +180,10 @@ public final class FastqDiagnosticsStage {
      * The rows to append to each sample's own: those called from single reads
      * ({@link #readLevelRows}), then those called by extending reads.
      */
-    public static Map<String, List<List<String>>> extraRows(Map<String, Sample> samples, Map<String, String> primers,
+    public static Map<String, List<ReportRow>> extraRows(Map<String, Sample> samples, Map<String, String> primers,
                                                             AmpliconOptions options, Map<String, ReadEvidence> evidence,
                                                             ReadExtensionStage.Result extension) {
-        Map<String, List<List<String>>> rows = new HashMap<>();
+        Map<String, List<ReportRow>> rows = new HashMap<>();
         readLevelRows(samples, primers, options, evidence).forEach((sample, list) ->
                 rows.put(sample, new ArrayList<>(list)));
         extension.rows().forEach((sample, list) ->

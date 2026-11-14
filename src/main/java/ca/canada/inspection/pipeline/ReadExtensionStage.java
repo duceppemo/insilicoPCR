@@ -14,6 +14,7 @@ import ca.canada.inspection.pcr.ReadExtensionCaller.Product;
 import ca.canada.inspection.pcr.ReadExtensionCaller.Seed;
 import ca.canada.inspection.pcr.ReadLevelCaller.ReadEvidence;
 import ca.canada.inspection.util.SequenceFileUtils;
+import ca.canada.inspection.pcr.ReportRow;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -59,7 +60,7 @@ public final class ReadExtensionStage {
      * @param rows     report rows of the products called that the sample did not show yet, per sample name
      * @param notes    samples whose extension could not be run, with the reason
      */
-    public record Result(Map<String, Map<String, Outcome>> outcomes, Map<String, List<List<String>>> rows,
+    public record Result(Map<String, Map<String, Outcome>> outcomes, Map<String, List<ReportRow>> rows,
                          List<String> notes) {
         /** No extension was run: the mode is {@code off}, or the run has no FASTQ sample. */
         public static final Result NONE = new Result(Map.of(), Map.of(), List.of());
@@ -82,7 +83,7 @@ public final class ReadExtensionStage {
             return Result.NONE;
         }
         Map<String, Map<String, Outcome>> outcomes = new TreeMap<>();
-        Map<String, List<List<String>>> rows = new HashMap<>();
+        Map<String, List<ReportRow>> rows = new HashMap<>();
         List<String> notes = new ArrayList<>();
         List<Sample> fastq = samples.values().stream()
                 .filter(Sample::isFastq)
@@ -113,7 +114,7 @@ public final class ReadExtensionStage {
     private static void extendSample(Settings settings, Path sampleDir, Sample sample, Map<String, String> primers,
                                      AmpliconOptions options, ReadEvidence reads,
                                      Map<String, Map<String, Outcome>> outcomes,
-                                     Map<String, List<List<String>>> rows) {
+                                     Map<String, List<ReportRow>> rows) {
         String name = sample.getName();
         Path seedsFile = BbtoolsCommands.extensionSeeds(sampleDir, name);
         Path extendedFile = BbtoolsCommands.extendedReads(sampleDir, name);
@@ -157,11 +158,11 @@ public final class ReadExtensionStage {
 
         Map<String, String> readOfSeed = new HashMap<>();
         seeds.forEach(seed -> readOfSeed.put(seed.id(), seed.read()));
-        List<List<String>> sampleRows = new ArrayList<>();
+        List<ReportRow> sampleRows = new ArrayList<>();
         for (Outcome outcome : sampleOutcomes.values()) {
             for (Product product : outcome.added()) {
                 ReadLevelStage.ReadRecord seedRead =
-                        seedReads.get(readOfSeed.get(product.row().get(ConsolidatedReport.CONTIG_COLUMN)));
+                        seedReads.get(readOfSeed.get(product.row().contig()));
                 sampleRows.add(ReadExtensionCaller.reportRow(product, seedRead == null ? "" : seedRead.description()));
             }
         }
@@ -193,7 +194,7 @@ public final class ReadExtensionStage {
             for (int i = 0; i < closed.size(); i++) {
                 Product product = closed.get(i);
                 writer.write(">" + product.assay() + "_" + product.size() + "bp_on_"
-                        + product.row().get(ConsolidatedReport.CONTIG_COLUMN)
+                        + product.row().contig()
                         + " best-supported path held by extended reads, not an assembled consensus");
                 writer.newLine();
                 writer.write(sequences.get(i));
@@ -218,14 +219,12 @@ public final class ReadExtensionStage {
     /** The sequence of each product, cut from the extended read its row lies on. */
     static List<String> candidateSequences(List<Product> products, Path extendedFile) {
         Set<String> wanted = new HashSet<>();
-        products.forEach(product -> wanted.add(product.row().get(ConsolidatedReport.CONTIG_COLUMN)));
+        products.forEach(product -> wanted.add(product.row().contig()));
         Map<String, String> extended = readFasta(extendedFile, wanted);
         List<String> sequences = new ArrayList<>();
         for (Product product : products) {
-            String read = extended.get(product.row().get(ConsolidatedReport.CONTIG_COLUMN));
-            String[] location = product.row().get(ConsolidatedReport.LOCATION_COLUMN).split("-");
-            sequences.add(read.substring(Integer.parseInt(location[0]) - 1,
-                    Math.min(read.length(), Integer.parseInt(location[1]))));
+            String read = extended.get(product.row().contig());
+            sequences.add(read.substring(product.row().start() - 1, Math.min(read.length(), product.row().end())));
         }
         return sequences;
     }
@@ -327,7 +326,7 @@ public final class ReadExtensionStage {
                                  Map<String, String> primers, AmpliconOptions options) {
         Sample extended = new Sample();
         extended.setName(name);
-        extended.setFileType("reads");
+        extended.setFileType(Sample.FileType.READS);
         lengths.keySet().forEach(id -> extended.addContig(id, ""));
         try (BufferedReader reader = Files.newBufferedReader(hitsFile, StandardCharsets.UTF_8);
              QueryTemplates templates = new QueryTemplates(List.of(extendedFile))) {

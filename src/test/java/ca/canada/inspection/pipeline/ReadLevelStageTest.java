@@ -98,7 +98,7 @@ class ReadLevelStageTest {
         assertEquals(2, call.informativeReads());
         assertEquals(3, call.elsewhereReads());
         assertTrue(call.isReportable());
-        assertEquals("r0", call.row().get(5), "the read's original name is the description");
+        assertEquals("r0", call.row().contigDescription(), "the read's original name is the description");
     }
 
     /** One BLAST TSV line: a perfect full-length primer hit at read positions {@code qstart-qend}. */

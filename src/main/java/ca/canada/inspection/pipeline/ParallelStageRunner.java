@@ -47,7 +47,7 @@ final class ParallelStageRunner {
             for (T item : items) {
                 futures.add(executor.submit(() -> {
                     if (monitor.isCancelled()) {
-                        throw new CancellationException(stageName + " was cancelled.");
+                        throw cancelled(stageName);
                     }
                     if (failed.get()) {
                         return;
@@ -65,11 +65,19 @@ final class ParallelStageRunner {
                 future.get();
             }
         } catch (InterruptedException e) {
+            // The run thread is interrupted when the application cancels the run.
             Thread.currentThread().interrupt();
-            throw new StageException(stageName + " interrupted", e);
+            throw cancelled(stageName);
         } catch (ExecutionException e) {
-            throw new StageException(stageName + " failed", e.getCause());
+            if (e.getCause() instanceof CancellationException cancelled) {
+                throw cancelled; // the run was cancelled: not a failure of this stage
+            }
+            throw new PipelineException(stageName + " failed", e.getCause());
         }
+    }
+
+    private static CancellationException cancelled(String stageName) {
+        return new CancellationException(stageName + " was cancelled.");
     }
 
     /** Progress of a stage. */

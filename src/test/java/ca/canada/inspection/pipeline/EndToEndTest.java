@@ -199,7 +199,7 @@ class EndToEndTest {
         PipelineContext context = readContext(twoSamples("big", "small"), directory.resolve("results"), 4, monitor,
                 how);
 
-        StageException error = assertThrows(StageException.class, () -> FastqProcessor.process(context));
+        PipelineException error = assertThrows(PipelineException.class, () -> FastqProcessor.process(context));
 
         assertTrue(RunFailure.isForTheUser(error));
         assertTrue(RunFailure.lines(error).stream().anyMatch(line -> line.contains(
@@ -291,7 +291,7 @@ class EndToEndTest {
             fail("the run went on");
         } catch (CancellationException expected) {
             // makeblastdb, the first program of an assembly run, was not started
-        } catch (StageException expected) {
+        } catch (PipelineException expected) {
             assertTrue(expected.getCause() instanceof CancellationException, expected.toString());
         }
         assertFalse(Files.exists(output.resolve("consolidated_report").resolve("report.tsv")));

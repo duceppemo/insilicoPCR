@@ -8,7 +8,6 @@ import java.util.List;
 import java.util.concurrent.CancellationException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -50,7 +49,7 @@ class ParallelStageRunnerTest {
         // An item without a result would otherwise read as one without a primer hit.
         PipelineException failed = new PipelineException("blastn failed with exit code 3: blastn -query a.fasta");
 
-        StageException error = assertThrows(StageException.class, () -> ParallelStageRunner.run("BLAST",
+        PipelineException error = assertThrows(PipelineException.class, () -> ParallelStageRunner.run("BLAST",
                 List.of("a", "b"), 2, item -> {
                     if (item.equals("a")) {
                         throw failed;
@@ -67,7 +66,7 @@ class ParallelStageRunnerTest {
         // One thread: the items run in order, and the first one fails.
         List<Integer> started = Collections.synchronizedList(new ArrayList<>());
 
-        assertThrows(StageException.class, () -> ParallelStageRunner.run("BBDuk", List.of(1, 2, 3, 4, 5), 1,
+        assertThrows(PipelineException.class, () -> ParallelStageRunner.run("BBDuk", List.of(1, 2, 3, 4, 5), 1,
                 item -> {
                     started.add(item);
                     throw new PipelineException("BBDuk failed with exit code 1: bbduk");
@@ -78,7 +77,7 @@ class ParallelStageRunnerTest {
 
     @Test
     void anErrorInAnItemIsNotForTheUser() {
-        StageException error = assertThrows(StageException.class, () -> ParallelStageRunner.run("BLAST",
+        PipelineException error = assertThrows(PipelineException.class, () -> ParallelStageRunner.run("BLAST",
                 List.of("a"), 1, item -> {
                     throw new IllegalStateException("bug");
                 }));
@@ -95,12 +94,13 @@ class ParallelStageRunnerTest {
             }
         };
 
-        StageException error = assertThrows(StageException.class, () -> ParallelStageRunner.run("BLAST",
+        // Cancelled, not failed: the application says "Run cancelled".
+        CancellationException error = assertThrows(CancellationException.class, () -> ParallelStageRunner.run("BLAST",
                 List.of("a", "b"), 2, cancelled, item -> {
                     throw new AssertionError("ran");
                 }, ParallelStageRunner.Progress.NONE));
 
-        assertInstanceOf(CancellationException.class, error.getCause());
+        assertEquals("BLAST was cancelled.", error.getMessage());
     }
 
     @Test
@@ -109,7 +109,7 @@ class ParallelStageRunnerTest {
         // an item already done would be returned without one.
         Thread.currentThread().interrupt();
         try {
-            StageException error = assertThrows(StageException.class, () -> ParallelStageRunner.run("BLAST",
+            CancellationException error = assertThrows(CancellationException.class, () -> ParallelStageRunner.run("BLAST",
                     List.of("a"), 1, item -> {
                         try {
                             Thread.sleep(1000);
@@ -117,7 +117,7 @@ class ParallelStageRunnerTest {
                             Thread.currentThread().interrupt();
                         }
                     }));
-            assertEquals("BLAST interrupted", error.getMessage());
+            assertEquals("BLAST was cancelled.", error.getMessage());
             assertTrue(Thread.currentThread().isInterrupted());
         } finally {
             Thread.interrupted();

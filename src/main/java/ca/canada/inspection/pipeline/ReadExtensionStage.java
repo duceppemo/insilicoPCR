@@ -18,6 +18,7 @@ import ca.canada.inspection.util.SequenceFileUtils;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -104,11 +105,11 @@ public final class ReadExtensionStage {
             try {
                 extendSample(settings, detailedDir.resolve(sample.getName()), sample, primers, options, reads,
                         outcomes, rows);
-            } catch (PipelineException e) {
-                // The assays stay as the read-level search left them; the run goes on.
-                String reason = BbtoolsCommands.ranOutOfMemory(e)
-                        ? BbtoolsCommands.outOfMemoryMessage(((ProgramFailedException) e).program(), "",
-                                settings.bbtools().childMemoryGiB())
+            } catch (PipelineException | UncheckedIOException e) {
+                // A failed program or a file that cannot be read or written: the assays stay as
+                // the read-level search left them, and the run goes on.
+                String reason = e instanceof ProgramFailedException failed && BbtoolsCommands.ranOutOfMemory(failed)
+                        ? BbtoolsCommands.outOfMemoryMessage(failed.program(), "", settings.bbtools().childMemoryGiB())
                         : e.getMessage();
                 notes.add("read extension could not be run for sample " + sample.getName() + " (" + reason + ")");
             }

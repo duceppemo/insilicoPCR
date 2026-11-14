@@ -10,7 +10,7 @@ public record RuntimeDependencies(AppPaths.RuntimeLayout layout) {
         try {
             return new RuntimeDependencies(AppPaths.discover());
         } catch (RuntimeException e) {
-            throw new DependencyException("Unable to discover bundled runtime dependencies", e);
+            throw new PipelineException("Unable to discover bundled runtime dependencies", e);
         }
     }
 

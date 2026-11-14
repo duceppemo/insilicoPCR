@@ -17,7 +17,7 @@ class RunFailureTest {
         // PrimerService wraps the rejected value and repeats its message with the file added.
         IllegalArgumentException rejected = new IllegalArgumentException(
                 "Assay stxQ declares size= twice with different values: 118 on stxQ-F, 300 on stxQ-R");
-        PipelineException error = new PipelineException(rejected.getMessage() + " (primer file /data/p.fasta)", rejected);
+        PipelineException error = new PipelineException(rejected.getMessage() + " (primer file /data/p.fasta)");
 
         assertTrue(RunFailure.isForTheUser(error));
         assertEquals(List.of("Error: Assay stxQ declares size= twice with different values: 118 on stxQ-F,"
@@ -47,7 +47,7 @@ class RunFailureTest {
         // blastn has printed its own message; the stage names itself and the command follows.
         PipelineException failed = new PipelineException(
                 "blastn failed with exit code 1: blastn -query /data/sample.fasta");
-        StageException error = new StageException("BLAST failed", failed);
+        PipelineException error = new PipelineException("BLAST failed", failed);
 
         assertTrue(RunFailure.isForTheUser(error));
         assertEquals(List.of("Error: BLAST failed",
@@ -60,5 +60,9 @@ class RunFailureTest {
         assertFalse(RunFailure.isForTheUser(new NullPointerException("oops")));
         // A stage that failed on a programming error is not something the user can fix.
         assertFalse(RunFailure.isForTheUser(new PipelineException("BLAST failed", new IllegalStateException("oops"))));
+        // A value the user gave is checked before the run: one rejected during the run is a bug.
+        assertFalse(RunFailure.isForTheUser(new NumberFormatException("For input string: \"x\"")));
+        assertFalse(RunFailure.isForTheUser(new PipelineException("BLAST failed",
+                new IllegalArgumentException("threads must be >= 1"))));
     }
 }

@@ -4,6 +4,15 @@
 
 ### Fixed
 
+- Command line: a run that failed on a fault of the program itself could be
+  reported as a wrong command line (exit code 2 and the usage text) instead of
+  a failed run (exit code 1 and the stack trace a bug report needs). Only the
+  command line is now checked as such.
+- FASTQ mode: a file of the read extension that could not be read or written
+  stopped the whole run; like a failed program there, it now leaves the
+  sample's assays as the read-level search left them, with a `Warning:` line,
+  and the run goes on.
+
 - The gel viewer saved a PNG of the gel in the run's output folder each time it
   opened: it could not open a run in a folder it cannot write to (someone
   else's run, with **Open Previous Run** or **Open Report TSV**), and it

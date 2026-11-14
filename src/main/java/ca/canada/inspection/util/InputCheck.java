@@ -196,13 +196,12 @@ public final class InputCheck {
             Thread.currentThread().interrupt();
             throw new IllegalStateException("Interrupted while checking the input files", e);
         } catch (ExecutionException e) {
-            // A file that cannot be read is the user's to fix; anything else is a bug, kept as it is.
-            switch (e.getCause()) {
-                case UncheckedIOException unreadable -> throw unreadable;
-                case IOException unreadable -> throw new UncheckedIOException("Unable to check the input files", unreadable);
-                case RuntimeException bug -> throw bug;
-                default -> throw new IllegalStateException("Unable to check the input files", e.getCause());
+            // A file that cannot be read is a fault the check returns, not an exception: what is
+            // thrown here is a bug, kept as it is.
+            if (e.getCause() instanceof RuntimeException bug) {
+                throw bug;
             }
+            throw new IllegalStateException("Unable to check the input files", e.getCause());
         } finally {
             // Nothing is left to wait for after a normal end; after a cancelled run the files
             // still being read are dropped (FastqCheck stops at its next block).

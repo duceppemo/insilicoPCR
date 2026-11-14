@@ -130,8 +130,9 @@ class BbtoolsCommandsTest {
     }
 
     @Test
-    void onlyExitCodeThreeOfAProgramIsRunningOutOfMemory() {
+    void exitCodeThreeOrBbtoolsSayingSoIsRunningOutOfMemory() {
         assertTrue(BbtoolsCommands.ranOutOfMemory(new ProgramFailedException("Tadpole", 3, "Tadpole failed")));
+        assertTrue(BbtoolsCommands.ranOutOfMemory(new ProgramFailedException("Tadpole", 1, true, "Tadpole failed")));
         assertFalse(BbtoolsCommands.ranOutOfMemory(new ProgramFailedException("Tadpole", 1, "Tadpole failed")));
         assertFalse(BbtoolsCommands.ranOutOfMemory(new PipelineException("Tadpole failed with exit code 3")));
     }

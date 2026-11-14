@@ -30,9 +30,14 @@ final class ExternalProgram {
         if (workingDirectory != null) {
             builder.directory(workingDirectory.toFile());
         }
+        // Error output is read, so that a program saying it ran out of memory is recognised;
+        // on the console it is passed on to standard error as it comes.
         Consumer<String> output = monitor.programOutput();
-        if (output == null) {
-            builder.inheritIO();
+        boolean console = output == null;
+        if (console) {
+            builder.redirectInput(ProcessBuilder.Redirect.INHERIT);
+            builder.redirectOutput(ProcessBuilder.Redirect.INHERIT);
+            output = System.err::println;
         } else {
             builder.redirectErrorStream(true);
         }
@@ -46,21 +51,21 @@ final class ExternalProgram {
             monitor.processes().add(process);
         }
         boolean ended = false;
+        boolean saidOutOfMemory = false;
         try {
-            if (output != null) {
-                try (BufferedReader lines = new BufferedReader(
-                        new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
-                    String line;
-                    while ((line = lines.readLine()) != null) {
-                        output.accept(line);
-                    }
+            try (BufferedReader lines = new BufferedReader(new InputStreamReader(
+                    console ? process.getErrorStream() : process.getInputStream(), StandardCharsets.UTF_8))) {
+                String line;
+                while ((line = lines.readLine()) != null) {
+                    output.accept(line);
+                    saidOutOfMemory |= line.strip().equals(BbtoolsCommands.OUT_OF_MEMORY_LINE);
                 }
             }
             int exit = process.waitFor();
             ended = true;
             stopIfCancelled(monitor, program);
             if (exit != 0) {
-                throw new ProgramFailedException(program, exit,
+                throw new ProgramFailedException(program, exit, saidOutOfMemory,
                         program + " failed with exit code " + exit + ": " + String.join(" ", command));
             }
         } catch (IOException e) {

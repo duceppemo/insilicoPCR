@@ -78,7 +78,7 @@ The message is `Tadpole ran out of memory on sample <name> with -Xmx<n>g` (or `B
 
 When the read extension runs out of memory, the run goes on: the sample's assays stay as the read-level search left them, and a `Warning:` line in the log, and in `QAlog.txt`, says `read extension could not be run for sample <name> (Tadpole ran out of memory ...)`.
 
-Releases before 0.14.0 reported this as `Tadpole failed with exit code 1`, with `java.lang.OutOfMemoryError` in the program's output above it.
+Releases before 0.14.0 reported this as `Tadpole failed with exit code 1`, with `java.lang.OutOfMemoryError` in the program's output above it. 0.14.0 and 0.15.0 still did when Tadpole stopped because its k-mer table was full (its output says `This program ran out of memory.`): the run stopped there, instead of running the sample again alone.
 
 ## An assay is negative in FASTQ mode but positive on an assembly
 

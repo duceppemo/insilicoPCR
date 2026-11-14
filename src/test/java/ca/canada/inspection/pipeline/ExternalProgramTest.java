@@ -3,6 +3,11 @@ package ca.canada.inspection.pipeline;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.PrintStream;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -69,6 +74,61 @@ class ExternalProgramTest {
 
         assertTrue(error.getMessage().startsWith("java failed with exit code 1: " + JAVA), error.getMessage());
         assertTrue(RunFailure.isForTheUser(error));
+    }
+
+    /** A program that prints BBTools' out-of-memory message and stops as BBTools then does. */
+    private List<String> bbtoolsOutOfMemory() throws IOException {
+        Path source = directory.resolve("Stop.java");
+        Files.writeString(source, """
+                class Stop {
+                    public static void main(String[] args) {
+                        System.err.println("java.lang.OutOfMemoryError");
+                        System.err.println();
+                        System.err.println("%s");
+                        System.exit(1);
+                    }
+                }
+                """.formatted(BbtoolsCommands.OUT_OF_MEMORY_LINE));
+        return List.of(JAVA, source.toString());
+    }
+
+    @Test
+    void aProgramSayingItRanOutOfMemoryIsRecognised() throws IOException {
+        Recorder monitor = new Recorder();
+
+        ProgramFailedException error = assertThrows(ProgramFailedException.class,
+                () -> ExternalProgram.run(monitor, null, bbtoolsOutOfMemory(), "Tadpole"));
+
+        assertEquals(1, error.exitCode());
+        assertTrue(error.saidOutOfMemory());
+        assertTrue(monitor.lines.contains(BbtoolsCommands.OUT_OF_MEMORY_LINE), monitor.lines.toString());
+    }
+
+    @Test
+    void onTheConsoleTheErrorOutputIsPassedOnAndReadToo() throws IOException {
+        List<String> command = bbtoolsOutOfMemory();
+        PrintStream console = System.err;
+        ByteArrayOutputStream printed = new ByteArrayOutputStream();
+        ProgramFailedException error;
+        try {
+            System.setErr(new PrintStream(printed, true, StandardCharsets.UTF_8));
+            error = assertThrows(ProgramFailedException.class,
+                    () -> ExternalProgram.run(RunMonitor.CONSOLE, null, command, "Tadpole"));
+        } finally {
+            System.setErr(console);
+        }
+
+        assertTrue(error.saidOutOfMemory());
+        assertTrue(printed.toString(StandardCharsets.UTF_8).contains(BbtoolsCommands.OUT_OF_MEMORY_LINE),
+                printed.toString(StandardCharsets.UTF_8));
+    }
+
+    @Test
+    void anOrdinaryFailureIsNotRunningOutOfMemory() {
+        ProgramFailedException error = assertThrows(ProgramFailedException.class,
+                () -> ExternalProgram.run(new Recorder(), null, List.of(JAVA, "-XX:+NoSuchOptionAtAll"), "java"));
+
+        assertFalse(error.saidOutOfMemory());
     }
 
     @Test

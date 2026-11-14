@@ -16,6 +16,13 @@ import java.util.Objects;
  */
 record BbtoolsCommands(String javaCommand, Path bbtoolsJar, int childMemoryGiB, int threads) {
     /**
+     * Makes BBDuk and BBMerge write reads in the order they read them. With several threads
+     * they otherwise write them as each thread finishes, a different order every run, and
+     * the read-level search numbers the reads in the order it finds them ({@code read_<n>}),
+     * so the read a call names in the report would change from run to run.
+     */
+    private static final String SAME_ORDER = "ordered=t";
+    /**
      * Makes a child whose Java runtime runs out of heap exit with {@link #OUT_OF_MEMORY_EXIT}.
      * Without it the exit code is that of any other error (BBTools catches the error only to
      * stop), and an error in a worker thread may even leave the program running on. It is
@@ -160,6 +167,7 @@ record BbtoolsCommands(String javaCommand, Path bbtoolsJar, int childMemoryGiB, 
                 "out=" + merged,
                 "outu=" + unmerged,
                 "overwrite=t",
+                SAME_ORDER,
                 "threads=" + threads
         ));
     }
@@ -235,6 +243,7 @@ record BbtoolsCommands(String javaCommand, Path bbtoolsJar, int childMemoryGiB, 
                 "hdist=" + hdist,
                 "threads=" + threads,
                 "overwrite=t",
+                SAME_ORDER,
                 "interleaved=t"
         ));
         if (reads.size() == 2) {

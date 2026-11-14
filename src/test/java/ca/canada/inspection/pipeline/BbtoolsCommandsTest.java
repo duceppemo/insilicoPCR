@@ -29,6 +29,7 @@ class BbtoolsCommandsTest {
         assertTrue(command.contains("-Xmx6g"));
         assertTrue(command.contains("-XX:+ExitOnOutOfMemoryError"));
         assertTrue(command.contains("threads=4"));
+        assertTrue(command.contains("ordered=t"), "reads in the order they came, every run");
     }
 
     @Test
@@ -127,6 +128,7 @@ class BbtoolsCommandsTest {
         assertTrue(command.contains("interleaved=t"));
         assertTrue(command.contains("out=m.fq.gz"));
         assertTrue(command.contains("outu=u.fq.gz"));
+        assertTrue(command.contains("ordered=t"), "reads in the order they came, every run");
     }
 
     @Test

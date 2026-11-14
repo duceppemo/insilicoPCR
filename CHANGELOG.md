@@ -20,6 +20,11 @@
   stops when it reads the primer file and names the missing primers (`Every
   assay needs a forward (-F) and a reverse (-R) primer, but toxA-R is missing
   ...`). The application checks the same before a run.
+- FASTQ mode: the read a call from reads names in the report's Contig column
+  (`read_<n>`) could change from one run of the same data to the next, as
+  BBDuk and BBMerge wrote the baited reads in a different order each time
+  with several threads. They now keep the order they read them in
+  (`ordered=t`), so the same data gives the same report.
 
 ### Changed
 

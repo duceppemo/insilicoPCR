@@ -56,11 +56,6 @@ public final class ReadLevelStage {
                     context.config().evalue(), context.config().threads(), context.config().readMinFraction(),
                     context.monitor());
         }
-
-        /** Settings for the console: blastn output goes to the terminal, nothing to cancel. */
-        public Settings(Path blastn, Path primerDatabase, double evalue, int threads, double minSupportFraction) {
-            this(blastn, primerDatabase, evalue, threads, minSupportFraction, RunMonitor.CONSOLE);
-        }
     }
 
     /** The reads searched for one sample and which of them are mates of one pair. */

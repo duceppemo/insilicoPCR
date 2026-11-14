@@ -98,6 +98,11 @@
 
 ### Changed
 
+- Code: the window's run task (`PcrPipelineTask`) and the `--gel` image writer
+  (`GelImageWriter`) moved out of `pipeline`, so JavaFX is only in `gel` and
+  `insilicopcr` (a test keeps it so); methods and overloads nothing used are
+  gone. A tool missing from the installation (BLAST+, BBTools, the Java
+  runtime) is reported as its message instead of a stack trace.
 - Code (FASTQ mode): whether a product called from reads or from extended reads
   is one the sample already shows is decided by one rule
   (`ReadLevelCaller.sameProduct`), where the two callers each had their own;

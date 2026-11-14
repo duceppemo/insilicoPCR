@@ -37,8 +37,4 @@ public final class ExternalProcessTracker {
         }
         processes.clear();
     }
-
-    public synchronized boolean isShutDown() {
-        return shutDown;
-    }
 }

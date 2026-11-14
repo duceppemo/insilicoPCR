@@ -1,13 +1,11 @@
 package ca.canada.inspection.pipeline;
 
 import ca.canada.inspection.model.Sample;
-import ca.canada.inspection.pcr.AmpliconOptions;
 import ca.canada.inspection.report.HtmlReport;
 import ca.canada.inspection.pcr.ReadExtensionCaller;
 import ca.canada.inspection.pcr.ReadLevelCaller;
 import ca.canada.inspection.util.InputCheck;
 
-import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -25,20 +23,20 @@ final class RunDetails {
     }
 
     /**
-     * @param readMinFraction read-level call threshold, or {@code null} when the run has no FASTQ sample
-     * @param readExtension   which assays reads are extended for
+     * @param withFastq whether the run has a FASTQ sample, whose settings are then listed too
      * @return label and value pairs in display order
      */
-    static Map<String, String> of(String version, Path input, Path primers, Path output, AmpliconOptions options,
-                                  Double readMinFraction, ReadExtensionCaller.Mode readExtension) {
+    static Map<String, String> of(String version, PipelineConfig config, boolean withFastq) {
         Map<String, String> details = new LinkedHashMap<>();
         details.put("Date", DATE_FORMAT.format(LocalDateTime.now()));
         details.put("insilicoPCR version", version);
-        details.put("Input", String.valueOf(input));
-        details.put("Primer file", String.valueOf(primers));
-        details.put("Output folder", String.valueOf(output));
-        details.putAll(HtmlReport.settings(options));
-        if (readMinFraction != null) {
+        details.put("Input", String.valueOf(config.input()));
+        details.put("Primer file", String.valueOf(config.primers()));
+        details.put("Output folder", String.valueOf(config.output()));
+        details.putAll(HtmlReport.settings(config.ampliconOptions()));
+        if (withFastq) {
+            double readMinFraction = config.readMinFraction();
+            ReadExtensionCaller.Mode readExtension = config.readExtension();
             details.put("Read-level calls (FASTQ)", "at least " + ReadLevelCaller.MIN_SUPPORTING_READS
                     + " reads or read pairs and " + Math.round(100 * readMinFraction) + "% of informative reads");
             details.put("Read extension (FASTQ)", readExtension == ReadExtensionCaller.Mode.OFF ? "off"

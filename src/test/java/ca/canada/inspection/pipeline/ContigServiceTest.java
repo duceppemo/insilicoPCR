@@ -2,7 +2,7 @@ package ca.canada.inspection.pipeline;
 
 import ca.canada.inspection.pcr.PrimerPanel;
 import ca.canada.inspection.model.Sample;
-import ca.canada.inspection.util.SequenceFileUtils;
+import ca.canada.inspection.util.InputCheck;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -33,7 +33,7 @@ class ContigServiceTest {
         try (OutputStream out = new GZIPOutputStream(Files.newOutputStream(directory.resolve("zipped.fna.gz")))) {
             out.write(FASTA.getBytes(StandardCharsets.UTF_8));
         }
-        Map<String, Sample> samples = new LinkedHashMap<>(SequenceFileUtils.createSampleMap(directory));
+        Map<String, Sample> samples = new LinkedHashMap<>(InputCheck.scan(directory, InputCheck.Depth.QUICK, 1).samples());
 
         ContigService.load(contextOf(samples));
 
@@ -45,7 +45,7 @@ class ContigServiceTest {
     @Test
     void theContigsOfAFastqSampleAreThoseOfItsAssembly() throws IOException {
         Files.writeString(directory.resolve("reads.fastq"), "@r1\nACGT\n+\nIIII\n");
-        Map<String, Sample> samples = new LinkedHashMap<>(SequenceFileUtils.createSampleMap(directory));
+        Map<String, Sample> samples = new LinkedHashMap<>(InputCheck.scan(directory, InputCheck.Depth.QUICK, 1).samples());
         Sample reads = samples.get("reads");
         reads.setAssemblyFile(Files.writeString(directory.resolve("reads_assembly.fasta"), ">contig_9 cov=3\nACGT\n"));
 
@@ -57,7 +57,7 @@ class ContigServiceTest {
     @Test
     void aFastqSampleWithoutAnAssemblyIsAFailureForTheUser() throws IOException {
         Files.writeString(directory.resolve("reads.fastq"), "@r1\nACGT\n+\nIIII\n");
-        Map<String, Sample> samples = new LinkedHashMap<>(SequenceFileUtils.createSampleMap(directory));
+        Map<String, Sample> samples = new LinkedHashMap<>(InputCheck.scan(directory, InputCheck.Depth.QUICK, 1).samples());
 
         PipelineException error = assertThrows(PipelineException.class,
                 () -> ContigService.load(contextOf(samples)));
@@ -69,7 +69,7 @@ class ContigServiceTest {
     @Test
     void anAssemblyThatCannotBeReadIsAFailureForTheUser() throws IOException {
         Path fasta = Files.writeString(directory.resolve("gone.fasta"), FASTA);
-        Map<String, Sample> samples = new LinkedHashMap<>(SequenceFileUtils.createSampleMap(directory));
+        Map<String, Sample> samples = new LinkedHashMap<>(InputCheck.scan(directory, InputCheck.Depth.QUICK, 1).samples());
         Files.delete(fasta);
 
         PipelineException error = assertThrows(PipelineException.class,

@@ -11,15 +11,12 @@ import java.nio.file.Files;
 import java.util.HashMap;
 import java.nio.file.Path;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Stream;
 import java.util.zip.GZIPInputStream;
 
 /** Utility methods for FASTA/FASTQ file handling shared by CLI and GUI paths. */
@@ -116,10 +113,6 @@ public final class SequenceFileUtils {
         return Sample.FileType.UNKNOWN;
     }
 
-    public static Sample.FileType fileType(java.io.File file) {
-        return fileType(file.toPath());
-    }
-
     public static boolean looksLikeSequenceFile(Path file) {
         if (!Files.isRegularFile(file) || !hasExtension(file, ACCEPTED_EXTENSIONS)) {
             return false;
@@ -132,35 +125,11 @@ public final class SequenceFileUtils {
         }
     }
 
-    public static boolean looksLikeSequenceFile(java.io.File file) {
-        return looksLikeSequenceFile(file.toPath());
-    }
-
-    public static Map<String, Sample> createSampleMap(Path inputFile) {
-        Map<String, Sample> samples = new LinkedHashMap<>();
-        if (Files.isDirectory(inputFile)) {
-            try (Stream<Path> entries = Files.list(inputFile)) {
-                entries.filter(SequenceFileUtils::looksLikeSequenceFile)
-                        .sorted(Comparator.comparing(Path::toString))
-                        .forEach(entry -> addSampleFile(samples, entry));
-            } catch (IOException e) {
-                throw new UncheckedIOException("Unable to list input directory: " + inputFile, e);
-            }
-        } else if (looksLikeSequenceFile(inputFile)) {
-            addSampleFile(samples, inputFile);
-        }
-        return samples;
-    }
-
     /** The samples that {@code files} make, by name, whatever the files hold. */
     static Map<String, Sample> sampleMapOf(List<Path> files) {
         Map<String, Sample> samples = new LinkedHashMap<>();
         files.forEach(file -> addSampleFile(samples, file));
         return samples;
-    }
-
-    public static Map<String, Sample> createSampleMap(java.io.File inputFile) {
-        return createSampleMap(Objects.requireNonNull(inputFile, "inputFile").toPath());
     }
 
     private static void addSampleFile(Map<String, Sample> samples, Path file) {
@@ -183,10 +152,6 @@ public final class SequenceFileUtils {
                     StandardCharsets.UTF_8));
         }
         return new BufferedReader(new InputStreamReader(Files.newInputStream(file), StandardCharsets.UTF_8));
-    }
-
-    public static BufferedReader openMaybeGzip(java.io.File file) throws IOException {
-        return openMaybeGzip(file.toPath());
     }
 
     /**

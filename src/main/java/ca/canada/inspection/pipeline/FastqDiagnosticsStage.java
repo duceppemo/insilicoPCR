@@ -7,12 +7,9 @@ import ca.canada.inspection.pcr.FastqDiagnostics.Status;
 import ca.canada.inspection.pcr.FastqDiagnostics;
 import ca.canada.inspection.pcr.PairSupport;
 import ca.canada.inspection.pcr.PrimerPanel;
-import ca.canada.inspection.pcr.Products;
 import ca.canada.inspection.pcr.ReadExtensionCaller;
 import ca.canada.inspection.pcr.ReadLevelCaller.ReadEvidence;
 import ca.canada.inspection.pcr.ReadLevelCaller;
-import ca.canada.inspection.pcr.ReportRow;
-import ca.canada.inspection.report.ConsolidatedReport;
 import ca.canada.inspection.report.FastqDiagnosticsReport;
 import ca.canada.inspection.util.SequenceFileUtils;
 
@@ -20,10 +17,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.TreeMap;
 
 /**
@@ -149,14 +144,7 @@ public final class FastqDiagnosticsStage {
     private FastqDiagnosticsStage() {
     }
 
-    public static Result run(Path consolidatedReport, Map<String, Sample> samples, PrimerPanel primers,
-                             AmpliconOptions options, Map<String, ReadEvidence> evidence) {
-        return run(consolidatedReport, samples, primers, options, evidence, ReadExtensionStage.Result.NONE);
-    }
-
-    /**
-     * As {@link #run(Path, Map, PrimerPanel, AmpliconOptions, Map)}, taking into account what the read extension showed.
-     */
+    /** The FASTQ diagnostics of a run, taking into account what the read extension showed. */
     public static Result run(Path consolidatedReport, Map<String, Sample> samples, PrimerPanel primers,
                              AmpliconOptions options, Map<String, ReadEvidence> evidence,
                              ReadExtensionStage.Result extension) {

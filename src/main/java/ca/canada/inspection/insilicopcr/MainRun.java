@@ -12,7 +12,6 @@ import ca.canada.inspection.pipeline.InputValidator;
 import ca.canada.inspection.pipeline.PipelineConfig;
 import ca.canada.inspection.pipeline.PreviousRun;
 import ca.canada.inspection.pipeline.RunResult;
-import ca.canada.inspection.util.InputCheck;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.geometry.Insets;

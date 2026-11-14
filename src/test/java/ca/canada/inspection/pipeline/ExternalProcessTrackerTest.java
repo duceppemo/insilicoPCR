@@ -33,7 +33,6 @@ class ExternalProcessTrackerTest {
         tracker.destroyAll();
 
         assertTrue(running.waitFor(10, TimeUnit.SECONDS), "registered process was not killed");
-        assertTrue(tracker.isShutDown());
     }
 
     @Test

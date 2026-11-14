@@ -54,7 +54,7 @@ class PipelineFailuresTest {
     @Test
     void aMissingBbtoolsJarIsForTheUser() {
         RuntimeDependencies dependencies = new RuntimeDependencies(new AppPaths.RuntimeLayout(directory, directory,
-                directory, directory, directory, directory.resolve("java"), null));
+                directory, directory.resolve("java")));
 
         PipelineException error = assertThrows(PipelineException.class, dependencies::bbtoolsJar);
 

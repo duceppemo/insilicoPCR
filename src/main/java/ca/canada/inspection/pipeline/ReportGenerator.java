@@ -1,5 +1,6 @@
 package ca.canada.inspection.pipeline;
 
+import ca.canada.inspection.gel.GelImageWriter;
 import ca.canada.inspection.gel.SyntheticGelImage;
 import ca.canada.inspection.model.Sample;
 import ca.canada.inspection.pcr.ReadLevelCaller;
@@ -38,7 +39,8 @@ public final class ReportGenerator {
                 context.primers(), context.config().ampliconOptions(),
                 extraRows(context, readEvidence, extension));
         if (context.config().gel()) {
-            GelImageWriter.write(report, SyntheticGelImage.defaultPng(report), context.samples().keySet(), monitor);
+            GelImageWriter.write(report, SyntheticGelImage.defaultPng(report), context.samples().keySet(),
+                    monitor::info, monitor::warning);
         }
         FastqDiagnosticsStage.Result diagnostics = FastqDiagnosticsStage.run(report, context.samples(),
                 context.primers(), context.config().ampliconOptions(), readEvidence, extension);
@@ -47,10 +49,7 @@ public final class ReportGenerator {
         splits.forEach(split -> monitor.warning("Warning: " + split.message()));
         Path html = HtmlReport.write(report, context.samples().keySet(), RunDetails.fastqSampleNames(context.samples()),
                 context.primers(), diagnostics.findings(),
-                RunDetails.of(Version.VERSION, context.config().input(), context.config().primers(),
-                        context.config().output(), context.config().ampliconOptions(),
-                        context.hasFastqSamples() ? context.config().readMinFraction() : null,
-                        context.config().readExtension()),
+                RunDetails.of(Version.VERSION, context.config(), context.hasFastqSamples()),
                 context.inputIssues(), splits);
         monitor.info("HTML report written to " + html);
         List<String> qaLines = new ArrayList<>(RunDetails.inputIssueLines(context.inputIssues()));

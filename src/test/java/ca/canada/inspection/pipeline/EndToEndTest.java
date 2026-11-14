@@ -343,8 +343,8 @@ class EndToEndTest {
                 exec '%s' "$@"
                 """.formatted(how.script, real.javaExecutable()));
         assertTrue(java.toFile().setExecutable(true));
-        AppPaths.RuntimeLayout layout = new AppPaths.RuntimeLayout(real.appRoot(), real.runtimeRoot(),
-                real.platformRoot(), real.bbmapDirectory(), real.blastBinDirectory(), java, real.javafxLibDirectory());
+        AppPaths.RuntimeLayout layout = new AppPaths.RuntimeLayout(real.appRoot(), real.bbmapDirectory(),
+                real.blastBinDirectory(), java);
         PipelineConfig config = config(reads, output);
         PipelineDirectories directories = PipelineDirectories.create(output);
         PrimerPanel primers = PrimerService.loadAndPrepare(config, directories);

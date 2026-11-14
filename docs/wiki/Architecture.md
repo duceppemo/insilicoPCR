@@ -26,7 +26,7 @@ Each package depends only on those below it in this table, so there are no cycle
 |---|---|---|
 | `dispatchpcr` | The entry point and the command-line options | everything below |
 | `insilicopcr` (and `insilicopcr.ui`) | The application window and its dialogs | `pipeline`, `gel`, `report`, `pcr`, `util` |
-| `pipeline` | The run: its steps, the external programs, the runtime layout (`AppPaths`) | `gel`, `report`, `pcr`, `model`, `util` |
+| `pipeline` | The run: its steps, the external programs, the runtime layout (`AppPaths`); no JavaFX (`PackageRulesTest`) | `gel`, `report`, `pcr`, `model`, `util` |
 | `gel` | The synthetic gel: its geometry, the viewers, the image files | `report` (to read `report.tsv`), `pcr` |
 | `report` | The files a run writes and reads back: `report.tsv` (its columns in `ReportColumn`, written by `ConsolidatedReport`, read by `ReportTsv`), the HTML report, the FASTQ diagnostics | `pcr`, `model`, `util` |
 | `pcr` | The analysis core: primer IDs, hit filtering, amplicon calling, read-level calls; no report file | `model`, `util` |
@@ -92,7 +92,7 @@ Three classes outside these packages take part in every run as well:
 
 ## Synthetic gel (`ca.canada.inspection.gel`)
 
-The two gel viewers (`InteractiveGelViewer`, `PaginatedGelViewer`) and the `--gel` image (`GelImageWriter`) share plain classes that need no window and have unit tests:
+The two gel viewers (`InteractiveGelViewer`, `PaginatedGelViewer`) and the `--gel` image (`GelImageWriter`, in `gel` with the rest of the JavaFX drawing) share plain classes that need no window and have unit tests:
 
 | Class | Responsibility |
 |---|---|

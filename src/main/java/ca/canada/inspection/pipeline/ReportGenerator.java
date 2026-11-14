@@ -36,7 +36,8 @@ public final class ReportGenerator {
         if (context.hasFastqSamples() && context.config().readExtension() != ReadExtensionCaller.Mode.OFF) {
             extension = ReadExtensionStage.run(new ReadExtensionStage.Settings(search,
                             new BbtoolsCommands(context.dependencies().javaCommand(), context.dependencies().bbtoolsJar(),
-                                    context.childJavaMemoryGiB(), context.config().threads()),
+                                    ChildJavaMemory.forOneChild(context.childJavaMemoryBudgetGiB()),
+                                    context.config().threads()),
                             context.dependencies().bbmapDirectory(), context.config().readExtension(),
                             context.expectedSizes()),
                     context.directories().detailed(), context.samples(), context.primers(),

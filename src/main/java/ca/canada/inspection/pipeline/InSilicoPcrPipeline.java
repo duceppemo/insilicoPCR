@@ -52,7 +52,7 @@ public final class InSilicoPcrPipeline {
                 sampleMap,
                 prepared.primers(),
                 prepared.expectedSizes(),
-                ChildJavaMemory.recommendedGiB(),
+                ChildJavaMemory.budgetGiB(),
                 checked.issues(),
                 monitor
         );
@@ -77,6 +77,7 @@ public final class InSilicoPcrPipeline {
         monitor.info("BBMap: " + context.dependencies().bbmapDirectory());
         monitor.info("BLAST: " + context.dependencies().blastBinDirectory());
         monitor.info("Java: " + context.dependencies().javaCommand());
-        monitor.info("Child Java memory: -Xmx" + context.childJavaMemoryGiB() + "g");
+        monitor.info("Child Java memory: -Xmx" + ChildJavaMemory.forOneChild(context.childJavaMemoryBudgetGiB())
+                + "g, shared by the samples processed at once");
     }
 }

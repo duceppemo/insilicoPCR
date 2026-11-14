@@ -68,6 +68,10 @@ Upgrade to 0.9.0 or newer, which bundles BBTools 40.04. The files are then read 
 
 Releases before 0.9.0 ran the second baiting pass with the `-m` mismatch budget as BBDuk's `hdist`, and on large samples with `-m 2` or more its k-mer table outgrew any heap. Since 0.9.0 that pass runs with `hdist=0`, and `-m` still applies to primer baiting and amplicon calling. Upgrade.
 
+## FASTQ run with many samples fails in BBDuk or Tadpole
+
+The message is `Tadpole failed with exit code 1: ...` (or `BBDuk`), and the program's output just above it says `java.lang.OutOfMemoryError`. Since 0.14.0 the samples processed at once share half of insilicoPCR's heap instead of each getting all of it, so a sample with many baited reads may need more than its share. Give insilicoPCR more memory (`java -Xmx96g -jar insilicoPCR.jar ...`), or fewer threads with `-t` so fewer samples run at once. Running one sample per insilicoPCR run gives each its whole half (up to 64 GB). See [Threads and memory in FASTQ mode](Command-line-Interface#threads-and-memory-in-fastq-mode).
+
 ## An assay is negative in FASTQ mode but positive on an assembly
 
 A FASTQ-mode negative is weaker evidence than an assembly-mode one: the mini-assembly can miss the target region or break inside the amplicon. Since 0.10.0 such assays are, where the reads support them, called from the reads themselves (`FASTQ read-level call` in `report.tsv`), and since 0.13.0 products longer than a read are looked for by extending the reads (`FASTQ read-extension call`). Every missed assay whose oligos are in the reads is listed in `consolidated_report/report_fastq_diagnostics.tsv`, with the reason. See [FASTQ mode and false negatives](Reports#fastq-mode-and-false-negatives).

@@ -11,6 +11,14 @@
     command line, instead of one after the other;
   - the primer BLAST database (`primer_tmp.fasta*`) stays in the output folder,
     as on the command line, instead of a `.tmp` folder deleted after the run.
+- FASTQ mode: the samples baited, merged and assembled at the same time now
+  share the threads and the memory. Each BBTools process used to get all of
+  `-t` and half of the heap, so 40 samples on 64 threads started 40 processes
+  of 64 threads at once, each allowed half the heap. Now as many samples run
+  at once as each can have 4 GB of that half, at most one per thread, and each
+  gets its share of the threads and of the half (up to 64 GB). A single sample
+  still gets everything. The log says how it was split. Large samples in one
+  run may now need more `-Xmx`; see Troubleshooting.
 - A failed BLAST+ or BBTools command is reported as
   `<program> failed with exit code <n>: <command line>`, from the command line
   and from the application alike.

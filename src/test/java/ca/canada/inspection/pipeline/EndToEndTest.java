@@ -106,6 +106,33 @@ class EndToEndTest {
     }
 
     @Test
+    void samplesProcessedAtOnceShareTheThreads() throws IOException {
+        Path reads = Files.createDirectory(directory.resolve("two-samples"));
+        for (String sample : List.of("first", "second")) {
+            for (String mate : List.of("R1", "R2")) {
+                Files.copy(EXAMPLE.resolve("reads").resolve("isolate_01_" + mate + ".fastq.gz"),
+                        reads.resolve(sample + "_" + mate + ".fastq.gz"));
+            }
+        }
+        Recorder monitor = new Recorder();
+        Path output = directory.resolve("two-samples-results");
+
+        new InSilicoPcrPipeline(config(reads, output), monitor).run();
+
+        // Two threads: both samples at once with one thread each, or, on a small heap, one after the other.
+        ChildJavaMemory.Share share = ChildJavaMemory.share(ChildJavaMemory.budgetGiB(), 2, 2);
+        assertTrue(monitor.messages.stream().anyMatch(line -> line.startsWith("BBTools: ")
+                && line.endsWith(share.threads() + " threads and -Xmx" + share.memoryGiB() + "g")), monitor.messages.toString());
+        List<String> commands = monitor.programLines.stream().filter(line -> line.startsWith("Executing ")).toList();
+        assertFalse(commands.isEmpty());
+        for (String command : commands) {
+            assertTrue(command.matches(".*\\bthreads=" + share.threads() + "[,\\]].*"), command);
+        }
+        assertEquals(List.of("first stxQ 118 target", "first toxA 312 target",
+                "second stxQ 118 target", "second toxA 312 target"), products(report(output)));
+    }
+
+    @Test
     void readsAreExtendedForAnAssayWithoutAProductOfItsDeclaredSize() throws IOException {
         // toxA gives 312 bp; declaring 500 bp makes the target mode extend its reads.
         Path primers = Files.writeString(directory.resolve("primers.fasta"),

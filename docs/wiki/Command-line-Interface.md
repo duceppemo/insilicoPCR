@@ -122,6 +122,10 @@ usage: java -jar insilicoPCR.jar -i <input> -o <output> -p <primers> [-t
 
 The `--read-min-fraction`, `--read-extension` and `--tadpole-*` options only affect FASTQ input, where reads are baited and micro-assembled before BLAST; see [FASTQ mode and false negatives](Reports#fastq-mode-and-false-negatives). In the GUI they are under **FASTQ settings…**.
 
+### Threads and memory in FASTQ mode
+
+The BBTools programs that bait and assemble the reads run as separate Java processes. Their heap comes out of half of insilicoPCR's own heap, which the Java `-Xmx` option sets (`java -Xmx96g -jar insilicoPCR.jar ...`); without it, Java takes a quarter of the computer's memory. Samples are processed several at a time, and those running at once share the `-t` threads and that heap. No sample gets less than 4 GB: with less to share, fewer samples run at once. A sample alone gets all the threads and the whole half, up to 64 GB. The log says how it was split, for example `BBTools: 2 samples at a time, each with 4 threads and -Xmx4g`.
+
 See [Amplicon Calling](Amplicon-Calling) for exactly how the mismatch budget, the 3'-end penalty, and the size limits decide which amplicons are reported.
 
 ## Example: assembly folder

@@ -14,7 +14,7 @@ public record PipelineContext(
         Map<String, Sample> samples,
         Map<String, String> primers,
         ExpectedSizes expectedSizes,
-        int childJavaMemoryGiB,
+        int childJavaMemoryBudgetGiB,
         List<InputCheck.Issue> inputIssues,
         RunMonitor monitor
 ) {

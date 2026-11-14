@@ -17,21 +17,29 @@ public final class FastqProcessor {
         context.monitor().info("FastQ files identified, conducting baiting and assembly");
         int kLength = context.primers().values().stream().mapToInt(String::length).min()
                 .orElseThrow(() -> new PipelineException("Primer dictionary is empty"));
+        // The samples processed at once share the threads and the memory.
+        ChildJavaMemory.Share share = ChildJavaMemory.share(context.childJavaMemoryBudgetGiB(),
+                context.config().threads(), samples.size());
+        context.monitor().info(share.atOnce() == 1
+                ? "BBTools: one sample at a time, with " + share.threads() + " threads and -Xmx" + share.memoryGiB() + "g"
+                : "BBTools: " + share.atOnce() + " samples at a time, each with " + share.threads()
+                        + " threads and -Xmx" + share.memoryGiB() + "g");
         BbtoolsCommands commands = new BbtoolsCommands(context.dependencies().javaCommand(),
-                context.dependencies().bbtoolsJar(), context.childJavaMemoryGiB(), context.config().threads());
+                context.dependencies().bbtoolsJar(), share.memoryGiB(), share.threads());
 
-        stage(context, "First BBDuk baiting", samples, sample -> bait(context, commands, sample, kLength));
+        stage(context, share, "First BBDuk baiting", samples, sample -> bait(context, commands, sample, kLength));
         context.monitor().info("Completed First Baiting");
-        stage(context, "Second BBDuk baiting", samples, sample -> secondBait(context, commands, sample));
+        stage(context, share, "Second BBDuk baiting", samples, sample -> secondBait(context, commands, sample));
         context.monitor().info("Completed Second Baiting");
-        stage(context, "Tadpole assembly", samples, sample -> assemble(context, commands, sample));
+        stage(context, share, "Tadpole assembly", samples, sample -> assemble(context, commands, sample));
         List<Sample> paired = samples.stream().filter(sample -> sample.files().size() == 2).toList();
-        stage(context, "BBMerge of baited pairs", paired, sample -> merge(context, commands, sample));
+        stage(context, share, "BBMerge of baited pairs", paired, sample -> merge(context, commands, sample));
         context.monitor().info("Completed Assembly");
     }
 
-    private static void stage(PipelineContext context, String name, List<Sample> samples, Consumer<Sample> action) {
-        ParallelStageRunner.run(name, samples, context.config().threads(), context.monitor(), action,
+    private static void stage(PipelineContext context, ChildJavaMemory.Share share, String name, List<Sample> samples,
+                              Consumer<Sample> action) {
+        ParallelStageRunner.run(name, samples, share.atOnce(), context.monitor(), action,
                 ParallelStageRunner.Progress.NONE);
     }
 

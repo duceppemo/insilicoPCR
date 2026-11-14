@@ -98,6 +98,10 @@
 
 ### Changed
 
+- Code: the columns of `report.tsv` are one list, `report.ReportColumn`, from
+  which the report's header and rows are written and by whose names it is read
+  back; they were written in `ReportRow`, named in `ConsolidatedReport` and read
+  in `ReportTsv`, matched by hand.
 - Code: the defaults of a run and the checks of its settings are in one place,
   `PipelineConfig.builder`, which the command line and the application both
   start from (the command line kept a copy of every setting, and the

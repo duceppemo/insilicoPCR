@@ -56,7 +56,7 @@ class ReportTsvTest {
 
     @Test
     void aFileSavedByASpreadsheetReads() throws IOException {
-        String header = String.join("\t", ConsolidatedReport.FIRST_COLUMNS);
+        String header = String.join("\t", ReportColumn.FIRST.stream().map(ReportColumn::header).toList());
         String product = "S\tits\t11-444\t434\tcontig_1\t\tits-F\tits-R\t0\t0\t0\t0\t+";
         // With a byte order mark before the header...
         Path withMark = Files.writeString(dir.resolve("mark.tsv"), "\uFEFF" + header + "\n" + product + "\n");

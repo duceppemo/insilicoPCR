@@ -50,6 +50,7 @@ public final class ConsolidatedReport {
         // The probe columns are present whenever at least one assay defines a probe.
         boolean probeColumns = primers.anyProbe();
         boolean sizeColumn = !expectedSizes.isEmpty();
+        List<ReportColumn> columns = ReportColumn.of(probeColumns);
         Path report = nextAvailableReportFile(consolidatedDir);
 
         try (BufferedWriter writer = Files.newBufferedWriter(report, StandardCharsets.UTF_8)) {
@@ -61,7 +62,7 @@ public final class ConsolidatedReport {
                         Products.of(sampleEntry.getKey(), sampleEntry.getValue(), primers, options));
                 rows.addAll(extraRows.getOrDefault(sampleEntry.getKey(), List.of()));
                 for (ReportRow row : rows) {
-                    writer.write(String.join("\t", row.columns(probeColumns)));
+                    writer.write(String.join("\t", columns.stream().map(column -> column.value(row)).toList()));
                     if (sizeColumn) {
                         writer.write("\t" + expectedSizes.labelText(row.assay(), row.size()));
                     }
@@ -74,17 +75,6 @@ public final class ConsolidatedReport {
         return report;
     }
 
-    /**
-     * Columns giving, per primer, the bases at its 5' end that do not pair with the
-     * template: of the bases BLAST left out of the alignment, those that differ from the
-     * template (or lie beyond its end). The mismatch columns do not count them (the
-     * run's {@code --5p-truncation} allows them), so without these a primer held by its
-     * last few bases reads as a perfect match. They follow the probe
-     * columns; {@link ExpectedSizes#COLUMN} stays last.
-     */
-    public static final String FORWARD_UNALIGNED_COLUMN = "Forward5PrimeUnaligned";
-    public static final String REVERSE_UNALIGNED_COLUMN = "Reverse5PrimeUnaligned";
-
     private static Path nextAvailableReportFile(Path consolidatedDir) {
         Path report = consolidatedDir.resolve("report.tsv");
         int counter = 1;
@@ -95,18 +85,8 @@ public final class ConsolidatedReport {
         return report;
     }
 
-    /** The columns every report starts with, in order; the probe and 5' columns follow. */
-    public static final List<String> FIRST_COLUMNS = List.of(
-            "Sample", "Gene", "GenomeLocation", "AmpliconSize", "Contig", "Contig Description",
-            "ForwardPrimers", "ReversePrimers", "ForwardMismatches", "ReverseMismatches",
-            "Forward3PrimeMismatches", "Reverse3PrimeMismatches", "Strand");
-
     private static String header(boolean probeColumns, boolean sizeColumn) {
-        List<String> columns = new ArrayList<>(FIRST_COLUMNS);
-        if (probeColumns) {
-            columns.addAll(List.of("Probe", "ProbeLocation", "ProbeSize", "ProbeMismatches"));
-        }
-        columns.addAll(List.of(FORWARD_UNALIGNED_COLUMN, REVERSE_UNALIGNED_COLUMN));
+        List<String> columns = new ArrayList<>(ReportColumn.of(probeColumns).stream().map(ReportColumn::header).toList());
         if (sizeColumn) {
             columns.add(ExpectedSizes.COLUMN);
         }

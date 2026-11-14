@@ -1,14 +1,12 @@
 package ca.canada.inspection.pcr;
 
-import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.List;
 
 /**
  * One product as {@code report.tsv} lists it: an amplicon of one primer pair on one
  * contig (or read), with the probe that confirms it when the assay has one. Products are
  * passed between the steps of a run as these, and turned into text only when the report
- * is written ({@link #columns}).
+ * is written (by {@code report.ReportColumn}).
  *
  * @param assay                   the {@code Gene} column
  * @param start                   first base of the amplicon on the contig ({@code GenomeLocation})
@@ -84,37 +82,5 @@ public record ReportRow(String sample, String assay, int start, int end, int siz
         return new ReportRow(sample, assay, start, end, size, contig, description, forwardPrimer, reversePrimer,
                 forwardMismatches, reverseMismatches, forwardThreePrime, reverseThreePrime, strand, probe,
                 forwardUnpaired, reverseUnpaired);
-    }
-
-    /**
-     * The row's columns in report order, as text.
-     *
-     * @param probeColumns whether the report has the probe columns (any assay of the run has a
-     *                     probe); they are empty for a row without one
-     */
-    public List<String> columns(boolean probeColumns) {
-        List<String> columns = new ArrayList<>(List.of(
-                cell(sample), cell(assay), location(), String.valueOf(size), cell(contig), cell(contigDescription),
-                cell(forwardPrimer), cell(reversePrimer), String.valueOf(forwardMismatches), String.valueOf(reverseMismatches),
-                String.valueOf(forwardThreePrime), String.valueOf(reverseThreePrime), String.valueOf(strand)));
-        if (probeColumns) {
-            if (probe == null) {
-                columns.addAll(List.of("", "", "", ""));
-            } else {
-                columns.addAll(List.of(cell(probe.id()), probe.start() + "-" + probe.end(), String.valueOf(probe.size()),
-                        String.valueOf(probe.mismatches())));
-            }
-        }
-        columns.add(String.valueOf(forwardUnpaired));
-        columns.add(String.valueOf(reverseUnpaired));
-        return columns;
-    }
-
-    /**
-     * Text as one TSV cell: a tab or a line break (a FASTA header's description may hold one)
-     * would start another column or row, so each becomes a space.
-     */
-    private static String cell(String text) {
-        return text.replace('\t', ' ').replace('\r', ' ').replace('\n', ' ');
     }
 }

@@ -1,5 +1,31 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- Application: closing the window while the read extension ran on the last
+  FASTQ sample did not stop the run: the stopped program read as a failed
+  one, the read extension went on to the next step, and the stopped run
+  wrote its reports and `QAlog.txt`. A stopped program now stops the run, and
+  the run checks after each step that it was not stopped, so a stopped run
+  writes no report; its `log.txt` always ends with `Run cancelled`.
+- Application: after confirming that the window should close during a run,
+  the window waited for the run to stop (20 seconds at most) without
+  repainting; it now closes at once, and the program ends once the run has
+  stopped.
+- A build without the HTML report's style or script failed every later run
+  with a Java error, not an `Error:` line; it fails each run's HTML report
+  with that line.
+
+### Changed
+
+- Code: a sample's products are worked out once and reused by the report, the
+  FASTQ steps and the diagnostics, instead of four times for a FASTQ sample.
+  `Open Previous Run` finds a pre-0.15.1 run's reports by the rule that names
+  them (`ConsolidatedReport.isReportFile`); two drawing helpers nothing used
+  are gone.
+
 ## 0.15.1 (2026-11-14)
 
 ### Fixed

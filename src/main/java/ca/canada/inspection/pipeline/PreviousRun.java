@@ -1,5 +1,7 @@
 package ca.canada.inspection.pipeline;
 
+import ca.canada.inspection.report.ConsolidatedReport;
+
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -82,7 +84,7 @@ public record PreviousRun(Path report, List<String> samples) {
         try (Stream<Path> reports = Files.list(reportDir)) {
             return reports
                     .filter(Files::isRegularFile)
-                    .filter(path -> path.getFileName().toString().matches("report(\\(\\d+\\))?\\.tsv"))
+                    .filter(ConsolidatedReport::isReportFile)
                     .max(Comparator.comparingLong(PreviousRun::lastModifiedMillis))
                     .orElseThrow(() -> new PipelineException("No consolidated report found in " + reportDir));
         } catch (IOException e) {

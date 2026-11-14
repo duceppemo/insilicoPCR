@@ -6,6 +6,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 
 /**
  * One sample of a run and what the run learns about it. The steps fill it in as they go: the
@@ -32,6 +33,8 @@ public class Sample {
 	private String name;
 	private FileType fileType;
 	private Path assemblyFile;
+	/** Results worked out from the hits and contigs (the sample's products), until either changes. */
+	private final HashMap<Object, Object> derived = new HashMap<>();
 
 	public String getName() { return name; }
 	public void setName(String name) { this.name = name; }
@@ -61,23 +64,41 @@ public class Sample {
 	public void setFileType(FileType fileType) { this.fileType = fileType; }
 
 	/** The accepted hits of each oligo, by oligo ID; a copy. */
-	public Map<String, List<BlastResult>> blastResults() {
+	public synchronized Map<String, List<BlastResult>> blastResults() {
 		HashMap<String, List<BlastResult>> copy = new HashMap<>();
 		blastResults.forEach((key, value) -> copy.put(key, List.copyOf(value)));
 		return Map.copyOf(copy);
 	}
 
-	public void addBlastResult(String key, BlastResult result) {
+	public synchronized void addBlastResult(String key, BlastResult result) {
 		blastResults.computeIfAbsent(key, ignored -> new ArrayList<>()).add(result);
+		derived.clear();
 	}
 
 	public Path getAssemblyFile() { return assemblyFile; }
 	public void setAssemblyFile(Path assemblyFile) { this.assemblyFile = assemblyFile; }
 
-	public void addContig(String acc, String desc) { contigDict.put(acc, desc); }
+	public synchronized void addContig(String acc, String desc) {
+		contigDict.put(acc, desc);
+		derived.clear();
+	}
+
+	/**
+	 * What {@code compute} gives for {@code key}, worked out once while the sample's hits and
+	 * contigs stay as they are: several steps of a run ask for the same sample's products.
+	 */
+	@SuppressWarnings("unchecked")
+	public synchronized <T> T derived(Object key, Supplier<T> compute) {
+		Object value = derived.get(key);
+		if (value == null) {
+			value = compute.get();
+			derived.put(key, value);
+		}
+		return (T) value;
+	}
 
 	/** Contig descriptions (the FASTA header after the ID), by contig ID; a copy. */
-	public Map<String, String> contigs() { return Map.copyOf(contigDict); }
+	public synchronized Map<String, String> contigs() { return Map.copyOf(contigDict); }
 
 	public boolean isFastq() { return fileType == FileType.FASTQ; }
 }

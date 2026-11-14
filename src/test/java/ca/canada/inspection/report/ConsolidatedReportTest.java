@@ -148,6 +148,9 @@ class ConsolidatedReportTest {
 
         assertEquals("report.tsv", first.getFileName().toString());
         assertEquals("report(1).tsv", second.getFileName().toString());
+        // Open Previous Run finds the reports by these names.
+        assertTrue(ConsolidatedReport.isReportFile(first) && ConsolidatedReport.isReportFile(second));
+        assertTrue(!ConsolidatedReport.isReportFile(tempDir.resolve("report_fastq_diagnostics.tsv")));
     }
     @Test
     void degeneratePrimerVariantsPairAcrossSuffixes() throws IOException {

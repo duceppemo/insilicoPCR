@@ -41,11 +41,6 @@ final class BandPaint {
         return color.deriveColor(0, 1.0, 0.25, Math.min(0.32, intensity * 0.24));
     }
 
-    /** {@code color} with the band's intensity as its opacity. */
-    static Color withOpacity(Color color, double intensity) {
-        return Color.color(color.getRed(), color.getGreen(), color.getBlue(), Math.clamp(intensity, 0.0, 1.0));
-    }
-
     /**
      * How a band of the interactive viewer looks in its current state.
      *

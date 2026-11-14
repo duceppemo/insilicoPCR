@@ -30,7 +30,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /**
@@ -285,16 +284,12 @@ class EndToEndTest {
         };
         Path output = directory.resolve("cancelled");
 
-        try {
-            new InSilicoPcrPipeline(config(EXAMPLE.resolve("genomes"), output), monitor).run();
-            fail("the run went on");
-        } catch (CancellationException expected) {
-            // makeblastdb, the first program of an assembly run, was not started
-        } catch (PipelineException expected) {
-            assertTrue(expected.getCause() instanceof CancellationException, expected.toString());
-        }
+        // Stopped as the input check ends: no later step starts, and no report or QAlog is written.
+        assertThrows(CancellationException.class,
+                () -> new InSilicoPcrPipeline(config(EXAMPLE.resolve("genomes"), output), monitor).run());
         assertFalse(Files.exists(output.resolve("consolidated_report").resolve("report.tsv")));
-        assertEquals(List.of(Step.DEPENDENCIES, Step.PRIMERS, Step.INPUT_CHECK, Step.READS), monitor.steps);
+        assertFalse(Files.exists(output.resolve("QAlog.txt")));
+        assertEquals(List.of(Step.DEPENDENCIES, Step.PRIMERS, Step.INPUT_CHECK), monitor.steps);
     }
 
     /** Copies of the example reads under the given sample names. */

@@ -29,15 +29,6 @@ class BandPaintTest {
     }
 
     @Test
-    void withOpacityKeepsTheColour() {
-        Color color = BandPaint.withOpacity(GENE, 0.4);
-        assertEquals(GENE.getRed(), color.getRed(), 1e-6);
-        assertEquals(GENE.getGreen(), color.getGreen(), 1e-6);
-        assertEquals(GENE.getBlue(), color.getBlue(), 1e-6);
-        assertEquals(0.4, color.getOpacity(), 1e-6);
-    }
-
-    @Test
     void haloAndShadowAreDarkerShadesOfTheBandColour() {
         assertEquals(GENE.getBrightness() * 0.35, BandPaint.halo(GENE, 0.5).getBrightness(), 1e-4);
         assertEquals(0.11, BandPaint.halo(GENE, 0.5).getOpacity(), 1e-6);

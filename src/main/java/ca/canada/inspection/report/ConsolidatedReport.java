@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.regex.Pattern;
 
 /**
  * Writes the final consolidated PCR/qPCR report. Shared by the command-line
@@ -73,6 +74,14 @@ public final class ConsolidatedReport {
             throw new UncheckedIOException("Unable to write consolidated report: " + report, e);
         }
         return report;
+    }
+
+    /** The names {@link #write} gives its reports: {@code report.tsv}, then {@code report(1).tsv} and on. */
+    private static final Pattern REPORT_NAME = Pattern.compile("report(\\(\\d+\\))?\\.tsv");
+
+    /** Whether {@code file} is named as {@link #write} names a consolidated report. */
+    public static boolean isReportFile(Path file) {
+        return REPORT_NAME.matcher(file.getFileName().toString()).matches();
     }
 
     private static Path nextAvailableReportFile(Path consolidatedDir) {

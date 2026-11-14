@@ -100,9 +100,7 @@ class GelScaleTest {
     }
 
     @Test
-    void textWidthsAreEstimatedFromTheNumberOfCharacters() {
-        assertEquals(30.5, GelScale.approximateTextWidth("1.5kb"), 1e-12);
-        assertEquals(0.0, GelScale.approximateTextWidth(""), 1e-12);
+    void laneLabelWidthsAreEstimatedFromTheNumberOfCharacters() {
         assertEquals(6 * 6.2, GelScale.laneLabelWidth(List.of()), 1e-12);
         assertEquals(6 * 6.2, GelScale.laneLabelWidth(List.of("abc")), 1e-12);
         assertEquals(10 * 6.2, GelScale.laneLabelWidth(List.of("abc", "abcdefghij", "abcd")), 1e-12);

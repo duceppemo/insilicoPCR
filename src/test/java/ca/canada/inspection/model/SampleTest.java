@@ -60,4 +60,19 @@ class SampleTest {
         sample.setAssemblyFile(Path.of("assembly.fasta"));
         assertEquals(Path.of("assembly.fasta"), sample.getAssemblyFile());
     }
+
+    @Test
+    void derivedValuesAreKeptUntilTheHitsOrContigsChange() {
+        Sample sample = new Sample();
+        int[] computed = new int[1];
+        java.util.function.Supplier<String> compute = () -> "products " + (++computed[0]);
+
+        assertEquals("products 1", sample.derived("key", compute));
+        assertEquals("products 1", sample.derived("key", compute), "worked out once");
+        sample.addContig("c1", "len=10");
+        assertEquals("products 2", sample.derived("key", compute), "a new contig changes the products");
+        sample.addBlastResult("a-F", null);
+        assertEquals("products 3", sample.derived("key", compute), "so does a new hit");
+        assertEquals("products 4", sample.derived("other key", compute));
+    }
 }

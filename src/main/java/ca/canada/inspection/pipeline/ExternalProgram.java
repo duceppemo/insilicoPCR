@@ -81,8 +81,12 @@ final class ExternalProgram {
             throw new PipelineException("Could not read the output of " + program + ": " + String.join(" ", command),
                     e.getCause());
         } catch (InterruptedException e) {
+            // The run thread is interrupted when the application cancels the run: a cancellation,
+            // not a failed program, which a step may note and go on after.
             Thread.currentThread().interrupt();
-            throw new PipelineException("Interrupted while running " + program + ": " + String.join(" ", command), e);
+            CancellationException cancelled = new CancellationException("The run was cancelled (" + program + ").");
+            cancelled.initCause(e);
+            throw cancelled;
         } finally {
             // A program left behind by an interrupted or failed wait would go on writing its files.
             if (!ended) {

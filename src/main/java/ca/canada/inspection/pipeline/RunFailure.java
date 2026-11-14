@@ -15,6 +15,13 @@ import java.util.List;
  * and the command line and exit code say more than a stack trace of this program. A
  * failure that points at the program itself keeps its stack trace, which is what a bug
  * report needs.</p>
+ *
+ * <p>Which is which is said by the exception type, one per layer: the run's steps raise a
+ * {@link PipelineException} for a failure the user can act on, and the packages below them
+ * ({@code pcr}, {@code report}, {@code util}) an {@link UncheckedIOException} for a file
+ * that cannot be read or written. Anything else, {@link IllegalArgumentException}
+ * included, is a bug: a value the user gave is checked before the run starts, and the
+ * steps that read the user's files turn what they reject into a {@code PipelineException}.</p>
  */
 public final class RunFailure {
 
@@ -23,13 +30,11 @@ public final class RunFailure {
 
     /**
      * Whether {@code error} and everything that caused it are failures raised on purpose
-     * with a message for the user: pipeline errors, failed external commands, rejected
-     * values and file errors.
+     * with a message for the user: pipeline errors, failed external commands and file errors.
      */
     public static boolean isForTheUser(Throwable error) {
         for (Throwable link = error; link != null; link = link.getCause()) {
             boolean expected = link instanceof PipelineException
-                    || link instanceof IllegalArgumentException
                     || link instanceof IOException
                     || link instanceof UncheckedIOException;
             if (!expected) {

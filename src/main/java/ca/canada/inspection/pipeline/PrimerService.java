@@ -106,7 +106,8 @@ public final class PrimerService {
         try {
             return new PrimerFile(fasta, ExpectedSizes.fromHeaders(descriptions));
         } catch (IllegalArgumentException e) {
-            throw new PipelineException(e.getMessage() + " (primer file " + file + ")", e);
+            // The message says it all; without the cause, which reads as a bug (RunFailure).
+            throw new PipelineException(e.getMessage() + " (primer file " + file + ")");
         }
     }
 

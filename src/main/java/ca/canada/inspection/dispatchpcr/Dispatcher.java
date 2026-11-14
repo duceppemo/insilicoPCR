@@ -4,6 +4,7 @@ import ca.canada.inspection.insilicopcr.MainRun;
 import ca.canada.inspection.pcr.ReadExtensionCaller;
 import ca.canada.inspection.pcr.ReadLevelCaller;
 import ca.canada.inspection.pipeline.InSilicoPcrPipeline;
+import ca.canada.inspection.pipeline.PipelineConfig;
 import ca.canada.inspection.pipeline.RunFailure;
 import ca.canada.inspection.pipeline.TadpoleOptions;
 import ca.canada.inspection.util.Version;
@@ -41,6 +42,8 @@ public final class Dispatcher {
      */
     static int run(String[] args, PrintStream out, PrintStream err) {
         Options options = options();
+        PipelineConfig config;
+        // Only the command line is checked here: a failure of the run is not a usage error.
         try {
             CommandLine cmd = new DefaultParser().parse(options, args);
             if (cmd.hasOption("help")) {
@@ -51,12 +54,15 @@ public final class Dispatcher {
                 out.println("insilicoPCR " + Version.VERSION);
                 return 0;
             }
-            new InSilicoPcrPipeline(CliConfig.from(cmd).pipelineConfig()).run();
-            return 0;
+            config = CliConfig.from(cmd).pipelineConfig();
         } catch (ParseException | IllegalArgumentException e) {
             err.println(e.getMessage());
             printHelp(out, options);
             return 2;
+        }
+        try {
+            new InSilicoPcrPipeline(config).run();
+            return 0;
         } catch (RuntimeException e) {
             // A failure the user can act on is its message; anything else is a bug and
             // keeps the stack trace a report of it needs.

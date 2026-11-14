@@ -27,8 +27,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class FastqDiagnosticsTest {
 
     private static final AmpliconOptions DEFAULTS = AmpliconOptions.withMismatches(0);
-    private static final Map<String, String> PRIMERS = Map.of(
-            "assay-F", PRIMER_20, "assay-R", PRIMER_20, "assay-P", PRIMER_20);
+    private static final PrimerPanel PRIMERS = PrimerPanel.of(Map.of(
+            "assay-F", PRIMER_20, "assay-R", PRIMER_20, "assay-P", PRIMER_20));
     private static final Map<String, Long> ALL_IN_READS = Map.of("assay-F", 50L, "assay-R", 54L, "assay-P", 64L);
 
     @TempDir
@@ -354,7 +354,7 @@ class FastqDiagnosticsTest {
     @Test
     void expandedDegenerateOligosCountEachReadOnce() {
         // read_2 matches both expansions of the degenerate forward primer: it is one read.
-        Map<String, String> primers = Map.of("assay-F_0", PRIMER_20, "assay-F_1", PRIMER_20, "assay-R", PRIMER_20);
+        PrimerPanel primers = PrimerPanel.of(Map.of("assay-F_0", PRIMER_20, "assay-F_1", PRIMER_20, "assay-R", PRIMER_20));
         ReadEvidence evidence = new ReadEvidence(Map.of(
                 "assay-F_0", Set.of("read_1", "read_2"),
                 "assay-F_1", Set.of("read_2", "read_3"),

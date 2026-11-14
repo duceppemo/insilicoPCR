@@ -22,7 +22,7 @@ public final class BlastReports {
     }
 
     public static void attachHits(Path detailedDir, Map<String, Sample> samples,
-                                  Map<String, String> primers, AmpliconOptions options) {
+                                  PrimerPanel primers, AmpliconOptions options) {
         for (Path report : listTsvFiles(detailedDir)) {
             String sampleName = report.getFileName().toString().replaceFirst("\\.tsv$", "");
             Sample sample = samples.get(sampleName);
@@ -48,7 +48,7 @@ public final class BlastReports {
     }
 
     private static void parseSingleReport(Path report, String sampleName, Sample sample,
-                                          Map<String, String> primers, AmpliconOptions options) {
+                                          PrimerPanel primers, AmpliconOptions options) {
         // Trimmed hit ends are compared with the sequences the sample was searched in
         // (TrimmedEnds), read alongside the report one query at a time.
         List<Path> searched = searchedFiles(sample);

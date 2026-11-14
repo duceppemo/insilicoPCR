@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class BlastReportsTest {
 
-    private static final Map<String, String> PRIMERS = Map.of("assay-F", PRIMER_20);
+    private static final PrimerPanel PRIMERS = PrimerPanel.of(Map.of("assay-F", PRIMER_20));
     private static final AmpliconOptions OPTIONS = AmpliconOptions.withMismatches(0);
 
     @TempDir
@@ -86,7 +86,7 @@ class BlastReportsTest {
         sample.setFile(fasta);
         Map<String, Sample> samples = new HashMap<>();
         samples.put("sampleB", sample);
-        Map<String, String> primers = Map.of("assay-P", probe);
+        PrimerPanel primers = PrimerPanel.of(Map.of("assay-P", probe));
 
         // Before the fix this hit was rejected at any probe budget (3 unaligned bases).
         BlastReports.attachHits(detailedDir, samples, primers, new AmpliconOptions(0, 1, 5, 0, 5, 0, 5000));

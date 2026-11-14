@@ -31,6 +31,18 @@ class HtmlReportTest {
             "Contig Description", "ForwardPrimers", "ReversePrimers", "ForwardMismatches", "ReverseMismatches",
             "Forward3PrimeMismatches", "Reverse3PrimeMismatches", "Strand");
 
+    /** A panel of these primer IDs, their sequences unknown (the page then shows no primer lengths). */
+    private static PrimerPanel panel(List<String> ids, ExpectedSizes sizes) {
+        Map<String, String> sequences = new java.util.LinkedHashMap<>();
+        ids.forEach(id -> sequences.put(id, ""));
+        return PrimerPanel.of(sequences, sizes);
+    }
+
+    private static Path write(Path tsv, List<String> samples, Set<String> fastqSamples, PrimerPanel primers,
+                              List<Finding> findings, Map<String, String> details) {
+        return HtmlReport.write(tsv, samples, fastqSamples, primers, findings, details, List.of(), List.of());
+    }
+
     @TempDir
     Path dir;
 
@@ -123,7 +135,7 @@ class HtmlReportTest {
                 "x", "")).state());
 
         Path tsv = Files.write(dir.resolve("report.tsv"), List.of(HEADER));
-        String page = Files.readString(HtmlReport.write(tsv, List.of("S"), Set.of("S"), PRIMERS, SIZES,
+        String page = Files.readString(write(tsv, List.of("S"), Set.of("S"), panel(PRIMERS, SIZES),
                 List.of(withheld), Map.of()));
         assertTrue(page.contains("class=\"chip unconfirmed\""));
         assertTrue(page.contains("not confirmed by read pairs, not reported"), "its own summary tile");
@@ -143,8 +155,8 @@ class HtmlReportTest {
         Finding notClosed = new Finding("short", "its", Status.NOT_CLOSED_BY_EXTENSION, Assembly.NOT_ASSEMBLED,
                 new ReadsWithOligo(19, 7, 0), 144, "gave no product held by at least 2 extended reads seeded from each primer", "");
 
-        String page = Files.readString(HtmlReport.write(tsv, List.of("long", "short"), Set.of("long", "short"),
-                PRIMERS, SIZES, List.of(called, notClosed), Map.of("Read extension (FASTQ)", "on")));
+        String page = Files.readString(write(tsv, List.of("long", "short"), Set.of("long", "short"),
+                panel(PRIMERS, SIZES), List.of(called, notClosed), Map.of("Read extension (FASTQ)", "on")));
 
         assertTrue(page.contains("434 bp (target), from extended reads"), "the grid tooltip says where it comes from");
         assertTrue(page.contains("<span class=\"tag\">reads</span> extended (142 of 150 forward-seeded, 145 of 150"
@@ -171,8 +183,8 @@ class HtmlReportTest {
         details.put("insilicoPCR version", "9.9.9");
         details.putAll(HtmlReport.settings(AmpliconOptions.withMismatches(1)));
 
-        Path html = HtmlReport.write(tsv, List.of("pos", "fromReads", "neg <b>&\"x\""), Set.of("fromReads"), PRIMERS,
-                SIZES, List.of(), details);
+        Path html = write(tsv, List.of("pos", "fromReads", "neg <b>&\"x\""), Set.of("fromReads"),
+                panel(PRIMERS, SIZES), List.of(), details);
 
         assertEquals(dir.resolve("report(1).html"), html);
         String page = Files.readString(html);
@@ -213,10 +225,10 @@ class HtmlReportTest {
                 row("mixed", "its", 430, "c1", "") + "\t8\t8",
                 row("mixed", "its", 434, "c2", "") + "\t0\t0",
                 row("clean", "its", 434, "c1", "") + "\t0\t0"));
-        Map<String, String> primers = Map.of("its-F", "ACGTACGTACGTACGTA", "its-R", "ACGTACGTACGTACGTA");
+        PrimerPanel primers = PrimerPanel.of(Map.of("its-F", "ACGTACGTACGTACGTA", "its-R", "ACGTACGTACGTACGTA"));
 
-        String page = Files.readString(HtmlReport.write(tsv, List.of("weak", "mixed", "clean"), Set.of(), primers,
-                SIZES, List.of(), Map.of()));
+        String page = Files.readString(write(tsv, List.of("weak", "mixed", "clean"), Set.of(),
+                PrimerPanel.of(primers.sequences(), SIZES), List.of(), Map.of()));
 
         String mark = "<span class=\"part\" aria-label=\"A primer binds only partly (5′ bases unpaired)\">\u25d0</span>";
         assertEquals(1, count(page, mark), "only the cell whose every target product is weakly bound is marked");
@@ -237,7 +249,7 @@ class HtmlReportTest {
     void aReportWithoutTheUnalignedColumnsOrFullyBoundPrimersShowsNoMark() throws IOException {
         Path tsv = Files.write(dir.resolve("report.tsv"), List.of(HEADER, row("a", "its", 434, "c1", "")));
 
-        String page = Files.readString(HtmlReport.write(tsv, List.of("a"), Set.of(), PRIMERS, SIZES, List.of(),
+        String page = Files.readString(write(tsv, List.of("a"), Set.of(), panel(PRIMERS, SIZES), List.of(),
                 Map.of()));
 
         assertFalse(page.contains("class=\"part\""));
@@ -248,8 +260,8 @@ class HtmlReportTest {
     void withoutDeclaredSizesProductsAreShownAsAmplifiedAndTheHintSaysHowToDeclare() throws IOException {
         Path tsv = Files.write(dir.resolve("report.tsv"), List.of(HEADER, row("a", "plain", 200, "c1", "")));
 
-        String page = Files.readString(HtmlReport.write(tsv, List.of("a", "b"), Set.of(), List.of("plain-F", "plain-R"),
-                ExpectedSizes.NONE, List.of(), Map.of()));
+        String page = Files.readString(write(tsv, List.of("a", "b"), Set.of(), panel(List.of("plain-F", "plain-R"),
+                ExpectedSizes.NONE), List.of(), Map.of()));
 
         assertTrue(page.contains("<span class=\"n\">1</span> of 2 samples amplified"));
         assertFalse(page.contains("<th>Size check</th>"));
@@ -261,7 +273,7 @@ class HtmlReportTest {
     void emptyReportStillGivesAPageWithEverySampleNegative() throws IOException {
         Path tsv = Files.write(dir.resolve("report.tsv"), List.of(HEADER));
 
-        String page = Files.readString(HtmlReport.write(tsv, List.of("a", "b"), Set.of(), PRIMERS, SIZES,
+        String page = Files.readString(write(tsv, List.of("a", "b"), Set.of(), panel(PRIMERS, SIZES),
                 List.of(finding(Status.WEAK_READ_SUPPORT, 500)), Map.of()));
 
         assertEquals(2, count(page, "<tr data-sample="));
@@ -295,8 +307,8 @@ class HtmlReportTest {
                 new InputCheck.Issue("odd <b>", List.of("odd_R1.fastq", "odd_R2.fastq"),
                         "the two files of the pair hold different numbers of reads", "3 and 2"));
 
-        String page = Files.readString(HtmlReport.write(tsv, List.of("a"), Set.of(), Map.of("its-F", "", "its-R", ""),
-                SIZES, List.of(), Map.of(), issues));
+        String page = Files.readString(HtmlReport.write(tsv, List.of("a"), Set.of(), panel(List.of("its-F", "its-R"), SIZES),
+                List.of(), Map.of(), issues, List.of()));
 
         assertTrue(page.contains("<h2>Input not analysed</h2>"));
         assertTrue(page.contains("<span class=\"n\">2</span><span class=\"l\">samples not analysed: faulty input files</span>"),
@@ -312,7 +324,7 @@ class HtmlReportTest {
     void aRunWithoutFaultyInputHasNoSuchSection() throws IOException {
         Path tsv = Files.write(dir.resolve("report.tsv"), List.of(HEADER, row("a", "its", 434, "c1", "")));
 
-        String page = Files.readString(HtmlReport.write(tsv, List.of("a"), Set.of(), PRIMERS, SIZES, List.of(),
+        String page = Files.readString(write(tsv, List.of("a"), Set.of(), panel(PRIMERS, SIZES), List.of(),
                 Map.of()));
 
         assertFalse(page.contains("Input not analysed"));

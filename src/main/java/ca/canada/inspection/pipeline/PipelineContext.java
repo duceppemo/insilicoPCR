@@ -1,7 +1,7 @@
 package ca.canada.inspection.pipeline;
 
 import ca.canada.inspection.model.Sample;
-import ca.canada.inspection.pcr.ExpectedSizes;
+import ca.canada.inspection.pcr.PrimerPanel;
 import ca.canada.inspection.util.InputCheck;
 
 import java.util.List;
@@ -12,8 +12,7 @@ public record PipelineContext(
         RuntimeDependencies dependencies,
         PipelineDirectories directories,
         Map<String, Sample> samples,
-        Map<String, String> primers,
-        ExpectedSizes expectedSizes,
+        PrimerPanel primers,
         int childJavaMemoryBudgetGiB,
         List<InputCheck.Issue> inputIssues,
         RunMonitor monitor

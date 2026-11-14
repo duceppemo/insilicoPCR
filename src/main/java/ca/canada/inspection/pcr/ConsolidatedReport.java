@@ -32,36 +32,28 @@ public final class ConsolidatedReport {
      * into {@code consolidatedDir} and returns the file written.
      */
     public static Path write(Path consolidatedDir, Map<String, Sample> samples,
-                             Map<String, String> primers, AmpliconOptions options) {
+                             PrimerPanel primers, AmpliconOptions options) {
         return write(consolidatedDir, samples, primers, options, Map.of());
     }
 
     /**
-     * As {@link #write(Path, Map, Map, AmpliconOptions)}, appending {@code extraRows}
-     * (keyed by sample name) after each sample's
-     * own rows; used for FASTQ-mode amplicons called on reads rather than contigs.
+     * As {@link #write(Path, Map, PrimerPanel, AmpliconOptions)}, appending {@code extraRows}
+     * (keyed by sample name) after each sample's own rows: the products FASTQ mode calls on
+     * reads rather than contigs. When the primer file declares product sizes, each row is
+     * labelled with what its size is for the assay (last column, {@link ExpectedSizes#COLUMN});
+     * the label never removes a row.
      */
     public static Path write(Path consolidatedDir, Map<String, Sample> samples,
-                             Map<String, String> primers, AmpliconOptions options,
+                             PrimerPanel primers, AmpliconOptions options,
                              Map<String, List<ReportRow>> extraRows) {
-        return write(consolidatedDir, samples, primers, options, extraRows, ExpectedSizes.NONE);
-    }
-
-    /**
-     * As {@link #write(Path, Map, Map, AmpliconOptions, Map)}, labelling each row with what
-     * its amplicon size is for the assay when the primer file declares product sizes
-     * (last column, {@link ExpectedSizes#COLUMN}). The label never removes a row.
-     */
-    public static Path write(Path consolidatedDir, Map<String, Sample> samples,
-                             Map<String, String> primers, AmpliconOptions options,
-                             Map<String, List<ReportRow>> extraRows, ExpectedSizes expectedSizes) {
+        ExpectedSizes expectedSizes = primers.expectedSizes();
         // Probe requirement is decided per assay from the primer FILE, so standard
         // PCR and qPCR assays can be mixed in one run: an assay whose probe is
         // defined but never hits must stay negative, while a probe-less assay is
         // reported on its primer pair alone. The probe columns are present
         // whenever at least one assay defines a probe.
-        Set<String> assaysWithProbe = assaysWithProbe(primers.keySet());
-        boolean probeColumns = !assaysWithProbe.isEmpty();
+        Set<String> assaysWithProbe = primers.assaysWithProbe();
+        boolean probeColumns = primers.anyProbe();
         boolean sizeColumn = !expectedSizes.isEmpty();
         Path report = nextAvailableReportFile(consolidatedDir);
 
@@ -93,7 +85,7 @@ public final class ConsolidatedReport {
      * pairing, size and probe rules, without writing anything. An assay with no row is
      * absent.
      */
-    public static Map<String, Set<Integer>> reportedSizes(Sample sample, Map<String, String> primers,
+    public static Map<String, Set<Integer>> reportedSizes(Sample sample, PrimerPanel primers,
                                                           AmpliconOptions options) {
         Map<String, Set<Integer>> sizes = new TreeMap<>();
         for (ReportRow row : rows(sample, primers, options)) {
@@ -103,10 +95,10 @@ public final class ConsolidatedReport {
     }
 
     /** The rows {@link #write} would write for {@code sample}, in report order. */
-    public static List<ReportRow> rows(Sample sample, Map<String, String> primers, AmpliconOptions options) {
+    public static List<ReportRow> rows(Sample sample, PrimerPanel primers, AmpliconOptions options) {
         List<ReportRow> rows = new ArrayList<>();
         try {
-            writeSampleResults(rows::add, sample.getName(), sample, options, assaysWithProbe(primers.keySet()));
+            writeSampleResults(rows::add, sample.getName(), sample, options, primers.assaysWithProbe());
         } catch (IOException e) {
             throw new IllegalStateException("Collecting rows in memory cannot fail", e);
         }

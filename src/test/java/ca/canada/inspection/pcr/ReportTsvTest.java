@@ -26,12 +26,12 @@ class ReportTsvTest {
                 "qpcr-F", "qpcr-R_1", 1, 0, 1, 0, '-', new ReportRow.Probe("qpcr-P", 140, 163, 2), 3, 0);
         ReportRow withoutProbe = TestRows.row("S", "plain", 11, 80, "read_7", "FASTQ read-level call: ...");
         // A probe in the panel gives the report its probe columns, empty for the plain assay.
-        Map<String, String> primers = Map.of("qpcr-F", "ACGT", "qpcr-R", "ACGT", "qpcr-P", "ACGT",
-                "plain-F", "ACGT", "plain-R", "ACGT");
+        PrimerPanel primers = PrimerPanel.of(Map.of("qpcr-F", "ACGT", "qpcr-R", "ACGT", "qpcr-P", "ACGT",
+                "plain-F", "ACGT", "plain-R", "ACGT"));
 
-        Path report = ConsolidatedReport.write(dir, Map.of("S", sample), primers, AmpliconOptions.withMismatches(0),
-                Map.of("S", List.of(withProbe, withoutProbe)),
-                ExpectedSizes.fromHeaders(Map.of("qpcr-F", "size=120")));
+        Path report = ConsolidatedReport.write(dir, Map.of("S", sample),
+                PrimerPanel.of(primers.sequences(), ExpectedSizes.fromHeaders(Map.of("qpcr-F", "size=120"))),
+                AmpliconOptions.withMismatches(0), Map.of("S", List.of(withProbe, withoutProbe)));
 
         assertEquals(List.of(withProbe, withoutProbe), ReportTsv.read(report));
     }

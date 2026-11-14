@@ -18,7 +18,6 @@ import ca.canada.inspection.pipeline.QaLogInputs;
 import ca.canada.inspection.pipeline.RunFailure;
 import ca.canada.inspection.pipeline.RuntimeDependencies;
 import ca.canada.inspection.util.InputCheck;
-import ca.canada.inspection.util.SequenceFileUtils;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
@@ -51,7 +50,6 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.io.UncheckedIOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
@@ -60,7 +58,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.stream.Stream;
 
 public class MainRun extends Application {
 

@@ -2,6 +2,7 @@ package ca.canada.inspection.pipeline;
 
 import ca.canada.inspection.pcr.ExpectedSizes;
 import ca.canada.inspection.pcr.PrimerId;
+import ca.canada.inspection.pcr.PrimerPanel;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -43,23 +44,19 @@ public final class PrimerService {
     public record PrimerFile(Map<String, String> sequences, ExpectedSizes expectedSizes) {
     }
 
-    /**
-     * The primers of a run, ready for BLAST.
-     *
-     * @param primers       validated primers with degenerate bases expanded, by expanded ID
-     * @param expectedSizes product sizes the primer file declares
-     */
-    public record PreparedPrimers(Map<String, String> primers, ExpectedSizes expectedSizes) {
-    }
-
     private PrimerService() {
     }
 
-    public static PreparedPrimers loadAndPrepare(PipelineConfig config, PipelineDirectories directories) {
+    /**
+     * Reads the run's primer file, expands degenerate bases, and writes the primers for BLAST.
+     *
+     * @return the validated primers, degenerate ones expanded, with the sizes the file declares
+     */
+    public static PrimerPanel loadAndPrepare(PipelineConfig config, PipelineDirectories directories) {
         PrimerFile file = read(config.primers());
         Map<String, String> preparedPrimers = expandPrimers(file.sequences());
         writePrimerDatabase(directories.primerDatabase(), preparedPrimers);
-        return new PreparedPrimers(preparedPrimers, file.expectedSizes());
+        return PrimerPanel.of(preparedPrimers, file.expectedSizes());
     }
 
     /** Validates the IDs and sequences and expands degenerate bases. */

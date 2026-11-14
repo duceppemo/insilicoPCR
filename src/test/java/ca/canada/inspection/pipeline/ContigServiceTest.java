@@ -1,5 +1,6 @@
 package ca.canada.inspection.pipeline;
 
+import ca.canada.inspection.pcr.PrimerPanel;
 import ca.canada.inspection.model.Sample;
 import ca.canada.inspection.util.SequenceFileUtils;
 import org.junit.jupiter.api.Test;
@@ -79,6 +80,6 @@ class ContigServiceTest {
     }
 
     private static PipelineContext contextOf(Map<String, Sample> samples) {
-        return new PipelineContext(null, null, null, samples, Map.of(), null, 1, List.of(), RunMonitor.CONSOLE);
+        return new PipelineContext(null, null, null, samples, PrimerPanel.EMPTY, 1, List.of(), RunMonitor.CONSOLE);
     }
 }

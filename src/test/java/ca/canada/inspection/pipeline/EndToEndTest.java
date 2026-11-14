@@ -1,5 +1,6 @@
 package ca.canada.inspection.pipeline;
 
+import ca.canada.inspection.pcr.PrimerPanel;
 import ca.canada.inspection.pcr.AmpliconOptions;
 import ca.canada.inspection.pcr.ReadExtensionCaller;
 import ca.canada.inspection.pipeline.RunMonitor.Step;
@@ -327,10 +328,9 @@ class EndToEndTest {
                 real.platformRoot(), real.bbmapDirectory(), real.blastBinDirectory(), java, real.javafxLibDirectory());
         PipelineConfig config = config(reads, output);
         PipelineDirectories directories = PipelineDirectories.create(output);
-        PrimerService.PreparedPrimers primers = PrimerService.loadAndPrepare(config, directories);
+        PrimerPanel primers = PrimerService.loadAndPrepare(config, directories);
         return new PipelineContext(config, new RuntimeDependencies(layout), directories,
-                InputCheck.scan(reads, InputCheck.Depth.QUICK, 2).samples(), primers.primers(),
-                primers.expectedSizes(), budgetGiB, List.of(), monitor);
+                InputCheck.scan(reads, InputCheck.Depth.QUICK, 2).samples(), primers, budgetGiB, List.of(), monitor);
     }
 
     /** The {@code threads=} of each run of a BBTools program, sorted; Tadpole logs itself as Tadpole1 or 2. */

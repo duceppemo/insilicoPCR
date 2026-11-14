@@ -19,8 +19,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class ReadLevelCallerTest {
 
     private static final AmpliconOptions DEFAULTS = AmpliconOptions.withMismatches(0);
-    private static final Map<String, String> PRIMERS = Map.of(
-            "assay-F", PRIMER_20, "assay-R", PRIMER_20, "assay-P", PRIMER_20);
+    private static final PrimerPanel PRIMERS = PrimerPanel.of(Map.of(
+            "assay-F", PRIMER_20, "assay-R", PRIMER_20, "assay-P", PRIMER_20));
 
     private static Sample reads() {
         Sample reads = FastqDiagnosticsTest.readsSample();
@@ -179,7 +179,7 @@ class ReadLevelCallerTest {
 
     private static final String FLANK = "GATTACAGGCTTAACCGGTTAAGCCATGCA";       // 30 bases after the forward primer
     private static final String OTHER = "TTTTCCCCAAAAGGGGTTTTCCCCAAAAGG";       // an unrelated place in the genome
-    private static final Map<String, String> PCR_PRIMERS = Map.of("assay-F", PRIMER_20, "assay-R", PRIMER_20);
+    private static final PrimerPanel PCR_PRIMERS = PrimerPanel.of(Map.of("assay-F", PRIMER_20, "assay-R", PRIMER_20));
 
     /** A 101-base read: 10 bases, the forward primer at 11-30, then {@code afterPrimer}, then filler. */
     private static String read(String afterPrimer) {
@@ -347,8 +347,8 @@ class ReadLevelCallerTest {
     }
 
     private static ReportRow representativeRow(String exactVariant, String otherVariant, List<String> readsOfExact) {
-        Map<String, String> primers = Map.of("assay-F", PRIMER_20, "assay-R", PRIMER_20,
-                exactVariant, PRIMER_20, otherVariant, PRIMER_20);
+        PrimerPanel primers = PrimerPanel.of(Map.of("assay-F", PRIMER_20, "assay-R", PRIMER_20,
+                exactVariant, PRIMER_20, otherVariant, PRIMER_20));
         Sample reads = reads();
         for (String read : List.of("read_1", "read_2")) {
             reads.addBlastResult("assay-F", TestHits.plusHit("assay-F", read, 11));
@@ -394,7 +394,7 @@ class ReadLevelCallerTest {
             reads.addBlastResult("plain-R", TestHits.minusHit("plain-R", read, 61));
         }
         ReadEvidence evidence = ReadLevelCaller.evaluate(reads, Map.of("read_1", 101, "read_2", 101),
-                Map.of("plain-F", PRIMER_20, "plain-R", PRIMER_20), DEFAULTS);
+                PrimerPanel.of(Map.of("plain-F", PRIMER_20, "plain-R", PRIMER_20)), DEFAULTS);
         ReportRow row = evidence.products("plain").getFirst().row();
 
         assertEquals("", row.probeId());
@@ -407,7 +407,7 @@ class ReadLevelCallerTest {
         // Both variants of a degenerate forward primer hit the read with no mismatch (the
         // site lies in bases BLAST left out, say). The row must not depend on the order
         // the hits are met in, which changes from one run to the next.
-        Map<String, String> primers = Map.of("deg-F_0", PRIMER_20, "deg-F_1", PRIMER_20, "deg-R", PRIMER_20);
+        PrimerPanel primers = PrimerPanel.of(Map.of("deg-F_0", PRIMER_20, "deg-F_1", PRIMER_20, "deg-R", PRIMER_20));
         for (List<String> order : List.of(List.of("deg-F_0", "deg-F_1"), List.of("deg-F_1", "deg-F_0"))) {
             Sample reads = reads();
             for (String read : List.of("read_1", "read_2")) {

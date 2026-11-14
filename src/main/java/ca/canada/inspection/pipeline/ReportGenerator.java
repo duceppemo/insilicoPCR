@@ -34,8 +34,7 @@ public final class ReportGenerator {
         Path report = ConsolidatedReport.write(context.directories().consolidated(), context.samples(),
                 context.primers(), context.config().ampliconOptions(),
                 FastqDiagnosticsStage.extraRows(context.samples(), context.primers(), context.config().ampliconOptions(),
-                        readEvidence, extension),
-                context.expectedSizes());
+                        readEvidence, extension));
         if (context.config().gel()) {
             String baseName = report.getFileName().toString().replaceFirst("\\.tsv$", "");
             GelImageWriter.write(report, context.config().output().resolve("synthetic_gel_" + baseName + ".png"),
@@ -47,7 +46,7 @@ public final class ReportGenerator {
         List<SplitAcrossContigs.Split> splits = assemblySplits(context);
         splits.forEach(split -> monitor.warning("Warning: " + split.message()));
         Path html = HtmlReport.write(report, context.samples().keySet(), RunDetails.fastqSampleNames(context.samples()),
-                context.primers(), context.expectedSizes(), diagnostics.findings(),
+                context.primers(), diagnostics.findings(),
                 RunDetails.of(Version.VERSION, context.config().input(), context.config().primers(),
                         context.config().output(), context.config().ampliconOptions(),
                         context.hasFastqSamples() ? context.config().readMinFraction() : null,
@@ -55,7 +54,7 @@ public final class ReportGenerator {
                 context.inputIssues(), splits);
         monitor.info("HTML report written to " + html);
         List<String> qaLines = new ArrayList<>(RunDetails.inputIssueLines(context.inputIssues()));
-        qaLines.addAll(context.expectedSizes().qaLogLines());
+        qaLines.addAll(context.primers().expectedSizes().qaLogLines());
         qaLines.addAll(diagnostics.qaLogLines(context.config().tadpole(), context.config().readMinFraction(),
                 context.config().readExtension()));
         splits.forEach(split -> qaLines.add("Primers at contig ends: " + split.message()));

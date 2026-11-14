@@ -1,5 +1,6 @@
 package ca.canada.inspection.pipeline;
 
+import ca.canada.inspection.pcr.PrimerPanel;
 import org.junit.jupiter.api.Test;
 
 import java.util.LinkedHashMap;
@@ -64,8 +65,8 @@ class PrimerServiceTest {
                 ca.canada.inspection.pcr.AmpliconOptions.withMismatches(0), false);
         var directories = PipelineDirectories.create(out);
 
-        PrimerService.PreparedPrimers prepared = PrimerService.loadAndPrepare(config, directories);
-        Map<String, String> primers = prepared.primers();
+        PrimerPanel prepared = PrimerService.loadAndPrepare(config, directories);
+        Map<String, String> primers = prepared.sequences();
 
         assertTrue(prepared.expectedSizes().isEmpty());
 
@@ -120,10 +121,10 @@ class PrimerServiceTest {
         var config = new PipelineConfig(input, dir.resolve("out2"), primerFile, 1, 1e5,
                 ca.canada.inspection.pcr.AmpliconOptions.withMismatches(0), false);
 
-        PrimerService.PreparedPrimers prepared = PrimerService.loadAndPrepare(config,
+        PrimerPanel prepared = PrimerService.loadAndPrepare(config,
                 PipelineDirectories.create(dir.resolve("out2")));
 
-        assertEquals(java.util.Set.of("its-F", "its-R_0", "its-R_1", "plain-F", "plain-R"), prepared.primers().keySet());
+        assertEquals(java.util.Set.of("its-F", "its-R_0", "its-R_1", "plain-F", "plain-R"), prepared.ids());
         assertEquals("target", prepared.expectedSizes().labelText("its", 420));
         assertEquals("other", prepared.expectedSizes().labelText("its", 580));
         assertEquals("unexpected", prepared.expectedSizes().labelText("its", 100));

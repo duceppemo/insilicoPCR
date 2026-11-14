@@ -2,7 +2,6 @@ package ca.canada.inspection.pcr;
 
 import ca.canada.inspection.model.BlastResult;
 
-import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 
@@ -42,7 +41,7 @@ public final class BlastHitParser {
 
     /** Parses a hit without templates: trimmed bases are judged as BLAST left them. */
     public static Optional<BlastResult> parse(String line, String sampleName,
-                                              Map<String, String> primers, AmpliconOptions options) {
+                                              PrimerPanel primers, AmpliconOptions options) {
         return parse(line, sampleName, primers, options, hit -> null);
     }
 
@@ -54,7 +53,7 @@ public final class BlastHitParser {
      *                  ({@link TrimmedEnds#needsTemplate}), in the order of the report
      */
     public static Optional<BlastResult> parse(String line, String sampleName,
-                                              Map<String, String> primers, AmpliconOptions options,
+                                              PrimerPanel primers, AmpliconOptions options,
                                               Function<BlastResult, TrimmedEnds.Template> templates) {
         return toHit(line, sampleName, primers)
                 .map(hit -> TrimmedEnds.needsTemplate(hit, options)
@@ -63,14 +62,14 @@ public final class BlastHitParser {
                 .filter(hit -> accepts(hit, options));
     }
 
-    private static Optional<BlastResult> toHit(String line, String sampleName, Map<String, String> primers) {
+    private static Optional<BlastResult> toHit(String line, String sampleName, PrimerPanel primers) {
         String[] fields = line.split("\t", -1);
         if (fields.length < EXPECTED_FIELDS) {
             return Optional.empty();
         }
 
         String sseqid = fields[1];
-        String primerSeq = primers.get(sseqid);
+        String primerSeq = primers.sequence(sseqid);
         if (primerSeq == null) {
             return Optional.empty();
         }

@@ -1,5 +1,6 @@
 package ca.canada.inspection.pipeline;
 
+import ca.canada.inspection.pcr.PrimerPanel;
 import ca.canada.inspection.pcr.AmpliconOptions;
 import ca.canada.inspection.pcr.ReadLevelCaller.ReadCall;
 import org.junit.jupiter.api.Test;
@@ -91,7 +92,7 @@ class ReadLevelStageTest {
         ReadLevelStage.ReadSet set = ReadLevelStage.writeReadsFasta(List.of(reads), false, fasta);
 
         ReadCall call = ReadLevelStage.callFromHits("S", hitsFile, fasta, set,
-                Map.of("assay-F", primer, "assay-R", primer), AmpliconOptions.withMismatches(0), 0.3)
+                PrimerPanel.of(Map.of("assay-F", primer, "assay-R", primer)), AmpliconOptions.withMismatches(0), 0.3)
                 .products("assay").getFirst();
 
         assertEquals(2, call.supportingReads());

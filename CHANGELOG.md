@@ -47,6 +47,10 @@
   Every step is a class with a static entry point, and three wrapper classes
   are gone. The HTML report and the gel read `report.tsv` with one reader
   (`ReportTsv`) into `ReportRow`s, instead of each with its own.
+- Code: the primers of a run travel as one `PrimerPanel` (sequences, assays,
+  which have a probe, declared sizes), built once, instead of as a map of
+  sequences that each step grouped by assay again, with the declared sizes
+  passed beside it. `HtmlReport.write` has one form instead of four.
 - Code: the primer naming rule (`<assay>-F/-R/-P`) is read in one place
   (`PrimerId`) instead of seven.
 - Code: products pass between the steps of a run as `ReportRow` records,

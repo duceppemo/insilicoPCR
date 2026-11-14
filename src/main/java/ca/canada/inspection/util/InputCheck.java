@@ -5,6 +5,7 @@ import ca.canada.inspection.model.Sample;
 import java.io.BufferedReader;
 import java.io.EOFException;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -158,7 +159,7 @@ public final class InputCheck {
                     .sorted(Comparator.comparing(Path::toString))
                     .toList();
         } catch (IOException e) {
-            throw new IllegalStateException("Unable to list input directory: " + input, e);
+            throw new UncheckedIOException("Unable to list input directory: " + input, e);
         }
     }
 
@@ -195,6 +196,11 @@ public final class InputCheck {
             Thread.currentThread().interrupt();
             throw new IllegalStateException("Interrupted while checking the input files", e);
         } catch (ExecutionException e) {
+            // A file that cannot be read is a fault the check returns, not an exception: what is
+            // thrown here is a bug, kept as it is.
+            if (e.getCause() instanceof RuntimeException bug) {
+                throw bug;
+            }
             throw new IllegalStateException("Unable to check the input files", e.getCause());
         } finally {
             // Nothing is left to wait for after a normal end; after a cancelled run the files

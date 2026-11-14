@@ -402,7 +402,7 @@ class FastqDiagnosticsTest {
     void aDiagnosticsFileThatCannotBeWrittenSaysWhich() {
         Path file = tempDir.resolve("missing").resolve("report_fastq_diagnostics.tsv");
 
-        IllegalStateException error = org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class,
+        java.io.UncheckedIOException error = org.junit.jupiter.api.Assertions.assertThrows(java.io.UncheckedIOException.class,
                 () -> FastqDiagnosticsReport.write(file, List.of()));
 
         assertEquals("Unable to write FASTQ diagnostics: " + file, error.getMessage());

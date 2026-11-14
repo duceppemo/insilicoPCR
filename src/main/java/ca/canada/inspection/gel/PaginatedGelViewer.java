@@ -1,6 +1,5 @@
 package ca.canada.inspection.gel;
 
-import ca.canada.inspection.model.Sample;
 import ca.canada.inspection.gel.LaneBand.BandRect;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -33,8 +32,9 @@ import javafx.stage.Stage;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Path;
-import java.util.HashMap;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -48,10 +48,10 @@ public final class PaginatedGelViewer {
     private PaginatedGelViewer() {
     }
 
-    public static void show(Scene ownerScene, Path consolidatedReport, HashMap<String, Sample> sampleDict) {
-        LinkedHashMap<String, List<GelBand>> lanes = GelReportReader.read(consolidatedReport, sampleDict);
+    public static void show(Scene ownerScene, Path consolidatedReport, Collection<String> sampleNames) {
+        LinkedHashMap<String, List<GelBand>> lanes = GelReportReader.read(consolidatedReport, sampleNames);
         if (lanes.size() <= DEFAULT_SAMPLES_PER_GEL) {
-            InteractiveGelViewer.show(ownerScene, consolidatedReport, sampleDict);
+            InteractiveGelViewer.show(ownerScene, consolidatedReport, sampleNames);
             return;
         }
 
@@ -434,7 +434,7 @@ public final class PaginatedGelViewer {
         try {
             GelImages.writePng(GelImages.snapshot(pane, pane.getPrefWidth(), pane.getPrefHeight(), false), outputFile);
         } catch (IOException e) {
-            throw new IllegalStateException("Unable to save PNG: " + outputFile, e);
+            throw new UncheckedIOException("Unable to save PNG: " + outputFile, e);
         }
     }
 
@@ -442,7 +442,7 @@ public final class PaginatedGelViewer {
         try {
             GelImages.writePdf(GelImages.snapshot(pane, pane.getPrefWidth(), pane.getPrefHeight(), true), outputFile);
         } catch (IOException e) {
-            throw new IllegalStateException("Unable to save PDF: " + outputFile, e);
+            throw new UncheckedIOException("Unable to save PDF: " + outputFile, e);
         }
     }
 
@@ -451,7 +451,7 @@ public final class PaginatedGelViewer {
             List<String> samples = model.currentSamples();
             GelImages.writeText(GelSvg.page(model.layout(samples), samples, model.lanes, model.geneColors, colorByGene), outputFile);
         } catch (IOException e) {
-            throw new IllegalStateException("Unable to save SVG: " + outputFile, e);
+            throw new UncheckedIOException("Unable to save SVG: " + outputFile, e);
         }
     }
 

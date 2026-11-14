@@ -1,6 +1,5 @@
 package ca.canada.inspection.gel;
 
-import ca.canada.inspection.model.Sample;
 import ca.canada.inspection.gel.LaneBand.BandRect;
 import javafx.application.Platform;
 import javafx.scene.canvas.Canvas;
@@ -10,9 +9,9 @@ import javafx.scene.text.Font;
 import javafx.scene.text.TextAlignment;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Path;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,11 +31,7 @@ public final class SyntheticGelImage {
      * this method must NOT be called on the FX application thread.
      */
     public static Path exportPng(Path consolidatedReport, Path outputFile, Collection<String> sampleNames) {
-        HashMap<String, Sample> laneSamples = new HashMap<>();
-        for (String name : sampleNames) {
-            laneSamples.put(name, null);
-        }
-        LinkedHashMap<String, List<GelBand>> sampleBands = GelReportReader.read(consolidatedReport, laneSamples);
+        LinkedHashMap<String, List<GelBand>> sampleBands = GelReportReader.read(consolidatedReport, sampleNames);
         if (sampleBands.values().stream().allMatch(List::isEmpty)) {
             throw new IllegalStateException("No amplicons were found in consolidated report: " + consolidatedReport);
         }
@@ -48,7 +43,7 @@ public final class SyntheticGelImage {
                 Canvas canvas = draw(sampleBands);
                 GelImages.writePng(GelImages.snapshot(canvas, canvas.getWidth(), canvas.getHeight(), false), outputFile);
             } catch (IOException e) {
-                failure.set(new IllegalStateException("Unable to save synthetic gel image: " + outputFile, e));
+                failure.set(new UncheckedIOException("Unable to save synthetic gel image: " + outputFile, e));
             } catch (Throwable t) {
                 failure.set(t);
             } finally {

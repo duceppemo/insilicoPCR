@@ -1,15 +1,15 @@
 package ca.canada.inspection.gel;
 
-import ca.canada.inspection.model.Sample;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -19,16 +19,20 @@ public final class GelReportReader {
     private GelReportReader() {
     }
 
+    /**
+     * @param sampleNames the run's samples, each a lane even without a band; {@code null} or
+     *                    empty for lanes of the samples with a band only
+     */
     public static LinkedHashMap<String, List<GelBand>> read(Path consolidatedReport,
-                                                             HashMap<String, Sample> sampleDict) {
+                                                             Collection<String> sampleNames) {
         if (consolidatedReport == null || !Files.isRegularFile(consolidatedReport)) {
             throw new IllegalArgumentException("Consolidated report not found: " + consolidatedReport);
         }
 
         LinkedHashMap<String, List<GelBand>> lanes = new LinkedHashMap<>();
-        boolean keepEmptySampleLanes = sampleDict != null && !sampleDict.isEmpty();
-        if (sampleDict != null) {
-            sampleDict.keySet().stream()
+        boolean keepEmptySampleLanes = sampleNames != null && !sampleNames.isEmpty();
+        if (sampleNames != null) {
+            sampleNames.stream()
                     .sorted()
                     .forEach(sampleName -> lanes.put(sampleName, new ArrayList<>()));
         }
@@ -58,7 +62,7 @@ public final class GelReportReader {
                         .add(new GelBand(sampleName, geneName, ampliconSize));
             }
         } catch (IOException e) {
-            throw new IllegalStateException("Unable to read consolidated report: " + consolidatedReport, e);
+            throw new UncheckedIOException("Unable to read consolidated report: " + consolidatedReport, e);
         }
 
         if (!keepEmptySampleLanes) {

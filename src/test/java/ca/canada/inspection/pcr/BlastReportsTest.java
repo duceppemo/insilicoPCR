@@ -64,7 +64,7 @@ class BlastReportsTest {
     @Test
     void missingDirectoryFailsLoudly() {
         Map<String, Sample> samples = new HashMap<>();
-        org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class,
+        org.junit.jupiter.api.Assertions.assertThrows(java.io.UncheckedIOException.class,
                 () -> BlastReports.attachHits(detailedDir.resolve("ghost"), samples, PRIMERS, OPTIONS));
     }
 

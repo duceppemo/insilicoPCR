@@ -6,6 +6,7 @@ import ca.canada.inspection.pcr.AmpliconCaller.Amplicon;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -82,7 +83,7 @@ public final class ConsolidatedReport {
                 }
             }
         } catch (IOException e) {
-            throw new IllegalStateException("Unable to write consolidated report: " + report, e);
+            throw new UncheckedIOException("Unable to write consolidated report: " + report, e);
         }
         return report;
     }

@@ -27,7 +27,7 @@ Each package depends only on those below it in this table, so there are no cycle
 | `dispatchpcr` | The entry point and the command-line options | everything below |
 | `insilicopcr` (and `insilicopcr.ui`) | The application window and its dialogs | `pipeline`, `pcr`, `gel`, `model`, `util` |
 | `pipeline` | The run: its steps, the external programs, the runtime layout (`AppPaths`) | `pcr`, `gel`, `model`, `util` |
-| `gel` | The synthetic gel: its geometry, the viewers, the image files | `model` |
+| `gel` | The synthetic gel: its geometry, the viewers, the image files | nothing |
 | `pcr` | The analysis core: primer IDs, hit filtering, amplicon calling, read-level calls, reports | `model`, `util` |
 | `util` | Input checks, sequence file helpers, the version (`Version`, filled in from `pom.xml` at build time) | `model` |
 | `model` | `Sample` and `BlastResult` | nothing |

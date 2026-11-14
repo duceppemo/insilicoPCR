@@ -1,13 +1,11 @@
 package ca.canada.inspection.gel;
 
-import ca.canada.inspection.model.Sample;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -36,13 +34,11 @@ class GelReportReaderTest {
                 "sampleA\tgeneY\t1-500\t500\tc1",
                 "sampleA\tgeneX\t1-900\t900\tc1");
         // Without named samples, lanes keep report row order...
-        LinkedHashMap<String, List<GelBand>> lanes = GelReportReader.read(file, new HashMap<>());
+        LinkedHashMap<String, List<GelBand>> lanes = GelReportReader.read(file, List.of());
         assertEquals(List.of("sampleB", "sampleA"), List.copyOf(lanes.keySet()));
 
         // ...while named samples are laid out alphabetically.
-        HashMap<String, Sample> named = new HashMap<>();
-        named.put("sampleB", null);
-        named.put("sampleA", null);
+        List<String> named = List.of("sampleB", "sampleA");
         assertEquals(List.of("sampleA", "sampleB"), List.copyOf(GelReportReader.read(file, named).keySet()));
 
         // Bands within a lane are sorted by descending size.
@@ -53,14 +49,12 @@ class GelReportReaderTest {
     @Test
     void emptyLanesAreKeptOnlyWhenSamplesAreNamed() throws IOException {
         Path file = report("pos\tgeneX\t1-100\t100\tc1");
-        HashMap<String, Sample> named = new HashMap<>();
-        named.put("pos", null);
-        named.put("negativeControl", null);
+        List<String> named = List.of("pos", "negativeControl");
 
         assertTrue(GelReportReader.read(file, named).containsKey("negativeControl"));
         assertTrue(GelReportReader.read(file, named).get("negativeControl").isEmpty());
         // Without named samples, empty lanes are dropped.
-        assertEquals(List.of("pos"), List.copyOf(GelReportReader.read(file, new HashMap<>()).keySet()));
+        assertEquals(List.of("pos"), List.copyOf(GelReportReader.read(file, List.of()).keySet()));
     }
 
     @Test
@@ -70,15 +64,15 @@ class GelReportReaderTest {
                 "sampleA\tgeneX\t1-100\tnot-a-number\tc1",
                 "",
                 "sampleA\tgeneX\t1-100\t100\tc1");
-        LinkedHashMap<String, List<GelBand>> lanes = GelReportReader.read(file, new HashMap<>());
+        LinkedHashMap<String, List<GelBand>> lanes = GelReportReader.read(file, List.of());
         assertEquals(1, lanes.get("sampleA").size());
     }
 
     @Test
     void missingReportIsRejected() {
         assertThrows(IllegalArgumentException.class,
-                () -> GelReportReader.read(dir.resolve("nope.tsv"), new HashMap<>()));
-        assertThrows(IllegalArgumentException.class, () -> GelReportReader.read(null, new HashMap<>()));
+                () -> GelReportReader.read(dir.resolve("nope.tsv"), List.of()));
+        assertThrows(IllegalArgumentException.class, () -> GelReportReader.read(null, List.of()));
     }
 
     @Test

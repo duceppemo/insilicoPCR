@@ -242,7 +242,7 @@ public final class HtmlReport {
                     sizes, findings, runDetails, inputIssues, splits);
             Files.writeString(html, page, StandardCharsets.UTF_8);
         } catch (IOException e) {
-            throw new IllegalStateException("Unable to write HTML report: " + html, e);
+            throw new UncheckedIOException("Unable to write HTML report: " + html, e);
         }
         return html;
     }

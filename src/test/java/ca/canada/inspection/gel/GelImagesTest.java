@@ -33,8 +33,10 @@ class GelImagesTest {
 
     @Test
     void defaultOutputNameIsMadeFileSystemSafe() {
-        assertEquals("synthetic_gel_my_report_1_.png",
+        assertEquals("synthetic_gel_my_report_(1).png",
                 GelImages.defaultOutput(Path.of("a", "b", "my report (1).tsv")).getFileName().toString());
+        assertEquals("synthetic_gel_report(1).png",
+                GelImages.defaultOutput(Path.of("a", "b", "report(1).tsv")).getFileName().toString());
         assertEquals("synthetic_gel_report.tsv.bak.png",
                 GelImages.defaultOutput(Path.of("a", "b", "report.tsv.bak")).getFileName().toString());
     }

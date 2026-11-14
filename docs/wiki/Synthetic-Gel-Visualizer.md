@@ -34,6 +34,8 @@ After a GUI run finishes, use the gel viewer button in the application.
 
 The application can also open previous run folders or consolidated report TSV files when available.
 
+Opening the viewer writes nothing. **Save PNG...**, **Save SVG...** and **Save PDF...** offer `synthetic_gel_<report>.png` (`.svg`, `.pdf`) in the run's output folder, the name `--gel` writes (`synthetic_gel_report(1).png` for `report(1).tsv`). Before 0.15.1 the viewer saved a PNG under that name each time it opened, replacing a `--gel` picture, and could not open a run in a folder it could not write to.
+
 ## Interpretation
 
 Each displayed band represents a predicted PCR amplicon from the consolidated report.

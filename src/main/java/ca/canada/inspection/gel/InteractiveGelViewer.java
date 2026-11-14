@@ -73,8 +73,9 @@ public final class InteractiveGelViewer {
         GelView gelView = buildGel(ownerScene, lanes);
         Pane gelPane = gelView.pane();
         Group zoomGroup = new Group(gelPane);
+        // Only offered as the name to save under: opening the viewer writes nothing, so it opens
+        // on a folder that cannot be written to and leaves the --gel picture as it is.
         Path automaticOutput = GelImages.defaultOutput(consolidatedReport);
-        savePaneAsPng(gelPane, automaticOutput);
 
         Button savePngButton = new Button("Save PNG...");
         Runnable savePng = () -> chooseAndSavePng(gelPane, automaticOutput);
@@ -168,7 +169,7 @@ public final class InteractiveGelViewer {
         double windowHeight = Math.min(preferredHeight, Math.max(700, screenBounds.getHeight() - 80));
 
         Stage stage = new Stage();
-        stage.setTitle("Synthetic Gel - " + consolidatedReport.getFileName() + " - saved to " + automaticOutput.getFileName());
+        stage.setTitle("Synthetic Gel - " + consolidatedReport.getFileName());
         Scene scene = new Scene(root, windowWidth, windowHeight);
         installKeyboardShortcuts(scene, searchField, selectedBands, selectedLabel, gelView.bands(), zoomIn, zoomOut, zoomReset, savePng, saveSvg, savePdf);
         stage.setScene(scene);

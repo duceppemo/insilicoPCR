@@ -1,5 +1,6 @@
 package ca.canada.inspection.pipeline;
 
+import ca.canada.inspection.gel.SyntheticGelImage;
 import ca.canada.inspection.model.Sample;
 import ca.canada.inspection.pcr.ReadLevelCaller.ReadEvidence;
 import ca.canada.inspection.pcr.SplitAcrossContigs;
@@ -36,9 +37,7 @@ public final class ReportGenerator {
                 FastqDiagnosticsStage.extraRows(context.samples(), context.primers(), context.config().ampliconOptions(),
                         readEvidence, extension));
         if (context.config().gel()) {
-            String baseName = report.getFileName().toString().replaceFirst("\\.tsv$", "");
-            GelImageWriter.write(report, context.config().output().resolve("synthetic_gel_" + baseName + ".png"),
-                    context.samples().keySet(), monitor);
+            GelImageWriter.write(report, SyntheticGelImage.defaultPng(report), context.samples().keySet(), monitor);
         }
         FastqDiagnosticsStage.Result diagnostics = FastqDiagnosticsStage.run(report, context.samples(),
                 context.primers(), context.config().ampliconOptions(), readEvidence, extension);

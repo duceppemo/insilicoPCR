@@ -23,7 +23,9 @@ final class GelImages {
 
     /**
      * Default PNG of a consolidated report: {@code synthetic_gel_<report name>.png} in the folder
-     * above the report's folder (the run's output folder).
+     * above the report's folder (the run's output folder); {@code synthetic_gel_report(1).png}
+     * for {@code report(1).tsv}. The name {@code --gel} writes, and the one the viewers' Save
+     * dialogs offer.
      */
     static Path defaultOutput(Path consolidatedReport) {
         Path reportDir = consolidatedReport.getParent();
@@ -33,7 +35,7 @@ final class GelImages {
         }
         String baseName = consolidatedReport.getFileName().toString()
                 .replaceFirst("\\.tsv$", "")
-                .replaceAll("[^A-Za-z0-9._-]+", "_");
+                .replaceAll("[^A-Za-z0-9._()-]+", "_");
         return outputDir.resolve("synthetic_gel_" + baseName + ".png");
     }
 

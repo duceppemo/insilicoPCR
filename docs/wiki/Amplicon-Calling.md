@@ -11,6 +11,8 @@ BLAST+ (`blastn-short`) finds every place a primer matches a sample sequence. Ra
 
 Only pairs that pass both stages appear in the consolidated report.
 
+These are **sequence rules only**: nothing in insilicoPCR models melting or annealing temperature, primer dimers, hairpins or other secondary structure, amplification efficiency, or competition between assays in a multiplex. Mismatches count by number and by position (with G/C pairs weighted near the 3' end), not by free energy. See [Limitations](Limitations).
+
 ## Stage 1: hit filtering
 
 For every primer hit, insilicoPCR checks:

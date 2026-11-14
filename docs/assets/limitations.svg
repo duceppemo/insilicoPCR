@@ -1,0 +1,187 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1180" height="802" viewBox="0 0 1180 802" role="img" aria-labelledby="title desc">
+  <title id="title">Where insilicoPCR can miss a product</title>
+  <desc id="desc">Six cases where insilicoPCR reports less than a real PCR would: a fragmented assembly with the primers on different contigs; in FASTQ mode, a long repeat inside the product, too few reads carrying the primers, too few read pairs to confirm an extended product, and a product in a minority of the reads; and what is not simulated (temperatures, dimers and hairpins, efficiency, multiplex competition). Each case gives the status the diagnostics report and what to do.</desc>
+  <defs>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#0F172A" flood-opacity="0.12"/>
+    </filter>
+    <style>
+      .title{font:800 32px Inter,Segoe UI,Arial,sans-serif;fill:#0F172A}
+      .sub{font:16px Inter,Segoe UI,Arial,sans-serif;fill:#475569}
+      .label{font:800 17px Inter,Segoe UI,Arial,sans-serif;fill:#0F172A}
+      .small{font:13.5px Inter,Segoe UI,Arial,sans-serif;fill:#475569}
+      .tag{font:700 12px Inter,Segoe UI,Arial,sans-serif;fill:#64748B}
+      .num{font:800 16px Inter,Segoe UI,Arial,sans-serif;fill:#fff}
+      .verdict{font:800 14px Inter,Segoe UI,Arial,sans-serif;fill:#BE123C}
+      .code{font:700 12px ui-monospace,SFMono-Regular,Consolas,monospace;fill:#9F1239}
+      .input{font:700 12px Inter,Segoe UI,Arial,sans-serif;fill:#0284C7;letter-spacing:0.4px}
+      .card{fill:#fff;stroke:#CBD5E1;stroke-width:1.4}
+    </style>
+  </defs>
+  <rect width="1180" height="802" rx="28" fill="#F8FAFC"/>
+  <text x="590" y="54" text-anchor="middle" class="title">Where insilicoPCR can miss a product</text>
+  <text x="590" y="85" text-anchor="middle" class="sub">Known cases where the report says less than a real PCR would, what it says instead, and what to do.</text>
+<g filter="url(#shadow)">
+<rect x="40" y="118" width="353" height="320" rx="18" class="card"/>
+</g>
+<circle cx="72" cy="154" r="15" fill="#475569"/>
+<text x="72" y="160" class="num" text-anchor="middle">1</text>
+<text x="96" y="160" class="label" text-anchor="start">Fragmented assembly</text>
+<text x="96" y="180" class="input" text-anchor="start">ASSEMBLIES (FASTA)</text>
+<line x1="60" y1="250" x2="200" y2="250" stroke="#94A3B8" stroke-width="9" stroke-linecap="round" />
+<line x1="235" y1="250" x2="373" y2="250" stroke="#94A3B8" stroke-width="9" stroke-linecap="round" />
+<text x="130" y="280" class="tag" text-anchor="middle">contig 1</text>
+<text x="305" y="280" class="tag" text-anchor="middle">contig 2</text>
+<path d="M152 227 L174 227 L174 222 L182 230 L174 238 L174 233 L152 233 Z" fill="#16A34A"/>
+<text x="167.0" y="217" class="tag" text-anchor="middle">F</text>
+<path d="M282 227 L260 227 L260 222 L252 230 L260 238 L260 233 L282 233 Z" fill="#2563EB"/>
+<text x="267.0" y="217" class="tag" text-anchor="middle">R</text>
+<line x1="152" y1="208" x2="282" y2="208" stroke="#E11D48" stroke-width="2" stroke-linecap="round" stroke-dasharray="5 4"/>
+<line x1="210" y1="201" x2="224" y2="215" stroke="#E11D48" stroke-width="3.2" stroke-linecap="round" />
+<line x1="210" y1="215" x2="224" y2="201" stroke="#E11D48" stroke-width="3.2" stroke-linecap="round" />
+<rect x="56" y="312" width="321" height="30" rx="8" fill="#FFF1F2"/>
+<text x="68" y="332" class="verdict" text-anchor="start">No product</text>
+<text x="60" y="368" class="small" text-anchor="start">The primers bind on different contigs, and</text>
+<text x="60" y="387" class="small" text-anchor="start">a product is called on one contig only.</text>
+<text x="60" y="406" class="small" text-anchor="start">Use a more complete assembly, or the reads.</text>
+<g filter="url(#shadow)">
+<rect x="413" y="118" width="353" height="320" rx="18" class="card"/>
+</g>
+<circle cx="445" cy="154" r="15" fill="#475569"/>
+<text x="445" y="160" class="num" text-anchor="middle">2</text>
+<text x="469" y="160" class="label" text-anchor="start">Long repeat in the product</text>
+<text x="469" y="180" class="input" text-anchor="start">READS (FASTQ)</text>
+<line x1="433" y1="224" x2="746" y2="224" stroke="#94A3B8" stroke-width="7" stroke-linecap="round" />
+<rect x="528" y="216" width="120" height="16" rx="3" fill="#F59E0B"/>
+<path d="M455 203 L477 203 L477 198 L485 206 L477 214 L477 209 L455 209 Z" fill="#16A34A"/>
+<text x="470.0" y="193" class="tag" text-anchor="middle">F</text>
+<path d="M723 203 L701 203 L701 198 L693 206 L701 214 L701 209 L723 209 Z" fill="#2563EB"/>
+<text x="708.0" y="193" class="tag" text-anchor="middle">R</text>
+<line x1="493" y1="254" x2="746" y2="254" stroke="#94A3B8" stroke-width="7" stroke-linecap="round" />
+<rect x="553" y="246" width="120" height="16" rx="3" fill="#F59E0B"/>
+<text x="453" y="259" class="tag" text-anchor="start">copy 2</text>
+<line x1="535" y1="278" x2="565" y2="278" stroke="#64748B" stroke-width="3.2" stroke-linecap="round" />
+<line x1="585" y1="278" x2="615" y2="278" stroke="#64748B" stroke-width="3.2" stroke-linecap="round" />
+<line x1="565" y1="278" x2="585" y2="278" stroke="#94A3B8" stroke-width="1.2" stroke-linecap="round" stroke-dasharray="2 3"/>
+<line x1="561" y1="288" x2="591" y2="288" stroke="#64748B" stroke-width="3.2" stroke-linecap="round" />
+<line x1="611" y1="288" x2="641" y2="288" stroke="#64748B" stroke-width="3.2" stroke-linecap="round" />
+<line x1="591" y1="288" x2="611" y2="288" stroke="#94A3B8" stroke-width="1.2" stroke-linecap="round" stroke-dasharray="2 3"/>
+<text x="655" y="282" class="tag" text-anchor="start">pairs shorter</text>
+<text x="655" y="295" class="tag" text-anchor="start">than the repeat</text>
+<rect x="429" y="312" width="321" height="48" rx="8" fill="#FFF1F2"/>
+<text x="441" y="332" class="verdict" text-anchor="start">Withheld</text>
+<text x="441" y="351" class="code" text-anchor="start">EXTENSION_THROUGH_UNRESOLVED_REPEAT</text>
+<text x="433" y="384" class="small" text-anchor="start">A repeat with another copy, longer than the</text>
+<text x="433" y="403" class="small" text-anchor="start">read pairs can bridge (~300 bp at 60x): a wrong</text>
+<text x="433" y="422" class="small" text-anchor="start">turn looks the same. Use long reads.</text>
+<g filter="url(#shadow)">
+<rect x="786" y="118" width="353" height="320" rx="18" class="card"/>
+</g>
+<circle cx="818" cy="154" r="15" fill="#475569"/>
+<text x="818" y="160" class="num" text-anchor="middle">3</text>
+<text x="842" y="160" class="label" text-anchor="start">Few reads carry the primers</text>
+<text x="842" y="180" class="input" text-anchor="start">READS (FASTQ)</text>
+<line x1="806" y1="250" x2="1119" y2="250" stroke="#94A3B8" stroke-width="3" stroke-linecap="round" stroke-dasharray="3 5" opacity="0.6"/>
+<path d="M824 227 L846 227 L846 222 L854 230 L846 238 L846 233 L824 233 Z" fill="#16A34A"/>
+<text x="839.0" y="217" class="tag" text-anchor="middle">F</text>
+<path d="M1101 227 L1079 227 L1079 222 L1071 230 L1079 238 L1079 233 L1101 233 Z" fill="#2563EB"/>
+<text x="1086.0" y="217" class="tag" text-anchor="middle">R</text>
+<line x1="820" y1="268" x2="866" y2="268" stroke="#64748B" stroke-width="3.2" stroke-linecap="round" />
+<line x1="866" y1="268" x2="926" y2="268" stroke="#16A34A" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="4 4"/>
+<line x1="828" y1="282" x2="874" y2="282" stroke="#64748B" stroke-width="3.2" stroke-linecap="round" />
+<line x1="874" y1="282" x2="904" y2="282" stroke="#16A34A" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="4 4"/>
+<line x1="1059" y1="268" x2="1105" y2="268" stroke="#64748B" stroke-width="3.2" stroke-linecap="round" />
+<line x1="1059" y1="268" x2="1011" y2="268" stroke="#2563EB" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="4 4"/>
+<line x1="1051" y1="282" x2="1097" y2="282" stroke="#64748B" stroke-width="3.2" stroke-linecap="round" />
+<line x1="1051" y1="282" x2="1028" y2="282" stroke="#2563EB" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="4 4"/>
+<line x1="961" y1="268" x2="975" y2="282" stroke="#E11D48" stroke-width="3.2" stroke-linecap="round" />
+<line x1="961" y1="282" x2="975" y2="268" stroke="#E11D48" stroke-width="3.2" stroke-linecap="round" />
+<rect x="802" y="312" width="321" height="48" rx="8" fill="#FFF1F2"/>
+<text x="814" y="332" class="verdict" text-anchor="start">Negative</text>
+<text x="814" y="351" class="code" text-anchor="start">NOT_CLOSED_BY_EXTENSION</text>
+<text x="806" y="384" class="small" text-anchor="start">A product longer than a read: the reads</text>
+<text x="806" y="403" class="small" text-anchor="start">extended from F and from R do not meet.</text>
+<text x="806" y="422" class="small" text-anchor="start">Sequence deeper, or use an assembly.</text>
+<g filter="url(#shadow)">
+<rect x="40" y="458" width="353" height="320" rx="18" class="card"/>
+</g>
+<circle cx="72" cy="494" r="15" fill="#475569"/>
+<text x="72" y="500" class="num" text-anchor="middle">4</text>
+<text x="96" y="500" class="label" text-anchor="start">Too few read pairs to confirm</text>
+<text x="96" y="520" class="input" text-anchor="start">READS (FASTQ)</text>
+<line x1="70" y1="566" x2="363" y2="566" stroke="#7C3AED" stroke-width="7" stroke-linecap="round" />
+<text x="70" y="552" class="tag" text-anchor="start">extended reads join F and R</text>
+<line x1="74" y1="592" x2="104" y2="592" stroke="#64748B" stroke-width="3.2" stroke-linecap="round" />
+<line x1="150" y1="592" x2="180" y2="592" stroke="#64748B" stroke-width="3.2" stroke-linecap="round" />
+<line x1="104" y1="592" x2="150" y2="592" stroke="#94A3B8" stroke-width="1.2" stroke-linecap="round" stroke-dasharray="2 3"/>
+<line x1="120" y1="606" x2="150" y2="606" stroke="#64748B" stroke-width="3.2" stroke-linecap="round" />
+<line x1="180" y1="606" x2="210" y2="606" stroke="#64748B" stroke-width="3.2" stroke-linecap="round" />
+<line x1="150" y1="606" x2="180" y2="606" stroke="#94A3B8" stroke-width="1.2" stroke-linecap="round" stroke-dasharray="2 3"/>
+<line x1="265" y1="592" x2="295" y2="592" stroke="#64748B" stroke-width="3.2" stroke-linecap="round" />
+<line x1="330" y1="592" x2="360" y2="592" stroke="#64748B" stroke-width="3.2" stroke-linecap="round" />
+<line x1="295" y1="592" x2="330" y2="592" stroke="#94A3B8" stroke-width="1.2" stroke-linecap="round" stroke-dasharray="2 3"/>
+<line x1="290" y1="606" x2="320" y2="606" stroke="#64748B" stroke-width="3.2" stroke-linecap="round" />
+<line x1="326" y1="606" x2="356" y2="606" stroke="#64748B" stroke-width="3.2" stroke-linecap="round" />
+<line x1="320" y1="606" x2="326" y2="606" stroke="#94A3B8" stroke-width="1.2" stroke-linecap="round" stroke-dasharray="2 3"/>
+<rect x="212" y="580" width="50" height="36" rx="4" fill="none" stroke="#E11D48" stroke-width="2" stroke-dasharray="4 3"/>
+<text x="237" y="636" class="tag" text-anchor="middle">window no pair spans</text>
+<rect x="56" y="652" width="321" height="48" rx="8" fill="#FFF1F2"/>
+<text x="68" y="672" class="verdict" text-anchor="start">Withheld</text>
+<text x="68" y="691" class="code" text-anchor="start">EXTENSION_NOT_SUPPORTED_BY_PAIRS</text>
+<text x="60" y="724" class="small" text-anchor="start">The extension holds a product, but some stretch</text>
+<text x="60" y="743" class="small" text-anchor="start">of it lies inside no read pair (about 20x and</text>
+<text x="60" y="762" class="small" text-anchor="start">less). Confirm it on an assembly.</text>
+<g filter="url(#shadow)">
+<rect x="413" y="458" width="353" height="320" rx="18" class="card"/>
+</g>
+<circle cx="445" cy="494" r="15" fill="#475569"/>
+<text x="445" y="500" class="num" text-anchor="middle">5</text>
+<text x="469" y="500" class="label" text-anchor="start">Product in few of the reads</text>
+<text x="469" y="520" class="input" text-anchor="start">READS (FASTQ)</text>
+<path d="M473 543 L495 543 L495 538 L503 546 L495 554 L495 549 L473 549 Z" fill="#16A34A"/>
+<path d="M643 543 L621 543 L621 538 L613 546 L621 554 L621 549 L643 549 Z" fill="#2563EB"/>
+<line x1="463" y1="564" x2="553" y2="564" stroke="#64748B" stroke-width="3.2" stroke-linecap="round" />
+<line x1="573" y1="564" x2="658" y2="564" stroke="#CBD5E1" stroke-width="3.2" stroke-linecap="round" />
+<line x1="463" y1="575" x2="653" y2="575" stroke="#0F766E" stroke-width="4" stroke-linecap="round" />
+<line x1="499" y1="586" x2="589" y2="586" stroke="#64748B" stroke-width="3.2" stroke-linecap="round" />
+<line x1="573" y1="586" x2="658" y2="586" stroke="#CBD5E1" stroke-width="3.2" stroke-linecap="round" />
+<line x1="463" y1="597" x2="553" y2="597" stroke="#64748B" stroke-width="3.2" stroke-linecap="round" />
+<line x1="563" y1="597" x2="658" y2="597" stroke="#CBD5E1" stroke-width="3.2" stroke-linecap="round" />
+<line x1="463" y1="608" x2="653" y2="608" stroke="#0F766E" stroke-width="4" stroke-linecap="round" />
+<line x1="499" y1="619" x2="589" y2="619" stroke="#64748B" stroke-width="3.2" stroke-linecap="round" />
+<line x1="563" y1="619" x2="658" y2="619" stroke="#CBD5E1" stroke-width="3.2" stroke-linecap="round" />
+<line x1="463" y1="630" x2="553" y2="630" stroke="#64748B" stroke-width="3.2" stroke-linecap="round" />
+<line x1="573" y1="630" x2="658" y2="630" stroke="#CBD5E1" stroke-width="3.2" stroke-linecap="round" />
+<text x="673" y="592" class="tag" text-anchor="start">2 of 7 reads</text>
+<text x="673" y="608" class="tag" text-anchor="start">hold the product</text>
+<rect x="429" y="652" width="321" height="48" rx="8" fill="#FFF1F2"/>
+<text x="441" y="672" class="verdict" text-anchor="start">Withheld</text>
+<text x="441" y="691" class="code" text-anchor="start">WEAK_READ_SUPPORT</text>
+<text x="433" y="724" class="small" text-anchor="start">Under 30% of the informative reads: a mixed or</text>
+<text x="433" y="743" class="small" text-anchor="start">contaminated sample, or copies that differ.</text>
+<text x="433" y="762" class="small" text-anchor="start">Known mixed sample: lower --read-min-fraction.</text>
+<g filter="url(#shadow)">
+<rect x="786" y="458" width="353" height="320" rx="18" class="card"/>
+</g>
+<circle cx="818" cy="494" r="15" fill="#475569"/>
+<text x="818" y="500" class="num" text-anchor="middle">6</text>
+<text x="842" y="500" class="label" text-anchor="start">Not simulated</text>
+<text x="842" y="520" class="input" text-anchor="start">BOTH INPUTS</text>
+<line x1="809" y1="545" x2="819" y2="555" stroke="#E11D48" stroke-width="3.2" stroke-linecap="round" />
+<line x1="809" y1="555" x2="819" y2="545" stroke="#E11D48" stroke-width="3.2" stroke-linecap="round" />
+<text x="830" y="555" class="small" text-anchor="start">melting and annealing temperatures</text>
+<line x1="809" y1="569" x2="819" y2="579" stroke="#E11D48" stroke-width="3.2" stroke-linecap="round" />
+<line x1="809" y1="579" x2="819" y2="569" stroke="#E11D48" stroke-width="3.2" stroke-linecap="round" />
+<text x="830" y="579" class="small" text-anchor="start">primer dimers, hairpins</text>
+<line x1="809" y1="593" x2="819" y2="603" stroke="#E11D48" stroke-width="3.2" stroke-linecap="round" />
+<line x1="809" y1="603" x2="819" y2="593" stroke="#E11D48" stroke-width="3.2" stroke-linecap="round" />
+<text x="830" y="603" class="small" text-anchor="start">amplification efficiency, product yield</text>
+<line x1="809" y1="617" x2="819" y2="627" stroke="#E11D48" stroke-width="3.2" stroke-linecap="round" />
+<line x1="809" y1="627" x2="819" y2="617" stroke="#E11D48" stroke-width="3.2" stroke-linecap="round" />
+<text x="830" y="627" class="small" text-anchor="start">competition between assays in a multiplex</text>
+<rect x="802" y="652" width="321" height="30" rx="8" fill="#FFF1F2"/>
+<text x="814" y="672" class="verdict" text-anchor="start">Sequence rules only</text>
+<text x="806" y="708" class="small" text-anchor="start">Only where the primers bind and how well, which</text>
+<text x="806" y="727" class="small" text-anchor="start">way they face, the product size and the probe.</text>
+<text x="806" y="746" class="small" text-anchor="start">Check the rest with a primer design tool.</text>
+</svg>

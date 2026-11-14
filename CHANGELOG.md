@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+### Documentation
+
+- New Limitations page, with a figure: insilicoPCR applies sequence rules only
+  (no melting temperature, dimers, hairpins, efficiency or multiplex
+  competition), and the cases where the report can say less than a real PCR
+  would (a fragmented assembly; in FASTQ mode, a long repeat in the product,
+  few reads carrying the primers, too few read pairs to confirm, a product in
+  few of the reads), each with what the report says and what to do. The README,
+  Amplicon Calling and the FAQ say so too.
+
 ## 0.14.0 (2026-11-13)
 
 ### Changed

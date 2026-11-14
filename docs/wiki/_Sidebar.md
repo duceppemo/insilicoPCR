@@ -17,6 +17,7 @@
 - [Standard PCR vs qPCR](Standard-PCR-vs-qPCR)
 - [Amplicon Calling](Amplicon-Calling)
 - [Reports](Reports)
+- [Limitations](Limitations)
 - [Synthetic Gel Visualizer](Synthetic-Gel-Visualizer)
 - [Command-line Interface](Command-line-Interface)
 - [Troubleshooting](Troubleshooting)

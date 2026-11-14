@@ -75,6 +75,10 @@ The most common reasons, in order:
 
 Versions before 0.8.0 paired any forward/reverse hits on the same contig, regardless of distance or orientation. Those "phantom" products would not amplify in a real reaction and are now filtered out.
 
+## Does insilicoPCR model melting temperature, primer dimers or hairpins?
+
+No. insilicoPCR applies sequence rules only: where each primer binds and with how many mismatches (counted by number and position, not by free energy), whether the primers face each other on one sequence, the product size, and for qPCR assays whether the probe lies inside the product. Nothing models melting or annealing temperature, primer dimers, hairpins or other secondary structure, amplification efficiency, or competition between assays in a multiplex. Check those with a primer design tool such as Primer3. See [Limitations](Limitations) for this and the cases where the report can miss a product.
+
 ## Are G/C mismatches treated differently from A/T mismatches?
 
 Yes, near the 3' end. Within the last 3 bases of a primer, a mismatch that breaks a G/C pair scores one extra penalty point compared to an A/T pair, because losing the stronger pairing destabilizes extension more. See the penalty table in [Amplicon Calling](Amplicon-Calling).

@@ -5,6 +5,7 @@ import ca.canada.inspection.model.Sample;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -121,7 +122,7 @@ public final class SequenceFileUtils {
                         .sorted(Comparator.comparing(Path::toString))
                         .forEach(entry -> addSampleFile(samples, entry));
             } catch (IOException e) {
-                throw new IllegalStateException("Unable to list input directory: " + inputFile, e);
+                throw new UncheckedIOException("Unable to list input directory: " + inputFile, e);
             }
         } else if (looksLikeSequenceFile(inputFile)) {
             addSampleFile(samples, inputFile);

@@ -4,6 +4,7 @@ import ca.canada.inspection.model.Sample;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -42,7 +43,7 @@ public final class BlastReports {
                     .filter(path -> path.getFileName().toString().endsWith(".tsv"))
                     .toList();
         } catch (IOException e) {
-            throw new IllegalStateException("Unable to list BLAST reports in: " + detailedDir, e);
+            throw new UncheckedIOException("Unable to list BLAST reports in: " + detailedDir, e);
         }
     }
 
@@ -67,7 +68,7 @@ public final class BlastReports {
                         + "); the trimmed bases of their hits are not compared.");
             }
         } catch (IOException e) {
-            throw new IllegalStateException("Unable to parse BLAST report: " + report, e);
+            throw new UncheckedIOException("Unable to parse BLAST report: " + report, e);
         }
     }
 

@@ -1,7 +1,6 @@
 package ca.canada.inspection.insilicopcr;
 
 import ca.canada.inspection.util.Version;
-import ca.canada.inspection.model.Sample;
 import ca.canada.inspection.gel.PaginatedGelViewer;
 import ca.canada.inspection.pcr.AmpliconOptions;
 import ca.canada.inspection.pcr.HtmlReport;
@@ -25,7 +24,9 @@ import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.MenuButton;
 import javafx.scene.control.MenuItem;
@@ -46,17 +47,18 @@ import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
-import javax.swing.JOptionPane;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Stream;
 
@@ -454,11 +456,13 @@ public class MainRun extends Application {
         }
 
         if (currentlyRunning.get()) {
-            var choice = JOptionPane.showConfirmDialog(null,
+            Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
                     "Are you sure you want to exit? If the program is running, output may become corrupted",
-                    "Exit InSilico PCR",
-                    JOptionPane.OK_CANCEL_OPTION);
-            if (choice != JOptionPane.OK_OPTION) {
+                    ButtonType.OK, ButtonType.CANCEL);
+            confirm.initOwner(primaryStage);
+            confirm.setTitle("Exit InSilico PCR");
+            confirm.setHeaderText(null);
+            if (confirm.showAndWait().orElse(ButtonType.CANCEL) != ButtonType.OK) {
                 return false;
             }
             if (runningTask != null) {
@@ -493,9 +497,9 @@ public class MainRun extends Application {
 
     private void displayGelImage() {
         try {
-            PaginatedGelViewer.show(scene, latestConsolidatedReport(), new HashMap<>());
+            PaginatedGelViewer.show(scene, latestConsolidatedReport(), List.of());
         } catch (Exception e) {
-            JOptionPane.showMessageDialog(null, "Unable to create gel image:\n" + e.getMessage());
+            showError("Unable to create gel image:\n" + e.getMessage());
         }
     }
 
@@ -508,7 +512,7 @@ public class MainRun extends Application {
             }
             getHostServices().showDocument(html.toUri().toString());
         } catch (Exception e) {
-            JOptionPane.showMessageDialog(null, "Unable to open the HTML report:\n" + e.getMessage());
+            showError("Unable to open the HTML report:\n" + e.getMessage());
         }
     }
 
@@ -526,10 +530,9 @@ public class MainRun extends Application {
         try {
             Path runDir = selected.toPath();
             Path report = latestConsolidatedReport(runDir);
-            HashMap<String, Sample> samples = samplesFromQaLog(runDir.resolve("QAlog.txt"));
-            PaginatedGelViewer.show(scene, report, samples);
+            PaginatedGelViewer.show(scene, report, samplesFromQaLog(runDir.resolve("QAlog.txt")));
         } catch (Exception e) {
-            JOptionPane.showMessageDialog(null, "Unable to open previous run:\n" + e.getMessage());
+            showError("Unable to open previous run:\n" + e.getMessage());
         }
     }
 
@@ -546,9 +549,9 @@ public class MainRun extends Application {
         }
 
         try {
-            PaginatedGelViewer.show(scene, selected.toPath(), new HashMap<>());
+            PaginatedGelViewer.show(scene, selected.toPath(), List.of());
         } catch (Exception e) {
-            JOptionPane.showMessageDialog(null, "Unable to open report TSV:\n" + e.getMessage());
+            showError("Unable to open report TSV:\n" + e.getMessage());
         }
     }
 
@@ -573,18 +576,18 @@ public class MainRun extends Application {
                     .max(Comparator.comparingLong(this::lastModifiedMillis))
                     .orElseThrow(() -> new IllegalStateException("No consolidated report TSV found in: " + reportDir));
         } catch (IOException e) {
-            throw new IllegalStateException("Unable to list consolidated reports in: " + reportDir, e);
+            throw new UncheckedIOException("Unable to list consolidated reports in: " + reportDir, e);
         }
     }
 
-    private HashMap<String, Sample> samplesFromQaLog(Path qaLog) {
+    /** The samples a past run analysed: the gel's lanes, with or without a band. */
+    private static Set<String> samplesFromQaLog(Path qaLog) {
         if (!Files.isRegularFile(qaLog)) {
             throw new IllegalStateException("QAlog.txt not found: " + qaLog);
         }
-        HashMap<String, Sample> samples = new HashMap<>();
-        QaLogInputs.sampleNames(QaLogInputs.read(qaLog)).forEach(name -> samples.put(name, null));
+        Set<String> samples = new TreeSet<>(QaLogInputs.sampleNames(QaLogInputs.read(qaLog)));
         // A sample left out for a faulty file is not a lane without a band.
-        samples.keySet().removeAll(QaLogInputs.samplesNotAnalysed(qaLog));
+        samples.removeAll(QaLogInputs.samplesNotAnalysed(qaLog));
         if (samples.isEmpty()) {
             throw new IllegalStateException("No input samples were found in QAlog.txt: " + qaLog);
         }
@@ -595,7 +598,7 @@ public class MainRun extends Application {
         try {
             return Files.getLastModifiedTime(path).toMillis();
         } catch (IOException e) {
-            throw new IllegalStateException("Unable to read modification time for: " + path, e);
+            throw new UncheckedIOException("Unable to read modification time for: " + path, e);
         }
     }
 
@@ -606,5 +609,13 @@ public class MainRun extends Application {
     /** Appends a message to the run log, from any thread. */
     private void logMessage(String message) {
         Platform.runLater(() -> outputField.appendText("\n" + message + "\n"));
+    }
+
+    /** An error message in a dialog owned by the window. */
+    private void showError(String message) {
+        Alert alert = new Alert(Alert.AlertType.ERROR, message, ButtonType.OK);
+        alert.initOwner(primaryStage);
+        alert.setHeaderText(null);
+        alert.showAndWait();
     }
 }

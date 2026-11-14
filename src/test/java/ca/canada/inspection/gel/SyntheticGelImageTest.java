@@ -1,6 +1,5 @@
 package ca.canada.inspection.gel;
 
-import ca.canada.inspection.model.Sample;
 import javafx.application.Platform;
 import javafx.scene.paint.Color;
 import org.junit.jupiter.api.AfterAll;
@@ -13,7 +12,6 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -100,10 +98,7 @@ class SyntheticGelImageTest {
         Path png = dir.resolve("out").resolve("synthetic_gel_report.png");
         assertEquals(png, SyntheticGelImage.exportPng(report, png, List.of("isolate_01", "isolate_02", "negCtrl")));
 
-        HashMap<String, Sample> named = new HashMap<>();
-        named.put("isolate_01", null);
-        named.put("isolate_02", null);
-        named.put("negCtrl", null);
+        List<String> named = List.of("isolate_01", "isolate_02", "negCtrl");
         LinkedHashMap<String, List<GelBand>> lanes = GelReportReader.read(report, named);
         Map<String, Color> colors = GelColors.assignGeneColors(lanes);
         GelLayout layout = GelLayout.image(lanes.keySet(), GelLayout.legendWidth(colors.keySet()));

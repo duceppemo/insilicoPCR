@@ -1,6 +1,5 @@
 package ca.canada.inspection.gel;
 
-import ca.canada.inspection.model.Sample;
 import ca.canada.inspection.gel.LaneBand.BandRect;
 import javafx.geometry.Bounds;
 import javafx.geometry.Insets;
@@ -41,10 +40,11 @@ import javafx.stage.Stage;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -60,12 +60,12 @@ public final class InteractiveGelViewer {
     private InteractiveGelViewer() {
     }
 
-    public static void show(Scene ownerScene, Path consolidatedReport, HashMap<String, Sample> sampleDict) {
+    public static void show(Scene ownerScene, Path consolidatedReport, Collection<String> sampleNames) {
         if (ownerScene == null) {
             throw new IllegalArgumentException("Unable to draw synthetic gel because the application scene is not available.");
         }
 
-        LinkedHashMap<String, List<GelBand>> lanes = GelReportReader.read(consolidatedReport, sampleDict);
+        LinkedHashMap<String, List<GelBand>> lanes = GelReportReader.read(consolidatedReport, sampleNames);
         if (lanes.isEmpty()) {
             throw new IllegalStateException("No amplicons were found in consolidated report: " + consolidatedReport);
         }
@@ -697,7 +697,7 @@ public final class InteractiveGelViewer {
         try {
             GelImages.writePng(GelImages.snapshot(pane, pane.getPrefWidth(), pane.getPrefHeight(), false), outputFile);
         } catch (IOException e) {
-            throw new IllegalStateException("Unable to save synthetic gel image: " + outputFile, e);
+            throw new UncheckedIOException("Unable to save synthetic gel image: " + outputFile, e);
         }
     }
 
@@ -708,7 +708,7 @@ public final class InteractiveGelViewer {
         try {
             GelImages.writeText(GelSvg.window(gelView.layout(), gelView.laneNames(), bands), outputFile);
         } catch (IOException e) {
-            throw new IllegalStateException("Unable to save synthetic gel SVG: " + outputFile, e);
+            throw new UncheckedIOException("Unable to save synthetic gel SVG: " + outputFile, e);
         }
     }
 
@@ -717,7 +717,7 @@ public final class InteractiveGelViewer {
             GelImages.writePdf(GelImages.snapshot(pane, pane.getPrefWidth(), pane.getPrefHeight(), true), outputFile);
             showInfo("PDF saved", "Saved synthetic gel PDF to:\n" + outputFile.toAbsolutePath());
         } catch (IOException e) {
-            throw new IllegalStateException("Unable to save synthetic gel PDF: " + outputFile, e);
+            throw new UncheckedIOException("Unable to save synthetic gel PDF: " + outputFile, e);
         }
     }
 

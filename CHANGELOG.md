@@ -26,8 +26,15 @@
   with several threads. They now keep the order they read them in
   (`ordered=t`), so the same data gives the same report.
 
+- A file that could not be read or written at the end of a run (the report
+  folder on a full disk, the BLAST reports, the diagnostics, the gel image)
+  ended the run with a Java stack trace, as if insilicoPCR itself had failed.
+  It is now an `Error:` line naming the file.
+
 ### Changed
 
+- The application's dialogs (errors, the exit confirmation) are JavaFX
+  dialogs owned by its window, instead of Swing ones.
 - The portable releases no longer ship five libraries that nothing used
   (ControlsFX, FormsFX, Ikonli, BootstrapFX, JavaFX FXML): 1.7 MB less.
 - FASTQ mode: when the `-t` threads do not divide evenly between the samples

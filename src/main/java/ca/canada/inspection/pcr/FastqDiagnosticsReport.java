@@ -6,6 +6,7 @@ import ca.canada.inspection.util.SequenceFileUtils;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -46,7 +47,7 @@ public final class FastqDiagnosticsReport {
                 lengths.put(id, length);
             }
         } catch (IOException e) {
-            throw new IllegalStateException("Unable to read contigs: " + fasta, e);
+            throw new UncheckedIOException("Unable to read contigs: " + fasta, e);
         }
         return lengths;
     }
@@ -71,7 +72,7 @@ public final class FastqDiagnosticsReport {
                 writer.newLine();
             }
         } catch (IOException e) {
-            throw new IllegalStateException("Unable to write FASTQ diagnostics: " + file, e);
+            throw new UncheckedIOException("Unable to write FASTQ diagnostics: " + file, e);
         }
     }
 }

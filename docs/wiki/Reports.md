@@ -35,6 +35,7 @@ for that assay. The genomes, the primer file and the report of this run are in t
 | By assay | Per assay: the sizes it declares, how many samples are positive, and their names |
 | All amplicons | Every row of the TSV, with a filter box |
 | Read-level evidence | FASTQ input only: products called from reads (whole or extended) and products seen in too few reads to be reported |
+| Primers at contig ends | FASTA input only (since 0.15.0): assays with no product whose primers point off the ends of two contigs, or both ends of one, with the smallest product joining them would give. See [Limitations](Limitations#assemblies-fasta) |
 | Run details | Version, date, input, primer file and the amplicon settings used |
 
 The outcome of a sample for an assay uses the [product sizes declared in the primer file](Primer-FASTA-Format#declaring-product-sizes-optional), when there are any:
@@ -47,6 +48,7 @@ The outcome of a sample for an assay uses the [product sizes declared in the pri
 | Red dashed outline, `!` | Unexpected size | Only a product of a size the primer file does not declare |
 | Dotted outline, `?` | Seen in too few reads | FASTQ input: a complete amplicon is in some reads, too few to report (`WEAK_READ_SUPPORT`) |
 | Dotted outline, `?` | Not confirmed by read pairs | FASTQ input: reads extended from both primers hold a product, but the read pairs do not confirm it; not reported (`EXTENSION_NOT_SUPPORTED_BY_PAIRS`, `EXTENSION_THROUGH_UNRESOLVED_REPEAT`) |
+| `◇` | Primers at contig ends | FASTA input: no contig holds a product, but the primers point off the ends of two contigs, or both ends of one, and joined they would give one within `--max-length`. Neither positive nor negative: the assembly may break inside the product, or the sequence may be circular. Check with a more complete assembly, or with the reads |
 | `○` | Not checkable from reads | FASTQ input run with `--read-extension off`: both primers are in the reads, no product was found, and a product of the declared size is longer than a read or merged pair could hold. Not a reliable negative; rerun with the [read extension](#read-extension-products-longer-than-a-read) on, or confirm on an assembly |
 | `·` | No product | |
 | `◐` beside the size | A primer binds only partly | Added to any of the outcomes above when every product that decides it has a primer with unaligned 5' bases. The product is reported as usual; whether such a primer anneals in a reaction is for you to judge from the [primer binding columns](#primer-binding-columns) |

@@ -17,18 +17,16 @@ public final class FastqProcessor {
 
     /** The steps of a sample, in the order they run. */
     private enum ReadStep {
-        FIRST_BAIT("First BBDuk baiting", "BBDuk", "Completed First Baiting"),
-        SECOND_BAIT("Second BBDuk baiting", "BBDuk", "Completed Second Baiting"),
-        ASSEMBLY("Tadpole assembly", "Tadpole", null),
-        MERGE("BBMerge of baited pairs", "BBMerge", "Completed Assembly");
+        FIRST_BAIT("First BBDuk baiting", "Completed First Baiting"),
+        SECOND_BAIT("Second BBDuk baiting", "Completed Second Baiting"),
+        ASSEMBLY("Tadpole assembly", null),
+        MERGE("BBMerge of baited pairs", "Completed Assembly");
 
         private final String stageName;
-        private final String program;
         private final String completed;
 
-        ReadStep(String stageName, String program, String completed) {
+        ReadStep(String stageName, String completed) {
             this.stageName = stageName;
-            this.program = program;
             this.completed = completed;
         }
 
@@ -47,32 +45,37 @@ public final class FastqProcessor {
         monitor.info("FastQ files identified, conducting baiting and assembly");
         int kLength = context.primers().values().stream().mapToInt(String::length).min()
                 .orElseThrow(() -> new PipelineException("Primer dictionary is empty"));
-        // The samples processed at once share the threads and the memory.
         int budget = context.childJavaMemoryBudgetGiB();
-        ChildJavaMemory.Share share = ChildJavaMemory.share(budget, context.config().threads(), samples.size());
-        ChildJavaMemory.Share alone = ChildJavaMemory.share(budget, context.config().threads(), 1);
-        monitor.info(share.atOnce() == 1
-                ? "BBTools: one sample at a time, with " + describe(share)
-                : "BBTools: " + share.atOnce() + " samples at a time, each with " + describe(share));
-        BbtoolsCommands shared = commands(context, share);
-        // Only worth setting a sample aside if it gets more memory alone.
-        boolean runAgainAlone = share.memoryGiB() < alone.memoryGiB();
+        int threads = context.config().threads();
+        ChildJavaMemory.Share alone = ChildJavaMemory.share(budget, threads, 1);
 
         // Samples that ran out of memory, by name, with the step they ran out of it in.
         Map<String, ReadStep> setAside = new ConcurrentHashMap<>();
+        ChildJavaMemory.Share previous = null;
         for (ReadStep step : ReadStep.values()) {
             List<Sample> stepSamples = samples.stream()
                     .filter(sample -> !setAside.containsKey(sample.getName()) && step.appliesTo(sample))
                     .toList();
+            // The samples of a step that run at once share the threads and the memory.
+            ChildJavaMemory.Share share = ChildJavaMemory.share(budget, threads, stepSamples.size());
+            if (!stepSamples.isEmpty() && !share.equals(previous)) {
+                monitor.info(share.atOnce() == 1
+                        ? "BBTools: one sample at a time, with " + describe(share)
+                        : "BBTools: " + share.atOnce() + " samples at a time, each with " + describe(share));
+                previous = share;
+            }
+            BbtoolsCommands commands = BbtoolsCommands.of(context.dependencies(), share.memoryGiB(), share.threads());
+            // Only worth setting a sample aside if it gets more memory alone.
+            boolean runAgainAlone = share.memoryGiB() < alone.memoryGiB();
             ParallelStageRunner.run(step.stageName, stepSamples, share.atOnce(), monitor, sample -> {
                 try {
-                    runStep(step, context, shared, sample, kLength);
+                    runStep(step, context, commands, sample, kLength);
                 } catch (ProgramFailedException e) {
-                    if (!runAgainAlone || !ranOutOfMemory(e)) {
-                        throw outOfMemoryOrAsIs(e, step, sample, share);
+                    if (!runAgainAlone || !BbtoolsCommands.ranOutOfMemory(e)) {
+                        throw outOfMemoryOrAsIs(e, sample, share);
                     }
                     setAside.put(sample.getName(), step);
-                    monitor.warning("Warning: " + step.program + " ran out of memory on sample " + sample.getName()
+                    monitor.warning("Warning: " + e.program() + " ran out of memory on sample " + sample.getName()
                             + " with -Xmx" + share.memoryGiB() + "g; it will be run again after the other samples,"
                             + " alone, with -Xmx" + alone.memoryGiB() + "g");
                 }
@@ -88,7 +91,7 @@ public final class FastqProcessor {
         }
         monitor.info("Running the samples that ran out of memory again, one at a time, with " + describe(alone)
                 + ": " + String.join(", ", again.stream().map(Sample::getName).toList()));
-        BbtoolsCommands whole = commands(context, alone);
+        BbtoolsCommands whole = BbtoolsCommands.of(context.dependencies(), alone.memoryGiB(), alone.threads());
         for (Sample sample : again) {
             ReadStep from = setAside.get(sample.getName());
             for (ReadStep step : ReadStep.values()) {
@@ -96,7 +99,7 @@ public final class FastqProcessor {
                     try {
                         runStep(step, context, whole, sample, kLength);
                     } catch (ProgramFailedException e) {
-                        throw outOfMemoryOrAsIs(e, step, sample, alone);
+                        throw outOfMemoryOrAsIs(e, sample, alone);
                     }
                 }
             }
@@ -108,25 +111,14 @@ public final class FastqProcessor {
         return share.threads() + " threads and -Xmx" + share.memoryGiB() + "g";
     }
 
-    private static BbtoolsCommands commands(PipelineContext context, ChildJavaMemory.Share share) {
-        return new BbtoolsCommands(context.dependencies().javaCommand(), context.dependencies().bbtoolsJar(),
-                share.memoryGiB(), share.threads());
-    }
-
-    static boolean ranOutOfMemory(ProgramFailedException e) {
-        return e.exitCode() == BbtoolsCommands.OUT_OF_MEMORY_EXIT;
-    }
-
     /** A failure that the user can do something about when it is a lack of memory. */
-    private static PipelineException outOfMemoryOrAsIs(ProgramFailedException e, ReadStep step, Sample sample,
+    private static PipelineException outOfMemoryOrAsIs(ProgramFailedException e, Sample sample,
                                                        ChildJavaMemory.Share share) {
-        if (!ranOutOfMemory(e)) {
+        if (!BbtoolsCommands.ranOutOfMemory(e)) {
             return e;
         }
-        return new PipelineException(step.program + " ran out of memory on sample " + sample.getName() + " with -Xmx"
-                + share.memoryGiB() + "g. Give insilicoPCR more memory with Java's -Xmx option"
-                + " (java -Xmx96g -jar insilicoPCR.jar ...): the BBTools programs get half of it, up to "
-                + ChildJavaMemory.MAX_CHILD_GIB + " GB per sample.", e);
+        return new PipelineException(BbtoolsCommands.outOfMemoryMessage(e.program(), " on sample " + sample.getName(),
+                share.memoryGiB()), e);
     }
 
     private static void runStep(ReadStep step, PipelineContext context, BbtoolsCommands commands, Sample sample,

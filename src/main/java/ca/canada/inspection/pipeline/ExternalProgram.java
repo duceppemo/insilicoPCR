@@ -60,8 +60,8 @@ final class ExternalProgram {
             ended = true;
             stopIfCancelled(monitor, program);
             if (exit != 0) {
-                throw new ProgramFailedException(program + " failed with exit code " + exit + ": " + String.join(" ", command),
-                        exit);
+                throw new ProgramFailedException(program, exit,
+                        program + " failed with exit code " + exit + ": " + String.join(" ", command));
             }
         } catch (IOException e) {
             throw new PipelineException("Could not read the output of " + program + ": " + String.join(" ", command), e);

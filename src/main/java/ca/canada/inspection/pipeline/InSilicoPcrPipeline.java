@@ -77,7 +77,7 @@ public final class InSilicoPcrPipeline {
         monitor.info("BBMap: " + context.dependencies().bbmapDirectory());
         monitor.info("BLAST: " + context.dependencies().blastBinDirectory());
         monitor.info("Java: " + context.dependencies().javaCommand());
-        monitor.info("Child Java memory: -Xmx" + ChildJavaMemory.forOneChild(context.childJavaMemoryBudgetGiB())
-                + "g, shared by the samples processed at once");
+        monitor.info("Child Java memory: " + context.childJavaMemoryBudgetGiB() + " GB for the BBTools programs"
+                + " running at once, at most " + ChildJavaMemory.MAX_CHILD_GIB + " GB each");
     }
 }

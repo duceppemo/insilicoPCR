@@ -145,7 +145,10 @@ class EndToEndTest {
         // Run again from the assembly on: no baiting twice.
         assertEquals(4, executed(monitor, "jgi.BBDuk").size());
         assertEquals(List.of("threads=1", "threads=2"), executed(monitor, "assemble.Tadpole"));
-        assertEquals(List.of("threads=1", "threads=2"), executed(monitor, "jgi.BBMerge"));
+        // Only "small" is left to merge at once: it runs alone, with everything, and so does "big" after it.
+        assertEquals(List.of("threads=2", "threads=2"), executed(monitor, "jgi.BBMerge"));
+        assertTrue(monitor.messages.contains("BBTools: one sample at a time, with 2 threads and -Xmx8g"),
+                monitor.messages.toString());
         for (String sample : List.of("big", "small")) {
             Path assembly = context.samples().get(sample).getAssemblyFile();
             assertTrue(Files.size(assembly) > 0, assembly.toString());
@@ -162,8 +165,8 @@ class EndToEndTest {
 
         assertTrue(RunFailure.isForTheUser(error));
         assertTrue(RunFailure.lines(error).stream().anyMatch(line -> line.contains(
-                "Tadpole ran out of memory on sample big with -Xmx4g. Give insilicoPCR more memory with Java's -Xmx"
-                        + " option")), RunFailure.lines(error).toString());
+                "Tadpole ran out of memory on sample big with -Xmx4g, all it could have. Give insilicoPCR more"
+                        + " memory with Java's -Xmx option")), RunFailure.lines(error).toString());
         assertTrue(monitor.warnings.isEmpty(), monitor.warnings.toString());
     }
 

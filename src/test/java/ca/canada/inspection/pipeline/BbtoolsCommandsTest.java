@@ -128,4 +128,29 @@ class BbtoolsCommandsTest {
         assertTrue(command.contains("out=m.fq.gz"));
         assertTrue(command.contains("outu=u.fq.gz"));
     }
+
+    @Test
+    void onlyExitCodeThreeOfAProgramIsRunningOutOfMemory() {
+        assertTrue(BbtoolsCommands.ranOutOfMemory(new ProgramFailedException("Tadpole", 3, "Tadpole failed")));
+        assertFalse(BbtoolsCommands.ranOutOfMemory(new ProgramFailedException("Tadpole", 1, "Tadpole failed")));
+        assertFalse(BbtoolsCommands.ranOutOfMemory(new PipelineException("Tadpole failed with exit code 3")));
+    }
+
+    @Test
+    void runningOutOfMemoryBelowTheCapSaysToRaiseTheHeap() {
+        String message = BbtoolsCommands.outOfMemoryMessage("Tadpole", " on sample s", 8);
+
+        assertTrue(message.startsWith("Tadpole ran out of memory on sample s with -Xmx8g, all it could have."
+                + " Give insilicoPCR more memory with Java's -Xmx option"), message);
+        assertTrue(message.endsWith("use fewer threads (-t) instead."), message);
+    }
+
+    @Test
+    void runningOutOfMemoryAtTheCapDoesNotSayToRaiseTheHeap() {
+        String message = BbtoolsCommands.outOfMemoryMessage("BBDuk", "", 64);
+
+        assertTrue(message.startsWith("BBDuk ran out of memory with -Xmx64g, the most insilicoPCR gives a BBTools"
+                + " program."), message);
+        assertFalse(message.contains("-Xmx option"), message);
+    }
 }

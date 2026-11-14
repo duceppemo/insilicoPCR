@@ -100,8 +100,11 @@ public final class ReadExtensionStage {
                         outcomes, rows);
             } catch (PipelineException e) {
                 // The assays stay as the read-level search left them; the run goes on.
-                notes.add("read extension could not be run for sample " + sample.getName() + " (" + e.getMessage()
-                        + ")");
+                String reason = BbtoolsCommands.ranOutOfMemory(e)
+                        ? BbtoolsCommands.outOfMemoryMessage(((ProgramFailedException) e).program(), "",
+                                settings.bbtools().childMemoryGiB())
+                        : e.getMessage();
+                notes.add("read extension could not be run for sample " + sample.getName() + " (" + reason + ")");
             }
         }
         return new Result(Map.copyOf(outcomes), Map.copyOf(rows), List.copyOf(notes));

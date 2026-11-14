@@ -82,27 +82,38 @@ public final class HtmlReport {
         }
     }
 
-    /** One row of the consolidated report. */
-    record Product(String sample, String assay, int size, Map<String, String> fields, ExpectedSizes.Label label) {
+    /**
+     * One product of the consolidated report, with what the page adds to it.
+     *
+     * @param forwardLength length of the forward primer of the row, 0 when unknown
+     * @param label         what its size is for the assay, or {@code null} when the assay declares none
+     */
+    record Product(ReportRow row, int forwardLength, int reverseLength, ExpectedSizes.Label label) {
+        String sample() {
+            return row.sample();
+        }
+
+        String assay() {
+            return row.assay();
+        }
+
+        int size() {
+            return row.size();
+        }
+
         /** Called from the reads themselves, whole or extended, not from the mini-assembly. */
         boolean fromReads() {
-            return fields.getOrDefault("Contig Description", "").startsWith("FASTQ read-level call")
-                    || fromExtension();
+            return row.contigDescription().startsWith("FASTQ read-level call") || fromExtension();
         }
 
         /** Called on reads extended through the baited reads: a product no single read holds. */
         boolean fromExtension() {
-            return fields.getOrDefault("Contig Description", "").startsWith(ReadExtensionCaller.ROW_PREFIX);
-        }
-
-        String field(String name) {
-            return fields.getOrDefault(name, "");
+            return row.contigDescription().startsWith(ReadExtensionCaller.ROW_PREFIX);
         }
 
         /** Bases at the 5' end of the forward or reverse primer that do not pair with the template. */
         int unaligned(boolean forward) {
-            return number(forward ? ConsolidatedReport.FORWARD_UNALIGNED_COLUMN
-                    : ConsolidatedReport.REVERSE_UNALIGNED_COLUMN);
+            return forward ? row.forwardUnpaired() : row.reverseUnpaired();
         }
 
         /** Whether a primer is held by part of its length only: its 5' end does not pair with the template. */
@@ -116,24 +127,22 @@ public final class HtmlReport {
         }
 
         private String binding(boolean forward) {
-            int length = number(forward ? FORWARD_LENGTH : REVERSE_LENGTH);
+            int length = forward ? forwardLength : reverseLength;
             int unaligned = unaligned(forward);
             return length > 0 ? (length - unaligned) + " of " + length + " bases"
                     : unaligned + " of its 5′ bases unpaired";
         }
 
-        private int number(String name) {
-            try {
-                return Integer.parseInt(field(name));
-            } catch (NumberFormatException e) {
-                return 0;
-            }
+        /** The strand as the report writes it; empty when the report has none. */
+        String strand() {
+            return row.strand() == ' ' ? "" : String.valueOf(row.strand());
+        }
+
+        /** The probe's mismatches; empty for a row without probe. */
+        String probeMismatches() {
+            return row.probe() == null ? "" : String.valueOf(row.probe().mismatches());
         }
     }
-
-    /** Fields added to a product next to the report's own columns: the length of each primer of the row. */
-    private static final String FORWARD_LENGTH = "#ForwardPrimerLength";
-    private static final String REVERSE_LENGTH = "#ReversePrimerLength";
 
     /** Marks a product whose primer is held by part of its length only. */
     private static final String PARTLY_BOUND = "\u25d0";
@@ -264,41 +273,11 @@ public final class HtmlReport {
         return details;
     }
 
-    static List<Product> readProducts(Path reportTsv, ExpectedSizes sizes, Map<String, String> primers)
-            throws IOException {
-        List<Product> products = new ArrayList<>();
-        try (BufferedReader reader = Files.newBufferedReader(reportTsv, StandardCharsets.UTF_8)) {
-            String headerLine = reader.readLine();
-            if (headerLine == null) {
-                return products;
-            }
-            String[] header = headerLine.split("\t", -1);
-            String line;
-            while ((line = reader.readLine()) != null) {
-                if (line.isBlank()) {
-                    continue;
-                }
-                String[] values = line.split("\t", -1);
-                Map<String, String> fields = new HashMap<>();
-                for (int i = 0; i < header.length && i < values.length; i++) {
-                    fields.put(header[i], values[i]);
-                }
-                int size;
-                try {
-                    size = Integer.parseInt(fields.getOrDefault("AmpliconSize", ""));
-                } catch (NumberFormatException e) {
-                    continue;
-                }
-                String assay = fields.getOrDefault("Gene", "");
-                fields.put(FORWARD_LENGTH,
-                        String.valueOf(primers.getOrDefault(fields.getOrDefault("ForwardPrimers", ""), "").length()));
-                fields.put(REVERSE_LENGTH,
-                        String.valueOf(primers.getOrDefault(fields.getOrDefault("ReversePrimers", ""), "").length()));
-                products.add(new Product(fields.getOrDefault("Sample", ""), assay, size, fields,
-                        sizes.label(assay, size)));
-            }
-        }
-        return products;
+    static List<Product> readProducts(Path reportTsv, ExpectedSizes sizes, Map<String, String> primers) {
+        return ReportTsv.read(reportTsv).stream()
+                .map(row -> new Product(row, primers.getOrDefault(row.forwardPrimer(), "").length(),
+                        primers.getOrDefault(row.reversePrimer(), "").length(), sizes.label(row.assay(), row.size())))
+                .toList();
     }
 
     /** Decides what a sample shows for an assay from its products and, without any, from the reads. */
@@ -653,7 +632,7 @@ public final class HtmlReport {
     }
 
     private static void productSection(StringBuilder html, List<Product> products, ExpectedSizes sizes) {
-        boolean probes = products.stream().anyMatch(product -> !product.field("Probe").isEmpty());
+        boolean probes = products.stream().anyMatch(product -> product.row().probe() != null);
         boolean labels = !sizes.isEmpty();
         html.append("<section id=\"amplicons\">\n<h2>All amplicons</h2>\n");
         if (products.isEmpty()) {
@@ -671,17 +650,17 @@ public final class HtmlReport {
                 .append(" forward / reverse; the mismatch columns do not count them\">5′ unpaired F/R</th><th>Strand</th>")
                 .append(probes ? "<th>Probe</th><th class=\"num\">Probe mismatches</th>" : "").append("</tr></thead>\n<tbody>\n");
         for (Product product : products) {
-            String contig = product.field("Contig");
+            String contig = product.row().contig();
             int comma = contig.indexOf(',');
             String source = comma > 0 ? contig.substring(0, comma) : contig;
-            String sourceTitle = contig + (product.field("Contig Description").isEmpty() ? ""
-                    : " — " + product.field("Contig Description"));
+            String description = product.row().contigDescription();
+            String sourceTitle = contig + (description.isEmpty() ? "" : " — " + description);
             if (product.fromExtension()) {
-                Matcher support = EXTENSION_SUPPORT.matcher(product.field("Contig Description"));
+                Matcher support = EXTENSION_SUPPORT.matcher(description);
                 source = "reads extended" + (support.find() ? " (" + support.group(1) + " forward-seeded, "
                         + support.group(2) + " reverse-seeded)" : "");
             } else if (product.fromReads()) {
-                Matcher support = READ_SUPPORT.matcher(product.field("Contig Description"));
+                Matcher support = READ_SUPPORT.matcher(description);
                 source = "reads" + (support.find() ? " (" + support.group(1) + ", " + support.group(2) + ")" : "");
             }
             html.append("<tr data-s=\"").append(escape(product.sample())).append("\" data-a=\"")
@@ -703,17 +682,17 @@ public final class HtmlReport {
             html.append("<td title=\"").append(escape(sourceTitle)).append("\">")
                     .append(product.fromReads() ? "<span class=\"tag\">reads</span> " + escape(source.substring(5).trim())
                             : escape(source))
-                    .append("</td><td>").append(escape(product.field("GenomeLocation"))).append("</td><td class=\"num\">")
-                    .append(escape(product.field("ForwardMismatches") + " / " + product.field("ReverseMismatches")))
-                    .append("</td><td class=\"num\">").append(escape(product.field("Forward3PrimeMismatches") + " / "
-                            + product.field("Reverse3PrimeMismatches")))
+                    .append("</td><td>").append(escape(product.row().location())).append("</td><td class=\"num\">")
+                    .append(escape(product.row().forwardMismatches() + " / " + product.row().reverseMismatches()))
+                    .append("</td><td class=\"num\">").append(escape(product.row().forwardThreePrime() + " / "
+                            + product.row().reverseThreePrime()))
                     .append("</td><td class=\"num\" title=\"").append(escape(product.binding())).append("\">")
                     .append(product.partlyBound() ? "<span class=\"part\">" + PARTLY_BOUND + "</span> " : "")
                     .append(product.unaligned(true)).append(" / ").append(product.unaligned(false))
-                    .append("</td><td>").append(escape(product.field("Strand"))).append("</td>");
+                    .append("</td><td>").append(escape(product.strand())).append("</td>");
             if (probes) {
-                html.append("<td>").append(escape(product.field("Probe"))).append("</td><td class=\"num\">")
-                        .append(escape(product.field("ProbeMismatches"))).append("</td>");
+                html.append("<td>").append(escape(product.row().probeId())).append("</td><td class=\"num\">")
+                        .append(escape(product.probeMismatches())).append("</td>");
             }
             html.append("</tr>\n");
         }

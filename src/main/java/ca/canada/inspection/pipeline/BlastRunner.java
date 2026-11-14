@@ -10,7 +10,10 @@ import java.util.Comparator;
 import java.util.List;
 
 public final class BlastRunner {
-    public void run(PipelineContext context) {
+    private BlastRunner() {
+    }
+
+    public static void run(PipelineContext context) {
         List<Path> queries = blastQueries(context);
         ParallelStageRunner.run("BLAST", queries, context.config().threads(), context.monitor(),
                 query -> blast(context, query), context.monitor()::blastProgress);

@@ -36,7 +36,10 @@ public final class FastqProcessor {
         }
     }
 
-    public void process(PipelineContext context) {
+    private FastqProcessor() {
+    }
+
+    public static void process(PipelineContext context) {
         List<Sample> samples = fastqSamples(context);
         if (samples.isEmpty()) {
             return;

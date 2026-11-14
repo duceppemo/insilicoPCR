@@ -5,7 +5,10 @@ import java.util.List;
 
 /** Creates the BLAST nucleotide database used by the PCR search stage. */
 public final class BlastDatabaseBuilder {
-    public void build(PipelineContext context) {
+    private BlastDatabaseBuilder() {
+    }
+
+    public static void build(PipelineContext context) {
         if (!AppPaths.isWindows()) {
             ExternalProgram.run(context.monitor(), context.dependencies().blastBinDirectory(),
                     List.of("chmod", "+x", "makeblastdb", "blastn"), "chmod");

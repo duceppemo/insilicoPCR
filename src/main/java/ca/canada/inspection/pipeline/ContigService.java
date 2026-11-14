@@ -9,7 +9,10 @@ import java.nio.file.Path;
 
 /** Loads contig descriptions from FASTA headers into each sample. */
 final class ContigService {
-    void load(PipelineContext context) {
+    private ContigService() {
+    }
+
+    static void load(PipelineContext context) {
         for (Sample sample : context.samples().values()) {
             if (sample.isFastq()) {
                 addContigsFromFasta(sample, sample.getAssemblyFile());

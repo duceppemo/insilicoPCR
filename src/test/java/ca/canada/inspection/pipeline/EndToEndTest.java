@@ -165,7 +165,7 @@ class EndToEndTest {
         // 8 GiB and 2 threads: the two samples get 4 GiB and 1 thread each, alone 8 GiB and 2 threads.
         PipelineContext context = readContext(twoSamples("big", "small"), output, 8, monitor, how);
 
-        new FastqProcessor().process(context);
+        FastqProcessor.process(context);
 
         assertEquals(List.of("Warning: Tadpole ran out of memory on sample big with -Xmx4g; it will be run again"
                 + " after the other samples, alone, with -Xmx8g"), monitor.warnings);
@@ -194,7 +194,7 @@ class EndToEndTest {
         PipelineContext context = readContext(twoSamples("big", "small"), directory.resolve("results"), 4, monitor,
                 how);
 
-        StageException error = assertThrows(StageException.class, () -> new FastqProcessor().process(context));
+        StageException error = assertThrows(StageException.class, () -> FastqProcessor.process(context));
 
         assertTrue(RunFailure.isForTheUser(error));
         assertTrue(RunFailure.lines(error).stream().anyMatch(line -> line.contains(
@@ -327,7 +327,7 @@ class EndToEndTest {
                 real.platformRoot(), real.bbmapDirectory(), real.blastBinDirectory(), java, real.javafxLibDirectory());
         PipelineConfig config = config(reads, output);
         PipelineDirectories directories = PipelineDirectories.create(output);
-        PrimerService.PreparedPrimers primers = new PrimerService().loadAndPrepare(config, directories);
+        PrimerService.PreparedPrimers primers = PrimerService.loadAndPrepare(config, directories);
         return new PipelineContext(config, new RuntimeDependencies(layout), directories,
                 InputCheck.scan(reads, InputCheck.Depth.QUICK, 2).samples(), primers.primers(),
                 primers.expectedSizes(), budgetGiB, List.of(), monitor);

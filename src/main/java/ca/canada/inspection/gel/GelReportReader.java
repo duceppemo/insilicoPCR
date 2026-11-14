@@ -1,10 +1,8 @@
 package ca.canada.inspection.gel;
 
+import ca.canada.inspection.pcr.ReportRow;
+import ca.canada.inspection.pcr.ReportTsv;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -14,7 +12,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/** Reads consolidated report TSV files into lane-ordered gel band metadata. */
+/** Reads consolidated report TSV files ({@link ReportTsv}) into lane-ordered gel band metadata. */
 public final class GelReportReader {
     private GelReportReader() {
     }
@@ -36,33 +34,9 @@ public final class GelReportReader {
                     .sorted()
                     .forEach(sampleName -> lanes.put(sampleName, new ArrayList<>()));
         }
-
-        try (BufferedReader reader = Files.newBufferedReader(consolidatedReport, StandardCharsets.UTF_8)) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                if (line.isBlank() || line.startsWith("Sample\t")) {
-                    continue;
-                }
-
-                String[] fields = line.split("\t", -1);
-                if (fields.length < 4) {
-                    continue;
-                }
-
-                int ampliconSize;
-                try {
-                    ampliconSize = Integer.parseInt(fields[3]);
-                } catch (NumberFormatException ignored) {
-                    continue;
-                }
-
-                String sampleName = fields[0];
-                String geneName = fields[1];
-                lanes.computeIfAbsent(sampleName, key -> new ArrayList<>())
-                        .add(new GelBand(sampleName, geneName, ampliconSize));
-            }
-        } catch (IOException e) {
-            throw new UncheckedIOException("Unable to read consolidated report: " + consolidatedReport, e);
+        for (ReportRow row : ReportTsv.read(consolidatedReport)) {
+            lanes.computeIfAbsent(row.sample(), key -> new ArrayList<>())
+                    .add(new GelBand(row.sample(), row.assay(), row.size()));
         }
 
         if (!keepEmptySampleLanes) {

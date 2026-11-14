@@ -64,7 +64,7 @@ class PrimerServiceTest {
                 ca.canada.inspection.pcr.AmpliconOptions.withMismatches(0), false);
         var directories = PipelineDirectories.create(out);
 
-        PrimerService.PreparedPrimers prepared = new PrimerService().loadAndPrepare(config, directories);
+        PrimerService.PreparedPrimers prepared = PrimerService.loadAndPrepare(config, directories);
         Map<String, String> primers = prepared.primers();
 
         assertTrue(prepared.expectedSizes().isEmpty());
@@ -120,7 +120,7 @@ class PrimerServiceTest {
         var config = new PipelineConfig(input, dir.resolve("out2"), primerFile, 1, 1e5,
                 ca.canada.inspection.pcr.AmpliconOptions.withMismatches(0), false);
 
-        PrimerService.PreparedPrimers prepared = new PrimerService().loadAndPrepare(config,
+        PrimerService.PreparedPrimers prepared = PrimerService.loadAndPrepare(config,
                 PipelineDirectories.create(dir.resolve("out2")));
 
         assertEquals(java.util.Set.of("its-F", "its-R_0", "its-R_1", "plain-F", "plain-R"), prepared.primers().keySet());

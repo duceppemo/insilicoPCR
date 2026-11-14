@@ -49,6 +49,13 @@ public final class ReadLevelStage {
             Objects.requireNonNull(monitor, "monitor");
         }
 
+        /** The settings of a run. */
+        static Settings of(PipelineContext context) {
+            return new Settings(context.dependencies().blastn(), context.directories().primerDatabase(),
+                    context.config().evalue(), context.config().threads(), context.config().readMinFraction(),
+                    context.monitor());
+        }
+
         /** Settings for the console: blastn output goes to the terminal, nothing to cancel. */
         public Settings(Path blastn, Path primerDatabase, double evalue, int threads, double minSupportFraction) {
             this(blastn, primerDatabase, evalue, threads, minSupportFraction, RunMonitor.CONSOLE);

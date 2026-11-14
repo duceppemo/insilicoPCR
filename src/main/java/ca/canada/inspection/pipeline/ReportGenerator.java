@@ -2,12 +2,11 @@ package ca.canada.inspection.pipeline;
 
 import ca.canada.inspection.util.Version;
 import ca.canada.inspection.model.Sample;
+import ca.canada.inspection.pcr.ConsolidatedReport;
 import ca.canada.inspection.pcr.FastqDiagnosticsReport;
 import ca.canada.inspection.pcr.HtmlReport;
-import ca.canada.inspection.pcr.ReadExtensionCaller;
 import ca.canada.inspection.pcr.ReadLevelCaller.ReadEvidence;
 import ca.canada.inspection.pcr.SplitAcrossContigs;
-import ca.canada.inspection.pipeline.RunMonitor.Step;
 
 import java.nio.file.Path;
 import java.nio.file.Files;
@@ -16,48 +15,31 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * The last step of a run: writes {@code report.tsv}, the FASTQ diagnostics, the HTML report,
+ * the {@code --gel} image and {@code QAlog.txt}, from the hits and the calls of the steps
+ * before it.
+ */
 public final class ReportGenerator {
-    private final ContigService contigs = new ContigService();
-    private final BlastReportParser blastReports = new BlastReportParser();
-    private final ConsolidatedReportWriter consolidatedReport = new ConsolidatedReportWriter();
-    private final QaLogWriter qaLog = new QaLogWriter();
+    private ReportGenerator() {
+    }
 
-    public void generate(PipelineContext context) {
-        contigs.load(context);
-        blastReports.parse(context);
-
+    /**
+     * @param readEvidence what the read-level search found, per FASTQ sample; empty without one
+     * @param extension    what extending reads found; {@link ReadExtensionStage.Result#NONE} when not run
+     */
+    public static void write(PipelineContext context, Map<String, ReadEvidence> readEvidence,
+                             ReadExtensionStage.Result extension) {
         RunMonitor monitor = context.monitor();
-        ReadLevelStage.Settings search = new ReadLevelStage.Settings(context.dependencies().blastn(),
-                context.directories().primerDatabase(), context.config().evalue(), context.config().threads(),
-                context.config().readMinFraction(), monitor);
-        Map<String, ReadEvidence> readEvidence = Map.of();
-        if (context.hasFastqSamples()) {
-            readEvidence = ReadLevelStage.run(search, context.directories().detailed(), context.samples(),
-                    context.primers(), context.config().ampliconOptions());
-            monitor.info("Completed read-level amplicon search");
-        }
-        monitor.stepDone(Step.READ_SEARCH);
-        ReadExtensionStage.Result extension = ReadExtensionStage.Result.NONE;
-        if (context.hasFastqSamples() && context.config().readExtension() != ReadExtensionCaller.Mode.OFF) {
-            extension = ReadExtensionStage.run(new ReadExtensionStage.Settings(search,
-                            // One sample at a time: each child gets everything.
-                            BbtoolsCommands.of(context.dependencies(),
-                                    ChildJavaMemory.forOneChild(context.childJavaMemoryBudgetGiB()),
-                                    context.config().threads()),
-                            context.dependencies().bbmapDirectory(), context.config().readExtension(),
-                            context.expectedSizes()),
-                    context.directories().detailed(), context.samples(), context.primers(),
-                    context.config().ampliconOptions(), readEvidence);
-            monitor.info("Completed read extension");
-        }
-        monitor.stepDone(Step.READ_EXTENSION);
-
-        Path report = consolidatedReport.write(context, FastqDiagnosticsStage.extraRows(
-                context.samples(), context.primers(), context.config().ampliconOptions(), readEvidence, extension));
+        Path report = ConsolidatedReport.write(context.directories().consolidated(), context.samples(),
+                context.primers(), context.config().ampliconOptions(),
+                FastqDiagnosticsStage.extraRows(context.samples(), context.primers(), context.config().ampliconOptions(),
+                        readEvidence, extension),
+                context.expectedSizes());
         if (context.config().gel()) {
             String baseName = report.getFileName().toString().replaceFirst("\\.tsv$", "");
             GelImageWriter.write(report, context.config().output().resolve("synthetic_gel_" + baseName + ".png"),
-                    context.samples().keySet());
+                    context.samples().keySet(), monitor);
         }
         FastqDiagnosticsStage.Result diagnostics = FastqDiagnosticsStage.run(report, context.samples(),
                 context.primers(), context.config().ampliconOptions(), readEvidence, extension);
@@ -77,8 +59,7 @@ public final class ReportGenerator {
         qaLines.addAll(diagnostics.qaLogLines(context.config().tadpole(), context.config().readMinFraction(),
                 context.config().readExtension()));
         splits.forEach(split -> qaLines.add("Primers at contig ends: " + split.message()));
-        qaLog.write(context, Version.VERSION, qaLines);
-        monitor.stepDone(Step.REPORTS);
+        QaLogWriter.write(context, Version.VERSION, qaLines);
     }
 
     /** Assays of the assembly samples with no product whose primers point off contig ends. */

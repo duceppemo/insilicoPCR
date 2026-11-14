@@ -27,7 +27,7 @@ Each package depends only on those below it in this table, so there are no cycle
 | `dispatchpcr` | The entry point and the command-line options | everything below |
 | `insilicopcr` (and `insilicopcr.ui`) | The application window and its dialogs | `pipeline`, `pcr`, `gel`, `model`, `util` |
 | `pipeline` | The run: its steps, the external programs, the runtime layout (`AppPaths`) | `pcr`, `gel`, `model`, `util` |
-| `gel` | The synthetic gel: its geometry, the viewers, the image files | nothing |
+| `gel` | The synthetic gel: its geometry, the viewers, the image files | `pcr` (to read `report.tsv`) |
 | `pcr` | The analysis core: primer IDs, hit filtering, amplicon calling, read-level calls, reports | `model`, `util` |
 | `util` | Input checks, sequence file helpers, the version (`Version`, filled in from `pom.xml` at build time) | `model` |
 | `model` | `Sample` and `BlastResult` | nothing |
@@ -36,16 +36,16 @@ The GUI runs the same pipeline: `PcrPipelineTask` runs `InSilicoPcrPipeline` on 
 
 ## Pipeline stages (`ca.canada.inspection.pipeline`)
 
-`InSilicoPcrPipeline.run` goes through the steps of `RunMonitor.Step` in order, reporting each one to the monitor:
+`InSilicoPcrPipeline.run` goes through the steps of `RunMonitor.Step` in order, reporting each one to the monitor. Every step is called from there, so the method reads as the run; each step is a class with a static entry point:
 
 | Step | Classes | What happens |
 |---|---|---|
-| Dependencies, input check | `RuntimeDependencies`, `SampleRepository` (`util.InputCheck`) | Find the bundled tools; find the samples and check their files |
+| Dependencies, input check | `RuntimeDependencies`, `util.InputCheck` | Find the bundled tools; find the samples and check their files |
 | Primers | `PrimerService` | Read the primer FASTA, expand degenerate bases, write `primer_tmp.fasta` |
 | Reads | `FastqProcessor`, `BbtoolsCommands`, `ChildJavaMemory` | FASTQ samples: two rounds of BBDuk baiting, Tadpole mini-assembly, BBMerge of baited pairs |
-| BLAST database, BLAST | `BlastDatabaseBuilder`, `BlastRunner` | `makeblastdb` on the primers; `blastn` of every sample, one thread each, several samples at a time |
+| BLAST database, BLAST | `BlastDatabaseBuilder`, `BlastRunner`, `ContigService`, `pcr.BlastReports` | `makeblastdb` on the primers; `blastn` of every sample, one thread each, several samples at a time; the accepted hits attached to their samples |
 | Read search, read extension | `ReadLevelStage`, `ReadExtensionStage` | FASTQ samples: amplicons called on the baited reads; reads extended for products longer than a read |
-| Reports | `ReportGenerator` | `report.tsv`, FASTQ diagnostics, HTML report, `QAlog.txt`, `--gel` image |
+| Reports | `ReportGenerator` | Writes `report.tsv`, the FASTQ diagnostics, the HTML report, `QAlog.txt` and the `--gel` image; runs no program |
 
 Samples are processed several at a time by `ParallelStageRunner`, which stops starting new samples once one has failed, or once the run is cancelled. For the BBTools steps, `ChildJavaMemory.share` splits the threads and the memory between the samples running at once: half of insilicoPCR's heap in all, at least 4 GB and at most 64 GB per program. A BBTools program that runs out of memory stops in one of two ways: with exit code 3, from `-XX:+ExitOnOutOfMemoryError`, when the Java runtime runs out of heap; or with exit code 1 after printing `This program ran out of memory.`, when one of its k-mer tables, sized from the heap, is full (Tadpole on a large sample, with heap to spare). `ExternalProgram` reads the programs' error output, passing it on, to recognise that line (`ProgramFailedException.saidOutOfMemory`). `FastqProcessor` sets such a sample aside and, after the others, runs it again alone with everything, from the step that ran out. The user-facing behaviour is on [Threads and memory in FASTQ mode](Command-line-Interface#threads-and-memory-in-fastq-mode).
 
@@ -64,6 +64,7 @@ The pipeline delegates the scientific decisions to one JavaFX-free package:
 | `QueryTemplates` | Reads the contig or read a hit lies on from the FASTA that was searched, one query at a time and at one byte per base (`PackedBases`), for `TrimmedEnds` |
 | `ConsolidatedReport` | Finds the products of a sample as `ReportRow`s and writes the consolidated TSV (standard and qPCR modes) |
 | `ReportRow` | One product as the report lists it (amplicon, primers, mismatches, probe); passed between the steps of a run, and turned into TSV columns only when the report is written |
+| `ReportTsv` | Reads a `report.tsv` back into `ReportRow`s, by column name, for the HTML report, the gel and a past run opened in the application |
 | `ReadLevelCaller` | FASTQ mode: calls amplicons on baited reads treated as tiny contigs, one call per product size, with the support rules (≥ 2 fragments, `--read-min-fraction` of the informative ones: reads carrying a primer at the product's locus) |
 | `ReadExtensionCaller` | FASTQ mode: for assays in no contig and in no read, picks the primer-carrying reads to extend and finds products on the extended reads (at least 2 reads seeded from each primer), reported when `PairSupport` confirms them |
 | `PairSupport` | FASTQ mode: checks a product found on extended reads against the sample's read pairs (every window inside enough fragments; no repeat longer than the window), so that a wrong turn through a repeat is not reported |

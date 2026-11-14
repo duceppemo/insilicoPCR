@@ -1,6 +1,9 @@
 package ca.canada.inspection.pipeline;
 
 import ca.canada.inspection.model.Sample;
+import ca.canada.inspection.pcr.BlastReports;
+import ca.canada.inspection.pcr.ReadExtensionCaller;
+import ca.canada.inspection.pcr.ReadLevelCaller.ReadEvidence;
 import ca.canada.inspection.pipeline.RunMonitor.Step;
 import ca.canada.inspection.util.InputCheck;
 
@@ -9,16 +12,13 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
-/** One in silico PCR run, for the command line and for the application alike. */
+/**
+ * One in silico PCR run, for the command line and for the application alike. Its steps
+ * ({@link Step}), in order, are all here; each is a class with a static entry point.
+ */
 public final class InSilicoPcrPipeline {
     private final PipelineConfig config;
     private final RunMonitor monitor;
-    private final SampleRepository samples = new SampleRepository();
-    private final PrimerService primers = new PrimerService();
-    private final FastqProcessor fastqProcessor = new FastqProcessor();
-    private final BlastDatabaseBuilder blastDatabaseBuilder = new BlastDatabaseBuilder();
-    private final BlastRunner blastRunner = new BlastRunner();
-    private final ReportGenerator reportGenerator = new ReportGenerator();
 
     /** A run that reports to the console. */
     public InSilicoPcrPipeline(PipelineConfig config) {
@@ -39,34 +39,53 @@ public final class InSilicoPcrPipeline {
 
         monitor.info("Checking the input files (" + (config.inputCheck() == InputCheck.Depth.FULL
                 ? "every read; --input-check quick reads the first one only" : "first read only") + ")");
-        InputCheck.Result checked = samples.check(config);
+        InputCheck.Result checked = InputCheck.scan(config.input(), config.inputCheck(), config.threads());
         checked.warnings().forEach(line -> monitor.warning("Warning: " + line));
         Map<String, Sample> sampleMap = new LinkedHashMap<>(checked.samples());
         monitor.stepDone(Step.INPUT_CHECK);
 
-        PrimerService.PreparedPrimers prepared = primers.loadAndPrepare(config, directories);
-        PipelineContext context = new PipelineContext(
-                config,
-                dependencies,
-                directories,
-                sampleMap,
-                prepared.primers(),
-                prepared.expectedSizes(),
-                ChildJavaMemory.budgetGiB(),
-                checked.issues(),
-                monitor
-        );
+        PrimerService.PreparedPrimers prepared = PrimerService.loadAndPrepare(config, directories);
+        PipelineContext context = new PipelineContext(config, dependencies, directories, sampleMap,
+                prepared.primers(), prepared.expectedSizes(), ChildJavaMemory.budgetGiB(), checked.issues(), monitor);
         logRuntime(context);
         monitor.stepDone(Step.PRIMERS);
 
-        fastqProcessor.process(context);
+        // FASTQ samples: baited and assembled into a mini-assembly, searched like an assembly.
+        FastqProcessor.process(context);
         monitor.stepDone(Step.READS);
-        blastDatabaseBuilder.build(context);
+
+        BlastDatabaseBuilder.build(context);
         monitor.stepDone(Step.BLAST_DATABASE);
-        blastRunner.run(context);
+
+        BlastRunner.run(context);
+        ContigService.load(context);
+        BlastReports.attachHits(directories.detailed(), sampleMap, context.primers(),
+                config.ampliconOptions());
         monitor.info("Completed BLAST");
         monitor.stepDone(Step.BLAST);
-        reportGenerator.generate(context);
+
+        // FASTQ samples: products the mini-assembly missed, looked for in the reads themselves.
+        ReadLevelStage.Settings search = ReadLevelStage.Settings.of(context);
+        Map<String, ReadEvidence> readEvidence = Map.of();
+        if (context.hasFastqSamples()) {
+            readEvidence = ReadLevelStage.run(search, directories.detailed(), sampleMap, context.primers(),
+                    config.ampliconOptions());
+            monitor.info("Completed read-level amplicon search");
+        }
+        monitor.stepDone(Step.READ_SEARCH);
+
+        // FASTQ samples: products longer than a read, looked for by extending reads.
+        ReadExtensionStage.Result extension = ReadExtensionStage.Result.NONE;
+        if (context.hasFastqSamples() && config.readExtension() != ReadExtensionCaller.Mode.OFF) {
+            extension = ReadExtensionStage.run(ReadExtensionStage.Settings.of(context, search), directories.detailed(),
+                    sampleMap, context.primers(), config.ampliconOptions(), readEvidence);
+            monitor.info("Completed read extension");
+        }
+        monitor.stepDone(Step.READ_EXTENSION);
+
+        ReportGenerator.write(context, readEvidence, extension);
+        monitor.stepDone(Step.REPORTS);
+
         long seconds = TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - startTime);
         monitor.info("Done in " + seconds + " seconds");
     }

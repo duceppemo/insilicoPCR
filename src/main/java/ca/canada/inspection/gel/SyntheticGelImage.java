@@ -1,6 +1,5 @@
 package ca.canada.inspection.gel;
 
-import ca.canada.inspection.gel.LaneBand.BandRect;
 import javafx.application.Platform;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
@@ -11,6 +10,7 @@ import javafx.scene.text.TextAlignment;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -70,114 +70,54 @@ public final class SyntheticGelImage {
     private static Canvas draw(LinkedHashMap<String, List<GelBand>> sampleBands) {
         Map<String, Color> geneColors = GelColors.assignGeneColors(sampleBands);
         GelLayout layout = GelLayout.image(sampleBands.keySet(), GelLayout.legendWidth(geneColors.keySet()));
-        int laneCount = sampleBands.size() + 1;
+        // Amplicons of one size from different genes are drawn apart, so no gene colour is hidden.
+        List<LaneBand> bands = new ArrayList<>();
+        int lane = 1;
+        for (Map.Entry<String, List<GelBand>> sampleEntry : sampleBands.entrySet()) {
+            bands.addAll(LaneBand.image(layout, lane, sampleEntry.getKey(), sampleEntry.getValue(), BAND_HEIGHT));
+            lane++;
+        }
+        GelScene scene = GelScene.of(layout, List.copyOf(sampleBands.keySet()), bands,
+                band -> geneColors.getOrDefault(band.gene(), Color.BLACK), GelScene.LADDER_FONT_SIZE);
 
         Canvas canvas = new Canvas(layout.width(), layout.height());
         GraphicsContext gc = canvas.getGraphicsContext2D();
-        gc.setFill(Color.WHITE);
-        gc.fillRect(0, 0, layout.width(), layout.height());
-
-        drawGelBackground(gc, layout, laneCount);
-        for (GelScale.LadderBand ladderBand : GelScale.LADDER) {
-            drawBand(gc, BandRect.inLane(layout.gelLeft(), layout.bandY(ladderBand.size()), layout.laneWidth(), BAND_HEIGHT),
-                    0.45, Color.BLACK);
-        }
-        drawLadderLabels(gc, layout);
-        int lane = 1;
-        for (Map.Entry<String, List<GelBand>> sampleEntry : sampleBands.entrySet()) {
-            for (LaneBand band : LaneBand.image(layout, lane, sampleEntry.getKey(), sampleEntry.getValue(), BAND_HEIGHT)) {
-                drawBand(gc, band.rect(), band.intensity(), geneColors.getOrDefault(band.gene(), Color.BLACK));
-            }
-            lane++;
-        }
-        gc.setStroke(Color.BLACK);
-        gc.setLineWidth(3.0);
-        gc.strokeRect(layout.gelLeft(), layout.gelTop(), layout.gelWidth(), layout.gelHeight());
-        drawLaneLabels(gc, layout, sampleBands.keySet());
+        scene.background().forEach(box -> box(gc, box));
+        scene.ladder().forEach(band -> band.boxes().forEach(box -> box(gc, box)));
+        scene.ladderLabels().forEach(label -> text(gc, label));
+        scene.bands().forEach(band -> band.boxes().forEach(box -> box(gc, box)));
+        box(gc, scene.border());
+        scene.laneLabels().forEach(label -> text(gc, label));
         drawLegend(gc, geneColors, layout.legendX(), layout.gelTop());
         return canvas;
     }
 
-    private static void drawGelBackground(GraphicsContext gc, GelLayout layout, int laneCount) {
-        double x = layout.gelLeft();
-        double y = layout.gelTop();
-        double width = layout.gelWidth();
-        double height = layout.gelHeight();
-        gc.setFill(BandPaint.GEL);
-        gc.fillRect(x, y, width, height);
-
-        for (int i = 0; i < laneCount; i++) {
-            double laneX = layout.laneX(i);
-            gc.setFill(BandPaint.laneFill(i));
-            gc.fillRect(laneX, y, layout.laneWidth(), height);
-
-            gc.setStroke(Color.rgb(255, 255, 255));
-            gc.setLineWidth(3.0);
-            gc.strokeLine(laneX, y, laneX, y + height);
+    private static void box(GraphicsContext gc, GelScene.Box box) {
+        if (box.fill() != null) {
+            gc.setFill(box.fill());
+            gc.fillRect(box.x(), box.y(), box.width(), box.height());
         }
-        gc.strokeLine(x + width, y, x + width, y + height);
-
-        // Very subtle horizontal gel texture, similar to a photographed electrophoresis gel.
-        gc.setLineWidth(1.0);
-        for (int row = 24; row < height; row += 42) {
-            gc.setStroke(BandPaint.LIGHT_TEXTURE);
-            gc.strokeLine(x, y + row, x + width, y + row);
-            gc.setStroke(BandPaint.DARK_TEXTURE);
-            gc.strokeLine(x, y + row + 2, x + width, y + row + 2);
+        if (box.stroke() != null) {
+            gc.setStroke(box.stroke());
+            gc.setLineWidth(box.strokeWidth());
+            gc.strokeRect(box.x(), box.y(), box.width(), box.height());
         }
     }
 
-    private static void drawLaneLabels(GraphicsContext gc, GelLayout layout, Collection<String> sampleNames) {
+    private static void text(GraphicsContext gc, GelScene.Label label) {
         gc.setFill(Color.BLACK);
-        gc.setStroke(Color.BLACK);
-        gc.setFont(new Font("Verdana", 10));
-
-        drawSlantedLabel(gc, "Ladder", layout.laneCenterX(0), layout.labelY());
-        int lane = 1;
-        for (String sampleName : sampleNames) {
-            drawSlantedLabel(gc, sampleName, layout.laneCenterX(lane), layout.labelY());
-            lane++;
+        gc.setFont(new Font(GelScene.FONT, label.fontSize()));
+        if (label.anchor() == GelScene.Anchor.END) {
+            gc.setTextAlign(TextAlignment.RIGHT);
+            gc.fillText(label.text(), label.x(), label.y());
+            gc.setTextAlign(TextAlignment.LEFT);
+        } else {
+            gc.save();
+            gc.translate(label.x(), label.y());
+            gc.rotate(45);
+            gc.fillText(label.text(), 0, 0);
+            gc.restore();
         }
-    }
-
-    private static void drawSlantedLabel(GraphicsContext gc, String label, double centerX, double y) {
-        gc.save();
-        gc.translate(centerX, y);
-        gc.rotate(45);
-        gc.fillText(label, 0, 0);
-        gc.restore();
-    }
-
-    private static void drawLadderLabels(GraphicsContext gc, GelLayout layout) {
-        gc.setFill(Color.BLACK);
-        gc.setFont(new Font("Verdana", 10));
-        gc.setTextAlign(TextAlignment.RIGHT);
-        for (GelScale.LadderBand ladderBand : GelScale.LADDER) {
-            gc.fillText(ladderBand.label(), layout.gelLeft() - 8, layout.bandY(ladderBand.size()) + 4);
-        }
-        gc.setTextAlign(TextAlignment.LEFT);
-    }
-
-    private static void drawBand(GraphicsContext gc, BandRect rect, double intensity, Color color) {
-        double bandX = rect.x();
-        double bandY = rect.y();
-        double bandWidth = rect.width();
-        double bandHeight = rect.height();
-
-        // Soft halo around the band so thin bands stay visible without looking like solid rectangles.
-        gc.setFill(BandPaint.imageHalo(color, intensity));
-        gc.fillRect(bandX - 1.5, bandY - 2.0, bandWidth + 3.0, bandHeight + 4.0);
-
-        // Main band in the gene color. Higher intensity means more opaque and slightly thicker.
-        gc.setFill(BandPaint.imageBody(color, intensity));
-        gc.fillRect(bandX, bandY, bandWidth, bandHeight);
-
-        // Subtle highlight and lower shadow make the band look less computer-generated.
-        gc.setFill(BandPaint.highlight(intensity));
-        gc.fillRect(bandX, bandY + 0.5, bandWidth, Math.max(0.75, bandHeight * 0.22));
-
-        gc.setFill(BandPaint.imageShadow(color, intensity));
-        gc.fillRect(bandX, bandY + bandHeight - 0.75, bandWidth, 0.75);
     }
 
     private static void drawLegend(GraphicsContext gc, Map<String, Color> geneColors, double x, double y) {

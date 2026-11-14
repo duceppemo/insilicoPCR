@@ -2,7 +2,7 @@ package ca.canada.inspection.gel;
 
 import javafx.scene.paint.Color;
 
-/** Colours of the gel background and of the bands, which mimic a photographed gel. */
+/** Colours of the gel background and of the bands, which mimic a photographed gel; one look for every gel picture. */
 final class BandPaint {
     static final Color GEL = Color.rgb(238, 238, 238);
     static final Color LIGHT_TEXTURE = Color.rgb(246, 246, 246, 0.45);
@@ -21,9 +21,14 @@ final class BandPaint {
         return lane % 2 == 0 ? Color.rgb(244, 244, 244) : Color.rgb(232, 232, 232);
     }
 
-    /** Soft halo around a band, so thin bands stay visible. */
-    static Color halo(double intensity) {
-        return Color.rgb(25, 25, 25, intensity * 0.20);
+    /** Soft halo around a band, a darker shade of its colour, so thin bands stay visible. */
+    static Color halo(Color color, double intensity) {
+        return color.deriveColor(0, 1.0, 0.35, Math.min(1.0, intensity * 0.22));
+    }
+
+    /** The band itself: a shade of its colour, more opaque the stronger the band, never faint. */
+    static Color body(Color color, double intensity) {
+        return color.deriveColor(0, 1.0, 0.75, Math.min(1.0, 0.55 + intensity * 0.45));
     }
 
     /** Light line along the top of a band. */
@@ -31,29 +36,14 @@ final class BandPaint {
         return Color.rgb(255, 255, 255, Math.min(0.18, intensity * 0.14));
     }
 
-    /** Dark line along the bottom of a band. */
-    static Color shadow(double intensity) {
-        return Color.rgb(0, 0, 0, Math.min(0.32, intensity * 0.24));
+    /** Dark line along the bottom of a band, a darker shade of its colour. */
+    static Color shadow(Color color, double intensity) {
+        return color.deriveColor(0, 1.0, 0.25, Math.min(0.32, intensity * 0.24));
     }
 
     /** {@code color} with the band's intensity as its opacity. */
     static Color withOpacity(Color color, double intensity) {
-        return Color.color(color.getRed(), color.getGreen(), color.getBlue(), intensity);
-    }
-
-    /** Halo of a band in the PNG image, a darker shade of the gene colour. */
-    static Color imageHalo(Color color, double intensity) {
-        return color.deriveColor(0, 1.0, 0.35, intensity * 0.22);
-    }
-
-    /** Body of a band in the PNG image; higher intensity is more opaque. */
-    static Color imageBody(Color color, double intensity) {
-        return color.deriveColor(0, 1.0, 0.75, Math.min(1.0, 0.55 + intensity * 0.45));
-    }
-
-    /** Dark line along the bottom of a band in the PNG image. */
-    static Color imageShadow(Color color, double intensity) {
-        return color.deriveColor(0, 1.0, 0.25, Math.min(0.32, intensity * 0.24));
+        return Color.color(color.getRed(), color.getGreen(), color.getBlue(), Math.clamp(intensity, 0.0, 1.0));
     }
 
     /**
@@ -72,7 +62,8 @@ final class BandPaint {
         static State of(boolean hovered, boolean selected, boolean searching, boolean searchMatch,
                         boolean colorByGene, Color geneColor, double intensity) {
             Color laneFill = hovered || selected ? Color.rgb(30, 144, 255, selected ? 0.18 : 0.10) : Color.TRANSPARENT;
-            Color bandFill = withOpacity(colorByGene ? geneColor : BAND, intensity);
+            Color color = colorByGene ? geneColor : BAND;
+            Color bandFill = body(color, intensity);
             double opacity = searchMatch ? 1.0 : 0.18;
             if (selected) {
                 return new State(opacity, laneFill, bandFill, SELECTED, 2.0, Color.rgb(255, 140, 0, 0.28));
@@ -83,7 +74,7 @@ final class BandPaint {
             if (searching && searchMatch) {
                 return new State(opacity, laneFill, bandFill, SEARCH_MATCH, 1.25, Color.rgb(60, 180, 75, 0.20));
             }
-            return new State(opacity, laneFill, bandFill, null, 0, BandPaint.halo(intensity));
+            return new State(opacity, laneFill, bandFill, null, 0, BandPaint.halo(color, intensity));
         }
     }
 }

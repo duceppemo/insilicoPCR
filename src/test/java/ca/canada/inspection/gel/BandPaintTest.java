@@ -19,13 +19,13 @@ class BandPaintTest {
 
     @Test
     void bandDecorationsFollowTheIntensityWithCaps() {
-        assertEquals(Color.rgb(25, 25, 25, 0.1), BandPaint.halo(0.5));
+        assertEquals(0.11, BandPaint.halo(Color.BLACK, 0.5).getOpacity(), 1e-6);
         assertEquals(0.07, BandPaint.highlight(0.5).getOpacity(), 1e-6);
         assertEquals(0.18, BandPaint.highlight(2.0).getOpacity(), 1e-6);
-        assertEquals(0.12, BandPaint.shadow(0.5).getOpacity(), 1e-6);
-        assertEquals(0.32, BandPaint.shadow(1.5).getOpacity(), 1e-6);
+        assertEquals(0.12, BandPaint.shadow(Color.BLACK, 0.5).getOpacity(), 1e-6);
+        assertEquals(0.32, BandPaint.shadow(Color.BLACK, 1.5).getOpacity(), 1e-6);
         assertEquals(Color.WHITE.getRed(), BandPaint.highlight(0.5).getRed(), 1e-6);
-        assertEquals(0.0, BandPaint.shadow(0.5).getRed(), 1e-6);
+        assertEquals(0.0, BandPaint.shadow(Color.BLACK, 0.5).getRed(), 1e-6);
     }
 
     @Test
@@ -38,16 +38,15 @@ class BandPaintTest {
     }
 
     @Test
-    void imageBandsAreDarkerShadesOfTheGeneColour() {
-        assertEquals(GENE.getBrightness() * 0.35, BandPaint.imageHalo(GENE, 0.5).getBrightness(), 1e-4);
-        assertEquals(0.11, BandPaint.imageHalo(GENE, 0.5).getOpacity(), 1e-6);
-        assertEquals(GENE.getBrightness() * 0.75, BandPaint.imageBody(GENE, 0.5).getBrightness(), 1e-4);
-        assertEquals(0.775, BandPaint.imageBody(GENE, 0.5).getOpacity(), 1e-6);
-        assertEquals(1.0, BandPaint.imageBody(GENE, 1.0).getOpacity(), 1e-6);
-        assertEquals(GENE.getHue(), BandPaint.imageBody(GENE, 0.5).getHue(), 1e-3);
-        assertEquals(GENE.getBrightness() * 0.25, BandPaint.imageShadow(GENE, 0.5).getBrightness(), 1e-4);
-        assertEquals(0.12, BandPaint.imageShadow(GENE, 0.5).getOpacity(), 1e-6);
-        assertEquals(0.32, BandPaint.imageShadow(GENE, 2.0).getOpacity(), 1e-6);
+    void haloAndShadowAreDarkerShadesOfTheBandColour() {
+        assertEquals(GENE.getBrightness() * 0.35, BandPaint.halo(GENE, 0.5).getBrightness(), 1e-4);
+        assertEquals(0.11, BandPaint.halo(GENE, 0.5).getOpacity(), 1e-6);
+        assertEquals(GENE.getBrightness() * 0.75, BandPaint.body(GENE, 0.5).getBrightness(), 1e-4);
+        assertEquals(0.775, BandPaint.body(GENE, 0.5).getOpacity(), 1e-6);
+        assertEquals(1.0, BandPaint.body(GENE, 1.0).getOpacity(), 1e-6);
+        assertEquals(GENE.getBrightness() * 0.25, BandPaint.shadow(GENE, 0.5).getBrightness(), 1e-4);
+        assertEquals(0.12, BandPaint.shadow(GENE, 0.5).getOpacity(), 1e-6);
+        assertEquals(0.32, BandPaint.shadow(GENE, 2.0).getOpacity(), 1e-6);
     }
 
     @Test
@@ -55,15 +54,15 @@ class BandPaintTest {
         BandPaint.State state = BandPaint.State.of(false, false, false, true, false, GENE, 0.6);
         assertEquals(1.0, state.opacity(), 1e-6);
         assertEquals(Color.TRANSPARENT, state.laneFill());
-        assertEquals(BandPaint.withOpacity(BandPaint.BAND, 0.6), state.bandFill());
+        assertEquals(BandPaint.body(BandPaint.BAND, 0.6), state.bandFill());
         assertNull(state.stroke());
-        assertEquals(BandPaint.halo(0.6), state.halo());
+        assertEquals(BandPaint.halo(BandPaint.BAND, 0.6), state.halo());
     }
 
     @Test
     void colourByGeneUsesTheGeneColour() {
         BandPaint.State state = BandPaint.State.of(false, false, false, true, true, GENE, 0.6);
-        assertEquals(BandPaint.withOpacity(GENE, 0.6), state.bandFill());
+        assertEquals(BandPaint.body(GENE, 0.6), state.bandFill());
     }
 
     @Test

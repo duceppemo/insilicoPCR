@@ -5,6 +5,7 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Cursor;
 import javafx.scene.Group;
+import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
@@ -22,9 +23,6 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
-import javafx.scene.text.Font;
-import javafx.scene.text.Text;
-import javafx.scene.transform.Rotate;
 import javafx.stage.FileChooser;
 import javafx.stage.Popup;
 import javafx.stage.Screen;
@@ -34,6 +32,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -42,8 +41,6 @@ import java.util.Map;
 /** Paginated synthetic gel viewer for large runs. */
 public final class PaginatedGelViewer {
     public static final int DEFAULT_SAMPLES_PER_GEL = 100;
-
-    private static final double LADDER_FONT_SIZE = 10.0;
 
     private PaginatedGelViewer() {
     }
@@ -105,7 +102,7 @@ public final class PaginatedGelViewer {
         pageToolbar.setPadding(new Insets(4, 8, 8, 8));
         root.setTop(new VBox(searchToolbar, exportToolbar, pageToolbar));
 
-        VBox legend = buildLegend(model.geneColors);
+        VBox legend = GelNodes.legend(model.geneColors);
         legend.setVisible(false);
         legend.setManaged(false);
         root.setRight(legend);
@@ -252,121 +249,42 @@ public final class PaginatedGelViewer {
         });
     }
 
-    private static VBox buildLegend(Map<String, Color> geneColors) {
-        VBox legend = new VBox(5);
-        legend.setPadding(new Insets(10));
-        legend.setStyle("-fx-background-color: rgba(255,255,255,0.94); -fx-border-color: #bbbbbb;");
-        Label title = new Label("Gene legend");
-        title.setStyle("-fx-font-weight: bold;");
-        legend.getChildren().add(title);
-        for (Map.Entry<String, Color> entry : geneColors.entrySet()) {
-            Rectangle swatch = new Rectangle(12, 12, entry.getValue());
-            Label label = new Label(entry.getKey());
-            HBox row = new HBox(6, swatch, label);
-            row.setAlignment(Pos.CENTER_LEFT);
-            legend.getChildren().add(row);
-        }
-        return legend;
-    }
-
     private static Pane currentPane(Group zoomGroup) {
         return (Pane) zoomGroup.getChildren().getFirst();
     }
 
     private static Pane drawPage(PageModel model, boolean colorByGene) {
-        List<String> samples = model.currentSamples();
-        GelLayout layout = model.layout(samples);
-
-        Pane pane = new Pane();
-        pane.setPrefSize(layout.width(), layout.height());
-        pane.setMinSize(layout.width(), layout.height());
+        Pane pane = GelNodes.pane(model.scene(colorByGene), List.of(), PaginatedGelViewer::hoverableBand);
         pane.setStyle("-fx-background-color: white;");
-
-        drawBackground(pane, layout, samples.size() + 1);
-        drawLadder(pane, layout);
-        drawLadderLabels(pane, layout);
-
-        int laneIndex = 1;
-        for (String sampleName : samples) {
-            for (LaneBand band : LaneBand.page(layout, laneIndex, model.lanes.getOrDefault(sampleName, List.of()))) {
-                Color color = colorByGene ? model.geneColors.getOrDefault(band.gene(), Color.BLACK) : Color.BLACK;
-                addBand(pane, band.rect(), band.centerY(), band.intensity(), color, band.tooltip());
-            }
-            addRotatedLabel(pane, sampleName, layout.laneCenterX(laneIndex), layout.labelY());
-            laneIndex++;
-        }
-        addRotatedLabel(pane, "Ladder", layout.laneCenterX(0), layout.labelY());
-        drawBorder(pane, layout);
         return pane;
     }
 
-    private static void drawBackground(Pane pane, GelLayout layout, int laneCount) {
-        Rectangle background = new Rectangle(layout.gelLeft(), layout.gelTop(), layout.gelWidth(), layout.gelHeight());
-        background.setFill(BandPaint.GEL);
-        pane.getChildren().add(background);
-        for (int i = 0; i < laneCount; i++) {
-            double x = layout.laneX(i);
-            Rectangle lane = new Rectangle(x, layout.gelTop(), layout.laneWidth(), layout.gelHeight());
-            lane.setFill(BandPaint.laneFill(i));
-            pane.getChildren().add(lane);
-            Rectangle separator = new Rectangle(x, layout.gelTop(), 3, layout.gelHeight());
-            separator.setFill(Color.WHITE);
-            pane.getChildren().add(separator);
+    /** A sample band that is outlined and shows its amplicons while the pointer is over it. */
+    private static Node hoverableBand(GelScene.Band band) {
+        GelNodes.BandShape shape = GelNodes.band(band);
+        if (band.title() == null || band.title().isBlank()) {
+            return shape.group();
         }
-    }
-
-    private static void drawBorder(Pane pane, GelLayout layout) {
-        Rectangle border = new Rectangle(layout.gelLeft(), layout.gelTop(), layout.gelWidth(), layout.gelHeight());
-        border.setFill(Color.TRANSPARENT);
-        border.setStroke(Color.BLACK);
-        border.setStrokeWidth(3);
-        border.setMouseTransparent(true);
-        pane.getChildren().add(border);
-    }
-
-    private static void drawLadder(Pane pane, GelLayout layout) {
-        for (GelScale.LadderBand ladderBand : GelScale.LADDER) {
-            double centerY = layout.bandY(ladderBand.size());
-            addBand(pane, BandRect.inLane(layout.gelLeft(), centerY, layout.laneWidth(), 2.0), centerY, 0.45, Color.BLACK, null);
-        }
-    }
-
-    private static void drawLadderLabels(Pane pane, GelLayout layout) {
-        for (GelScale.LadderBand ladderBand : GelScale.LADDER) {
-            Text text = new Text(ladderBand.label());
-            text.setFont(Font.font("Verdana", LADDER_FONT_SIZE));
-            text.setFill(Color.BLACK);
-            text.setX(layout.gelLeft() - 8 - GelScale.approximateTextWidth(ladderBand.label()));
-            text.setY(layout.bandY(ladderBand.size()) + 4);
-            text.setMouseTransparent(true);
-            pane.getChildren().add(text);
-        }
-    }
-
-    private static void addBand(Pane pane, BandRect rect, double centerY, double intensity, Color color, String popupText) {
-        Rectangle band = new Rectangle(rect.x(), rect.y(), rect.width(), rect.height());
-        band.setFill(BandPaint.withOpacity(color, intensity));
-        pane.getChildren().add(band);
-        if (popupText != null && !popupText.isBlank()) {
-            Rectangle hitBox = new Rectangle(rect.x() - 5, centerY - 7, rect.width() + 10, 14);
-            hitBox.setFill(BandPaint.HIT_BOX);
-            hitBox.setCursor(Cursor.HAND);
-            Popup popup = popup(popupText);
-            hitBox.addEventHandler(MouseEvent.MOUSE_ENTERED, event -> {
-                band.setStroke(BandPaint.HOVER);
-                band.setStrokeWidth(1.25);
-                popup.show(hitBox.getScene().getWindow(), event.getScreenX() + 14, event.getScreenY() + 12);
-            });
-            hitBox.addEventHandler(MouseEvent.MOUSE_MOVED, event -> {
-                popup.setX(event.getScreenX() + 14);
-                popup.setY(event.getScreenY() + 12);
-            });
-            hitBox.addEventHandler(MouseEvent.MOUSE_EXITED, event -> {
-                band.setStroke(null);
-                popup.hide();
-            });
-            pane.getChildren().add(hitBox);
-        }
+        BandRect rect = band.rect();
+        double centerY = band.lane().centerY();
+        Rectangle hitBox = new Rectangle(rect.x() - 5, centerY - 7, rect.width() + 10, 14);
+        hitBox.setFill(BandPaint.HIT_BOX);
+        hitBox.setCursor(Cursor.HAND);
+        Popup popup = popup(band.title());
+        hitBox.addEventHandler(MouseEvent.MOUSE_ENTERED, event -> {
+            shape.body().setStroke(BandPaint.HOVER);
+            shape.body().setStrokeWidth(1.25);
+            popup.show(hitBox.getScene().getWindow(), event.getScreenX() + 14, event.getScreenY() + 12);
+        });
+        hitBox.addEventHandler(MouseEvent.MOUSE_MOVED, event -> {
+            popup.setX(event.getScreenX() + 14);
+            popup.setY(event.getScreenY() + 12);
+        });
+        hitBox.addEventHandler(MouseEvent.MOUSE_EXITED, event -> {
+            shape.body().setStroke(null);
+            popup.hide();
+        });
+        return new Group(shape.group(), hitBox);
     }
 
     private static Popup popup(String text) {
@@ -384,17 +302,6 @@ public final class PaginatedGelViewer {
         Popup popup = new Popup();
         popup.getContent().add(label);
         return popup;
-    }
-
-    private static void addRotatedLabel(Pane pane, String label, double centerX, double y) {
-        Text text = new Text(label);
-        text.setFont(Font.font("Verdana", GelLayout.PAGE_LABEL_FONT_SIZE));
-        text.setFill(Color.BLACK);
-        text.setX(centerX);
-        text.setY(y);
-        text.getTransforms().add(new Rotate(45, centerX, y));
-        text.setMouseTransparent(true);
-        pane.getChildren().add(text);
     }
 
     private static void chooseAndSavePng(PageModel model, Pane pane) {
@@ -448,8 +355,7 @@ public final class PaginatedGelViewer {
 
     private static void saveSvg(PageModel model, boolean colorByGene, Path outputFile) {
         try {
-            List<String> samples = model.currentSamples();
-            GelImages.writeText(GelSvg.page(model.layout(samples), samples, model.lanes, model.geneColors, colorByGene), outputFile);
+            GelImages.writeText(GelSvg.of(model.scene(colorByGene)), outputFile);
         } catch (IOException e) {
             throw new UncheckedIOException("Unable to save SVG: " + outputFile, e);
         }
@@ -482,8 +388,17 @@ public final class PaginatedGelViewer {
             return pages.samples(pageIndex);
         }
 
-        private GelLayout layout(List<String> samples) {
-            return GelLayout.page(ownerScene.getWidth(), ownerScene.getHeight(), samples);
+        /** The current page's gel, its bands black or in their gene's colour. */
+        private GelScene scene(boolean colorByGene) {
+            List<String> samples = currentSamples();
+            GelLayout layout = GelLayout.page(ownerScene.getWidth(), ownerScene.getHeight(), samples);
+            List<LaneBand> bands = new ArrayList<>();
+            for (int lane = 1; lane <= samples.size(); lane++) {
+                bands.addAll(LaneBand.page(layout, lane, lanes.getOrDefault(samples.get(lane - 1), List.of())));
+            }
+            return GelScene.of(layout, samples, bands,
+                    band -> colorByGene ? geneColors.getOrDefault(band.gene(), Color.BLACK) : Color.BLACK,
+                    GelLayout.PAGE_LABEL_FONT_SIZE);
         }
     }
 }

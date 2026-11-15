@@ -462,12 +462,15 @@ public final class HtmlReport {
         return "<" + element + (element.equals("button") ? " type=\"button\"" : "") + " class=\"chip " + state.css()
                 + "\"" + (plain ? "" : " title=\"" + escape(tip.toString()) + "\"")
                 + (inGrid && !cell.products().isEmpty()
-                ? " data-s=\"" + escape(sample) + "\" data-a=\"" + escape(assay) + "\"" : "")
+                // Read out by a screen reader as which cell it is, not only its sizes.
+                ? " data-s=\"" + escape(sample) + "\" data-a=\"" + escape(assay) + "\" aria-label=\""
+                + escape(sample + " · " + assay + ": " + state.label + (text.isEmpty() ? "" : " " + text)
+                + (reads ? ", from reads" : "")) + "\"" : "")
                 + ">" + escape(text.toString())
                 + (others > 0 ? "<sup>+" + others + "</sup>" : "")
-                + (cell.partlyBound() ? "<span class=\"part\" aria-label=\"" + escape(PARTLY_BOUND_LABEL) + "\">"
+                + (cell.partlyBound() ? "<span class=\"part\" role=\"img\" aria-label=\"" + escape(PARTLY_BOUND_LABEL) + "\">"
                 + PARTLY_BOUND + "</span>" : "")
-                + (reads ? "<span class=\"dot\" aria-label=\"from reads\"></span>" : "")
+                + (reads ? "<span class=\"dot\" role=\"img\" aria-label=\"from reads\"></span>" : "")
                 + "</" + element + ">";
     }
 
@@ -544,7 +547,7 @@ public final class HtmlReport {
         }
         html.append("<div class=\"tools\"><input type=\"search\" id=\"rowFilter\" placeholder=\"Filter by sample, assay,")
                 .append(" size…\" aria-label=\"Filter amplicons\"><button type=\"button\" id=\"showAll\" hidden>")
-                .append("Show all</button><span id=\"rowCount\" class=\"hint\"></span></div>\n")
+                .append("Show all</button><span id=\"rowCount\" class=\"hint\" aria-live=\"polite\"></span></div>\n")
                 .append("<div class=\"scroll\"><table class=\"rows\" id=\"rows\">\n<thead><tr><th>Sample</th><th>Assay</th>")
                 .append("<th class=\"num\">Size (bp)</th>").append(labels ? "<th>Size check</th>" : "")
                 .append("<th>Found on</th><th>Location</th><th class=\"num\" title=\"Forward / reverse primer mismatches\">")

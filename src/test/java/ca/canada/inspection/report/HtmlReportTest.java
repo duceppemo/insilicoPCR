@@ -235,9 +235,10 @@ class HtmlReportTest {
         String page = Files.readString(write(tsv, List.of("weak", "mixed", "clean"), Set.of(),
                 PrimerPanel.of(primers.sequences(), SIZES), List.of(), DETAILS));
 
-        String mark = "<span class=\"part\" aria-label=\"A primer binds only partly (5′ bases unpaired)\">\u25d0</span>";
+        String mark = "<span class=\"part\" role=\"img\" aria-label=\"A primer binds only partly (5′ bases unpaired)\">\u25d0</span>";
         assertEquals(1, count(page, mark), "only the cell whose every target product is weakly bound is marked");
-        assertTrue(page.contains("data-s=\"weak\" data-a=\"its\">✓ 430" + mark), "the weak cell carries the mark");
+        assertTrue(page.contains("data-s=\"weak\" data-a=\"its\" aria-label=\"weak · its: Target size ✓ 430\">✓ 430"
+                + mark), "the weak cell carries the mark, and is read out as which cell it is");
         // The tooltip and the table say how much of each primer pairs, of its length.
         assertTrue(page.contains("430 bp (target); forward primer 9 of 17 bases, reverse primer 9 of 17 bases"));
         assertTrue(page.contains("<th class=\"num\" title=\"Bases at the 5' end of each primer that do not pair with"

@@ -62,7 +62,7 @@ Hydrolysis probes (`-P`) report by 5'→3' exonuclease cleavage while hybridized
 
 ## Stage 2: amplicon calling
 
-An accepted forward hit and an accepted reverse hit are reported as an amplicon only when **all** of these hold:
+An accepted forward hit and an accepted reverse hit of the same assay are reported as an amplicon only when **all** of these hold (a product of one primer alone, at an inverted repeat, or of two assays' primers is not called: a [known gap](Limitations#known-gaps)):
 
 1. **Same contig.** Both primers hit the same input sequence.
 2. **Opposite strands, convergent.** One primer anneals to the plus strand and extends rightward; the other anneals to the minus strand and extends leftward — and they must face each other. Divergent (back-to-back) and same-strand pairs never amplify and are rejected. The assay may legitimately sit on either strand of your genome: `Strand` in the report shows `+` when the forward primer matched the plus strand, `-` when the assay matched the reverse strand.

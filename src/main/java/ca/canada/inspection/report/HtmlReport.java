@@ -75,6 +75,11 @@ public final class HtmlReport {
             return valueOf(kind.name());
         }
 
+        /** The verdict this state shows. */
+        AssayVerdict.Kind kind() {
+            return AssayVerdict.Kind.valueOf(name());
+        }
+
         State(String label, String description, String glyph) {
             this.label = label;
             this.description = description;
@@ -160,14 +165,8 @@ public final class HtmlReport {
     record Cell(State state, List<Product> products, String note) {
         /** Sizes of the products that decide the state, smallest first. */
         List<Integer> sizes() {
-            ExpectedSizes.Label wanted = switch (state) {
-                case TARGET -> ExpectedSizes.Label.TARGET;
-                case OTHER -> ExpectedSizes.Label.OTHER;
-                case UNEXPECTED -> ExpectedSizes.Label.UNEXPECTED;
-                default -> null;
-            };
             return new ArrayList<>(products.stream()
-                    .filter(product -> state == State.AMPLIFIED || product.label() == wanted)
+                    .filter(product -> state.kind().decidedBy(product.label()))
                     .map(Product::size)
                     .collect(Collectors.toCollection(TreeSet::new)));
         }
@@ -416,7 +415,7 @@ public final class HtmlReport {
             int positive = 0;
             for (Map<String, Cell> row : grid.values()) {
                 State state = row.get(assay).state();
-                positive += state == State.TARGET || state == State.AMPLIFIED ? 1 : 0;
+                positive += state.kind().isPositive() ? 1 : 0;
             }
             String declared = sizes.describe(assay);
             html.append("<th scope=\"col\" title=\"").append(escape(assay + (declared.isEmpty()
@@ -489,7 +488,7 @@ public final class HtmlReport {
                     byState.computeIfAbsent(row.get(assay).state(), ignored -> new ArrayList<>()).add(sample));
             boolean declares = sizes.assays().contains(assay);
             State positiveState = declares ? State.TARGET : State.AMPLIFIED;
-            int positive = byState.getOrDefault(positiveState, List.of()).size();
+            int positive = (int) grid.values().stream().filter(row -> row.get(assay).state().kind().isPositive()).count();
             html.append("<article class=\"card\">\n<h3>").append(escape(assay)).append("</h3>\n<p class=\"decl\">")
                     .append(declares ? escape(sizes.describe(assay)) : "no product size declared").append("</p>\n")
                     .append("<p class=\"count\"><span class=\"n\">").append(positive).append("</span> of ")
@@ -499,10 +498,9 @@ public final class HtmlReport {
                     .append(grid.size()).append("\"><span class=\"").append(positiveState.css()).append("\" style=\"width:")
                     .append(grid.isEmpty() ? 0 : Math.round(1000.0 * positive / grid.size()) / 10.0)
                     .append("%\"></span></div>\n");
-            for (State state : List.of(State.TARGET, State.AMPLIFIED, State.OTHER, State.UNEXPECTED,
-                    State.INCONCLUSIVE, State.UNCONFIRMED)) {
+            for (State state : State.values()) {
                 List<String> names = byState.getOrDefault(state, List.of());
-                if (names.isEmpty()) {
+                if (names.isEmpty() || state.kind().group() == AssayVerdict.Kind.Group.NEGATIVE) {
                     continue;
                 }
                 html.append("<p class=\"group\"><span class=\"chip ").append(state.css()).append("\">")
@@ -524,9 +522,9 @@ public final class HtmlReport {
                 }
                 html.append("</ul>\n");
             }
-            for (State state : List.of(State.ACROSS_ENDS, State.UNCHECKED, State.NONE)) {
+            for (State state : State.values()) {
                 List<String> names = byState.getOrDefault(state, List.of());
-                if (!names.isEmpty()) {
+                if (!names.isEmpty() && state.kind().group() == AssayVerdict.Kind.Group.NEGATIVE) {
                     html.append("<details><summary>").append(names.size())
                             .append(switch (state) {
                                 case NONE -> " with no product";
@@ -582,11 +580,7 @@ public final class HtmlReport {
             if (labels) {
                 html.append("<td>");
                 if (product.label() != null) {
-                    State state = switch (product.label()) {
-                        case TARGET -> State.TARGET;
-                        case OTHER -> State.OTHER;
-                        case UNEXPECTED -> State.UNEXPECTED;
-                    };
+                    State state = State.of(AssayVerdict.Kind.of(product.label()));
                     html.append("<span class=\"chip ").append(state.css()).append("\">").append(state.glyph)
                             .append(' ').append(product.label().text()).append("</span>");
                 }
@@ -614,11 +608,7 @@ public final class HtmlReport {
 
     private static void readSection(StringBuilder html, List<Finding> findings) {
         List<Finding> shown = findings.stream()
-                .filter(finding -> finding.status() == Status.CALLED_FROM_READS
-                        || finding.status() == Status.CALLED_BY_EXTENSION
-                        || finding.status() == Status.WEAK_READ_SUPPORT
-                        || finding.status() == Status.EXTENSION_NOT_SUPPORTED_BY_PAIRS
-                        || finding.status() == Status.EXTENSION_THROUGH_UNRESOLVED_REPEAT)
+                .filter(finding -> finding.status().isCalled() || finding.status().isWithheld())
                 .toList();
         long notInReads = findings.stream().filter(finding -> finding.status() == Status.NOT_IN_READS).count();
         long notClosed = findings.stream()
@@ -635,8 +625,7 @@ public final class HtmlReport {
             html.append("<div class=\"scroll\"><table class=\"rows\">\n<thead><tr><th>Sample</th><th>Assay</th><th>Outcome")
                     .append("</th><th>What the reads show</th></tr></thead>\n<tbody>\n");
             for (Finding finding : shown) {
-                boolean called = finding.status() == Status.CALLED_FROM_READS
-                        || finding.status() == Status.CALLED_BY_EXTENSION;
+                boolean called = finding.status().isCalled();
                 html.append("<tr><td>").append(escape(finding.sample())).append("</td><td>")
                         .append(escape(finding.assay())).append("</td><td>")
                         .append(called ? "<span class=\"tag\">reads</span> reported"

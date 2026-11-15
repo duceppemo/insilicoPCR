@@ -408,4 +408,23 @@ class FastqDiagnosticsTest {
 
         assertEquals("Unable to write FASTQ diagnostics: " + file, error.getMessage());
     }
+
+    @Test
+    void anAssayIsCalledFromReadsExactlyWhenTheReportGetsItsRows() {
+        // The diagnostics and the report rows are decided apart (assess, ReadLevelCaller.reportRows):
+        // "called from reads" with no row, or a row with no such finding, would contradict each other.
+        Sample otherSize = fastqSample();
+        otherSize.addBlastResult("assay-F", TestHits.plusHit("assay-F", "contig_0", 101));
+        otherSize.addBlastResult("assay-R", TestHits.minusHit("assay-R", "contig_0", 262));
+        otherSize.addBlastResult("assay-P", TestHits.plusHit("assay-P", "contig_0", 200));
+        for (Sample sample : List.of(fastqSample(), otherSize)) {
+            for (int reads = 1; reads <= 3; reads++) {
+                ReadEvidence evidence = readsWithAmplicon(reads);
+                boolean called = assess(sample, evidence, Map.of()).stream()
+                        .anyMatch(finding -> finding.status() == Status.CALLED_FROM_READS);
+                boolean rows = !ReadLevelCaller.reportRows(sample, PRIMERS, DEFAULTS, evidence).isEmpty();
+                assertEquals(called, rows, reads + " read(s)");
+            }
+        }
+    }
 }

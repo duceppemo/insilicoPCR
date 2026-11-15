@@ -35,4 +35,30 @@ class AssayVerdictTest {
                 + " declared size (" + SIZES.describe("its") + ") is longer than any read could hold (300 bp)."
                 + " Confirm on an assembly of the reads.", unchecked.note());
     }
+
+    @Test
+    void theKindsSayWhatCountsAsPositiveAndWhichSizesDecide() {
+        // The HTML report counts and lists the kinds by these, not by a list of its own.
+        assertEquals(java.util.List.of(AssayVerdict.Kind.TARGET, AssayVerdict.Kind.AMPLIFIED),
+                java.util.Arrays.stream(AssayVerdict.Kind.values()).filter(AssayVerdict.Kind::isPositive).toList());
+        assertEquals(AssayVerdict.Kind.Group.WITHHELD, AssayVerdict.Kind.UNCONFIRMED.group());
+        assertEquals(AssayVerdict.Kind.Group.NEGATIVE, AssayVerdict.Kind.ACROSS_ENDS.group());
+        for (ExpectedSizes.Label label : ExpectedSizes.Label.values()) {
+            AssayVerdict.Kind kind = AssayVerdict.Kind.of(label);
+            org.junit.jupiter.api.Assertions.assertTrue(kind.decidedBy(label));
+            org.junit.jupiter.api.Assertions.assertTrue(AssayVerdict.Kind.AMPLIFIED.decidedBy(label));
+            org.junit.jupiter.api.Assertions.assertFalse(AssayVerdict.Kind.NONE.decidedBy(label));
+        }
+        org.junit.jupiter.api.Assertions.assertTrue(AssayVerdict.Kind.AMPLIFIED.decidedBy(null));
+        org.junit.jupiter.api.Assertions.assertFalse(AssayVerdict.Kind.TARGET.decidedBy(null));
+    }
+
+    @Test
+    void everyReadStatusIsCalledWithheldOrNeither() {
+        for (FastqDiagnostics.Status status : FastqDiagnostics.Status.values()) {
+            org.junit.jupiter.api.Assertions.assertFalse(status.isCalled() && status.isWithheld(), status.name());
+        }
+        org.junit.jupiter.api.Assertions.assertTrue(FastqDiagnostics.Status.CALLED_BY_EXTENSION.isCalled());
+        org.junit.jupiter.api.Assertions.assertTrue(FastqDiagnostics.Status.EXTENSION_THROUGH_UNRESOLVED_REPEAT.isWithheld());
+    }
 }

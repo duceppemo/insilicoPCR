@@ -247,7 +247,7 @@ class BbtoolsCommandsTest {
                 .resolve("primes.txt.gz"));
         Path example = Path.of("docs", "examples", "five-isolates").toAbsolutePath();
         Path out = java.nio.file.Files.createDirectories(dir.resolve("out")).resolve("baited.fastq.gz");
-        String java = ProcessHandle.current().info().command().orElse("java");
+        String javaCommand = ProcessHandle.current().info().command().orElse("java");
         List<String> lines = new java.util.ArrayList<>();
         RunMonitor monitor = new RunMonitor() {
             @Override
@@ -256,7 +256,7 @@ class BbtoolsCommandsTest {
             }
         };
 
-        new BbtoolsCommands(java, installed.resolve("bbtools.jar"), 1, 1)
+        new BbtoolsCommands(javaCommand, installed.resolve("bbtools.jar"), 1, 1)
                 .firstBait(example.resolve("primers.fasta"), List.of(example.resolve("reads").resolve("isolate_01_R1.fastq.gz"),
                         example.resolve("reads").resolve("isolate_01_R2.fastq.gz")), out, 20, 0)
                 .run(monitor, "BBDuk");

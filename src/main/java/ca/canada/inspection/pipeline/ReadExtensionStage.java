@@ -13,6 +13,8 @@ import ca.canada.inspection.pcr.ReadExtensionCaller;
 import ca.canada.inspection.pcr.ReadLevelCaller.ReadEvidence;
 import ca.canada.inspection.pcr.ReportRow;
 import ca.canada.inspection.pcr.TrimmedEnds;
+import ca.canada.inspection.util.FastaScanner;
+import ca.canada.inspection.util.FastqRecords;
 import ca.canada.inspection.util.SequenceFileUtils;
 
 import java.io.BufferedReader;
@@ -145,7 +147,7 @@ public final class ReadExtensionStage {
             throw new PipelineException("no baited reads file " + baitedReads.getFileName());
         }
         List<Seed> seeds = ReadExtensionCaller.seeds(assays, primers, reads);
-        Map<String, ReadLevelStage.ReadRecord> seedReads = writeSeeds(seeds,
+        Map<String, BaitedReads.ReadRecord> seedReads = writeSeeds(seeds,
                 files.baitedReadsFasta(), seedsFile);
         int reach = options.maxAmpliconLength() > 0 ? options.maxAmpliconLength() : ReadExtensionCaller.DEFAULT_REACH;
 
@@ -170,7 +172,7 @@ public final class ReadExtensionStage {
         List<ReportRow> sampleRows = new ArrayList<>();
         for (Outcome outcome : sampleOutcomes.values()) {
             for (Product product : outcome.added()) {
-                ReadLevelStage.ReadRecord seedRead =
+                BaitedReads.ReadRecord seedRead =
                         seedReads.get(readOfSeed.get(product.row().contig()));
                 sampleRows.add(ReadExtensionCaller.reportRow(product, seedRead == null ? "" : seedRead.description()));
             }
@@ -245,48 +247,37 @@ public final class ReadExtensionStage {
      */
     static PairSupport.Tally tally(List<String> sequences, Path reads, boolean paired, Settings settings) {
         PairSupport.Tally tally = new PairSupport.Tally(sequences);
-        try (BufferedReader reader = SequenceFileUtils.openMaybeGzip(reads)) {
-            String previous = null;
-            long records = 0;
-            String header;
-            while ((header = reader.readLine()) != null) {
-                String sequence = reader.readLine();
-                String plus = reader.readLine();
-                String quality = reader.readLine();
-                if (!header.startsWith("@") || sequence == null || plus == null || quality == null) {
-                    throw new PipelineException("Malformed FASTQ record in " + reads + " near: " + header);
-                }
-                if (!paired) {
-                    tally.addRead(sequence);
-                } else if (previous == null) {
-                    previous = sequence;
-                } else {
-                    tally.addPair(previous, sequence);
-                    previous = null;
-                }
-                if (++records % 500_000 == 0 && settings != null) {
-                    stopIfCancelled(settings);
-                }
+        String[] previous = {null};
+        long[] records = {0};
+        FastqRecords.forEach(reads, record -> {
+            if (!paired) {
+                tally.addRead(record.sequence());
+            } else if (previous[0] == null) {
+                previous[0] = record.sequence();
+            } else {
+                tally.addPair(previous[0], record.sequence());
+                previous[0] = null;
             }
-        } catch (IOException e) {
-            throw new PipelineException("Could not read " + reads, e);
-        }
+            if (++records[0] % 500_000 == 0 && settings != null) {
+                stopIfCancelled(settings);
+            }
+        });
         return tally;
     }
 
     /** The given records of a FASTA file whose sequences may span several lines, by ID. */
     static Map<String, String> readFasta(Path fasta, Set<String> ids) {
         Map<String, StringBuilder> found = new HashMap<>();
-        try (BufferedReader reader = Files.newBufferedReader(fasta, StandardCharsets.UTF_8)) {
-            StringBuilder current = null;
-            String line;
-            while ((line = reader.readLine()) != null) {
-                if (line.startsWith(">")) {
-                    String id = SequenceFileUtils.fastaId(line);
-                    current = ids.contains(id) ? found.computeIfAbsent(id, ignored -> new StringBuilder()) : null;
-                } else if (current != null) {
-                    current.append(line.strip());
+        StringBuilder[] current = {null};
+        try (FastaScanner scanner = new FastaScanner(List.of(fasta))) {
+            String header;
+            while ((header = scanner.nextHeader(base -> {
+                if (current[0] != null) {
+                    current[0].append((char) base);
                 }
+            })) != null) {
+                String id = SequenceFileUtils.fastaId(header);
+                current[0] = ids.contains(id) ? found.computeIfAbsent(id, ignored -> new StringBuilder()) : null;
             }
         } catch (IOException e) {
             throw new PipelineException("Could not read the extended reads: " + fasta, e);
@@ -303,13 +294,13 @@ public final class ReadExtensionStage {
      *
      * @return the baited reads used, by read ID
      */
-    static Map<String, ReadLevelStage.ReadRecord> writeSeeds(List<Seed> seeds, Path baitedReadsFasta, Path seedsFile) {
+    static Map<String, BaitedReads.ReadRecord> writeSeeds(List<Seed> seeds, Path baitedReadsFasta, Path seedsFile) {
         Set<String> wanted = new HashSet<>();
         seeds.forEach(seed -> wanted.add(seed.read()));
-        Map<String, ReadLevelStage.ReadRecord> records = ReadLevelStage.readRecords(baitedReadsFasta, wanted);
+        Map<String, BaitedReads.ReadRecord> records = BaitedReads.records(baitedReadsFasta, wanted);
         try (BufferedWriter writer = Files.newBufferedWriter(seedsFile, StandardCharsets.UTF_8)) {
             for (Seed seed : seeds) {
-                ReadLevelStage.ReadRecord record = records.get(seed.read());
+                BaitedReads.ReadRecord record = records.get(seed.read());
                 if (record == null) {
                     throw new PipelineException("read " + seed.read() + " is not in " + baitedReadsFasta.getFileName());
                 }

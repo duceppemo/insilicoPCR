@@ -16,7 +16,7 @@ public final class BlastDatabaseBuilder {
         Path database = context.directories().primerDatabase().toAbsolutePath();
         long started = System.currentTimeMillis();
         try {
-            ExternalProgram.run(context.monitor(), database.getParent(), List.of(
+            context.monitor().runProgram(database.getParent(), List.of(
                     context.dependencies().makeblastdb().toString(),
                     "-dbtype", "nucl",
                     "-hash_index",
@@ -64,7 +64,7 @@ public final class BlastDatabaseBuilder {
                 continue;
             }
             try {
-                ExternalProgram.run(context.monitor(), null, List.of("chmod", "+x", program.toString()), "chmod");
+                context.monitor().runProgram(null, List.of("chmod", "+x", program.toString()), "chmod");
             } catch (PipelineException e) {
                 context.monitor().warning("Warning: " + program + " is not executable and could not be made so: "
                         + e.getMessage());

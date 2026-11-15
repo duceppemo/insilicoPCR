@@ -27,7 +27,7 @@ final class BlastTsv {
      */
     static void runBlastn(RunMonitor monitor, Path blastn, Path query, Path database, double evalue, int threads,
                           Path out) {
-        ExternalProgram.run(monitor, database.toAbsolutePath().getParent(),
+        monitor.runProgram(database.toAbsolutePath().getParent(),
                 blastn(blastn, query.toAbsolutePath(), database.getFileName().toString(), evalue, threads,
                         out.toAbsolutePath()), "blastn");
     }

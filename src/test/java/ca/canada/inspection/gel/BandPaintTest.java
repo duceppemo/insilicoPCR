@@ -44,7 +44,6 @@ class BandPaintTest {
     void restingBandIsDarkGreyWithoutOutline() {
         BandPaint.State state = BandPaint.State.of(false, false, false, true, false, GENE, 0.6);
         assertEquals(1.0, state.opacity(), 1e-6);
-        assertEquals(Color.TRANSPARENT, state.laneFill());
         assertEquals(BandPaint.body(BandPaint.BAND, 0.6), state.bandFill());
         assertNull(state.stroke());
         assertEquals(BandPaint.halo(BandPaint.BAND, 0.6), state.halo());
@@ -69,16 +68,14 @@ class BandPaintTest {
         assertEquals(BandPaint.SEARCH_MATCH, state.stroke());
         assertEquals(1.25, state.strokeWidth(), 1e-6);
         assertEquals(Color.rgb(60, 180, 75, 0.20), state.halo());
-        assertEquals(Color.TRANSPARENT, state.laneFill());
     }
 
     @Test
-    void hoverGetsABlueOutlineAndLightensTheLane() {
+    void hoverGetsABlueOutline() {
         BandPaint.State state = BandPaint.State.of(true, false, true, true, false, GENE, 0.6);
         assertEquals(BandPaint.HOVER, state.stroke());
         assertEquals(1.25, state.strokeWidth(), 1e-6);
         assertEquals(Color.rgb(30, 144, 255, 0.25), state.halo());
-        assertEquals(Color.rgb(30, 144, 255, 0.10), state.laneFill());
     }
 
     @Test
@@ -87,6 +84,14 @@ class BandPaintTest {
         assertEquals(BandPaint.SELECTED, state.stroke());
         assertEquals(2.0, state.strokeWidth(), 1e-6);
         assertEquals(Color.rgb(255, 140, 0, 0.28), state.halo());
-        assertEquals(Color.rgb(30, 144, 255, 0.18), state.laneFill());
+    }
+
+    @Test
+    void aLaneIsHighlightedFromAllOfItsBands() {
+        assertEquals(Color.TRANSPARENT, BandPaint.laneHighlight(false, false));
+        assertEquals(Color.rgb(30, 144, 255, 0.10), BandPaint.laneHighlight(true, false));
+        assertEquals(Color.rgb(30, 144, 255, 0.18), BandPaint.laneHighlight(false, true));
+        // A selected band keeps its lane highlighted while another band of the lane is hovered.
+        assertEquals(Color.rgb(30, 144, 255, 0.18), BandPaint.laneHighlight(true, true));
     }
 }

@@ -122,6 +122,14 @@
     amplicon".
   - A screen reader announces a grid cell as its sample, assay and outcome, the
     marks beside it, and the count of rows shown when it changes.
+- Gel viewer:
+  - A selected band's lane lost its highlight when the pointer passed over
+    another band of the lane, and on every key typed in the search; the lane
+    stays highlighted while one of its bands is selected.
+  - A long legend (dozens of genes) ran off the bottom of the window; it
+    scrolls.
+  - On a run of several gels, the search looked through every gel twice per
+    key typed; it looks once, when the typing stops.
 - Command line: an input with no FASTA or FASTQ file at all (an empty folder, a
   mistyped `-i`) ended with empty reports and exit code 0, which a workflow
   manager took for success; it stops with exit code 1. Arguments the command

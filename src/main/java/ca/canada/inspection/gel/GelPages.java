@@ -45,7 +45,7 @@ record GelPages(List<String> sampleNames, int samplesPerGel) {
     /**
      * The bands of every page that {@code query} matches, as the viewer matches them on the page
      * it shows: a band (the amplicons of a lane that run together) matches when its sample name,
-     * genes and sizes hold the query ({@link GelText#searchText}). A lane without a band matches
+     * genes, sizes and size checks hold the query ({@link GelText#searchText}). A lane without a band matches
      * nothing, as on the page.
      */
     Search find(Map<String, List<GelBand>> lanes, String query) {

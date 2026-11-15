@@ -55,9 +55,9 @@ final class BandPaint {
 
         /** Selection wins over hover, which wins over a search match. */
         static State of(boolean hovered, boolean selected, boolean searching, boolean searchMatch,
-                        boolean colorByGene, Color geneColor, double intensity) {
+                        boolean colored, Color bandColor, double intensity) {
             Color laneFill = hovered || selected ? Color.rgb(30, 144, 255, selected ? 0.18 : 0.10) : Color.TRANSPARENT;
-            Color color = colorByGene ? geneColor : BAND;
+            Color color = colored ? bandColor : BAND;
             Color bandFill = body(color, intensity);
             double opacity = searchMatch ? 1.0 : 0.18;
             if (selected) {

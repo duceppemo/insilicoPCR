@@ -41,9 +41,9 @@ class GelSvgTest {
         List<String> samples = List.of("A&B <x>", "plain");
         GelLayout layout = GelLayout.window(1000, 700, samples);
         List<LaneBand> bands = LaneBand.of(layout, 1, "A&B <x>",
-                List.of(new GelBand("A&B <x>", "toxA", 312), new GelBand("A&B <x>", "stxQ", 118)), 2.0, true);
+                List.of(new GelBand("A&B <x>", "toxA", 312), new GelBand("A&B <x>", "stxQ", 118)), 2.0, GelColorMode.GENE);
         Map<String, Color> colors = Map.of("toxA", Color.rgb(31, 119, 180), "stxQ", Color.rgb(214, 39, 40));
-        return GelScene.of(layout, samples, bands, band -> colors.get(band.gene()), 10.0, new java.util.TreeMap<>(colors));
+        return GelScene.of(layout, samples, bands, band -> colors.get(band.gene()), 10.0, "Gene legend", new java.util.TreeMap<>(colors));
     }
 
     @Test

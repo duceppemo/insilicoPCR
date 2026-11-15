@@ -113,11 +113,13 @@ record GelScene(double width, double height, List<Box> background, List<Band> la
      *
      * @param color         the colour of each band: black, or its gene's
      * @param laneFontSize  size of the lane names
-     * @param legend        the genes and their colours, listed right of the gel at
+     * @param legendTitle   the legend's title: what its entries are (genes, size checks)
+     * @param legend        the entries and their colours, listed right of the gel at
      *                      {@link GelLayout#legendX()}; empty for no legend
      */
     static GelScene of(GelLayout layout, List<String> laneNames, List<LaneBand> bands,
-                       Function<LaneBand, Color> color, double laneFontSize, Map<String, Color> legend) {
+                       Function<LaneBand, Color> color, double laneFontSize, String legendTitle,
+                       Map<String, Color> legend) {
         double top = layout.gelTop();
         double height = layout.gelHeight();
         List<Box> background = new ArrayList<>();
@@ -161,7 +163,7 @@ record GelScene(double width, double height, List<Box> background, List<Band> la
             double x = layout.legendX();
             legendBoxes.add(new Box(x, top, GelLayout.legendWidth(legend.keySet()) - 8,
                     GelLayout.legendHeight(legend.size()), Color.rgb(255, 255, 255, 0.95), Color.rgb(160, 160, 160), 1.0));
-            legendLabels.add(new Label("Gene legend", x + 10, top + 19, 11, Anchor.START));
+            legendLabels.add(new Label(legendTitle, x + 10, top + 19, 11, Anchor.START));
             int row = 0;
             for (Map.Entry<String, Color> entry : legend.entrySet()) {
                 double rowY = top + 32 + row * 20.0;

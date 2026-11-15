@@ -34,4 +34,20 @@ class GelColorsTest {
         // They shared the palette's colours, and so a legend entry, with earlier genes.
         assertEquals(colors.size(), new java.util.HashSet<>(colors.values()).size());
     }
+
+    @Test
+    void sizeChecksHaveTheHtmlReportsColoursAndALegendInAFixedOrder() {
+        List<GelBand> bands = List.of(new GelBand("a", "its", 500, ca.canada.inspection.pcr.ExpectedSizes.Label.UNEXPECTED),
+                new GelBand("a", "its", 434, ca.canada.inspection.pcr.ExpectedSizes.Label.TARGET), new GelBand("b", "plain", 200));
+
+        assertEquals(List.of("Target size", "Unexpected size", "No size declared"),
+                List.copyOf(GelColors.sizeCheckLegend(bands).keySet()));
+        assertEquals(Color.web("#008300"), GelColors.of(GelColorMode.SIZE_CHECK, bands.get(1), Map.of()));
+        assertEquals(Color.web("#d03b3b"), GelColors.of(GelColorMode.SIZE_CHECK, bands.get(0), Map.of()));
+        assertEquals(Color.web("#2a78d6"), GelColors.of(GelColorMode.SIZE_CHECK, bands.get(2), Map.of()));
+        assertEquals(null, GelColors.of(GelColorMode.BLACK, bands.get(0), Map.of()));
+        assertTrue(GelColors.legend(GelColorMode.BLACK, bands, Map.of()).isEmpty());
+        assertEquals(List.of("its"), List.copyOf(GelColors.legend(GelColorMode.GENE, bands.subList(0, 2),
+                Map.of("its", Color.RED, "plain", Color.BLUE)).keySet()), "only the genes shown");
+    }
 }

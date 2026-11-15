@@ -122,7 +122,7 @@ class SyntheticGelImageTest {
         int border = image.getRGB((int) layout.gelLeft(), (int) (layout.gelTop() + layout.gelHeight() / 2));
         assertTrue((border & 0xffffff) < 0x202020, "gel border should be black: " + Integer.toHexString(border));
 
-        LaneBand toxA = LaneBand.of(layout, 1, "isolate_01", lanes.get("isolate_01"), 2.0, true).stream()
+        LaneBand toxA = LaneBand.of(layout, 1, "isolate_01", lanes.get("isolate_01"), 2.0, GelColorMode.GENE).stream()
                 .filter(band -> band.gene().equals("toxA")).findFirst().orElseThrow();
         assertEquals("toxA", toxA.gene());
         int band = image.getRGB((int) layout.laneCenterX(1), (int) Math.round(toxA.centerY()));

@@ -30,12 +30,13 @@ record LaneBand(int lane, double laneX, String gene, List<GelBand> bands, double
 
     /**
      * The bands of a lane. Amplicons that round to the same size form one band, as they would run
-     * together on a gel; with {@code byGene}, those of different genes are drawn as one band per
-     * gene, 3 px apart, so that no gene colour is hidden. Smaller bands look stronger, and each lane
+     * together on a gel; coloured ({@code mode}), those that differ in what colours them (their
+     * gene, or their size check) are drawn as one band each, 3 px apart, so that no colour hides
+     * another. Smaller bands look stronger, and each lane
      * and band gets a small fixed variation, the same in every picture of the gel.
      */
     static List<LaneBand> of(GelLayout layout, int lane, String sampleName, List<GelBand> laneBands,
-                             double baseBandHeight, boolean byGene) {
+                             double baseBandHeight, GelColorMode mode) {
         List<LaneBand> result = new ArrayList<>();
         double laneX = layout.laneX(lane);
         double laneVariation = GelScale.deterministicRange(sampleName, 0.90, 1.10);
@@ -44,18 +45,15 @@ record LaneBand(int lane, double laneX, String gene, List<GelBand> bands, double
             int size = sizeEntry.getKey();
             double verticalJitter = GelScale.deterministicRange(sampleName + ':' + size, -0.45, 0.45);
             Map<String, List<GelBand>> groups = new TreeMap<>();
-            if (byGene) {
-                sizeEntry.getValue().forEach(band ->
-                        groups.computeIfAbsent(band.geneName(), ignored -> new ArrayList<>()).add(band));
-            } else {
-                groups.put(GelText.primaryGene(sizeEntry.getValue()), sizeEntry.getValue());
-            }
+            sizeEntry.getValue().forEach(band ->
+                    groups.computeIfAbsent(mode.group(band), ignored -> new ArrayList<>()).add(band));
             int index = 0;
             for (Map.Entry<String, List<GelBand>> group : groups.entrySet()) {
                 double offset = (index - (groups.size() - 1) / 2.0) * 3.0;
                 double intensity = Math.min(1.0, GelScale.sizeIntensity(size, group.getValue().size()) * laneVariation);
                 double centerY = belowTheWells(layout, layout.bandY(size) + verticalJitter + offset);
-                result.add(new LaneBand(lane, laneX, group.getKey(), group.getValue(), centerY, intensity,
+                result.add(new LaneBand(lane, laneX, GelText.primaryGene(group.getValue()), group.getValue(), centerY,
+                        intensity,
                         BandRect.inLane(laneX, centerY, layout.laneWidth(), baseBandHeight + (intensity * 1.2))));
                 index++;
             }

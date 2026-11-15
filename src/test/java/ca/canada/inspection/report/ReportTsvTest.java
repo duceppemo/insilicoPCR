@@ -146,4 +146,22 @@ class ReportTsvTest {
         Path report = Files.write(dir.resolve("excel.tsv"), text.getBytes(java.nio.charset.Charset.forName("windows-1252")));
         assertEquals("souche résistante", ReportTsv.read(report).getFirst().contigDescription());
     }
+
+    @Test
+    void theSizeCheckOfEachRowReadsBack() throws IOException {
+        // As the run writes it when the primer file declares sizes: the last column.
+        String header = String.join("\t", ReportColumn.FIRST.stream().map(ReportColumn::header).toList())
+                + "\tSizeCheck";
+        Path report = Files.write(dir.resolve("checked.tsv"), List.of(header,
+                "S\tits\t11-444\t434\tcontig_1\t\tits-F\tits-R\t0\t0\t0\t0\t+\ttarget",
+                "S\tits\t11-611\t601\tcontig_1\t\tits-F\tits-R\t0\t0\t0\t0\t+\tunexpected",
+                "S\tplain\t1-200\t200\tcontig_2\t\tp-F\tp-R\t0\t0\t0\t0\t+\t"));
+
+        assertEquals(java.util.Arrays.asList(ExpectedSizes.Label.TARGET, ExpectedSizes.Label.UNEXPECTED, null),
+                ReportTsv.readChecked(report).stream().map(ReportTsv.Checked::sizeCheck).toList());
+        // Without the column, no row is checked.
+        Path plain = Files.write(dir.resolve("plain.tsv"), List.of(header.replace("\tSizeCheck", ""),
+                "S\tits\t11-444\t434\tcontig_1\t\tits-F\tits-R\t0\t0\t0\t0\t+"));
+        assertNull(ReportTsv.readChecked(plain).getFirst().sizeCheck());
+    }
 }

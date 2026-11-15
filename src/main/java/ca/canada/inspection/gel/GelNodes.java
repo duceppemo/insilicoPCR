@@ -50,6 +50,8 @@ final class GelNodes {
         scene.bands().forEach(band -> pane.getChildren().add(sampleBand.apply(band)));
         pane.getChildren().add(rectangle(scene.border()));
         scene.laneLabels().forEach(label -> pane.getChildren().add(text(label)));
+        scene.legendBoxes().forEach(box -> pane.getChildren().add(rectangle(box)));
+        scene.legendLabels().forEach(label -> pane.getChildren().add(text(label)));
         return pane;
     }
 
@@ -96,6 +98,8 @@ final class GelNodes {
         text.setY(label.y());
         if (label.anchor() == GelScene.Anchor.END) {
             text.setX(label.x() - text.getLayoutBounds().getWidth());
+        } else if (label.anchor() == GelScene.Anchor.START) {
+            text.setX(label.x());
         } else {
             text.setX(label.x());
             text.getTransforms().add(new Rotate(45, label.x(), label.y()));

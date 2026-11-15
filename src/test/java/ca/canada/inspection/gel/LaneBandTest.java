@@ -36,8 +36,8 @@ class LaneBandTest {
     }
 
     @Test
-    void windowBandsGroupCoMigratingAmpliconsFromSmallToLarge() {
-        List<LaneBand> bands = LaneBand.window(LAYOUT, 1, "s1", LANE, 2.0);
+    void bandsGroupCoMigratingAmpliconsFromSmallToLarge() {
+        List<LaneBand> bands = LaneBand.of(LAYOUT, 1, "s1", LANE, 2.0, false);
         assertEquals(2, bands.size());
 
         LaneBand small = bands.get(0);
@@ -58,48 +58,49 @@ class LaneBandTest {
     }
 
     @Test
-    void windowBandsVaryByLaneButNotBetweenDraws() {
+    void bandsVaryByLaneButNotBetweenDraws() {
         List<GelBand> other = List.of(new GelBand("s2", "toxA", 312));
-        LaneBand first = LaneBand.window(LAYOUT, 2, "s2", other, 2.0).getFirst();
-        LaneBand again = LaneBand.window(LAYOUT, 2, "s2", other, 2.0).getFirst();
+        LaneBand first = LaneBand.of(LAYOUT, 2, "s2", other, 2.0, false).getFirst();
+        LaneBand again = LaneBand.of(LAYOUT, 2, "s2", other, 2.0, false).getFirst();
         assertEquals(first, again);
         assertEquals(LAYOUT.bandY(300) + GelScale.deterministicRange("s2:300", -0.45, 0.45), first.centerY(), 1e-12);
     }
 
     @Test
-    void imageBandsDrawOneBandPerGeneAtASharedSize() {
-        List<LaneBand> bands = LaneBand.image(LAYOUT, 1, "s1", LANE, 2.0);
+    void coloredByGeneOneBandPerGeneIsDrawnAtASharedSize() {
+        List<LaneBand> bands = LaneBand.of(LAYOUT, 1, "s1", LANE, 2.0, true);
         assertEquals(3, bands.size());
 
-        // Sizes keep the lane order (largest first); genes at a size are sorted by name.
-        assertEquals("big", bands.get(0).gene());
-        assertEquals("stxQ", bands.get(1).gene());
-        assertEquals("toxA", bands.get(2).gene());
-        assertEquals(1, bands.get(1).bands().size());
-        assertEquals(2, bands.get(2).bands().size());
+        // Smallest size first; genes at a size are sorted by name.
+        assertEquals("stxQ", bands.get(0).gene());
+        assertEquals("toxA", bands.get(1).gene());
+        assertEquals("big", bands.get(2).gene());
+        assertEquals(1, bands.get(0).bands().size());
+        assertEquals(2, bands.get(1).bands().size());
 
         double jitter = GelScale.deterministicRange("s1:300", -0.45, 0.45);
-        assertEquals(LAYOUT.bandY(300) + jitter - 1.5, bands.get(1).centerY(), 1e-12);
-        assertEquals(LAYOUT.bandY(300) + jitter + 1.5, bands.get(2).centerY(), 1e-12);
-        assertEquals(LAYOUT.bandY(1_000) + GelScale.deterministicRange("s1:1000", -0.45, 0.45), bands.get(0).centerY(), 1e-12);
+        assertEquals(LAYOUT.bandY(300) + jitter - 1.5, bands.get(0).centerY(), 1e-12);
+        assertEquals(LAYOUT.bandY(300) + jitter + 1.5, bands.get(1).centerY(), 1e-12);
+        assertEquals(LAYOUT.bandY(1_000) + GelScale.deterministicRange("s1:1000", -0.45, 0.45), bands.get(2).centerY(), 1e-12);
 
-        assertEquals(GelColors.bandIntensity(1), bands.get(1).intensity(), 1e-12);
-        assertEquals(GelColors.bandIntensity(2), bands.get(2).intensity(), 1e-12);
-        assertEquals(2.0 + GelColors.bandIntensity(2) * 1.2, bands.get(2).rect().height(), 1e-12);
-        assertEquals(110 * 0.66, bands.get(2).rect().width(), 1e-12);
+        // As strong as the band of its own amplicons would be, uncoloured.
+        double variation = GelScale.deterministicRange("s1", 0.90, 1.10);
+        assertEquals(Math.min(1.0, GelScale.sizeIntensity(300, 2) * variation), bands.get(1).intensity(), 1e-12);
+        assertEquals(2.0 + bands.get(1).intensity() * 1.2, bands.get(1).rect().height(), 1e-12);
+        assertEquals(110 * 0.66, bands.get(1).rect().width(), 1e-12);
     }
 
     @Test
-    void imageBandOfASingleGeneIsNotOffset() {
+    void aBandOfASingleGeneIsNotOffset() {
         List<GelBand> lane = List.of(new GelBand("s2", "toxA", 500));
-        LaneBand band = LaneBand.image(LAYOUT, 2, "s2", lane, 2.0).getFirst();
+        LaneBand band = LaneBand.of(LAYOUT, 2, "s2", lane, 2.0, true).getFirst();
         assertEquals(LAYOUT.bandY(500) + GelScale.deterministicRange("s2:500", -0.45, 0.45), band.centerY(), 1e-12);
         assertEquals(LAYOUT.laneX(2), band.laneX(), 1e-12);
     }
 
     @Test
     void emptyLanesHaveNoBands() {
-        assertTrue(LaneBand.window(LAYOUT, 1, "s1", List.of(), 2.0).isEmpty());
-        assertTrue(LaneBand.image(LAYOUT, 1, "s1", List.of(), 2.0).isEmpty());
+        assertTrue(LaneBand.of(LAYOUT, 1, "s1", List.of(), 2.0, false).isEmpty());
+        assertTrue(LaneBand.of(LAYOUT, 1, "s1", List.of(), 2.0, true).isEmpty());
     }
 }

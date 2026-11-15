@@ -104,15 +104,17 @@ The gel viewer (`InteractiveGelViewer`, one gel of up to 100 samples at a time, 
 |---|---|
 | `GelScale` | The gel's log scale (base pairs to position), the ladder, and the small per-band variations |
 | `GelLayout` | Geometry of a gel picture: where the gel sits, lane width, picture size, the baseline of the slanted lane labels |
-| `LaneBand` | One band of a sample lane: the amplicons it stands for, where it sits, how strong it looks |
+| `LaneBand` | One band of a sample lane: the amplicons it stands for, where it sits, how strong it looks; one factory for the window and every picture, splitting bands of one size by gene when coloured by gene |
 | `BandPaint` | Colours of the gel and of the bands |
 | `GelText` | Text about the amplicons of a band: tooltips, details, selection and search |
-| `GelPages` | Splitting the lanes of a large run into pages of samples |
-| `GelScene` | What a gel picture is made of (gel, lanes, ladder, bands, labels), whatever draws it |
+| `GelPages` | Splitting the lanes of a large run into pages of samples (the window's gels and the `--gel` files) |
+| `GelSelection` | The window's selected bands: what a click, a dragged box and Ctrl+A select |
+| `GelScene` | What a gel picture is made of (gel, lanes, ladder, bands, labels, gene legend), whatever draws it |
 | `GelNodes` | A `GelScene` as JavaFX nodes, for the viewer |
 | `GelSvg` | A `GelScene` as an SVG document |
-| `GelImages` | PNG and PDF files of the gel, their default names, snapshots of the viewer |
-| `SyntheticGelImage` | The `--gel` PNG: a `GelScene` drawn on a canvas, without a window |
+| `GelImages` | PNG and PDF files of the gel and their default names, one a gel for a paged run |
+| `GelPicture` | A gel as a picture to keep, at its own size and without the window's outlines: the `GelScene` of a page and its image on a canvas. The `--gel` files and the window's Save PNG, SVG and PDF all come from it |
+| `SyntheticGelImage` | The `--gel` PNG files: each gel of the run drawn by `GelPicture`, without a window |
 
 `BlastResult` (in `model`) carries full alignment context (strand, subject coordinates, aligned sequences) and computes the 3'-end mismatch counts and weighted penalties. The rules themselves are documented on the [Amplicon Calling](Amplicon-Calling) page, and covered by unit tests under `src/test/java`. `EndToEndTest` runs whole runs on the five-isolate example with the BLAST+ and BBTools of the checkout.
 

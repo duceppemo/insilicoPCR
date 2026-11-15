@@ -22,6 +22,8 @@ final class GelSvg {
         scene.bands().forEach(band -> band(svg, band));
         box(svg, scene.border(), null);
         scene.laneLabels().forEach(label -> text(svg, label));
+        scene.legendBoxes().forEach(box -> box(svg, box, null));
+        scene.legendLabels().forEach(label -> text(svg, label));
         svg.append("</svg>\n");
         return svg.toString();
     }
@@ -57,7 +59,7 @@ final class GelSvg {
                 .append("\" fill=\"#000000\"");
         if (label.anchor() == GelScene.Anchor.END) {
             svg.append(" text-anchor=\"end\"");
-        } else {
+        } else if (label.anchor() == GelScene.Anchor.SLANTED) {
             svg.append(" transform=\"").append(rotate45(label.x(), label.y())).append('"');
         }
         svg.append('>').append(escapeXml(label.text())).append("</text>\n");

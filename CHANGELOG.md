@@ -65,6 +65,16 @@
 - `--gel` image: a gene legend of more than about 33 assays was cut off, and
   beyond 10 assays genes shared colours (and legend entries); every gene has a
   colour of its own and the picture is tall enough for the legend.
+- Application, gel viewer: **Save PNG** and **Save PDF** saved what the window
+  showed, with the selection outlines and the fading of bands a search does not
+  match, while **Save SVG** did not; none had the gene legend of a gel coloured by
+  gene. The three now save the gel as `--gel` draws it, legend included, and so
+  does `--gel` itself (one drawing of the bands, where the window and the picture
+  differed in band strength and in how bands of one size from two assays are
+  drawn).
+- `--gel` drew every sample on one picture, too large for a run of a few hundred
+  samples; it writes a picture per 100 samples (`..._page_001.png`), as the gel
+  viewer pages them.
 - `--gel` on a run without a product warned that a graphical environment was
   required; it draws the gel with empty lanes, as the gel viewer does. An image
   that cannot be written (a full disk) now says so, instead of blaming the
@@ -128,6 +138,10 @@
 
 ### Changed
 
+- Gel viewer: the gel is laid out for a fixed size, the one the main window
+  opens at, not for the size the main window has when the viewer is opened: a
+  maximised main window no longer gives a larger gel, and a page change no
+  longer resizes it.
 - Docs: two known gaps are described on the Limitations page, to be revisited:
   products of one primer alone (at an inverted repeat) or of two assays'
   primers are not called, and in FASTQ mode a primer site with an indel or 5'

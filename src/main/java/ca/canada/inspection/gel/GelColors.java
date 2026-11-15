@@ -20,11 +20,6 @@ public final class GelColors {
     private GelColors() {
     }
 
-    /** Band opacity as a function of how many amplicons share the band. */
-    public static double bandIntensity(int bandCount) {
-        return Math.min(1.0, 0.45 + Math.max(0, bandCount - 1) * 0.12);
-    }
-
     /**
      * The colour of the {@code index}-th gene: the palette's, then further hues spread by the golden
      * angle, so that genes past the tenth do not share a colour (and a legend entry) with another.

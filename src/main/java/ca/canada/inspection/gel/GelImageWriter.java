@@ -4,6 +4,7 @@ import javafx.application.Platform;
 
 import java.nio.file.Path;
 import java.util.Collection;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
@@ -47,8 +48,10 @@ public final class GelImageWriter {
                 warning.accept(NO_GRAPHICS + rootMessage(e));
                 return;
             }
-            Path written = SyntheticGelImage.exportPng(consolidatedReport, outputFile, sampleNames);
-            info.accept("Synthetic gel image written to " + written);
+            List<Path> written = SyntheticGelImage.exportPng(consolidatedReport, outputFile, sampleNames);
+            info.accept(written.size() == 1 ? "Synthetic gel image written to " + written.getFirst()
+                    : "Synthetic gel images written, " + InteractiveGelViewer.SAMPLES_PER_GEL + " samples a gel: "
+                    + written.getFirst() + " to " + written.getLast().getFileName());
         } catch (NoClassDefFoundError | UnsatisfiedLinkError e) {
             warning.accept(NO_GRAPHICS + rootMessage(e));
         } catch (RuntimeException e) {

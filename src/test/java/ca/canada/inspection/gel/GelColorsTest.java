@@ -34,12 +34,4 @@ class GelColorsTest {
         // They shared the palette's colours, and so a legend entry, with earlier genes.
         assertEquals(colors.size(), new java.util.HashSet<>(colors.values()).size());
     }
-
-    @Test
-    void bandIntensityGrowsWithCountAndSaturates() {
-        assertEquals(0.45, GelColors.bandIntensity(1), 1e-9);
-        assertEquals(0.45, GelColors.bandIntensity(0), 1e-9);
-        assertTrue(GelColors.bandIntensity(3) > GelColors.bandIntensity(2));
-        assertEquals(1.0, GelColors.bandIntensity(100), 1e-9);
-    }
 }

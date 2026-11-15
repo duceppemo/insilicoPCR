@@ -40,10 +40,10 @@ class GelSvgTest {
     private static GelScene scene() {
         List<String> samples = List.of("A&B <x>", "plain");
         GelLayout layout = GelLayout.window(1000, 700, samples);
-        List<LaneBand> bands = LaneBand.window(layout, 1, "A&B <x>",
-                List.of(new GelBand("A&B <x>", "toxA", 312), new GelBand("A&B <x>", "stxQ", 118)), 2.0);
+        List<LaneBand> bands = LaneBand.of(layout, 1, "A&B <x>",
+                List.of(new GelBand("A&B <x>", "toxA", 312), new GelBand("A&B <x>", "stxQ", 118)), 2.0, true);
         Map<String, Color> colors = Map.of("toxA", Color.rgb(31, 119, 180), "stxQ", Color.rgb(214, 39, 40));
-        return GelScene.of(layout, samples, bands, band -> colors.get(band.gene()), 10.0);
+        return GelScene.of(layout, samples, bands, band -> colors.get(band.gene()), 10.0, new java.util.TreeMap<>(colors));
     }
 
     @Test
@@ -56,10 +56,14 @@ class GelSvgTest {
         assertEquals(GelSvg.format(scene.width()), root.getAttribute("width"));
         assertEquals(GelSvg.format(scene.height()), root.getAttribute("height"));
 
-        // Four rectangles per band (halo, band, highlight, shadow).
-        assertEquals(scene.background().size() + 4 * (15 + 2) + 1, elements(document, "rect").size());
+        // Four rectangles per band (halo, band, highlight, shadow), the border, then the legend's
+        // frame and one swatch per gene.
+        assertEquals(scene.background().size() + 4 * (15 + 2) + 1 + 3, elements(document, "rect").size());
         List<Element> texts = elements(document, "text");
-        assertEquals(15 + 3, texts.size());
+        assertEquals(15 + 3 + 3, texts.size());
+        assertEquals(List.of("Gene legend", "stxQ", "toxA"),
+                texts.subList(18, 21).stream().map(Element::getTextContent).toList());
+        assertEquals("", texts.get(18).getAttribute("transform"), "the legend is not slanted");
         assertEquals("20kb", texts.getFirst().getTextContent());
         assertEquals("end", texts.getFirst().getAttribute("text-anchor"));
         assertEquals("10.000", texts.getFirst().getAttribute("font-size"));
@@ -79,8 +83,9 @@ class GelSvgTest {
         assertEquals("#ffffff", rects.get(0).getAttribute("fill"));
         assertEquals("#eeeeee", rects.get(1).getAttribute("fill"));
         assertEquals("", rects.get(1).getAttribute("fill-opacity"));
-        assertEquals("none", rects.getLast().getAttribute("fill"));
-        assertEquals("#000000", rects.getLast().getAttribute("stroke"));
+        Element border = rects.get(rects.size() - 4);
+        assertEquals("none", border.getAttribute("fill"));
+        assertEquals("#000000", border.getAttribute("stroke"));
         GelScene.Band band = scene().bands().getFirst();
         String body = GelSvg.toHex(band.body().fill());
         assertTrue(rects.stream().anyMatch(rect -> rect.getAttribute("fill").equals(body)

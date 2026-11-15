@@ -44,9 +44,16 @@ final class GelImages {
         return pngOutput.getFileName().toString().replaceFirst("\\.png$", "." + extension);
     }
 
-    /** "synthetic_gel_page_001.png" for the first page. */
-    static String pageFileName(int pageIndex, String extension) {
-        return "synthetic_gel_page_" + String.format("%03d", pageIndex + 1) + "." + extension;
+    /**
+     * The file of gel {@code pageIndex} of {@code pages}: {@code output} itself for a run of one
+     * gel, {@code synthetic_gel_report_page_001.png} for the first of several.
+     */
+    static Path pageOutput(Path output, int pageIndex, int pages) {
+        if (pages <= 1) {
+            return output;
+        }
+        return output.resolveSibling(output.getFileName().toString()
+                .replaceFirst("\\.png$", String.format(Locale.ROOT, "_page_%03d.png", pageIndex + 1)));
     }
 
     /** Snapshot of a node, {@code width} x {@code height} rounded up; must run on the FX thread. */

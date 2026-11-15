@@ -5,11 +5,13 @@ import javafx.scene.paint.Color;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 
 /**
  * What a synthetic gel picture is made of, whatever draws it: the gel and its lanes, the
- * ladder and its labels, the sample bands, the border and the lane labels, in drawing order.
+ * ladder and its labels, the sample bands, the border, the lane labels and the gene legend, in
+ * drawing order.
  * The viewers (JavaFX nodes, {@link GelNodes}), the {@code --gel} image (a canvas,
  * {@link SyntheticGelImage}) and the SVG files ({@link GelSvg}) all draw one of these, so a
  * gel looks the same in each.
@@ -22,9 +24,11 @@ import java.util.function.Function;
  * @param bands        the samples' bands
  * @param border       the gel's outline
  * @param laneLabels   the slanted names under the lanes, the ladder's first
+ * @param legendBoxes  the legend's frame and its colour swatches; empty without a legend
+ * @param legendLabels the legend's title and gene names; empty without a legend
  */
 record GelScene(double width, double height, List<Box> background, List<Band> ladder, List<Label> ladderLabels,
-                List<Band> bands, Box border, List<Label> laneLabels) {
+                List<Band> bands, Box border, List<Label> laneLabels, List<Box> legendBoxes, List<Label> legendLabels) {
 
     static final String FONT = "Verdana";
     static final double LADDER_FONT_SIZE = 10.0;
@@ -37,6 +41,8 @@ record GelScene(double width, double height, List<Box> background, List<Band> la
         ladderLabels = List.copyOf(ladderLabels);
         bands = List.copyOf(bands);
         laneLabels = List.copyOf(laneLabels);
+        legendBoxes = List.copyOf(legendBoxes);
+        legendLabels = List.copyOf(legendLabels);
     }
 
     /**
@@ -53,6 +59,8 @@ record GelScene(double width, double height, List<Box> background, List<Band> la
 
     /** Where a label's {@code x} is. */
     enum Anchor {
+        /** Its left end, as for the legend's text. */
+        START,
         /** Its right end, as for the ladder's sizes. */
         END,
         /** Its start, the text turned 45 degrees about that point, as for the lane names. */
@@ -105,9 +113,11 @@ record GelScene(double width, double height, List<Box> background, List<Band> la
      *
      * @param color         the colour of each band: black, or its gene's
      * @param laneFontSize  size of the lane names
+     * @param legend        the genes and their colours, listed right of the gel at
+     *                      {@link GelLayout#legendX()}; empty for no legend
      */
     static GelScene of(GelLayout layout, List<String> laneNames, List<LaneBand> bands,
-                       Function<LaneBand, Color> color, double laneFontSize) {
+                       Function<LaneBand, Color> color, double laneFontSize, Map<String, Color> legend) {
         double top = layout.gelTop();
         double height = layout.gelHeight();
         List<Box> background = new ArrayList<>();
@@ -144,7 +154,23 @@ record GelScene(double width, double height, List<Box> background, List<Band> la
         }
 
         Box border = new Box(layout.gelLeft(), top, layout.gelWidth(), height, null, Color.BLACK, 3.0);
+
+        List<Box> legendBoxes = new ArrayList<>();
+        List<Label> legendLabels = new ArrayList<>();
+        if (!legend.isEmpty()) {
+            double x = layout.legendX();
+            legendBoxes.add(new Box(x, top, GelLayout.legendWidth(legend.keySet()) - 8,
+                    GelLayout.legendHeight(legend.size()), Color.rgb(255, 255, 255, 0.95), Color.rgb(160, 160, 160), 1.0));
+            legendLabels.add(new Label("Gene legend", x + 10, top + 19, 11, Anchor.START));
+            int row = 0;
+            for (Map.Entry<String, Color> entry : legend.entrySet()) {
+                double rowY = top + 32 + row * 20.0;
+                legendBoxes.add(new Box(x + 10, rowY, 14, 10, entry.getValue(), Color.rgb(90, 90, 90), 1.0));
+                legendLabels.add(new Label(entry.getKey(), x + 32, rowY + 9, 10.5, Anchor.START));
+                row++;
+            }
+        }
         return new GelScene(layout.width(), layout.height(), background, ladder, ladderLabels, sampleBands, border,
-                laneLabels);
+                laneLabels, legendBoxes, legendLabels);
     }
 }

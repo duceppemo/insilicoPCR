@@ -55,7 +55,7 @@ class SyntheticGelImageTest {
         startToolkit();
 
         Path png = dir.resolve("empty.png");
-        assertEquals(png, SyntheticGelImage.exportPng(report(), png, List.of("negCtrl", "isolate_01")));
+        assertEquals(List.of(png), SyntheticGelImage.exportPng(report(), png, List.of("negCtrl", "isolate_01")));
         assertTrue(ImageIO.read(png.toFile()).getWidth() > 0);
     }
 
@@ -107,7 +107,7 @@ class SyntheticGelImageTest {
                 "isolate_01\tstxQ\t7313-7430\t118\tc1",
                 "isolate_02\tstxQ\t7313-7430\t118\tc1");
         Path png = dir.resolve("out").resolve("synthetic_gel_report.png");
-        assertEquals(png, SyntheticGelImage.exportPng(report, png, List.of("isolate_01", "isolate_02", "negCtrl")));
+        assertEquals(List.of(png), SyntheticGelImage.exportPng(report, png, List.of("isolate_01", "isolate_02", "negCtrl")));
 
         List<String> named = List.of("isolate_01", "isolate_02", "negCtrl");
         LinkedHashMap<String, List<GelBand>> lanes = GelReportReader.read(report, named);
@@ -122,11 +122,33 @@ class SyntheticGelImageTest {
         int border = image.getRGB((int) layout.gelLeft(), (int) (layout.gelTop() + layout.gelHeight() / 2));
         assertTrue((border & 0xffffff) < 0x202020, "gel border should be black: " + Integer.toHexString(border));
 
-        LaneBand toxA = LaneBand.image(layout, 1, "isolate_01", lanes.get("isolate_01"), 2.0).getFirst();
+        LaneBand toxA = LaneBand.of(layout, 1, "isolate_01", lanes.get("isolate_01"), 2.0, true).stream()
+                .filter(band -> band.gene().equals("toxA")).findFirst().orElseThrow();
         assertEquals("toxA", toxA.gene());
         int band = image.getRGB((int) layout.laneCenterX(1), (int) Math.round(toxA.centerY()));
         int red = (band >> 16) & 0xff;
         int blue = band & 0xff;
         assertTrue(blue > red + 40, "toxA band should be drawn in its blue gene colour: " + Integer.toHexString(band));
+    }
+
+    @Test
+    void aRunOfMoreSamplesThanAGelHoldsIsWrittenAGelAFile() throws IOException {
+        // As the gel window pages it: one picture of 1,000 lanes would not fit in an image.
+        assumeTrue(hasDisplay(), "no display");
+        startToolkit();
+
+        List<String> samples = new java.util.ArrayList<>();
+        for (int i = 1; i <= InteractiveGelViewer.SAMPLES_PER_GEL + 1; i++) {
+            samples.add(String.format("s%03d", i));
+        }
+        Path png = dir.resolve("synthetic_gel_report.png");
+        List<Path> written = SyntheticGelImage.exportPng(report("s101\ttoxA\t1-312\t312\tc1"), png, samples);
+
+        assertEquals(List.of(dir.resolve("synthetic_gel_report_page_001.png"), dir.resolve("synthetic_gel_report_page_002.png")),
+                written);
+        assertFalse(Files.exists(png));
+        BufferedImage last = ImageIO.read(written.getLast().toFile());
+        BufferedImage first = ImageIO.read(written.getFirst().toFile());
+        assertTrue(last.getWidth() < first.getWidth(), "the second gel holds one lane");
     }
 }

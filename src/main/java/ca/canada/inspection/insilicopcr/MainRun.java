@@ -438,7 +438,7 @@ public class MainRun extends Application {
 
     private void displayGelImage() {
         try {
-            InteractiveGelViewer.show(scene, finishedRun().report(), finishedRun().samples());
+            InteractiveGelViewer.show(finishedRun().report(), finishedRun().samples());
         } catch (Exception e) {
             showError("Unable to create gel image:\n" + e.getMessage());
         }
@@ -478,7 +478,7 @@ public class MainRun extends Application {
 
         try {
             PreviousRun run = PreviousRun.open(selected.toPath());
-            InteractiveGelViewer.show(scene, run.report(), run.samples());
+            InteractiveGelViewer.show(run.report(), run.samples());
         } catch (Exception e) {
             showError("Unable to open previous run:\n" + e.getMessage());
         }
@@ -497,7 +497,7 @@ public class MainRun extends Application {
         }
 
         try {
-            InteractiveGelViewer.show(scene, selected.toPath(), List.of());
+            InteractiveGelViewer.show(selected.toPath(), List.of());
         } catch (Exception e) {
             showError("Unable to open report TSV:\n" + e.getMessage());
         }

@@ -4,6 +4,11 @@
 
 ### Fixed
 
+- The warning that trimmed primer or probe hits lay on sequences missing from the
+  searched file (their trimmed bases then go uncompared) went to the console
+  only, so the application's window and `log.txt` never showed it, and was
+  given for assemblies only; it is now a `Warning:` line of the run for
+  assemblies, baited reads and extended reads alike.
 - The rows of a degenerate primer's or probe's variants were listed in
   `report.tsv` and the HTML report in an order that could change from one run
   of the same data to the next (also in 0.15.0 and 0.15.1); they now follow the
@@ -38,6 +43,10 @@
 
 ### Changed
 
+- Code: one reader of a BLAST TSV into a sample (`pcr.BlastHits`) for contigs,
+  baited reads and extended reads, which each had their own copy; the FASTA a
+  sample is searched in (`Sample.searchedFasta`) and the hits of a set of
+  oligos (`Sample.hitsOf`) are each worked out in one place.
 - Code: a sample's products are worked out once and reused by the report, the
   FASTQ steps and the diagnostics, instead of four times for a FASTQ sample.
   `Open Previous Run` finds a pre-0.15.1 run's reports by the rule that names

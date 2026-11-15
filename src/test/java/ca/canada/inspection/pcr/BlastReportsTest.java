@@ -46,7 +46,7 @@ class BlastReportsTest {
 
         Map<String, Sample> samples = new HashMap<>();
         samples.put("sampleA", sample("sampleA"));
-        BlastReports.attachHits(detailedDir, samples, PRIMERS, OPTIONS);
+        BlastReports.attachHits(detailedDir, samples, PRIMERS, OPTIONS, warning -> {});
 
         assertEquals(1, samples.get("sampleA").blastResults().get("assay-F").size());
     }
@@ -59,7 +59,7 @@ class BlastReportsTest {
         Map<String, Sample> samples = new HashMap<>();
         samples.put("sampleA", sample("sampleA"));
 
-        BlastReports.attachHits(detailedDir, samples, PRIMERS, OPTIONS);
+        BlastReports.attachHits(detailedDir, samples, PRIMERS, OPTIONS, warning -> {});
         assertTrue(samples.get("sampleA").blastResults().isEmpty());
     }
 
@@ -75,7 +75,7 @@ class BlastReportsTest {
         sample.setFile(detailedDir.resolve("ISO2.FASTA"));
         Map<String, Sample> samples = Map.of("ISO2", sample);
 
-        BlastReports.attachHits(detailedDir, samples, PRIMERS, OPTIONS);
+        BlastReports.attachHits(detailedDir, samples, PRIMERS, OPTIONS, warning -> {});
         assertEquals(1, sample.blastResults().get("assay-F").size());
     }
 
@@ -83,7 +83,7 @@ class BlastReportsTest {
     void aMissingReportFailsLoudly() {
         Map<String, Sample> samples = Map.of("ghost", sample("ghost"));
         org.junit.jupiter.api.Assertions.assertThrows(java.io.UncheckedIOException.class,
-                () -> BlastReports.attachHits(detailedDir, samples, PRIMERS, OPTIONS));
+                () -> BlastReports.attachHits(detailedDir, samples, PRIMERS, OPTIONS, warning -> {}));
     }
 
     @Test
@@ -107,7 +107,7 @@ class BlastReportsTest {
         PrimerPanel primers = PrimerPanel.of(Map.of("assay-P", probe));
 
         // Before the fix this hit was rejected at any probe budget (3 unaligned bases).
-        BlastReports.attachHits(detailedDir, samples, primers, new AmpliconOptions(0, 1, 5, 0, 5, 0, 5000));
+        BlastReports.attachHits(detailedDir, samples, primers, new AmpliconOptions(0, 1, 5, 0, 5, 0, 5000), warning -> {});
         var hit = samples.get("sampleB").blastResults().get("assay-P").getFirst();
         assertEquals(1, hit.mismatch());
         assertEquals(21, hit.qstart());
@@ -117,7 +117,30 @@ class BlastReportsTest {
         Sample again = sample("sampleB");
         again.setFile(fasta);
         strict.put("sampleB", again);
-        BlastReports.attachHits(detailedDir, strict, primers, new AmpliconOptions(0, 0, 5, 0, 5, 0, 5000));
+        BlastReports.attachHits(detailedDir, strict, primers, new AmpliconOptions(0, 0, 5, 0, 5, 0, 5000), warning -> {});
         assertTrue(strict.get("sampleB").blastResults().isEmpty());
+    }
+
+    @Test
+    void aTrimmedHitOnASequenceMissingFromTheSearchedFileIsAWarningForTheMonitor() throws IOException {
+        // The same probe hit as above, but the FASTA holds another sequence: the trimmed bases
+        // cannot be compared, which the run's monitor is told (it went to the console only).
+        String probe = "CCGGTTCGCTCAATG";
+        Path fasta = detailedDir.resolve("sampleC.fasta");
+        Files.writeString(fasta, ">other\nACGT\n");
+        Path sampleDir = Files.createDirectories(detailedDir.resolve("sampleC"));
+        Files.writeString(sampleDir.resolve("sampleC.tsv"), String.join("\t",
+                "contig7", "assay-P", "12", "0", "0", "0.01", "24.3", "15", "12",
+                "24", "35", probe.substring(3), "4", "15", probe.substring(3)) + "\n");
+        Sample sample = sample("sampleC");
+        sample.setFile(fasta);
+        java.util.List<String> warnings = new java.util.ArrayList<>();
+
+        BlastReports.attachHits(detailedDir, Map.of("sampleC", sample), PrimerPanel.of(Map.of("assay-P", probe)),
+                new AmpliconOptions(0, 1, 5, 0, 5, 0, 5000), warnings::add);
+
+        assertEquals(1, warnings.size(), warnings.toString());
+        assertTrue(warnings.getFirst().startsWith("Warning: 1 sequences with a trimmed primer or probe hit were not"
+                + " found in [" + fasta + "] (e.g. contig7)"), warnings.getFirst());
     }
 }

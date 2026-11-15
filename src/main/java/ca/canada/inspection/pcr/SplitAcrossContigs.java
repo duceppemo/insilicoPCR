@@ -71,7 +71,6 @@ public final class SplitAcrossContigs {
     public static List<Split> find(Sample sample, PrimerPanel primers, AmpliconOptions options,
                                    Supplier<Map<String, Integer>> contigLengths) {
         Set<String> reported = Products.sizes(sample, primers, options).keySet();
-        Map<String, List<BlastResult>> hits = sample.blastResults();
         Map<String, Integer> lengths = null;
         List<Split> splits = new ArrayList<>();
         for (Map.Entry<String, PrimerId.Assay> entry : primers.completeAssays().entrySet()) {
@@ -80,8 +79,8 @@ public final class SplitAcrossContigs {
             if (reported.contains(assay)) {
                 continue;
             }
-            List<BlastResult> forward = hitsOf(hits, group.forward());
-            List<BlastResult> reverse = hitsOf(hits, group.reverse());
+            List<BlastResult> forward = sample.hitsOf(group.forward());
+            List<BlastResult> reverse = sample.hitsOf(group.reverse());
             if (forward.isEmpty() || reverse.isEmpty()) {
                 continue; // a primer that does not bind: an ordinary negative
             }
@@ -136,13 +135,5 @@ public final class SplitAcrossContigs {
     private static int fromFivePrimeEnd(BlastResult hit, int contigLength) {
         int span = hit.isPlusStrand() ? contigLength - hit.qstart() + 1 : hit.qend();
         return span + hit.fivePrimeUncovered();
-    }
-
-    private static List<BlastResult> hitsOf(Map<String, List<BlastResult>> hits, List<String> oligoIds) {
-        List<BlastResult> result = new ArrayList<>();
-        for (String id : oligoIds) {
-            result.addAll(hits.getOrDefault(id, List.of()));
-        }
-        return result;
     }
 }

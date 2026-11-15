@@ -268,12 +268,12 @@ public final class ReadLevelCaller {
      * @param sequences          read sequences, used to tell reads at a product's locus from
      *                           reads carrying a primer elsewhere in the genome
      */
-    public static ReadEvidence evaluate(Sample reads, Map<String, Integer> readLengths,
+    public static ReadEvidence evaluate(Sample searched, Map<String, Integer> readLengths,
                                         Map<String, String> fragments, PrimerPanel primers,
                                         AmpliconOptions options, double minSupportFraction,
                                         ReadSequences sequences) {
         requireFraction(minSupportFraction);
-        reads = withContainedHits(reads, readLengths);
+        Sample reads = withContainedHits(searched, readLengths);
         Map<String, List<BlastResult>> hits = reads.blastResults();
 
         Map<String, Set<String>> readsWithOligo = new HashMap<>();
@@ -292,13 +292,13 @@ public final class ReadLevelCaller {
         // Only reads carrying a primer of an assay with a product are compared by sequence.
         Set<String> wanted = new HashSet<>();
         for (String assay : rowsByAssay.keySet()) {
-            pcrPrimerHits(hits, groups.get(assay)).forEach(hit -> wanted.add(hit.queryID()));
+            pcrPrimerHits(reads, groups.get(assay)).forEach(hit -> wanted.add(hit.queryID()));
         }
         Map<String, String> readSequences = wanted.isEmpty() ? Map.of() : sequences.fetch(wanted);
 
         Map<String, List<ReadCall>> calls = new LinkedHashMap<>();
         rowsByAssay.forEach((assay, rows) -> {
-            Evidence evidence = new Evidence(pcrPrimerHits(hits, groups.get(assay)), readLengths, fragments,
+            Evidence evidence = new Evidence(pcrPrimerHits(reads, groups.get(assay)), readLengths, fragments,
                     readSequences, minSupportFraction);
             List<ReadCall> products = new ArrayList<>();
             for (List<ReportRow> productRows : splitBySize(rows)) {
@@ -310,7 +310,7 @@ public final class ReadLevelCaller {
         Map<String, Integer> checkable = new HashMap<>();
         for (Map.Entry<String, PrimerId.Assay> entry : groups.entrySet()) {
             int longest = 0;
-            for (BlastResult hit : pcrPrimerHits(hits, entry.getValue())) {
+            for (BlastResult hit : pcrPrimerHits(reads, entry.getValue())) {
                 longest = Math.max(longest, containableLength(hit, readLengths.get(hit.queryID())));
             }
             if (longest > 0) {
@@ -382,17 +382,14 @@ public final class ReadLevelCaller {
         return hit.qend() + rightUnaligned;
     }
 
-    private static List<BlastResult> pcrPrimerHits(Map<String, List<BlastResult>> hits, PrimerId.Assay group) {
-        List<BlastResult> result = new ArrayList<>();
-        if (group != null) {
-            for (String primer : group.forward()) {
-                result.addAll(hits.getOrDefault(primer, List.of()));
-            }
-            for (String primer : group.reverse()) {
-                result.addAll(hits.getOrDefault(primer, List.of()));
-            }
+    /** The hits of an assay's forward and reverse primers (not its probe). */
+    private static List<BlastResult> pcrPrimerHits(Sample reads, PrimerId.Assay group) {
+        if (group == null) {
+            return List.of();
         }
-        return result;
+        List<String> primers = new ArrayList<>(group.forward());
+        primers.addAll(group.reverse());
+        return reads.hitsOf(primers);
     }
 
     /** Rejects a support fraction outside 0 to 1. */

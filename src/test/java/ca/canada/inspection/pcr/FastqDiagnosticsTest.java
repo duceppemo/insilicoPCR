@@ -383,7 +383,6 @@ class FastqDiagnosticsTest {
     static Sample readsSample() {
         Sample reads = new Sample();
         reads.setName("reads");
-        reads.setFileType(Sample.FileType.READS);
         return reads;
     }
 

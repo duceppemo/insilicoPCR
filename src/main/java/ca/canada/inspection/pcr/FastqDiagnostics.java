@@ -150,7 +150,6 @@ public final class FastqDiagnostics {
                                        ReadEvidence reads, Map<String, Integer> contigLengths,
                                        Map<String, ReadExtensionCaller.Outcome> extension) {
         Map<String, Set<Integer>> assembled = Products.sizes(sample, primers, options);
-        Map<String, List<BlastResult>> hits = sample.blastResults();
         List<Finding> findings = new ArrayList<>();
 
         for (Map.Entry<String, PrimerId.Assay> entry : primers.completeAssays().entrySet()) {
@@ -214,7 +213,7 @@ public final class FastqDiagnostics {
                 readDetail = "no complete amplicon in the reads, which could hold amplicons up to " + checkable
                         + " bp; " + describe(outcome);
             }
-            AssemblyFinding assembly = classifyAssembly(group, hits, contigLengths);
+            AssemblyFinding assembly = classifyAssembly(group, sample, contigLengths);
             findings.add(new Finding(sample.getName(), assay, status, assembly.kind(), counts, checkable,
                     readDetail, assembly.detail()));
         }
@@ -328,10 +327,10 @@ public final class FastqDiagnostics {
     private record AssemblyFinding(Assembly kind, String detail) {
     }
 
-    private static AssemblyFinding classifyAssembly(PrimerId.Assay group, Map<String, List<BlastResult>> hits,
+    private static AssemblyFinding classifyAssembly(PrimerId.Assay group, Sample sample,
                                                     Map<String, Integer> contigLengths) {
-        List<BlastResult> forwardHits = hitsOf(hits, group.forward());
-        List<BlastResult> reverseHits = hitsOf(hits, group.reverse());
+        List<BlastResult> forwardHits = sample.hitsOf(group.forward());
+        List<BlastResult> reverseHits = sample.hitsOf(group.reverse());
 
         if (forwardHits.isEmpty() || reverseHits.isEmpty()) {
             List<String> absent = new ArrayList<>();
@@ -385,14 +384,6 @@ public final class FastqDiagnostics {
     static String shortName(String contigId) {
         int comma = contigId.indexOf(',');
         return comma > 0 ? contigId.substring(0, comma) : contigId;
-    }
-
-    private static List<BlastResult> hitsOf(Map<String, List<BlastResult>> hits, List<String> oligoIds) {
-        List<BlastResult> result = new ArrayList<>();
-        for (String id : oligoIds) {
-            result.addAll(hits.getOrDefault(id, List.of()));
-        }
-        return result;
     }
 
     private static Set<String> contigsOf(List<BlastResult> hits) {

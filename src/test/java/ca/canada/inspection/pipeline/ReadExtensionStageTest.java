@@ -78,7 +78,7 @@ class ReadExtensionStageTest {
         AmpliconOptions options = AmpliconOptions.withMismatches(0);
 
         Map<String, Integer> lengths = SequenceFileUtils.sequenceLengths(extended);
-        Sample sample = ReadExtensionStage.extendedSample("S", hitsFile, extended, lengths, PRIMERS, options);
+        Sample sample = ReadExtensionStage.extendedSample("S", hitsFile, extended, lengths, PRIMERS, options, warning -> {});
         Outcome outcome = ReadExtensionCaller.evaluate(sample, lengths, seeds, PRIMERS, options, 5000).get("long");
 
         assertEquals(1300, lengths.get("extended_read_0"));

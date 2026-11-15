@@ -2,6 +2,7 @@ package ca.canada.inspection.model;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -22,8 +23,6 @@ public class Sample {
 		FASTA,
 		/** Sequencing reads: baited and assembled first. */
 		FASTQ,
-		/** Reads already baited, searched one by one (a step of FASTQ mode, not an input). */
-		READS,
 		/** Neither by its name. */
 		UNKNOWN
 	}
@@ -109,4 +108,24 @@ public class Sample {
 	public synchronized Map<String, String> contigs() { return Map.copyOf(contigDict); }
 
 	public boolean isFastq() { return fileType == FileType.FASTQ; }
+
+	/**
+	 * The FASTA files BLAST searches for this sample: its mini-assembly for FASTQ input (none
+	 * before it is assembled), its own file otherwise.
+	 */
+	public List<Path> searchedFasta() {
+		if (isFastq()) {
+			return assemblyFile == null ? List.of() : List.of(assemblyFile);
+		}
+		return files();
+	}
+
+	/** The accepted hits of {@code oligoIds}, in that order. */
+	public synchronized List<BlastResult> hitsOf(Collection<String> oligoIds) {
+		List<BlastResult> hits = new ArrayList<>();
+		for (String id : oligoIds) {
+			hits.addAll(blastResults.getOrDefault(id, new ArrayList<>()));
+		}
+		return hits;
+	}
 }

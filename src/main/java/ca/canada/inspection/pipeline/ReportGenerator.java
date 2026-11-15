@@ -104,7 +104,7 @@ public final class ReportGenerator {
 
     private static Map<String, Integer> sequenceLengths(Sample sample) {
         Map<String, Integer> lengths = new HashMap<>();
-        sample.files().stream().filter(Files::isRegularFile)
+        sample.searchedFasta().stream().filter(Files::isRegularFile)
                 .forEach(file -> lengths.putAll(SequenceFileUtils.sequenceLengths(file)));
         return lengths;
     }

@@ -31,7 +31,7 @@ Each package depends only on those below it in this table, so there are no cycle
 | `report` | The files a run writes and reads back: `report.tsv` (its columns in `ReportColumn`, written by `ConsolidatedReport`, read by `ReportTsv`), the HTML report, the FASTQ diagnostics | `pcr`, `model`, `util` |
 | `pcr` | The analysis core: primer IDs, hit filtering, amplicon calling, read-level calls; no report file | `model`, `util` |
 | `util` | Input checks, sequence file helpers, the version (`Version`, filled in from `pom.xml` at build time) | `model` |
-| `model` | `Sample` and `BlastResult` | nothing |
+| `model` | `Sample` (its name, files and type, and its `Hits`), `Hits` (accepted primer hits on a set of sequences, with their descriptions) and `BlastResult` | nothing |
 
 The GUI runs the same pipeline: `insilicopcr.PcrPipelineTask` runs `InSilicoPcrPipeline` on a background thread and gives it a `RunMonitor` that sends messages, program output and progress to the window; cancelling the task (the window closing) kills the external programs, and the task appends what the run showed to `log.txt` however it ends. The command line gives it `RunMonitor.CONSOLE`. A finished run returns a `RunResult` (its report, HTML report and samples), which the window's buttons use; `QAlog.txt` names the same report and samples, which `PreviousRun` reads back to reopen the run. Every external program (BLAST+, BBTools) is started by one class, `pipeline.ExternalProgram`.
 
@@ -69,7 +69,7 @@ The pipeline delegates the scientific decisions to one JavaFX-free package:
 | `AmpliconCaller` | Pairs forward/reverse hits: same contig, opposite strands, convergent orientation, size limits |
 | `TrimmedEnds` | Compares the oligo bases BLAST trimmed off the ends of an alignment with the template: probe ends and primer 3' ends count only where they do not pair |
 | `QueryTemplates` | Reads the contig or read a hit lies on from the FASTA that was searched, one query at a time and at one byte per base (`PackedBases`), for `TrimmedEnds` |
-| `Products` | Finds the products of a sample as `ReportRow`s: its hits paired into amplicons, an assay with a probe only where its probe binds within; the same rules for contigs, reads and extended reads |
+| `Products` | Finds the products in a set of `Hits` as `ReportRow`s: hits paired into amplicons, an assay with a probe only where its probe binds within; the same rules for a sample's contigs and for the reads and extended reads FASTQ mode searches, which are given as `Hits`, not as samples. `Products.ofRun` makes the run's rows, in report order, once: the report file, the HTML report and the gel show these |
 | `ReportRow` | One product as the report lists it (amplicon, primers, mismatches, probe); passed between the steps of a run, and turned into TSV columns only when the report is written |
 | `ReadLevelCaller` | FASTQ mode: calls amplicons on baited reads treated as tiny contigs, one call per product size, with the support rules (≥ 2 fragments, `--read-min-fraction` of the informative ones: reads carrying a primer at the product's locus) |
 | `ReadExtensionCaller` | FASTQ mode: for assays in no contig and in no read, picks the primer-carrying reads to extend and finds products on the extended reads (at least 2 reads seeded from each primer), reported when `PairSupport` confirms them |
@@ -83,7 +83,7 @@ The files are written and read by `ca.canada.inspection.report`:
 
 | Class | Responsibility |
 |---|---|
-| `ConsolidatedReport` | Writes `report.tsv` (standard and qPCR modes) from `Products` and the rows called from reads |
+| `ConsolidatedReport` | Writes the run's rows as `report.tsv` (standard and qPCR modes); it finds nothing |
 | `ReportTsv` | Reads a `report.tsv` back into `ReportRow`s, by column name, for the gel and a past run opened in the application (refusing a file that is not a report) |
 | `HtmlReport` | Writes the self-contained HTML report from the run's `ReportRow`s (the verdict of each sample and assay from `pcr.AssayVerdict`): sample-by-assay grid, per-assay summary, amplicon table; its style and script are the resources `report.css` and `report.js` |
 | `FastqDiagnosticsReport` | Writes `report_fastq_diagnostics.tsv` from the `FastqDiagnostics` findings |
@@ -116,7 +116,7 @@ The gel viewer (`InteractiveGelViewer`, one gel of up to 100 samples at a time, 
 | `GelPicture` | A gel as a picture to keep, at its own size and without the window's outlines: the `GelScene` of a page and its image on a canvas. The `--gel` files and the window's Save PNG, SVG and PDF all come from it |
 | `SyntheticGelImage` | The `--gel` PNG files: each gel of the run drawn by `GelPicture`, without a window |
 
-`BlastResult` (in `model`) carries full alignment context (strand, subject coordinates, aligned sequences) and computes the 3'-end mismatch counts and weighted penalties. The rules themselves are documented on the [Amplicon Calling](Amplicon-Calling) page, and covered by unit tests under `src/test/java`. `EndToEndTest` runs whole runs on the five-isolate example with the BLAST+ and BBTools of the checkout.
+`BlastResult` (in `model`) carries full alignment context (strand, subject coordinates, aligned sequences) and computes the mismatch counts (`primerMismatches`, as `-m` and the report count them; `alignedMismatches`, as a probe's budget does), the 3'-end mismatch counts and weighted penalties. The rules themselves are documented on the [Amplicon Calling](Amplicon-Calling) page, and covered by unit tests under `src/test/java`. `EndToEndTest` runs whole runs on the five-isolate example with the BLAST+ and BBTools of the checkout.
 
 ## High-level layers
 

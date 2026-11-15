@@ -1,12 +1,11 @@
 package ca.canada.inspection.pipeline;
 
+import ca.canada.inspection.model.Hits;
 import ca.canada.inspection.model.Sample;
 import ca.canada.inspection.pcr.AmpliconOptions;
 import ca.canada.inspection.pcr.BlastHits;
-import ca.canada.inspection.pcr.BlastHitParser;
 import ca.canada.inspection.pcr.PairSupport;
 import ca.canada.inspection.pcr.PrimerPanel;
-import ca.canada.inspection.pcr.QueryTemplates;
 import ca.canada.inspection.pcr.ReadExtensionCaller.Outcome;
 import ca.canada.inspection.pcr.ReadExtensionCaller.Product;
 import ca.canada.inspection.pcr.ReadExtensionCaller.Seed;
@@ -159,8 +158,8 @@ public final class ReadExtensionStage {
         ReadLevelStage.runBlast(settings.search(), settings.search().threads(), extendedFile, hitsFile);
         BlastTsv.prependHeader(hitsFile);
 
-        Map<String, Outcome> sampleOutcomes = checkAgainstReadPairs(settings, ReadExtensionCaller.evaluate(
-                extendedSample(name, hitsFile, extendedFile, lengths, primers, options,
+        Map<String, Outcome> sampleOutcomes = checkAgainstReadPairs(settings, ReadExtensionCaller.evaluate(name,
+                extendedHits(name, hitsFile, extendedFile, lengths, primers, options,
                         settings.search().monitor()::warning), lengths, seeds, primers, options, reach,
                 known),
                 extendedFile, files, sample);
@@ -327,18 +326,17 @@ public final class ReadExtensionStage {
     }
 
     /**
-     * The extended reads as a pseudo-sample, with the accepted primer hits attached.
+     * The accepted primer hits on the extended reads of sample {@code name}.
      *
      * @param extendedFile the FASTA of extended reads BLAST searched: trimmed hit ends are
      *                     compared with it (see TrimmedEnds), as for contigs and reads
      */
-    static Sample extendedSample(String name, Path hitsFile, Path extendedFile, Map<String, Integer> lengths,
-                                 PrimerPanel primers, AmpliconOptions options, Consumer<String> warning) {
-        Sample extended = new Sample();
-        extended.setName(name);
-        lengths.keySet().forEach(id -> extended.addContig(id, ""));
+    static Hits extendedHits(String name, Path hitsFile, Path extendedFile, Map<String, Integer> lengths,
+                             PrimerPanel primers, AmpliconOptions options, Consumer<String> warning) {
+        Hits extended = new Hits();
+        lengths.keySet().forEach(id -> extended.describe(id, ""));
         String missing = BlastHits.missingWarning(
-                BlastHits.read(hitsFile, List.of(extendedFile), extended, primers, options), List.of(extendedFile));
+                BlastHits.read(hitsFile, List.of(extendedFile), name, extended, primers, options), List.of(extendedFile));
         if (!missing.isEmpty()) {
             warning.accept(missing);
         }

@@ -204,7 +204,7 @@ class ReadLevelCallerTest {
             }
             sequences.put(read, read(i <= 2 ? FLANK : afterPrimer));
         }
-        return ReadLevelCaller.evaluate(reads, lengths, Map.of(), PCR_PRIMERS, DEFAULTS,
+        return ReadLevelCaller.evaluate(reads.getName(), reads.hits(), lengths, Map.of(), PCR_PRIMERS, DEFAULTS,
                 ReadLevelCaller.DEFAULT_MIN_SUPPORT_FRACTION, ids -> sequences).products("assay").getFirst();
     }
 
@@ -301,7 +301,7 @@ class ReadLevelCallerTest {
             sequences.put(read, read(i <= 6 ? FLANK : OTHER));
         }
 
-        List<ReadCall> products = ReadLevelCaller.evaluate(reads, lengths, Map.of(), PCR_PRIMERS, DEFAULTS,
+        List<ReadCall> products = ReadLevelCaller.evaluate(reads.getName(), reads.hits(), lengths, Map.of(), PCR_PRIMERS, DEFAULTS,
                 ReadLevelCaller.DEFAULT_MIN_SUPPORT_FRACTION, ids -> sequences).products("assay");
 
         assertEquals(2, products.size());

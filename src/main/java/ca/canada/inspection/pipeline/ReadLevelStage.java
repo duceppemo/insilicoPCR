@@ -1,12 +1,11 @@
 package ca.canada.inspection.pipeline;
 
+import ca.canada.inspection.model.Hits;
 import ca.canada.inspection.model.Sample;
 import ca.canada.inspection.pcr.AmpliconOptions;
 import ca.canada.inspection.pcr.BlastHits;
-import ca.canada.inspection.pcr.BlastHitParser;
 import ca.canada.inspection.pcr.PrimerPanel;
 import ca.canada.inspection.pcr.ReadLevelCaller;
-import ca.canada.inspection.pcr.QueryTemplates;
 import ca.canada.inspection.pcr.ReadLevelCaller.ReadEvidence;
 import ca.canada.inspection.util.SequenceFileUtils;
 
@@ -113,15 +112,15 @@ public final class ReadLevelStage {
     static ReadEvidence callFromHits(String name, Path hitsFile, Path fasta, ReadSet reads,
                                      PrimerPanel primers, AmpliconOptions options,
                                      double minSupportFraction, Consumer<String> warning) {
-        Sample readSample = new Sample();
-        readSample.setName(name);
-        reads.descriptions().forEach(readSample::addContig);
-        String missing = BlastHits.missingWarning(BlastHits.read(hitsFile, List.of(fasta), readSample, primers, options),
-                List.of(fasta));
+        // The reads' hits, not a sample: the sample is the one of its own name, with its files.
+        Hits readHits = new Hits();
+        reads.descriptions().forEach(readHits::describe);
+        String missing = BlastHits.missingWarning(
+                BlastHits.read(hitsFile, List.of(fasta), name, readHits, primers, options), List.of(fasta));
         if (!missing.isEmpty()) {
             warning.accept(missing);
         }
-        return ReadLevelCaller.evaluate(readSample, reads.lengths(), reads.fragments(), primers, options,
+        return ReadLevelCaller.evaluate(name, readHits, reads.lengths(), reads.fragments(), primers, options,
                 minSupportFraction, readIds -> readSequences(fasta, readIds));
     }
 

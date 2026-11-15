@@ -45,8 +45,7 @@ class PreviousRunTest {
     }
 
     private Sample sample(String name, String... files) throws IOException {
-        Sample sample = new Sample();
-        sample.setName(name);
+        Sample sample = new Sample(name);
         for (String file : files) {
             sample.addFile(Files.writeString(reads.resolve(file), ""));
         }

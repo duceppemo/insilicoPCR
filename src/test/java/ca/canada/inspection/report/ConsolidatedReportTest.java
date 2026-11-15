@@ -4,6 +4,7 @@ import ca.canada.inspection.model.Sample;
 import ca.canada.inspection.pcr.AmpliconOptions;
 import ca.canada.inspection.pcr.ExpectedSizes;
 import ca.canada.inspection.pcr.PrimerPanel;
+import ca.canada.inspection.pcr.Products;
 import ca.canada.inspection.pcr.ReportRow;
 import ca.canada.inspection.pcr.TestRows;
 import ca.canada.inspection.pcr.TestHits;
@@ -29,8 +30,7 @@ class ConsolidatedReportTest {
     Path tempDir;
 
     private static Sample sampleWithHits() {
-        Sample sample = new Sample();
-        sample.setName("sampleA");
+        Sample sample = new Sample("sampleA");
         sample.setFileType(Sample.FileType.FASTA);
         sample.addContig("contig1", "chromosome");
         // Productive pair: 500 bp product.
@@ -46,7 +46,7 @@ class ConsolidatedReportTest {
         Map<String, Sample> samples = new HashMap<>(Map.of("sampleA", sampleWithHits()));
         PrimerPanel primers = PrimerPanel.of(Map.of("assay-F", PRIMER_20, "assay-R", PRIMER_20));
 
-        Path report = ConsolidatedReport.write(tempDir, samples, primers, DEFAULTS);
+        Path report = ConsolidatedReport.write(tempDir, Products.ofRun(samples, primers, DEFAULTS, Map.of()), primers);
         List<String> lines = Files.readAllLines(report);
 
         assertEquals(2, lines.size(), "header + one amplicon row expected, got: " + lines);
@@ -73,7 +73,7 @@ class ConsolidatedReportTest {
         PrimerPanel primers = PrimerPanel.of(Map.of(
                 "assay-F", PRIMER_20, "assay-R", PRIMER_20, "assay-P", PRIMER_20));
 
-        Path report = ConsolidatedReport.write(tempDir, samples, primers, DEFAULTS);
+        Path report = ConsolidatedReport.write(tempDir, Products.ofRun(samples, primers, DEFAULTS, Map.of()), primers);
         List<String> lines = Files.readAllLines(report);
 
         assertEquals(2, lines.size());
@@ -92,7 +92,7 @@ class ConsolidatedReportTest {
         PrimerPanel primers = PrimerPanel.of(Map.of(
                 "assay-F", PRIMER_20, "assay-R", PRIMER_20, "assay-P", PRIMER_20));
 
-        Path report = ConsolidatedReport.write(tempDir, samples, primers, DEFAULTS);
+        Path report = ConsolidatedReport.write(tempDir, Products.ofRun(samples, primers, DEFAULTS, Map.of()), primers);
         assertEquals(1, Files.readAllLines(report).size(), "only the header is expected");
     }
 
@@ -108,7 +108,7 @@ class ConsolidatedReportTest {
                 "assay-F", PRIMER_20, "assay-R", PRIMER_20,
                 "taq-F", PRIMER_20, "taq-R", PRIMER_20, "taq-P", PRIMER_20));
 
-        Path report = ConsolidatedReport.write(tempDir, samples, primers, DEFAULTS);
+        Path report = ConsolidatedReport.write(tempDir, Products.ofRun(samples, primers, DEFAULTS, Map.of()), primers);
         List<String> lines = Files.readAllLines(report);
 
         assertEquals(3, lines.size(), "header + PCR row + qPCR row expected, got: " + lines);
@@ -135,7 +135,7 @@ class ConsolidatedReportTest {
         PrimerPanel primers = PrimerPanel.of(Map.of(
                 "assay-F", PRIMER_20, "assay-R", PRIMER_20, "assay-P", PRIMER_20));
 
-        Path report = ConsolidatedReport.write(tempDir, samples, primers, DEFAULTS);
+        Path report = ConsolidatedReport.write(tempDir, Products.ofRun(samples, primers, DEFAULTS, Map.of()), primers);
         assertEquals(1, Files.readAllLines(report).size(), "only the header is expected");
     }
 
@@ -144,8 +144,8 @@ class ConsolidatedReportTest {
         Map<String, Sample> samples = new HashMap<>(Map.of("sampleA", sampleWithHits()));
         PrimerPanel primers = PrimerPanel.of(Map.of("assay-F", PRIMER_20, "assay-R", PRIMER_20));
 
-        Path first = ConsolidatedReport.write(tempDir, samples, primers, DEFAULTS);
-        Path second = ConsolidatedReport.write(tempDir, samples, primers, DEFAULTS);
+        Path first = ConsolidatedReport.write(tempDir, Products.ofRun(samples, primers, DEFAULTS, Map.of()), primers);
+        Path second = ConsolidatedReport.write(tempDir, Products.ofRun(samples, primers, DEFAULTS, Map.of()), primers);
 
         assertEquals("report.tsv", first.getFileName().toString());
         assertEquals("report(1).tsv", second.getFileName().toString());
@@ -155,15 +155,14 @@ class ConsolidatedReportTest {
     }
     @Test
     void degeneratePrimerVariantsPairAcrossSuffixes() throws IOException {
-        Sample sample = new Sample();
-        sample.setName("sampleA");
+        Sample sample = new Sample("sampleA");
         sample.setFileType(Sample.FileType.FASTA);
         sample.addBlastResult("assay-F_0", TestHits.plusHit("assay-F_0", "contig1", 101));
         sample.addBlastResult("assay-R_1", TestHits.minusHit("assay-R_1", "contig1", 581));
         Map<String, Sample> samples = new HashMap<>(Map.of("sampleA", sample));
         PrimerPanel primers = PrimerPanel.of(Map.of("assay-F_0", PRIMER_20, "assay-R_1", PRIMER_20));
 
-        Path report = ConsolidatedReport.write(tempDir, samples, primers, DEFAULTS);
+        Path report = ConsolidatedReport.write(tempDir, Products.ofRun(samples, primers, DEFAULTS, Map.of()), primers);
         List<String> lines = Files.readAllLines(report);
         assertEquals(2, lines.size());
         String[] row = lines.get(1).split("\t", -1);
@@ -180,19 +179,18 @@ class ConsolidatedReportTest {
         Map<String, Sample> samples = new HashMap<>(Map.of("sampleA", sample));
         PrimerPanel primers = PrimerPanel.of(Map.of("assay-F", PRIMER_20, "assay-R", PRIMER_20));
 
-        Path report = ConsolidatedReport.write(tempDir, samples, primers, DEFAULTS);
+        Path report = ConsolidatedReport.write(tempDir, Products.ofRun(samples, primers, DEFAULTS, Map.of()), primers);
         assertEquals(2, Files.readAllLines(report).size(), "only the valid assay row is expected");
     }
 
     @Test
     void samplesWithoutHitsProduceNoRows() throws IOException {
-        Sample silent = new Sample();
-        silent.setName("silent");
+        Sample silent = new Sample("silent");
         silent.setFileType(Sample.FileType.FASTA);
         Map<String, Sample> samples = new HashMap<>(Map.of("silent", silent, "sampleA", sampleWithHits()));
         PrimerPanel primers = PrimerPanel.of(Map.of("assay-F", PRIMER_20, "assay-R", PRIMER_20));
 
-        Path report = ConsolidatedReport.write(tempDir, samples, primers, DEFAULTS);
+        Path report = ConsolidatedReport.write(tempDir, Products.ofRun(samples, primers, DEFAULTS, Map.of()), primers);
         List<String> lines = Files.readAllLines(report);
         assertEquals(2, lines.size());
         assertTrue(lines.get(1).startsWith("sampleA\t"));
@@ -212,7 +210,7 @@ class ConsolidatedReportTest {
         ExpectedSizes sizes = ExpectedSizes.fromHeaders(Map.of("assay-F", "size=500"));
 
         List<String> lines = Files.readAllLines(
-                ConsolidatedReport.write(tempDir, samples, PrimerPanel.of(primers.sequences(), sizes), DEFAULTS, Map.of()));
+                ConsolidatedReport.write(tempDir, Products.ofRun(samples, PrimerPanel.of(primers.sequences(), sizes), DEFAULTS, Map.of()), PrimerPanel.of(primers.sequences(), sizes)));
 
         assertEquals(4, lines.size(), "header + three rows expected, got: " + lines);
         assertTrue(lines.get(0).endsWith("Strand\tForward5PrimeUnaligned\tReverse5PrimeUnaligned\tSizeCheck"), lines.get(0));
@@ -225,7 +223,7 @@ class ConsolidatedReportTest {
         assertEquals(Map.of("assay:500", "target", "assay:60", "unexpected", "plain:200", ""), labelBySize);
 
         // Without a declaration the report is as before: same rows, no extra column.
-        List<String> plain = Files.readAllLines(ConsolidatedReport.write(tempDir, samples, primers, DEFAULTS));
+        List<String> plain = Files.readAllLines(ConsolidatedReport.write(tempDir, Products.ofRun(samples, primers, DEFAULTS, Map.of()), primers));
         assertEquals(4, plain.size());
         assertTrue(plain.get(0).endsWith("\tStrand\tForward5PrimeUnaligned\tReverse5PrimeUnaligned"), plain.get(0));
         for (int i = 1; i < lines.size(); i++) {
@@ -237,8 +235,7 @@ class ConsolidatedReportTest {
     void basesLeftUnalignedAtAPrimers5PrimeEndAreReportedPerPrimer() throws IOException {
         // The forward primer is held by its last 12 bases only: BLAST left its first 8 out of the
         // alignment, which --5p-truncation 8 accepts and the mismatch columns do not count.
-        Sample sample = new Sample();
-        sample.setName("sampleA");
+        Sample sample = new Sample("sampleA");
         sample.setFileType(Sample.FileType.FASTA);
         sample.addContig("contig1", "chromosome");
         sample.addBlastResult("assay-F", TestHits.truncatedPlusHit("assay-F", "contig1", 109, 9, 20, PRIMER_20));
@@ -246,9 +243,7 @@ class ConsolidatedReportTest {
         AmpliconOptions lenient = new AmpliconOptions(0, 0, AmpliconOptions.DEFAULT_THREE_PRIME_WINDOW,
                 AmpliconOptions.DEFAULT_THREE_PRIME_PENALTY, 8, 0, 5000);
 
-        List<String> lines = Files.readAllLines(ConsolidatedReport.write(tempDir,
-                new HashMap<>(Map.of("sampleA", sample)), PrimerPanel.of(Map.of("assay-F", PRIMER_20, "assay-R", PRIMER_20)),
-                lenient));
+        List<String> lines = Files.readAllLines(ConsolidatedReport.write(tempDir, Products.ofRun(new HashMap<>(Map.of("sampleA", sample)), PrimerPanel.of(Map.of("assay-F", PRIMER_20, "assay-R", PRIMER_20)), lenient, Map.of()), PrimerPanel.of(Map.of("assay-F", PRIMER_20, "assay-R", PRIMER_20))));
 
         assertEquals(2, lines.size(), "the truncated primer still gives its product: " + lines);
         List<String> header = List.of(lines.get(0).split("\t", -1));
@@ -271,8 +266,7 @@ class ConsolidatedReportTest {
         ReportRow readRow = TestRows.of("sampleA", "assay", 11, 80, 70, "read_1", "FASTQ read-level call: ...",
                 "assay-F", "assay-R", 0, 0, 0, 0, '+', new ReportRow.Probe("assay-P", 35, 54, 0), 0, 0);
 
-        List<String> lines = Files.readAllLines(ConsolidatedReport.write(tempDir, samples,
-                PrimerPanel.of(primers.sequences(), sizes), DEFAULTS, Map.of("sampleA", List.of(readRow))));
+        List<String> lines = Files.readAllLines(ConsolidatedReport.write(tempDir, Products.ofRun(samples, PrimerPanel.of(primers.sequences(), sizes), DEFAULTS, Map.of("sampleA", List.of(readRow))), PrimerPanel.of(primers.sequences(), sizes)));
 
         assertTrue(lines.get(0).endsWith("ProbeMismatches\tForward5PrimeUnaligned\tReverse5PrimeUnaligned\tSizeCheck"), lines.get(0));
         assertEquals(3, lines.size());

@@ -61,10 +61,10 @@ public final class TrimmedEnds {
             return false;
         }
         if (PrimerId.isProbe(hit.subjectID())) {
-            return hit.mismatch() + hit.gaps() <= options.maxProbeMismatches();
+            return hit.alignedMismatches() <= options.maxProbeMismatches();
         }
         // Comparing can only lower the count of trimmed 3' bases; the 5' rule is unchanged.
-        return hit.mismatch() + hit.gaps() <= options.maxTotalMismatches()
+        return hit.alignedMismatches() <= options.maxTotalMismatches()
                 && trimmedFive <= options.maxFivePrimeTruncation();
     }
 

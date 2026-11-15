@@ -1,6 +1,7 @@
 package ca.canada.inspection.pcr;
 
 import ca.canada.inspection.model.BlastResult;
+import ca.canada.inspection.model.Hits;
 import ca.canada.inspection.model.Sample;
 
 import java.util.ArrayList;
@@ -14,7 +15,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
@@ -243,13 +243,13 @@ public final class ReadLevelCaller {
      * @param sequences          read sequences, used to tell reads at a product's locus from
      *                           reads carrying a primer elsewhere in the genome
      */
-    public static ReadEvidence evaluate(Sample searched, Map<String, Integer> readLengths,
+    public static ReadEvidence evaluate(String sampleName, Hits searched, Map<String, Integer> readLengths,
                                         Map<String, String> fragments, PrimerPanel primers,
                                         AmpliconOptions options, double minSupportFraction,
                                         ReadSequences sequences) {
         requireFraction(minSupportFraction);
-        Sample reads = withContainedHits(searched, readLengths);
-        Map<String, List<BlastResult>> hits = reads.blastResults();
+        Hits reads = withContainedHits(searched, readLengths);
+        Map<String, List<BlastResult>> hits = reads.byOligo();
 
         Map<String, Set<String>> readsWithOligo = new HashMap<>();
         hits.forEach((oligo, list) -> {
@@ -259,7 +259,7 @@ public final class ReadLevelCaller {
         });
 
         Map<String, List<ReportRow>> rowsByAssay = new TreeMap<>();
-        for (ReportRow row : Products.of(reads, primers, options)) {
+        for (ReportRow row : Products.of(sampleName, reads, primers, options)) {
             rowsByAssay.computeIfAbsent(row.assay(), ignored -> new ArrayList<>()).add(row);
         }
         Map<String, PrimerId.Assay> groups = primers.assays();
@@ -329,20 +329,11 @@ public final class ReadLevelCaller {
      * read, those bases are more often simply beyond the read end, and the amplicon would
      * then be clipped and undersized. A read-level call must hold the whole product.
      */
-    static Sample withContainedHits(Sample reads, Map<String, Integer> readLengths) {
-        Sample contained = new Sample();
-        contained.setName(reads.getName());
-        contained.setFileType(reads.getFileType());
-        reads.contigs().forEach(contained::addContig);
-        reads.blastResults().forEach((oligo, list) -> {
-            for (BlastResult hit : list) {
-                Integer length = readLengths.get(hit.queryID());
-                if (length != null && primerStart(hit) >= 1 && primerEnd(hit) <= length) {
-                    contained.addBlastResult(oligo, hit);
-                }
-            }
+    static Hits withContainedHits(Hits reads, Map<String, Integer> readLengths) {
+        return reads.filtered(hit -> {
+            Integer length = readLengths.get(hit.queryID());
+            return length != null && primerStart(hit) >= 1 && primerEnd(hit) <= length;
         });
-        return contained;
     }
 
     /** 1-based read position of the full primer's leftmost base. */
@@ -358,13 +349,13 @@ public final class ReadLevelCaller {
     }
 
     /** The hits of an assay's forward and reverse primers (not its probe). */
-    private static List<BlastResult> pcrPrimerHits(Sample reads, PrimerId.Assay group) {
+    private static List<BlastResult> pcrPrimerHits(Hits reads, PrimerId.Assay group) {
         if (group == null) {
             return List.of();
         }
         List<String> primers = new ArrayList<>(group.forward());
         primers.addAll(group.reverse());
-        return reads.hitsOf(primers);
+        return reads.of(primers);
     }
 
     /** Rejects a support fraction outside 0 to 1. */

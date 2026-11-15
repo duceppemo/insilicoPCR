@@ -136,8 +136,7 @@ public final class SequenceFileUtils {
         Path normalized = file.toAbsolutePath().normalize();
         String name = sampleName(normalized);
         Sample sample = samples.computeIfAbsent(name, key -> {
-            Sample created = new Sample();
-            created.setName(key);
+            Sample created = new Sample(key);
             created.setFileType(fileType(normalized));
             return created;
         });

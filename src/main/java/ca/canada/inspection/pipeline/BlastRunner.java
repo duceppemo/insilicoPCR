@@ -1,7 +1,6 @@
 package ca.canada.inspection.pipeline;
 
 import ca.canada.inspection.model.Sample;
-import ca.canada.inspection.pcr.BlastReports;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -32,10 +31,10 @@ public final class BlastRunner {
 
     private static void blast(PipelineContext context, Sample sample) {
         // The report is named after the sample, not the file, so that it is read back for that
-        // sample whatever the file is called (BlastReports.attachHits).
+        // sample whatever the file is called (SampleFiles.blastReport).
         Path query = query(sample);
         context.directories().createSampleDirectory(sample.getName());
-        Path blastTsv = BlastReports.reportFile(context.directories().detailed(), sample.getName());
+        Path blastTsv = context.directories().sample(sample.getName()).blastReport();
         Path blastOutput = blastTsv.getParent();
 
         try (BlastQuery blastQuery = BlastQuery.of(query, blastOutput)) {

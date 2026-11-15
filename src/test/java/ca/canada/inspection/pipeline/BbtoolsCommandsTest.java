@@ -79,24 +79,6 @@ class BbtoolsCommandsTest {
     }
 
     @Test
-    void sampleFileNamesFollowTheDetailedReportLayout() {
-        Path dir = Path.of("detailed_report", "s");
-        assertEquals(dir.resolve("s_targetMatches.fastq.gz"), BbtoolsCommands.targetMatches(dir, "s"));
-        assertEquals(dir.resolve("s_doubleTargetMatches.fastq.gz"), BbtoolsCommands.doubleTargetMatches(dir, "s"));
-        assertEquals(dir.resolve("s_assembly.fasta"), BbtoolsCommands.assembly(dir, "s"));
-        assertEquals(dir.resolve("s_merged.fastq.gz"), BbtoolsCommands.mergedReads(dir, "s"));
-        assertEquals(dir.resolve("s_unmerged.fastq.gz"), BbtoolsCommands.unmergedReads(dir, "s"));
-        assertEquals(dir.resolve("s_baitedReads.fasta"), BbtoolsCommands.baitedReadsFasta(dir, "s"));
-        // Must not end in .tsv, or it would be parsed as a sample's contig hits.
-        assertEquals(dir.resolve("s_baitedReads.blast.txt"), BbtoolsCommands.baitedReadsHits(dir, "s"));
-        assertEquals(dir.resolve("s_extensionSeeds.fasta"), BbtoolsCommands.extensionSeeds(dir, "s"));
-        assertEquals(dir.resolve("s_extendedReads.fasta"), BbtoolsCommands.extendedReads(dir, "s"));
-        assertEquals(dir.resolve("s_extendedReads.blast.txt"), BbtoolsCommands.extendedReadsHits(dir, "s"));
-        assertEquals(dir.resolve("s_extensionCandidates.fasta"), BbtoolsCommands.extensionCandidates(dir, "s"));
-        assertEquals(dir.resolve("s_extensionCandidateReads.fastq.gz"), BbtoolsCommands.candidateReads(dir, "s"));
-    }
-
-    @Test
     void readsOfCandidateProductsAreFetchedFromTheInputWithTheirMates() {
         List<String> command = commands.recruit(Path.of("candidates.fasta"), paired, Path.of("reads.fq.gz"), 31).arguments();
 

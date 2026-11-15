@@ -82,18 +82,18 @@ public final class ReadLevelStage {
         Map<String, ReadEvidence> evidence = new ConcurrentHashMap<>();
         ParallelStageRunner.run("Read-level amplicon search", fastq, settings.threads(), settings.monitor(),
                 sample -> evidence.put(sample.getName(), searchSample(settings, blastThreads,
-                        detailedDir.resolve(sample.getName()), sample, primers, options)),
+                        SampleFiles.of(detailedDir, sample.getName()), sample, primers, options)),
                 ParallelStageRunner.Progress.NONE);
         return Map.copyOf(evidence);
     }
 
-    private static ReadEvidence searchSample(Settings settings, int blastThreads, Path sampleDir, Sample sample,
+    private static ReadEvidence searchSample(Settings settings, int blastThreads, SampleFiles files, Sample sample,
                                              PrimerPanel primers, AmpliconOptions options) {
         String name = sample.getName();
-        Path fasta = BbtoolsCommands.baitedReadsFasta(sampleDir, name);
-        Path hitsFile = BbtoolsCommands.baitedReadsHits(sampleDir, name);
+        Path fasta = files.baitedReadsFasta();
+        Path hitsFile = files.baitedReadsHits();
         boolean paired = sample.files().size() == 2;
-        ReadSet reads = writeReadsFasta(readInputs(sampleDir, name, paired), paired, fasta);
+        ReadSet reads = writeReadsFasta(readInputs(files, paired), paired, fasta);
         if (reads.lengths().isEmpty()) {
             deleteQuietly(hitsFile); // no stale hits from an earlier run in this folder
             return new ReadEvidence(Map.of(), Map.of(), Map.of());
@@ -172,11 +172,11 @@ public final class ReadLevelStage {
      * ran this run), the first-pass reads otherwise. Decided from the input, not from
      * which files exist: a reused output folder may hold an earlier run's merge output.
      */
-    static List<Path> readInputs(Path sampleDir, String name, boolean paired) {
+    static List<Path> readInputs(SampleFiles files, boolean paired) {
         if (paired) {
-            return List.of(BbtoolsCommands.mergedReads(sampleDir, name), BbtoolsCommands.unmergedReads(sampleDir, name));
+            return List.of(files.mergedReads(), files.unmergedReads());
         }
-        return List.of(BbtoolsCommands.targetMatches(sampleDir, name));
+        return List.of(files.targetMatches());
     }
 
     /**

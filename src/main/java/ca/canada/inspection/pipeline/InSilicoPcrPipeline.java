@@ -67,7 +67,7 @@ public final class InSilicoPcrPipeline {
 
         BlastRunner.run(context);
         ContigService.load(context);
-        BlastReports.attachHits(directories.detailed(), sampleMap, context.primers(),
+        BlastReports.attachHits(name -> directories.sample(name).blastReport(), sampleMap, context.primers(),
                 config.ampliconOptions(), monitor::warning);
         monitor.info("Completed BLAST");
         done(Step.BLAST);

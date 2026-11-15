@@ -34,7 +34,51 @@ public record AssayVerdict(Kind kind, String note) {
         /** No product, and the reads could not have shown one of the declared size (FASTQ input). */
         UNCHECKED,
         /** No product. */
-        NONE
+        NONE;
+
+        /** How the kinds are grouped wherever they are counted or listed together. */
+        public enum Group {
+            /** A product that makes the sample positive for the assay. */
+            POSITIVE,
+            /** Products, none of the target size. */
+            OTHER_SIZE,
+            /** A product the evidence shows but that is not reported. */
+            WITHHELD,
+            /** No product reported or withheld. */
+            NEGATIVE
+        }
+
+        public Group group() {
+            return switch (this) {
+                case TARGET, AMPLIFIED -> Group.POSITIVE;
+                case OTHER, UNEXPECTED -> Group.OTHER_SIZE;
+                case INCONCLUSIVE, UNCONFIRMED -> Group.WITHHELD;
+                case ACROSS_ENDS, UNCHECKED, NONE -> Group.NEGATIVE;
+            };
+        }
+
+        /** Whether the sample counts as positive for the assay. */
+        public boolean isPositive() {
+            return group() == Group.POSITIVE;
+        }
+
+        /**
+         * Whether a product of this size label decides this kind, so that its size is the one
+         * shown: every product of an assay that declares no size ({@code label} is then
+         * {@code null}), the products of the matching label otherwise.
+         */
+        public boolean decidedBy(ExpectedSizes.Label label) {
+            return this == AMPLIFIED || (label != null && this == of(label));
+        }
+
+        /** The kind a product of this size label gives on its own. */
+        public static Kind of(ExpectedSizes.Label label) {
+            return switch (label) {
+                case TARGET -> TARGET;
+                case OTHER -> OTHER;
+                case UNEXPECTED -> UNEXPECTED;
+            };
+        }
     }
 
     /**
@@ -61,6 +105,7 @@ public record AssayVerdict(Kind kind, String note) {
         if (finding == null) {
             return new AssayVerdict(Kind.NONE, "");
         }
+        // Every status named: a new one must be placed here, not fall through to "no product".
         return switch (finding.status()) {
             case WEAK_READ_SUPPORT -> new AssayVerdict(Kind.INCONCLUSIVE, "Not reported: " + finding.readDetail());
             case EXTENSION_NOT_SUPPORTED_BY_PAIRS, EXTENSION_THROUGH_UNRESOLVED_REPEAT ->
@@ -69,7 +114,8 @@ public record AssayVerdict(Kind kind, String note) {
             case NOT_CLOSED_BY_EXTENSION ->
                     new AssayVerdict(Kind.NONE, "Both primers are in the reads: " + finding.readDetail());
             case NOT_IN_READS -> notInReads(assay, sizes, finding);
-            default -> new AssayVerdict(Kind.NONE, "");
+            // A called assay has a product row, decided above; only some primers in the reads is no product.
+            case CALLED_FROM_READS, CALLED_BY_EXTENSION, PARTIAL_BAIT -> new AssayVerdict(Kind.NONE, "");
         };
     }
 

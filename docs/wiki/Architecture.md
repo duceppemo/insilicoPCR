@@ -74,9 +74,9 @@ The pipeline delegates the scientific decisions to one JavaFX-free package:
 | `ReadLevelCaller` | FASTQ mode: calls amplicons on baited reads treated as tiny contigs, one call per product size, with the support rules (≥ 2 fragments, `--read-min-fraction` of the informative ones: reads carrying a primer at the product's locus) |
 | `ReadExtensionCaller` | FASTQ mode: for assays in no contig and in no read, picks the primer-carrying reads to extend and finds products on the extended reads (at least 2 reads seeded from each primer), reported when `PairSupport` confirms them |
 | `PairSupport` | FASTQ mode: checks a product found on extended reads against the sample's read pairs (every window inside enough fragments; no repeat longer than the window), so that a wrong turn through a repeat is not reported |
-| `FastqDiagnostics` | FASTQ mode: explains assays the mini-assembly did not report though their oligos are in the reads |
+| `FastqDiagnostics` | FASTQ mode: explains assays the mini-assembly did not report though their oligos are in the reads. Its statuses say which are called from reads and which withheld (`Status.isCalled`, `isWithheld`). Its `SPLIT_ACROSS_CONTIGS` means the primers hit the mini-assembly's contigs but never the same one, with each hit's distance to its contig end (measured as by `SplitAcrossContigs`); unlike the assemblies' "primers at contig ends", it does not require them to point off the ends |
 | `ExpectedSizes` | Product sizes declared in primer FASTA headers (`size=`, `other=`); labels report rows `target` / `other` / `unexpected` and never filters |
-| `AssayVerdict` | What a sample shows for an assay (target size, other product, seen in too few reads, primers at contig ends, ...), with why; the HTML report draws it |
+| `AssayVerdict` | What a sample shows for an assay (target size, other product, seen in too few reads, primers at contig ends, ...), with why; also which kinds count as positive, how they group (positive, other size, withheld, negative) and which product sizes decide each. The HTML report draws it and counts by these, with no rule of its own |
 | `SplitAcrossContigs` | Assemblies: assays without a product whose primers point off the ends of two contigs (or both ends of one), with the smallest product joining them would give |
 
 The files are written and read by `ca.canada.inspection.report`:

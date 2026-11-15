@@ -77,6 +77,17 @@ public final class FastqDiagnostics {
         public String description() {
             return description;
         }
+
+        /** The assay is reported from the reads: the report has its rows. */
+        public boolean isCalled() {
+            return this == CALLED_FROM_READS || this == CALLED_BY_EXTENSION;
+        }
+
+        /** The reads show a product that is not reported: too few reads, or read pairs that do not confirm it. */
+        public boolean isWithheld() {
+            return this == WEAK_READ_SUPPORT || this == EXTENSION_NOT_SUPPORTED_BY_PAIRS
+                    || this == EXTENSION_THROUGH_UNRESOLVED_REPEAT;
+        }
     }
 
     /** Why the mini-assembly did not report the assay. */
@@ -369,7 +380,7 @@ public final class FastqDiagnostics {
                     .append('(').append(hit.isPlusStrand() ? '+' : '-').append(')');
             Integer length = contigLengths.get(hit.queryID());
             if (length != null) {
-                int toEnd = hit.isPlusStrand() ? length - hit.qend() : hit.qstart() - 1;
+                int toEnd = SplitAcrossContigs.toEnd(hit, length);
                 part.append(", ").append(toEnd).append(" bp to contig end (contig ").append(length).append(" bp)");
             }
             parts.add(part.toString());

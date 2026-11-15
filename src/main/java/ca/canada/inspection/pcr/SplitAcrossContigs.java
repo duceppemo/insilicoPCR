@@ -126,8 +126,8 @@ public final class SplitAcrossContigs {
                 fromFivePrimeEnd(forward, forwardLength) + fromFivePrimeEnd(reverse, reverseLength), sameContig, probe);
     }
 
-    /** Contig bases past the primer's 3' end, in the direction it extends. */
-    private static int toEnd(BlastResult hit, int contigLength) {
+    /** Contig bases past the primer's 3' end, in the direction it extends (also in the FASTQ diagnostics). */
+    static int toEnd(BlastResult hit, int contigLength) {
         return hit.isPlusStrand() ? contigLength - hit.qend() : hit.qstart() - 1;
     }
 

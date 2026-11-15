@@ -1,5 +1,6 @@
 package ca.canada.inspection.pipeline;
 
+import ca.canada.inspection.pcr.FastqDiagnostics;
 import ca.canada.inspection.pcr.PrimerPanel;
 import ca.canada.inspection.pcr.ReadExtensionCaller;
 import ca.canada.inspection.pipeline.RunMonitor.Step;
@@ -229,6 +230,26 @@ class EndToEndTest {
         assertTrue(products(report(output)).stream().anyMatch(row -> row.startsWith("isolate_01 toxA 312 ")),
                 products(report(output)).toString());
         assertTrue(Files.readString(output.resolve("QAlog.txt")).contains("  Read extension (FASTQ, --read-extension): target"));
+        assertCalledAssaysAreReported(output);
+    }
+
+    /**
+     * The FASTQ diagnostics and the report decide separately whether an assay was called from the
+     * reads: the two must agree, or the diagnostics would say "called" for an assay with no row.
+     */
+    private static void assertCalledAssaysAreReported(Path output) throws IOException {
+        Path diagnostics = output.resolve("consolidated_report").resolve("report_fastq_diagnostics.tsv");
+        List<String> reported = products(report(output)).stream()
+                .map(row -> String.join(" ", List.of(row.split(" ")).subList(0, 2))).toList();
+        List<String> rows = lines(diagnostics);
+        List<String> header = List.of(rows.getFirst().split("\t", -1));
+        for (String row : rows.subList(1, rows.size())) {
+            String[] cells = row.split("\t", -1);
+            if (FastqDiagnostics.Status.valueOf(cells[header.indexOf("Status")]).isCalled()) {
+                String pair = cells[header.indexOf("Sample")] + " " + cells[header.indexOf("Gene")];
+                assertTrue(reported.contains(pair), pair + " is called in the diagnostics but has no row: " + reported);
+            }
+        }
     }
 
     @Test

@@ -57,6 +57,14 @@
   char <?>". Both now say what happened and what to type instead.
 - Application: a path pasted with its quotes, as Windows Explorer's **Copy as
   path** gives it, cleared the field; the quotes are now dropped.
+- Application on Windows: a path with a letter outside the computer's code page
+  (`数据`, `Δ`) failed at makeblastdb with "exit code 2"; the run now stops
+  before any program, naming the path and the letter. The programs' output in
+  the window and in `log.txt` is read in the code page they print in: a folder
+  such as `Résultats` showed as `R�sultats`.
+- Gel viewer: the window of a gel of one or two lanes was narrower than its
+  toolbar, and every toolbar label was cut short (`Save F…`, `Zo…`). The window
+  now opens at least as wide as the toolbar.
 - An output folder whose path holds a space (`C:\Users\Jane Doe\run`, `/data/my
   results`) stopped every run at `makeblastdb`: BLAST+ splits database paths at
   their spaces itself. The BLAST programs now run in the output folder and are

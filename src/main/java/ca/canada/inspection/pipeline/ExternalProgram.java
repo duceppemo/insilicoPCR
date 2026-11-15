@@ -106,10 +106,18 @@ final class ExternalProgram {
         }
     }
 
+    /**
+     * The encoding of what the programs print: on Windows, the computer's code page, in which BLAST+ and a
+     * Java runtime writing to a pipe both print, so that a path with an accent showed in the application's
+     * log as "R�sultats". Elsewhere UTF-8, as before.
+     */
+    static final java.nio.charset.Charset OUTPUT_ENCODING = AppPaths.isWindows() ? WindowsCodePage.system()
+            : StandardCharsets.UTF_8;
+
     /** Gives each line to {@code output}; whether one says the program ran out of memory. */
     private static boolean passLines(InputStream stream, Consumer<String> output) throws IOException {
         boolean saidOutOfMemory = false;
-        try (BufferedReader lines = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))) {
+        try (BufferedReader lines = new BufferedReader(new InputStreamReader(stream, OUTPUT_ENCODING))) {
             String line;
             while ((line = lines.readLine()) != null) {
                 output.accept(line);

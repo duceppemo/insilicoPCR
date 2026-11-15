@@ -29,23 +29,20 @@ public final class TrimmedEnds {
     private TrimmedEnds() {
     }
 
-    /**
-     * Bases of a query sequence (contig or read) starting at 1-based position
-     * {@code start}, and the length of the whole sequence.
-     */
-    public record Template(int start, CharSequence bases, int length) {
+    /** The bases of a whole query sequence (contig or read), position 1 first. */
+    public record Template(CharSequence bases) {
 
         /** A whole sequence. */
         public static Template whole(String sequence) {
-            return new Template(1, sequence, sequence.length());
+            return new Template(sequence);
         }
 
         boolean has(int position) {
-            return position >= start && position < start + bases.length() && position <= length;
+            return position >= 1 && position <= bases.length();
         }
 
         char base(int position) {
-            return Character.toUpperCase(bases.charAt(position - start));
+            return Character.toUpperCase(bases.charAt(position - 1));
         }
     }
 
@@ -55,17 +52,11 @@ public final class TrimmedEnds {
      * bases and would pass every rule the comparison cannot relax.
      */
     public static boolean needsTemplate(BlastResult hit, AmpliconOptions options) {
-        int trimmedFive = hit.fivePrimeUncovered();
-        int trimmedThree = hit.threePrimeUncovered();
-        if (trimmedFive + trimmedThree == 0 || hit.primerSeq() == null || hit.primerSeq().length() != hit.slen()) {
+        if (hit.fivePrimeUncovered() + hit.threePrimeUncovered() == 0 || hit.primerSeq() == null
+                || hit.primerSeq().length() != hit.slen()) {
             return false;
         }
-        if (PrimerId.isProbe(hit.subjectID())) {
-            return hit.alignedMismatches() <= options.maxProbeMismatches();
-        }
-        // Comparing can only lower the count of trimmed 3' bases; the 5' rule is unchanged.
-        return hit.alignedMismatches() <= options.maxTotalMismatches()
-                && trimmedFive <= options.maxFivePrimeTruncation();
+        return BlastHitParser.passesWhateverTheTrimmedBases(hit, options);
     }
 
     /**

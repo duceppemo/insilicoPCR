@@ -118,7 +118,7 @@ The gel viewer (`InteractiveGelViewer`, one gel of up to 100 samples at a time, 
 | `GelPicture` | A gel as a picture to keep, at its own size and without the window's outlines: the `GelScene` of a page and its image on a canvas. The `--gel` files and the window's Save PNG, SVG and PDF all come from it |
 | `SyntheticGelImage` | The `--gel` PNG files: each gel of the run drawn by `GelPicture`, without a window |
 
-`BlastResult` (in `model`) carries full alignment context (strand, subject coordinates, aligned sequences) and computes the mismatch counts (`primerMismatches`, as `-m` and the report count them; `alignedMismatches`, as a probe's budget does), the 3'-end mismatch counts and weighted penalties. The rules themselves are documented on the [Amplicon Calling](Amplicon-Calling) page, and covered by unit tests under `src/test/java`. `EndToEndTest` runs whole runs on the five-isolate example with the BLAST+ and BBTools of the checkout.
+`BlastResult` (in `model`) carries full alignment context (strand, subject coordinates, aligned sequences) and computes where the full primer lies (`fivePrimeTerminus`, `fullStart`, `fullEnd`, `toQueryEnd`), the mismatch counts (`primerMismatches`, as `-m` and the report count them; `alignedMismatches`, as a probe's budget does), the 3'-end mismatch counts and weighted penalties. The rules themselves are documented on the [Amplicon Calling](Amplicon-Calling) page, and covered by unit tests under `src/test/java`. `EndToEndTest` runs whole runs on the five-isolate example with the BLAST+ and BBTools of the checkout.
 
 ## How a run flows
 

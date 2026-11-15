@@ -38,8 +38,8 @@ class ContigServiceTest {
         ContigService.load(contextOf(samples));
 
         Map<String, String> expected = Map.of("contig_1", "chromosome", "contig_2", "", "contig_3", "plasmid");
-        assertEquals(expected, samples.get("plain").contigs());
-        assertEquals(expected, samples.get("zipped").contigs());
+        assertEquals(expected, samples.get("plain").hits().descriptions());
+        assertEquals(expected, samples.get("zipped").hits().descriptions());
     }
 
     @Test
@@ -51,7 +51,7 @@ class ContigServiceTest {
 
         ContigService.load(contextOf(samples));
 
-        assertEquals(Map.of("contig_9", "cov=3"), reads.contigs());
+        assertEquals(Map.of("contig_9", "cov=3"), reads.hits().descriptions());
     }
 
     @Test

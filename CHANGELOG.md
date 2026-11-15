@@ -283,6 +283,15 @@
   sequence-file extensions are each written once; unused code is gone
   (`BlastResult` getters and its sample name, two `HtmlReport.render`
   overloads, test-only overloads and constants).
+- Code: where a primer's full length lies on its sequence is written once
+  (`BlastResult.fivePrimeTerminus`, `fullStart`, `fullEnd`, `toQueryEnd`), for
+  the product's ends, the reads that hold a product and the products across
+  contig ends; the rules that comparing BLAST's trimmed bases cannot relax are
+  one method, which decides both when to compare and whether a hit passes. The
+  FASTQ diagnostics decide each status from the products the read extension
+  adds or withholds, not from whether their description is empty. A sample's
+  hits are reached one way (`Sample.hits()`), and the products worked out from
+  them are kept under typed keys.
 
 ## 0.15.1 (2026-11-14)
 

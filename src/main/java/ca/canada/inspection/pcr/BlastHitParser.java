@@ -99,23 +99,33 @@ public final class BlastHitParser {
 
     /** Applies the acceptance rules to an already-parsed hit. */
     public static boolean accepts(BlastResult hit, AmpliconOptions options) {
+        if (!passesWhateverTheTrimmedBases(hit, options)) {
+            return false;
+        }
         if (PrimerId.isProbe(hit.subjectID())) {
             // Probes anneal without extension: no 3'-specific rules. Bases left
             // unaligned here are bases the template does not have (or that were not
             // looked up); trimmed bases the template has were already compared.
-            int uncovered = hit.fivePrimeUncovered() + hit.threePrimeUncovered();
-            return hit.alignedMismatches() <= options.maxProbeMismatches()
-                    && uncovered <= MAX_PROBE_END_UNCOVERED;
+            return hit.fivePrimeUncovered() + hit.threePrimeUncovered() <= MAX_PROBE_END_UNCOVERED;
         }
-
         // Unaligned 3' bases left here could not be compared with the template (beyond
         // its end, or no template given): count them as mismatches, like aligned ones.
-        if (hit.primerMismatches() > options.maxTotalMismatches()) {
-            return false;
+        return hit.primerMismatches() <= options.maxTotalMismatches()
+                && hit.threePrimePenalty(options.threePrimeWindow()) <= options.maxThreePrimePenalty();
+    }
+
+    /**
+     * The acceptance rules that comparing the bases BLAST trimmed with the template cannot change
+     * (it only counts trimmed bases as pairing or not): the mismatches in the alignment, and a
+     * primer's unaligned 5' bases. A hit that fails them is rejected without that comparison
+     * ({@link TrimmedEnds#needsTemplate}). A rule added to {@link #accepts} belongs here when the
+     * comparison cannot relax it, after it otherwise.
+     */
+    static boolean passesWhateverTheTrimmedBases(BlastResult hit, AmpliconOptions options) {
+        if (PrimerId.isProbe(hit.subjectID())) {
+            return hit.alignedMismatches() <= options.maxProbeMismatches();
         }
-        if (hit.fivePrimeUncovered() > options.maxFivePrimeTruncation()) {
-            return false;
-        }
-        return hit.threePrimePenalty(options.threePrimeWindow()) <= options.maxThreePrimePenalty();
+        return hit.alignedMismatches() <= options.maxTotalMismatches()
+                && hit.fivePrimeUncovered() <= options.maxFivePrimeTruncation();
     }
 }

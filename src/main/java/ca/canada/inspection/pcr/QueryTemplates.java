@@ -86,7 +86,7 @@ public final class QueryTemplates implements Function<BlastResult, TrimmedEnds.T
                 PackedBases bases = new PackedBases();
                 pendingHeader = scanner.nextHeader(base -> bases.append((char) base));
                 currentId = id;
-                current = new TrimmedEnds.Template(1, bases, bases.length());
+                current = new TrimmedEnds.Template(bases);
                 return true;
             }
             header = scanner.nextHeader(null);

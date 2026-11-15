@@ -24,8 +24,8 @@ class ReadLevelCallerTest {
 
     private static Sample reads() {
         Sample reads = FastqDiagnosticsTest.readsSample();
-        reads.addContig("read_1", "ERR1.5 5/1");
-        reads.addContig("read_2", "ERR1.9 9/2");
+        reads.hits().describe("read_1", "ERR1.5 5/1");
+        reads.hits().describe("read_2", "ERR1.9 9/2");
         return reads;
     }
 
@@ -33,9 +33,9 @@ class ReadLevelCallerTest {
     void readHoldingCompleteAmpliconWithProbeIsCalled() {
         Sample reads = reads();
         for (String read : List.of("read_1", "read_2")) {
-            reads.addBlastResult("assay-F", TestHits.plusHit("assay-F", read, 11));
-            reads.addBlastResult("assay-R", TestHits.minusHit("assay-R", read, 61));
-            reads.addBlastResult("assay-P", TestHits.plusHit("assay-P", read, 35));
+            reads.hits().add("assay-F", TestHits.plusHit("assay-F", read, 11));
+            reads.hits().add("assay-R", TestHits.minusHit("assay-R", read, 61));
+            reads.hits().add("assay-P", TestHits.plusHit("assay-P", read, 35));
         }
 
         ReadEvidence evidence = TestEvidence.evaluate(reads, Map.of("read_1", 101, "read_2", 101), PRIMERS, DEFAULTS);
@@ -66,15 +66,15 @@ class ReadLevelCallerTest {
         for (int i = 1; i <= 10; i++) {
             String read = "read_" + i;
             lengths.put(read, 101);
-            reads.addBlastResult("assay-F", TestHits.plusHit("assay-F", read, 11));
+            reads.hits().add("assay-F", TestHits.plusHit("assay-F", read, 11));
             if (i <= 2) {
-                reads.addBlastResult("assay-R", TestHits.minusHit("assay-R", read, 61));
-                reads.addBlastResult("assay-P", TestHits.plusHit("assay-P", read, 35));
+                reads.hits().add("assay-R", TestHits.minusHit("assay-R", read, 61));
+                reads.hits().add("assay-P", TestHits.plusHit("assay-P", read, 35));
             }
         }
         // A read carrying the forward primer too close to its end is not informative.
         lengths.put("read_11", 40);
-        reads.addBlastResult("assay-F", TestHits.plusHit("assay-F", "read_11", 11));
+        reads.hits().add("assay-F", TestHits.plusHit("assay-F", "read_11", 11));
 
         ReadCall call = TestEvidence.evaluate(reads, lengths, PRIMERS, DEFAULTS).products("assay").getFirst();
 
@@ -96,9 +96,9 @@ class ReadLevelCallerTest {
         // fragment, below the 2-read minimum. As separate reads they would be called.
         Sample reads = reads();
         for (String read : List.of("read_1", "read_2")) {
-            reads.addBlastResult("assay-F", TestHits.plusHit("assay-F", read, 11));
-            reads.addBlastResult("assay-R", TestHits.minusHit("assay-R", read, 61));
-            reads.addBlastResult("assay-P", TestHits.plusHit("assay-P", read, 35));
+            reads.hits().add("assay-F", TestHits.plusHit("assay-F", read, 11));
+            reads.hits().add("assay-R", TestHits.minusHit("assay-R", read, 61));
+            reads.hits().add("assay-P", TestHits.plusHit("assay-P", read, 35));
         }
         Map<String, Integer> lengths = Map.of("read_1", 101, "read_2", 101);
 
@@ -116,9 +116,9 @@ class ReadLevelCallerTest {
     @Test
     void singleSupportingReadIsNotReportable() {
         Sample reads = reads();
-        reads.addBlastResult("assay-F", TestHits.plusHit("assay-F", "read_1", 11));
-        reads.addBlastResult("assay-R", TestHits.minusHit("assay-R", "read_1", 61));
-        reads.addBlastResult("assay-P", TestHits.plusHit("assay-P", "read_1", 35));
+        reads.hits().add("assay-F", TestHits.plusHit("assay-F", "read_1", 11));
+        reads.hits().add("assay-R", TestHits.minusHit("assay-R", "read_1", 61));
+        reads.hits().add("assay-P", TestHits.plusHit("assay-P", "read_1", 35));
 
         ReadCall call = TestEvidence.evaluate(reads, Map.of("read_1", 101), PRIMERS, DEFAULTS).products("assay").getFirst();
 
@@ -131,9 +131,9 @@ class ReadLevelCallerTest {
         // Mates carry separate read IDs, so a forward hit on one mate and a reverse
         // hit on the other must not form an amplicon.
         Sample reads = reads();
-        reads.addBlastResult("assay-F", TestHits.plusHit("assay-F", "read_1", 11));
-        reads.addBlastResult("assay-R", TestHits.minusHit("assay-R", "read_2", 61));
-        reads.addBlastResult("assay-P", TestHits.plusHit("assay-P", "read_1", 35));
+        reads.hits().add("assay-F", TestHits.plusHit("assay-F", "read_1", 11));
+        reads.hits().add("assay-R", TestHits.minusHit("assay-R", "read_2", 61));
+        reads.hits().add("assay-P", TestHits.plusHit("assay-P", "read_1", 35));
 
         ReadEvidence evidence = TestEvidence.evaluate(reads, Map.of("read_1", 101, "read_2", 101), PRIMERS, DEFAULTS);
 
@@ -145,9 +145,9 @@ class ReadLevelCallerTest {
         // The read begins at primer base 4: the 5'-truncation allowance would accept the
         // hit, but the read lacks the product's first 3 bases, so it must not be called.
         Sample reads = reads();
-        reads.addBlastResult("assay-F", TestHits.truncatedPlusHit("assay-F", "read_1", 1, 4, 20, PRIMER_20));
-        reads.addBlastResult("assay-R", TestHits.minusHit("assay-R", "read_1", 51));
-        reads.addBlastResult("assay-P", TestHits.plusHit("assay-P", "read_1", 25));
+        reads.hits().add("assay-F", TestHits.truncatedPlusHit("assay-F", "read_1", 1, 4, 20, PRIMER_20));
+        reads.hits().add("assay-R", TestHits.minusHit("assay-R", "read_1", 51));
+        reads.hits().add("assay-P", TestHits.plusHit("assay-P", "read_1", 25));
 
         ReadEvidence evidence = TestEvidence.evaluate(reads, Map.of("read_1", 101), PRIMERS, DEFAULTS);
 
@@ -158,8 +158,8 @@ class ReadLevelCallerTest {
     @Test
     void ampliconWithoutRequiredProbeIsNotCalled() {
         Sample reads = reads();
-        reads.addBlastResult("assay-F", TestHits.plusHit("assay-F", "read_1", 11));
-        reads.addBlastResult("assay-R", TestHits.minusHit("assay-R", "read_1", 61));
+        reads.hits().add("assay-F", TestHits.plusHit("assay-F", "read_1", 11));
+        reads.hits().add("assay-R", TestHits.minusHit("assay-R", "read_1", 61));
 
         assertTrue(TestEvidence.evaluate(reads, Map.of("read_1", 101), PRIMERS, DEFAULTS).calls().isEmpty());
     }
@@ -167,8 +167,8 @@ class ReadLevelCallerTest {
     @Test
     void checkableLengthRunsFromPrimerFivePrimeEndToReadEnd() {
         Sample reads = reads();
-        reads.addBlastResult("assay-F", TestHits.plusHit("assay-F", "read_1", 31));   // 101 - 31 + 1 = 71
-        reads.addBlastResult("assay-R", TestHits.minusHit("assay-R", "read_2", 61));  // ends at 80
+        reads.hits().add("assay-F", TestHits.plusHit("assay-F", "read_1", 31));   // 101 - 31 + 1 = 71
+        reads.hits().add("assay-R", TestHits.minusHit("assay-R", "read_2", 61));  // ends at 80
 
         ReadEvidence evidence = TestEvidence.evaluate(reads, Map.of("read_1", 101, "read_2", 150), PRIMERS, DEFAULTS);
 
@@ -198,9 +198,9 @@ class ReadLevelCallerTest {
         for (int i = 1; i <= 2 + others; i++) {
             String read = "read_" + i;
             lengths.put(read, 101);
-            reads.addBlastResult("assay-F", TestHits.plusHit("assay-F", read, 11));
+            reads.hits().add("assay-F", TestHits.plusHit("assay-F", read, 11));
             if (i <= 2) {
-                reads.addBlastResult("assay-R", TestHits.minusHit("assay-R", read, 61));
+                reads.hits().add("assay-R", TestHits.minusHit("assay-R", read, 61));
             }
             sequences.put(read, read(i <= 2 ? FLANK : afterPrimer));
         }
@@ -251,9 +251,9 @@ class ReadLevelCallerTest {
         Map<String, Integer> lengths = new HashMap<>();
         for (int i = 1; i <= 12; i++) {
             lengths.put("read_" + i, 101);
-            reads.addBlastResult("assay-F", TestHits.plusHit("assay-F", "read_" + i, 11));
+            reads.hits().add("assay-F", TestHits.plusHit("assay-F", "read_" + i, 11));
             if (i <= 2) {
-                reads.addBlastResult("assay-R", TestHits.minusHit("assay-R", "read_" + i, 61));
+                reads.hits().add("assay-R", TestHits.minusHit("assay-R", "read_" + i, 61));
             }
         }
         ReadCall call = TestEvidence.evaluate(reads, lengths, PCR_PRIMERS, DEFAULTS).products("assay").getFirst();
@@ -292,11 +292,11 @@ class ReadLevelCallerTest {
         for (int i = 1; i <= 16; i++) {
             String read = "read_" + i;
             lengths.put(read, 101);
-            reads.addBlastResult("assay-F", TestHits.plusHit("assay-F", read, 11));
+            reads.hits().add("assay-F", TestHits.plusHit("assay-F", read, 11));
             if (i <= 6) {
-                reads.addBlastResult("assay-R", TestHits.minusHit("assay-R", read, 61));
+                reads.hits().add("assay-R", TestHits.minusHit("assay-R", read, 61));
             } else if (i <= 8) {
-                reads.addBlastResult("assay-R", TestHits.minusHit("assay-R", read, 31));
+                reads.hits().add("assay-R", TestHits.minusHit("assay-R", read, 31));
             }
             sequences.put(read, read(i <= 6 ? FLANK : OTHER));
         }
@@ -328,8 +328,8 @@ class ReadLevelCallerTest {
         for (int i = 0; i < reverseStart.length; i++) {
             String read = "read_" + (i + 1);
             lengths.put(read, 101);
-            reads.addBlastResult("assay-F", TestHits.plusHit("assay-F", read, 11));
-            reads.addBlastResult("assay-R", TestHits.minusHit("assay-R", read, reverseStart[i]));
+            reads.hits().add("assay-F", TestHits.plusHit("assay-F", read, 11));
+            reads.hits().add("assay-R", TestHits.minusHit("assay-R", read, reverseStart[i]));
         }
 
         List<ReadCall> products = TestEvidence.evaluate(reads, lengths, PCR_PRIMERS, DEFAULTS).products("assay");
@@ -351,11 +351,11 @@ class ReadLevelCallerTest {
                 exactVariant, PRIMER_20, otherVariant, PRIMER_20));
         Sample reads = reads();
         for (String read : List.of("read_1", "read_2")) {
-            reads.addBlastResult("assay-F", TestHits.plusHit("assay-F", read, 11));
-            reads.addBlastResult("assay-R", TestHits.minusHit("assay-R", read, 61));
-            reads.addBlastResult(otherVariant, TestHits.plusHit(otherVariant, read, 35, oneMismatch(), PRIMER_20));
+            reads.hits().add("assay-F", TestHits.plusHit("assay-F", read, 11));
+            reads.hits().add("assay-R", TestHits.minusHit("assay-R", read, 61));
+            reads.hits().add(otherVariant, TestHits.plusHit(otherVariant, read, 35, oneMismatch(), PRIMER_20));
             if (readsOfExact.contains(read)) {
-                reads.addBlastResult(exactVariant, TestHits.plusHit(exactVariant, read, 35));
+                reads.hits().add(exactVariant, TestHits.plusHit(exactVariant, read, 35));
             }
         }
         ReadEvidence evidence = TestEvidence.evaluate(reads, Map.of("read_1", 101, "read_2", 101), primers,
@@ -390,8 +390,8 @@ class ReadLevelCallerTest {
     void aRowWithoutProbeColumnsHasNoProbeMismatch() {
         Sample reads = reads();
         for (String read : List.of("read_1", "read_2")) {
-            reads.addBlastResult("plain-F", TestHits.plusHit("plain-F", read, 11));
-            reads.addBlastResult("plain-R", TestHits.minusHit("plain-R", read, 61));
+            reads.hits().add("plain-F", TestHits.plusHit("plain-F", read, 11));
+            reads.hits().add("plain-R", TestHits.minusHit("plain-R", read, 61));
         }
         ReadEvidence evidence = TestEvidence.evaluate(reads, Map.of("read_1", 101, "read_2", 101),
                 PrimerPanel.of(Map.of("plain-F", PRIMER_20, "plain-R", PRIMER_20)), DEFAULTS);
@@ -412,9 +412,9 @@ class ReadLevelCallerTest {
             Sample reads = reads();
             for (String read : List.of("read_1", "read_2")) {
                 for (String forward : order) {
-                    reads.addBlastResult(forward, TestHits.plusHit(forward, read, 11));
+                    reads.hits().add(forward, TestHits.plusHit(forward, read, 11));
                 }
-                reads.addBlastResult("deg-R", TestHits.minusHit("deg-R", read, 61));
+                reads.hits().add("deg-R", TestHits.minusHit("deg-R", read, 61));
             }
             ReadEvidence evidence = TestEvidence.evaluate(reads, Map.of("read_1", 101, "read_2", 101), primers,
                     DEFAULTS);

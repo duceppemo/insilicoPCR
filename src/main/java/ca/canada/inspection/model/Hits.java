@@ -18,7 +18,7 @@ public final class Hits {
     private final HashMap<String, ArrayList<BlastResult>> byOligo = new HashMap<>();
     private final HashMap<String, String> descriptions = new HashMap<>();
     /** Results worked out from the hits and descriptions (the products), until either changes. */
-    private final HashMap<Object, Object> derived = new HashMap<>();
+    private final HashMap<Key<?>, Object> derived = new HashMap<>();
 
     /** Adds an accepted hit of oligo {@code oligoId}. */
     public synchronized void add(String oligoId, BlastResult hit) {
@@ -65,16 +65,26 @@ public final class Hits {
     }
 
     /**
+     * What a result worked out from the hits is found under: a key of its own type, so that what
+     * is kept is given back as what was put, without a cast where it is asked for.
+     *
+     * @param <T> the result's type
+     */
+    public interface Key<T> {
+    }
+
+    /**
      * What {@code compute} gives for {@code key}, worked out once while the hits and
      * descriptions stay as they are: several steps of a run ask for the same products.
      */
-    @SuppressWarnings("unchecked")
-    public synchronized <T> T derived(Object key, Supplier<T> compute) {
+    public synchronized <T> T derived(Key<T> key, Supplier<T> compute) {
         Object value = derived.get(key);
         if (value == null) {
             value = compute.get();
             derived.put(key, value);
         }
-        return (T) value;
+        @SuppressWarnings("unchecked") // put under its key, of its key's type
+        T result = (T) value;
+        return result;
     }
 }

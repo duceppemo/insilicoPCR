@@ -68,6 +68,35 @@ public record BlastResult(
 		return alignedMismatches() + threePrimeUncovered();
 	}
 
+	/**
+	 * Query position of the full primer's 5'-terminal base, unaligned 5' bases included: where a
+	 * product made with it starts (plus strand) or ends (minus strand). May lie beyond the query
+	 * (before 1, or past its end) when the primer hangs off it.
+	 */
+	public int fivePrimeTerminus() {
+		return isPlusStrand() ? qstart - fivePrimeUncovered() : qend + fivePrimeUncovered();
+	}
+
+	/** Query position of the full primer's leftmost base, unaligned bases included. */
+	public int fullStart() {
+		return qstart - (isPlusStrand() ? fivePrimeUncovered() : threePrimeUncovered());
+	}
+
+	/** Query position of the full primer's rightmost base, unaligned bases included. */
+	public int fullEnd() {
+		return qend + (isPlusStrand() ? threePrimeUncovered() : fivePrimeUncovered());
+	}
+
+	/**
+	 * Bases from the full primer's 5' end to the end of the query it extends towards, the primer
+	 * included: the longest product the query (a read, a contig) could hold with it.
+	 *
+	 * @param queryLength length of the query
+	 */
+	public int toQueryEnd(int queryLength) {
+		return isPlusStrand() ? queryLength - fivePrimeTerminus() + 1 : fivePrimeTerminus();
+	}
+
 	/** Number of primer bases missing from the alignment on the primer's 5' side. */
 	public int fivePrimeUncovered() {
 		return Math.min(sstart, send) - 1;

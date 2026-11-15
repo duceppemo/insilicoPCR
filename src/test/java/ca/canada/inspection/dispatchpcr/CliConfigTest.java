@@ -168,4 +168,12 @@ class CliConfigTest {
                 () -> parse("--input-check", "off"));
         assertEquals("--input-check must be full or quick, not: off", error.getMessage());
     }
+
+    @Test
+    void theBbtoolsMemoryIsWorkedOutUnlessGiven() throws Exception {
+        assertEquals(PipelineConfig.AUTOMATIC_BBTOOLS_MEMORY, parse().bbtoolsMemoryGiB());
+        assertEquals(24, parse("--bbtools-memory", "24").bbtoolsMemoryGiB());
+        assertThrows(IllegalArgumentException.class, () -> parse("--bbtools-memory", "0"));
+        assertThrows(IllegalArgumentException.class, () -> parse("--bbtools-memory", "lots"));
+    }
 }

@@ -80,10 +80,9 @@ record BbtoolsCommands(String javaCommand, Path bbtoolsJar, int childMemoryGiB, 
     static String outOfMemoryMessage(String program, String where, int memoryGiB) {
         String advice = memoryGiB >= ChildJavaMemory.MAX_CHILD_GIB
                 ? "the most insilicoPCR gives a BBTools program."
-                : "all it could have: three quarters of the memory insilicoPCR leaves free on this computer. Run it"
-                        + " on a computer with more memory, or give insilicoPCR a larger heap with Java's -Xmx option"
-                        + " (java -Xmx96g -jar insilicoPCR.jar ...): its BBTools programs get at least half of it, up to "
-                        + ChildJavaMemory.MAX_CHILD_GIB + " GB each.";
+                : "all it had. Give the BBTools programs more with --bbtools-memory <GB> (in the application, under"
+                        + " FASTQ settings), as much as the computer can spare, up to " + ChildJavaMemory.MAX_CHILD_GIB
+                        + " GB each, or run on a computer with more memory.";
         // Exit code 3 is any OutOfMemoryError; this one is not about the heap.
         return program + " ran out of memory" + where + " with -Xmx" + memoryGiB + "g, " + advice
                 + " If its output says \"unable to create native thread\", use fewer threads (-t) instead.";

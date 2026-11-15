@@ -2,6 +2,7 @@ package ca.canada.inspection.insilicopcr.ui;
 
 import ca.canada.inspection.pcr.ReadExtensionCaller;
 import ca.canada.inspection.pcr.ReadLevelCaller;
+import ca.canada.inspection.pipeline.PipelineConfig;
 import ca.canada.inspection.pipeline.RunSettings;
 import ca.canada.inspection.pipeline.TadpoleOptions;
 import javafx.scene.control.ChoiceBox;
@@ -19,10 +20,17 @@ import java.util.Optional;
 public final class FastqSettingsDialog {
 
     /** The FASTQ-mode settings edited by this dialog. */
+    /** @param bbtoolsMemoryGiB the BBTools programs' memory, {@link PipelineConfig#AUTOMATIC_BBTOOLS_MEMORY} for automatic */
     public record FastqSettings(TadpoleOptions tadpole, double readMinFraction,
-                                ReadExtensionCaller.Mode readExtension) {
+                                ReadExtensionCaller.Mode readExtension, int bbtoolsMemoryGiB) {
         public static final FastqSettings DEFAULTS = new FastqSettings(TadpoleOptions.DEFAULTS,
-                ReadLevelCaller.DEFAULT_MIN_SUPPORT_FRACTION, ReadExtensionCaller.Mode.DEFAULT);
+                ReadLevelCaller.DEFAULT_MIN_SUPPORT_FRACTION, ReadExtensionCaller.Mode.DEFAULT,
+                PipelineConfig.AUTOMATIC_BBTOOLS_MEMORY);
+
+        /** Settings with the BBTools memory worked out from the computer. */
+        public FastqSettings(TadpoleOptions tadpole, double readMinFraction, ReadExtensionCaller.Mode readExtension) {
+            this(tadpole, readMinFraction, readExtension, PipelineConfig.AUTOMATIC_BBTOOLS_MEMORY);
+        }
 
         /** Settings with the default read extension. */
         public FastqSettings(TadpoleOptions tadpole, double readMinFraction) {
@@ -73,9 +81,16 @@ public final class FastqSettingsDialog {
                         + "minutes per sample that has such an assay. Default "
                         + ReadExtensionCaller.Mode.DEFAULT + ".");
 
+        dialog.section("Memory");
+        TextField bbtoolsMemory = dialog.field("BBTools memory (GB, empty: automatic)",
+                current.bbtoolsMemoryGiB() > 0 ? String.valueOf(current.bbtoolsMemoryGiB()) : "",
+                "Memory the BBTools programs running at once share (--bbtools-memory), each at most 64 GB; fewer "
+                        + "samples run at once rather than any getting under 4 GB. Set it on a computer shared with "
+                        + "others. Empty: " + RunSettings.bbtoolsMemory(PipelineConfig.AUTOMATIC_BBTOOLS_MEMORY) + ".");
+
         return dialog.show(owner, "FASTQ settings", "Settings used only for FASTQ (read) input",
                 () -> parse(k.getText(), minSeed.getText(), minCov.getText(), minContig.getText(),
-                        readFraction.getText(), readExtension.getValue()),
+                        readFraction.getText(), readExtension.getValue(), bbtoolsMemory.getText()),
                 () -> {
                     FastqSettings defaults = FastqSettings.DEFAULTS;
                     k.setText(String.valueOf(defaults.tadpole().k()));
@@ -84,6 +99,7 @@ public final class FastqSettingsDialog {
                     minContig.setText(String.valueOf(defaults.tadpole().minContig()));
                     readFraction.setText(String.valueOf(defaults.readMinFraction()));
                     readExtension.setValue(defaults.readExtension());
+                    bbtoolsMemory.setText("");
                 });
     }
 
@@ -97,7 +113,8 @@ public final class FastqSettingsDialog {
         return (settings.isDefault() ? "Defaults" : "Changed from defaults (*)")
                 + "\nTadpole: " + String.join(" ", settings.tadpole().arguments())
                 + "\nRead-level calls: " + RunSettings.readLevelCalls(settings.readMinFraction())
-                + "\nRead extension: " + settings.readExtension();
+                + "\nRead extension: " + settings.readExtension()
+                + "\nBBTools memory: " + RunSettings.bbtoolsMemory(settings.bbtoolsMemoryGiB());
     }
 
     /**
@@ -112,6 +129,14 @@ public final class FastqSettingsDialog {
     /** As {@link #parse(String, String, String, String, String)}, with the read extension chosen. */
     static FastqSettings parse(String k, String minSeed, String minCov, String minContig, String readFraction,
                                ReadExtensionCaller.Mode readExtension) {
+        return parse(k, minSeed, minCov, minContig, readFraction, readExtension, "");
+    }
+
+    /** As above, with the BBTools memory: a number of GB, or empty for automatic. */
+    static FastqSettings parse(String k, String minSeed, String minCov, String minContig, String readFraction,
+                               ReadExtensionCaller.Mode readExtension, String bbtoolsMemory) {
+        int memory = bbtoolsMemory.isBlank() ? PipelineConfig.AUTOMATIC_BBTOOLS_MEMORY
+                : SettingsDialog.parseInt(bbtoolsMemory, "BBTools memory", 1);
         TadpoleOptions tadpole = new TadpoleOptions(
                 SettingsDialog.parseInt(k, "k-mer length", TadpoleOptions.MIN_K),
                 SettingsDialog.parseInt(minSeed, "Min k-mer count to seed", TadpoleOptions.MIN_COUNT_SEED),
@@ -126,6 +151,6 @@ public final class FastqSettingsDialog {
         if (!ReadLevelCaller.isFraction(fraction)) {
             throw new IllegalArgumentException("Min share of informative reads must be between 0 and 1.");
         }
-        return new FastqSettings(tadpole, fraction, readExtension);
+        return new FastqSettings(tadpole, fraction, readExtension, memory);
     }
 }

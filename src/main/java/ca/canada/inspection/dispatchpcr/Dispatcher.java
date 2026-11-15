@@ -142,6 +142,11 @@ public final class Dispatcher {
                         + " (assays found in no contig and in no read), target (those, and assays that declare"
                         + " size= and show no product of that size yet), off (none); default: "
                         + ReadExtensionCaller.Mode.DEFAULT).build());
+        options.addOption(Option.builder().longOpt("bbtools-memory").hasArg().argName("GB")
+                .desc("FASTQ mode: memory in GB that the BBTools programs running at once share (each gets at most"
+                        + " 64); fewer samples run at once rather than any getting under 4. Set it on a computer"
+                        + " shared with others; default: three quarters of the memory insilicoPCR leaves free on the"
+                        + " computer (a job's limit on a cluster), at least half of its own heap").build());
         options.addOption(Option.builder().longOpt("input-check").hasArg().argName("full|quick")
                 .desc("How the input files are checked before the run. full: every read of every FASTQ file"
                         + " is read, and the two files of a pair must hold the same number of reads. quick: the"

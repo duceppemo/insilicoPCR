@@ -20,8 +20,12 @@ public record PipelineConfig(
         TadpoleOptions tadpole,
         double readMinFraction,
         ReadExtensionCaller.Mode readExtension,
-        InputCheck.Depth inputCheck
+        InputCheck.Depth inputCheck,
+        int bbtoolsMemoryGiB
 ) {
+    /** {@link #bbtoolsMemoryGiB} for the budget {@link ChildJavaMemory} works out from the computer. */
+    public static final int AUTOMATIC_BBTOOLS_MEMORY = 0;
+
     public PipelineConfig {
         input = Objects.requireNonNull(input, "input").toAbsolutePath().normalize();
         output = Objects.requireNonNull(output, "output").toAbsolutePath().normalize();
@@ -33,6 +37,10 @@ public record PipelineConfig(
         ReadLevelCaller.requireFraction(readMinFraction);
         if (threads < 1) {
             throw new IllegalArgumentException("threads must be >= 1");
+        }
+        if (bbtoolsMemoryGiB < 0) {
+            throw new IllegalArgumentException("bbtools-memory must be a number of GB, or 0 for automatic, got: "
+                    + bbtoolsMemoryGiB);
         }
         if (!validEvalue(evalue)) {
             // Infinity (or 1e999, which reads as it) would only fail at blastn, hours into a run.
@@ -95,6 +103,7 @@ public record PipelineConfig(
         private double readMinFraction = ReadLevelCaller.DEFAULT_MIN_SUPPORT_FRACTION;
         private ReadExtensionCaller.Mode readExtension = ReadExtensionCaller.Mode.DEFAULT;
         private InputCheck.Depth inputCheck = DEFAULT_INPUT_CHECK;
+        private int bbtoolsMemoryGiB = AUTOMATIC_BBTOOLS_MEMORY;
 
         private Builder(Path input, Path output, Path primers) {
             this.input = input;
@@ -147,10 +156,19 @@ public record PipelineConfig(
             return this;
         }
 
+        /**
+         * Heap, in GB, that the BBTools programs running at once share (FASTQ mode); default
+         * {@link #AUTOMATIC_BBTOOLS_MEMORY}: worked out from the computer.
+         */
+        public Builder bbtoolsMemory(int gib) {
+            this.bbtoolsMemoryGiB = gib;
+            return this;
+        }
+
         /** @throws IllegalArgumentException when a setting is out of range */
         public PipelineConfig build() {
             return new PipelineConfig(input, output, primers, threads, evalue, ampliconOptions, gel, tadpole,
-                    readMinFraction, readExtension, inputCheck);
+                    readMinFraction, readExtension, inputCheck, bbtoolsMemoryGiB);
         }
     }
 

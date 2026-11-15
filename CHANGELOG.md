@@ -4,6 +4,10 @@
 
 ### Added
 
+- FASTQ mode: `--bbtools-memory <GB>` (in the application, **FASTQ settings…**,
+  **BBTools memory**) sets the memory the BBTools programs running at once share,
+  instead of the automatic budget, which counts the memory insilicoPCR leaves free
+  on the computer but not what other users' programs take on a shared one.
 - Gel viewer: **Color: By size check** draws each band by what its size is for
   its assay, as the report's `SizeCheck` column says when the primer file
   declares sizes: green for the target size, amber for another known product,

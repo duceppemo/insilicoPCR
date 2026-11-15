@@ -60,6 +60,13 @@ public final class CliConfig {
         if (cmd.hasOption("read-min-fraction")) {
             config.readMinFraction(parseFraction(cmd, "read-min-fraction"));
         }
+        if (cmd.hasOption("bbtools-memory")) {
+            int gib = parseNonNegative(cmd, "bbtools-memory", 0);
+            if (gib == 0) {
+                throw new IllegalArgumentException("--bbtools-memory must be at least 1 GB; leave it out for automatic");
+            }
+            config.bbtoolsMemory(gib);
+        }
         if (cmd.hasOption("read-extension")) {
             config.readExtension(readExtension(cmd.getOptionValue("read-extension")));
         }

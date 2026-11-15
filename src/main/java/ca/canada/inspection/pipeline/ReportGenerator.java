@@ -36,9 +36,10 @@ public final class ReportGenerator {
     public static RunResult write(PipelineContext context, Map<String, ReadEvidence> readEvidence,
                                   ReadExtensionStage.Result extension) {
         RunMonitor monitor = context.monitor();
-        Path report = ConsolidatedReport.write(context.directories().consolidated(), context.samples(),
-                context.primers(), context.config().ampliconOptions(),
+        ConsolidatedReport.Written written = ConsolidatedReport.writeRows(context.directories().consolidated(),
+                context.samples(), context.primers(), context.config().ampliconOptions(),
                 extraRows(context, readEvidence, extension));
+        Path report = written.file();
         if (context.config().gel()) {
             GelImageWriter.write(report, SyntheticGelImage.defaultPng(report), context.samples().keySet(),
                     monitor::info, monitor::warning);
@@ -48,7 +49,7 @@ public final class ReportGenerator {
         diagnostics.logLines().forEach(monitor::warning);
         List<SplitAcrossContigs.Split> splits = assemblySplits(context);
         splits.forEach(split -> monitor.warning("Warning: " + split.message()));
-        Path html = HtmlReport.write(report, context.samples().keySet(), RunDetails.fastqSampleNames(context.samples()),
+        Path html = HtmlReport.write(report, written.rows(), context.samples().keySet(), RunDetails.fastqSampleNames(context.samples()),
                 context.primers(), diagnostics.findings(),
                 RunDetails.of(Version.VERSION, context.config(), context.hasFastqSamples()),
                 context.inputIssues(), splits);

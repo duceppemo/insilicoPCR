@@ -5,6 +5,7 @@ import ca.canada.inspection.pcr.AmpliconOptions;
 import ca.canada.inspection.pcr.ExpectedSizes;
 import ca.canada.inspection.pcr.PrimerPanel;
 import ca.canada.inspection.pcr.ReportRow;
+import ca.canada.inspection.pcr.TestRows;
 import ca.canada.inspection.pcr.TestHits;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -267,7 +268,7 @@ class ConsolidatedReportTest {
         PrimerPanel primers = PrimerPanel.of(Map.of("assay-F", PRIMER_20, "assay-R", PRIMER_20, "assay-P", PRIMER_20));
         ExpectedSizes sizes = ExpectedSizes.fromHeaders(Map.of("assay-F", "size=70 other=500"));
         // A read-level row, as FASTQ mode adds them.
-        ReportRow readRow = new ReportRow("sampleA", "assay", 11, 80, 70, "read_1", "FASTQ read-level call: ...",
+        ReportRow readRow = TestRows.of("sampleA", "assay", 11, 80, 70, "read_1", "FASTQ read-level call: ...",
                 "assay-F", "assay-R", 0, 0, 0, 0, '+', new ReportRow.Probe("assay-P", 35, 54, 0), 0, 0);
 
         List<String> lines = Files.readAllLines(ConsolidatedReport.write(tempDir, samples,

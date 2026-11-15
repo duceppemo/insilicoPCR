@@ -1,6 +1,7 @@
 package ca.canada.inspection.report;
 
 import ca.canada.inspection.pcr.ReportRow;
+import ca.canada.inspection.pcr.TestRows;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -17,10 +18,10 @@ class ReportColumnTest {
     @TempDir
     Path dir;
 
-    private static final ReportRow WITH_PROBE = new ReportRow("S", "stxQ", 7313, 7430, 118, "contig_1",
+    private static final ReportRow WITH_PROBE = TestRows.of("S", "stxQ", 7313, 7430, 118, "contig_1",
             "len=9000\tcov=12\nmore", "stxQ-F", "stxQ-R", 1, 2, 0, 1, '-',
             new ReportRow.Probe("stxQ-P", 7350, 7369, 1), 3, 0);
-    private static final ReportRow WITHOUT = new ReportRow("T", "toxA", 4001, 4312, 312, "c2", "", "toxA-F", "toxA-R",
+    private static final ReportRow WITHOUT = TestRows.of("T", "toxA", 4001, 4312, 312, "c2", "", "toxA-F", "toxA-R",
             0, 0, 0, 0, '+', null, 0, 2);
 
     @Test
@@ -54,8 +55,8 @@ class ReportColumnTest {
 
             List<ReportRow> read = ReportTsv.read(report);
 
-            ReportRow expected = probeColumns ? WITH_PROBE.withContigDescription("len=9000 cov=12 more")
-                    : new ReportRow("S", "stxQ", 7313, 7430, 118, "contig_1", "len=9000 cov=12 more", "stxQ-F",
+            ReportRow expected = probeColumns ? WITH_PROBE.calledFrom(ReportRow.Source.ASSEMBLY, "len=9000 cov=12 more")
+                    : TestRows.of("S", "stxQ", 7313, 7430, 118, "contig_1", "len=9000 cov=12 more", "stxQ-F",
                     "stxQ-R", 1, 2, 0, 1, '-', null, 3, 0);
             assertEquals(List.of(expected, WITHOUT), read, "probe columns: " + probeColumns);
         }

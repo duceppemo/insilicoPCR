@@ -47,6 +47,24 @@ public final class ConsolidatedReport {
     public static Path write(Path consolidatedDir, Map<String, Sample> samples,
                              PrimerPanel primers, AmpliconOptions options,
                              Map<String, List<ReportRow>> extraRows) {
+        return writeRows(consolidatedDir, samples, primers, options, extraRows).file();
+    }
+
+    /**
+     * A report written, and its rows as the run made them (for the HTML report, which shows
+     * exactly these without reading the file back).
+     */
+    public record Written(Path file, List<ReportRow> rows) {
+        public Written {
+            rows = List.copyOf(rows);
+        }
+    }
+
+    /** As {@link #write(Path, Map, PrimerPanel, AmpliconOptions, Map)}, with the rows written. */
+    public static Written writeRows(Path consolidatedDir, Map<String, Sample> samples,
+                                    PrimerPanel primers, AmpliconOptions options,
+                                    Map<String, List<ReportRow>> extraRows) {
+        List<ReportRow> written = new ArrayList<>();
         ExpectedSizes expectedSizes = primers.expectedSizes();
         // The probe columns are present whenever at least one assay defines a probe.
         boolean probeColumns = primers.anyProbe();
@@ -63,6 +81,7 @@ public final class ConsolidatedReport {
                         Products.of(sampleEntry.getKey(), sampleEntry.getValue(), primers, options));
                 rows.addAll(extraRows.getOrDefault(sampleEntry.getKey(), List.of()));
                 for (ReportRow row : rows) {
+                    written.add(row);
                     writer.write(String.join("\t", columns.stream().map(column -> column.value(row)).toList()));
                     if (sizeColumn) {
                         writer.write("\t" + expectedSizes.labelText(row.assay(), row.size()));
@@ -73,7 +92,7 @@ public final class ConsolidatedReport {
         } catch (IOException e) {
             throw new UncheckedIOException("Unable to write consolidated report: " + report, e);
         }
-        return report;
+        return new Written(report, written);
     }
 
     /** The names {@link #write} gives its reports: {@code report.tsv}, then {@code report(1).tsv} and on. */

@@ -463,6 +463,7 @@ public final class ReadExtensionCaller {
         if (seedDescription != null && !seedDescription.isEmpty()) {
             description.append("; representative extended from read ").append(seedDescription);
         }
-        return product.row().withContigDescription(description.toString());
+        return product.row().calledFrom(new ReportRow.Source.Extension(product.forwardClosing(), product.forwardSeeds(),
+                product.reverseClosing(), product.reverseSeeds()), description.toString());
     }
 }

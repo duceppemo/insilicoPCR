@@ -43,6 +43,12 @@
 
 ### Changed
 
+- Code: a report row says what its call was made on (`ReportRow.Source`: the
+  assembly, reads with their support, or extended reads with their seeds) as
+  data, and the HTML report shows the rows the run made instead of reading
+  `report.tsv` back and parsing that from the Contig Description text. The
+  row's fields are grouped (where the amplicon lies, how each primer binds,
+  the probe, the source).
 - Code: one reader of a BLAST TSV into a sample (`pcr.BlastHits`) for contigs,
   baited reads and extended reads, which each had their own copy; the FASTA a
   sample is searched in (`Sample.searchedFasta`) and the hits of a set of

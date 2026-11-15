@@ -126,12 +126,11 @@ public final class Products {
                 if (amplicon == null) {
                     continue;
                 }
-                ReportRow row = new ReportRow(sampleName, assayName, amplicon.start(), amplicon.end(), amplicon.size(),
-                        amplicon.contig(), contigs.getOrDefault(amplicon.contig(), ""), forwardPrimer, reversePrimer,
-                        effectiveMismatches(forwardHit), effectiveMismatches(reverseHit),
-                        forwardHit.threePrimeMismatches(options.threePrimeWindow()),
-                        reverseHit.threePrimeMismatches(options.threePrimeWindow()), amplicon.forwardStrand(), null,
-                        forwardHit.fivePrimeUnpairedBases(), reverseHit.fivePrimeUnpairedBases());
+                ReportRow row = new ReportRow(sampleName, assayName,
+                        new ReportRow.Site(amplicon.start(), amplicon.end(), amplicon.size(), amplicon.contig(),
+                                contigs.getOrDefault(amplicon.contig(), ""), amplicon.forwardStrand()),
+                        binding(forwardPrimer, forwardHit, options), binding(reversePrimer, reverseHit, options),
+                        null, ReportRow.Source.ASSEMBLY);
                 if (probeRequired) {
                     probeRows(rows, hits, group, amplicon, row);
                 } else {
@@ -139,6 +138,11 @@ public final class Products {
                 }
             }
         }
+    }
+
+    private static ReportRow.Binding binding(String primer, BlastResult hit, AmpliconOptions options) {
+        return new ReportRow.Binding(primer, effectiveMismatches(hit), hit.threePrimeMismatches(options.threePrimeWindow()),
+                hit.fivePrimeUnpairedBases());
     }
 
     /** Mismatches as counted against the -m budget: substitutions, indels, and trimmed 3' bases. */

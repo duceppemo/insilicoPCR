@@ -15,6 +15,19 @@ class ChildJavaMemoryTest {
     }
 
     @Test
+    void theBudgetIsWhatThisProgramLeavesFreeOnTheComputer() {
+        long gib = 1024L * 1024 * 1024;
+        // 16 GB, Java's default heap of a quarter: three quarters of 12 GB, not half of 4 GB.
+        assertEquals(9, ChildJavaMemory.budgetGiB(16 * gib, 4 * gib));
+        // -Xmx96g on 128 GB: at least half of the heap, as before.
+        assertEquals(48, ChildJavaMemory.budgetGiB(128 * gib, 96 * gib));
+        // Rounded, not truncated: 3.9 GB of half a heap is 4.
+        assertEquals(4, ChildJavaMemory.budgetGiB(0, (long) (7.8 * gib)));
+        // The computer's memory unknown, the heap too: the default.
+        assertEquals(4, ChildJavaMemory.budgetGiB(0, Long.MAX_VALUE));
+    }
+
+    @Test
     void aChildAloneGetsTheWholeBudgetUpToTheCap() {
         assertEquals(1, ChildJavaMemory.forOneChild(1));
         assertEquals(12, ChildJavaMemory.forOneChild(12));

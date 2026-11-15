@@ -57,6 +57,12 @@
   only the new report: the first report kept no record of its run and could no
   longer be reopened. Each report now has its own log (`QAlog(1).txt` beside
   `report(1).tsv`), and **Open Previous Run** opens the latest.
+- FASTQ mode: the BBTools programs got half of insilicoPCR's own heap, rounded
+  down: with Java's default heap, 2 GB on a 16 GB computer, the rest of its
+  memory left unused, and less than the 4 GB the docs promised. They now get
+  three quarters of the memory insilicoPCR leaves free on the computer (a
+  container's limit inside one), and at least half of its heap, rounded: 9 GB
+  on that computer.
 - Command line: an input with no FASTA or FASTQ file at all (an empty folder, a
   mistyped `-i`) ended with empty reports and exit code 0, which a workflow
   manager took for success; it stops with exit code 1. Arguments the command

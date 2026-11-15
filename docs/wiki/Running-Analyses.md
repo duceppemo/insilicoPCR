@@ -46,7 +46,7 @@ The faults are reported in four places:
 - at the top of the HTML report, in a section **Input not analysed** and a count among the summary tiles. The samples are not in the tables of the report: nothing was run on them, so they are neither positive nor negative;
 - such a sample has no lane in the synthetic gel.
 
-The run itself still ends normally (exit code 0), also when no sample is left to analyse: the reports are then empty apart from that section.
+The run itself still ends normally (exit code 0), also when no sample is left to analyse: the reports are then empty apart from that section. An input with no FASTA or FASTQ file at all (an empty folder, a mistyped `-i`) is not run: it stops with `No FASTA or FASTQ file in ...: nothing to analyse` and exit code 1 (before 0.15.2, it ended with empty reports and exit code 0, which a workflow manager took for success). The command line also refuses arguments it does not expect (exit code 2): a shell pattern such as `-i reads/*.fastq.gz` gives `-i` only its first file, so give the folder that holds the files instead (before 0.15.2, the other files were silently left out).
 
 Checking every read means reading each FASTQ file once more, which takes about as long as decompressing it (about half a minute for a 1.2 GB `.fastq.gz` of 10 million reads; files are checked in parallel, one per thread). On the command line, `--input-check quick` reads the first read of each file only: it still catches empty files and files of the wrong kind, but not a file that is damaged or cut short further on, and it does not compare the two files of a pair. The application always checks every read.
 

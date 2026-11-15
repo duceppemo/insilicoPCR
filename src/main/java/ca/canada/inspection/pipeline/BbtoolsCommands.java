@@ -46,10 +46,10 @@ record BbtoolsCommands(String javaCommand, Path bbtoolsJar, int childMemoryGiB, 
     static final List<String> EXTEND_OPTIONS = List.of("branchmult1=1", "branchmult2=1", "mincountextend=2");
 
     /**
-     * A BBTools command and the folder it runs in: the folder of the file it writes, which every
-     * file argument is relative to. BBTools reads a comma in a file argument as a list of files,
-     * so an absolute path through a folder with a comma in its name broke the command; the
-     * relative paths leave out the folders the output and the input share, as #56 did for BLAST.
+     * A BBTools command and the folder it runs in: the folder of the file it writes. Its file
+     * arguments are absolute paths, except one with a comma, which BBTools would read as a list
+     * of files: that one is given relative to the folder, leaving out the folders above that the
+     * file and the folder share (see {@link #argument}).
      */
     record Command(Path directory, List<String> arguments) {
         Command {
@@ -198,24 +198,40 @@ record BbtoolsCommands(String javaCommand, Path bbtoolsJar, int childMemoryGiB, 
     }
 
     /**
-     * {@code file} as an argument of a command running in {@code directory}: relative to it, or
-     * absolute on another Windows drive.
+     * {@code file} as an argument of a command running in {@code directory}: its absolute path, or,
+     * when that has a comma, its path relative to the folder. The relative path is worked out
+     * from both as they are on disk, symbolic links resolved: the system resolves {@code ..} from
+     * the real folder a program runs in, not from the path it was reached by.
      *
      * @throws PipelineException when it still has a comma, which BBTools would split it at
      */
     static String argument(Path directory, Path file) {
         Path absolute = file.toAbsolutePath().normalize();
+        if (absolute.toString().indexOf(',') < 0) {
+            return absolute.toString();
+        }
+        Path real = onDisk(absolute);
         String argument;
         try {
-            argument = directory.relativize(absolute).toString();
+            argument = onDisk(directory.toAbsolutePath().normalize()).relativize(real).toString();
         } catch (IllegalArgumentException otherRoot) {
-            argument = absolute.toString();
+            argument = real.toString();
         }
         if (argument.contains(",")) {
             throw new PipelineException("BBTools reads a comma in a file name as a list of files, and cannot read "
                     + absolute + ": remove the comma from the name of the file or of its folder");
         }
         return argument;
+    }
+
+    /** {@code path} with its symbolic links resolved, as far as it exists (an output may not, yet). */
+    private static Path onDisk(Path path) {
+        try {
+            return path.toRealPath();
+        } catch (java.io.IOException notThere) {
+            Path parent = path.getParent();
+            return parent == null ? path : onDisk(parent).resolve(path.getFileName());
+        }
     }
 
     private Command bbduk(Path ref, List<Path> reads, Path output, int hdist) {

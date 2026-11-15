@@ -56,9 +56,10 @@ final class BlastTsv {
                 Files.createDirectories(parent);
             }
 
-            Path temp = (parent != null)
-                    ? Files.createTempFile(parent, path.getFileName().toString(), ".tmp")
-                    : Files.createTempFile(path.getFileName().toString(), ".tmp");
+            // Written beside it with the folder's usual permissions, then moved over it: a
+            // temporary file (Files.createTempFile) is readable by its owner only, and so was
+            // the hit file it became, to colleagues sharing the output folder.
+            Path temp = path.resolveSibling(path.getFileName() + ".part");
 
             try {
                 try (BufferedWriter writer = Files.newBufferedWriter(temp, StandardCharsets.UTF_8)) {
@@ -76,11 +77,11 @@ final class BlastTsv {
                     }
                 }
 
-                Files.move(
-                        temp,
-                        path,
-                        StandardCopyOption.REPLACE_EXISTING,
-                        StandardCopyOption.ATOMIC_MOVE);
+                try {
+                    Files.move(temp, path, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+                } catch (java.nio.file.AtomicMoveNotSupportedException e) {
+                    Files.move(temp, path, StandardCopyOption.REPLACE_EXISTING);
+                }
 
             } catch (IOException e) {
                 Files.deleteIfExists(temp);

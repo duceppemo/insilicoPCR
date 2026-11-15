@@ -203,13 +203,14 @@ class InputCheckTest {
     }
 
     @Test
-    void aFolderWithoutSequenceFilesSaysSo() throws IOException {
+    void aFolderWithoutSequenceFilesHasNoFile() throws IOException {
+        // The run stops on it (InSilicoPcrPipeline): no warning of the check's own.
         write("notes.txt", "nothing here");
 
         Result result = InputCheck.scan(dir, Depth.FULL, 1);
 
         assertEquals(0, result.files());
-        assertEquals(List.of("No FASTA or FASTQ file in " + dir + ": nothing to analyse."), result.warnings());
+        assertEquals(List.of(), result.warnings());
     }
 
     @Test

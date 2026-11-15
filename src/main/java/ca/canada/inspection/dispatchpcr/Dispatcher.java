@@ -55,6 +55,13 @@ public final class Dispatcher {
                 out.println("insilicoPCR " + Version.VERSION);
                 return 0;
             }
+            if (!cmd.getArgList().isEmpty()) {
+                // A shell pattern (-i reads/*.fastq.gz) gives -i its first file and leaves the
+                // others here: run, the run would quietly analyse one file.
+                throw new IllegalArgumentException("Unexpected argument(s): " + String.join(" ", cmd.getArgList())
+                        + ". -i takes one file or one folder: give the folder that holds the files, and quote a"
+                        + " path with spaces.");
+            }
             config = CliConfig.from(cmd);
         } catch (ParseException | IllegalArgumentException e) {
             err.println(e.getMessage());

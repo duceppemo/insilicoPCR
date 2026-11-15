@@ -34,9 +34,11 @@ public final class RunFailure {
      */
     public static boolean isForTheUser(Throwable error) {
         for (Throwable link = error; link != null; link = link.getCause()) {
+            // A file name the locale cannot encode (LANG=C) is the user's to fix, as a missing file is.
             boolean expected = link instanceof PipelineException
                     || link instanceof IOException
-                    || link instanceof UncheckedIOException;
+                    || link instanceof UncheckedIOException
+                    || link instanceof java.nio.file.InvalidPathException;
             if (!expected) {
                 return false;
             }
@@ -51,12 +53,31 @@ public final class RunFailure {
     public static List<String> lines(Throwable error) {
         List<String> lines = new ArrayList<>();
         for (Throwable link = error; link != null; link = link.getCause()) {
-            String message = link.getMessage() == null ? link.getClass().getSimpleName() : link.getMessage().strip();
+            String message = message(link);
             if (lines.stream().anyMatch(line -> line.contains(message))) {
                 continue;
             }
             lines.add((lines.isEmpty() ? "Error: " : "  Cause: ") + message);
         }
         return lines;
+    }
+
+    /**
+     * What {@code error} says. A file the system refused (no permission, a read-only disk) says
+     * only its path in its message; the reason is given apart, or by the exception's kind.
+     */
+    private static String message(Throwable error) {
+        if (error instanceof java.nio.file.FileSystemException refused && refused.getFile() != null) {
+            String reason = refused.getReason() != null ? refused.getReason()
+                    : switch (refused) {
+                        case java.nio.file.AccessDeniedException denied -> "permission denied";
+                        case java.nio.file.NoSuchFileException missing -> "no such file or folder";
+                        case java.nio.file.FileAlreadyExistsException exists -> "already exists";
+                        default -> refused.getClass().getSimpleName();
+                    };
+            return refused.getFile() + ": " + reason
+                    + (refused.getOtherFile() == null ? "" : " (" + refused.getOtherFile() + ")");
+        }
+        return error.getMessage() == null ? error.getClass().getSimpleName() : error.getMessage().strip();
     }
 }

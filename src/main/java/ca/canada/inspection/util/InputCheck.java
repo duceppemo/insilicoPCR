@@ -99,9 +99,7 @@ public final class InputCheck {
         public List<String> warnings() {
             List<String> lines = new ArrayList<>();
             issues.forEach(issue -> lines.add(issue.line()));
-            if (files == 0) {
-                lines.add("No FASTA or FASTQ file in " + input + ": nothing to analyse.");
-            } else if (samples.isEmpty()) {
+            if (files > 0 && samples.isEmpty()) {
                 lines.add("No sample of " + input + " can be analysed.");
             }
             return lines;

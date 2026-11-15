@@ -37,7 +37,7 @@ record RunForm(Path input, Path output, Path primers, int threads, int mismatche
         } catch (NumberFormatException e) {
             evalue = Double.NaN;
         }
-        if (!(evalue > 0.0)) {
+        if (!PipelineConfig.validEvalue(evalue)) {
             return new Outcome.Invalid("E-value must be a number greater than 0, e.g. "
                     + PipelineConfig.DEFAULT_EVALUE_TEXT + ".");
         }

@@ -41,4 +41,17 @@ class BlastTsvTest {
         assertEquals(expected, BlastTsv.HEADER);
         assertTrue(BlastTsv.OUTFMT.startsWith("6 "));
     }
+
+    @Test
+    @org.junit.jupiter.api.condition.DisabledOnOs(org.junit.jupiter.api.condition.OS.WINDOWS)
+    void theHitFileKeepsTheFolderUsualPermissions() throws IOException {
+        // A temporary file is its owner's only; the hit file was too, to colleagues sharing the folder.
+        Path usual = Files.writeString(dir.resolve("usual.txt"), "");
+        Path hits = Files.writeString(dir.resolve("s.tsv"), "a\tb\n");
+
+        BlastTsv.prependHeader(hits);
+
+        assertEquals(Files.getPosixFilePermissions(usual), Files.getPosixFilePermissions(hits));
+        assertTrue(Files.notExists(dir.resolve("s.tsv.part")));
+    }
 }

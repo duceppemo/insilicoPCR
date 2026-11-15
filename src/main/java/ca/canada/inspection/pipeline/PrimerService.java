@@ -1,5 +1,6 @@
 package ca.canada.inspection.pipeline;
 
+import ca.canada.inspection.util.SequenceFileUtils;
 import ca.canada.inspection.pcr.ExpectedSizes;
 import ca.canada.inspection.pcr.PrimerId;
 import ca.canada.inspection.pcr.PrimerPanel;
@@ -88,9 +89,8 @@ public final class PrimerService {
                 }
                 if (line.startsWith(">")) {
                     putFastaEntry(fasta, currentId, sequence);
-                    String[] header = line.substring(1).trim().split("\\s+", 2);
-                    currentId = header[0];
-                    descriptions.put(currentId, header.length > 1 ? header[1] : "");
+                    currentId = SequenceFileUtils.fastaId(line);
+                    descriptions.put(currentId, SequenceFileUtils.fastaDescription(line));
                     sequence.setLength(0);
                 } else {
                     sequence.append(line);

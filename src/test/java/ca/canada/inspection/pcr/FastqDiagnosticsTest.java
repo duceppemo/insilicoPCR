@@ -354,6 +354,9 @@ class FastqDiagnosticsTest {
         // Only the probe in the reads: both primers are missing, not the forward one only.
         Finding probeOnly = assess(fastqSample(), noReadCall(Map.of("assay-P", 2L)), Map.of()).getFirst();
         assertEquals("no read carries the forward or the reverse primer, only the probe", probeOnly.readDetail());
+        Finding forwardOnly = assess(fastqSample(), noReadCall(Map.of("assay-F", 2L, "assay-P", 2L)), Map.of()).getFirst();
+        assertEquals(Status.PARTIAL_BAIT, forwardOnly.status());
+        assertEquals("no read carries the reverse primer", forwardOnly.readDetail());
     }
 
     @Test

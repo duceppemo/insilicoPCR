@@ -40,7 +40,9 @@
   searches, ran on to the end of its search, writing into the output folder.
   The programs a run starts are now put in a Windows job object that ends them
   with insilicoPCR, however it ends. The launcher and the JAR's manifest enable
-  the native access this needs.
+  the native access this needs; the launcher also enables it for JavaFX, whose
+  warning ("A restricted method in java.lang.System has been called") opened the
+  console window of every session of the application.
 - Windows: an output folder deep enough that the files of a run passed 260
   characters failed once a program started, with "CreateProcess error=267, The
   directory name is invalid" or BLAST's "File is not accessible". It is now

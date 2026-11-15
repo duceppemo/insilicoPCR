@@ -1,5 +1,6 @@
 package ca.canada.inspection.pcr;
 
+import ca.canada.inspection.model.Hits;
 import ca.canada.inspection.model.Sample;
 import ca.canada.inspection.pcr.ReadLevelCaller.ReadCall;
 import ca.canada.inspection.pcr.ReadLevelCaller.ReadEvidence;
@@ -432,5 +433,16 @@ class ReadLevelCallerTest {
         assertEquals(true, ProductSizes.sameProduct(Set.of(300), 290));
         assertEquals(false, ProductSizes.sameProduct(List.of(300, 310, 318), 329));
         assertEquals(false, ProductSizes.sameProduct(Set.of(300), 289));
+    }
+
+    @Test
+    void aPrimerEndingOnAReadsLastBaseIsContainedInIt() {
+        // A read (or merged pair) ending exactly at the product's end holds the whole product.
+        Hits reads = new Hits();
+        reads.add("assay-R", TestHits.minusHit("assay-R", "read_1", 81)); // 81-100 of a 100-base read
+        reads.add("assay-F", TestHits.plusHit("assay-F", "read_1", 81));
+        Hits contained = ReadLevelCaller.withContainedHits(reads, Map.of("read_1", 100));
+        assertEquals(2, contained.of(List.of("assay-F", "assay-R")).size());
+        assertEquals(0, ReadLevelCaller.withContainedHits(reads, Map.of("read_1", 99)).of(List.of("assay-F")).size());
     }
 }

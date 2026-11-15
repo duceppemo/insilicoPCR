@@ -211,7 +211,9 @@ public final class FastqDiagnostics {
                 }
             } else if (counts.forward() == 0 || counts.reverse() == 0) {
                 status = Status.PARTIAL_BAIT;
-                readDetail = "no read carries the " + (counts.forward() == 0 ? "forward" : "reverse") + " primer";
+                readDetail = counts.forward() == 0 && counts.reverse() == 0 ? "no read carries the forward or the"
+                        + " reverse primer, only the probe"
+                        : "no read carries the " + (counts.forward() == 0 ? "forward" : "reverse") + " primer";
             } else if (outcome == null) {
                 status = Status.NOT_IN_READS;
                 readDetail = "no complete amplicon in the reads; reads carrying the primers could hold amplicons up to "

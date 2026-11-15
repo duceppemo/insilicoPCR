@@ -292,4 +292,12 @@ class TrimmedEndsTest {
         assertEquals(3, hit.fivePrimeUncovered());
         assertEquals(2, hit.fivePrimeUnpairedBases());
     }
+
+    @Test
+    void theTemplatesLastBaseIsOnIt() {
+        TrimmedEnds.Template template = TrimmedEnds.Template.whole("ACGT");
+        org.junit.jupiter.api.Assertions.assertTrue(template.has(1) && template.has(4));
+        org.junit.jupiter.api.Assertions.assertFalse(template.has(0) || template.has(5));
+        assertEquals('T', template.base(4));
+    }
 }

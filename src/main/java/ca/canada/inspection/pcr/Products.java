@@ -116,7 +116,9 @@ public final class Products {
         Map<List<Object>, ReportRow> best = new java.util.LinkedHashMap<>();
         java.util.Comparator<ReportRow> order = ReportRow.BEST_BOUND.thenComparing(ReportRow.VARIANT_ORDER);
         for (ReportRow row : rows) {
-            best.merge(List.of(row.contig(), row.start(), row.end(), row.strand()), row,
+            // The size too: the start is clamped to 1 at a contig start, where primers of different
+            // lengths make products of different sizes at one location.
+            best.merge(List.of(row.contig(), row.start(), row.end(), row.strand(), row.size()), row,
                     (kept, other) -> order.compare(other, kept) < 0 ? other : kept);
         }
         return List.copyOf(best.values());

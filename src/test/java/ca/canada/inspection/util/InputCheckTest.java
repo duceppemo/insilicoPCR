@@ -285,4 +285,12 @@ class InputCheckTest {
         assertTrue(full.warnings().getFirst().contains("two sequences share an ID"), full.warnings().toString());
         assertTrue(full.warnings().getFirst().contains("the ID 1 names more than one sequence"), full.warnings().toString());
     }
+
+    @Test
+    void sequencesSharingAnIdAreLeftOutAtAQuickCheckToo() throws IOException {
+        // Headers only: quick on an assembly, and what it prevents is a product of two molecules.
+        write("joined.fasta", ">1 chromosome\nACGTACGT\n>1 plasmid\nGGGG\n");
+        Result quick = InputCheck.scan(dir, Depth.QUICK, 1);
+        assertTrue(quick.samples().isEmpty(), quick.samples().toString());
+    }
 }

@@ -76,7 +76,7 @@ class BlastReportsTest {
         Files.createDirectories(report.getParent());
         Files.writeString(report, hitLine(0) + "\n");
         Sample sample = sample("ISO2");
-        sample.setFile(detailedDir.resolve("ISO2.FASTA"));
+        sample.addFile(detailedDir.resolve("ISO2.FASTA"));
         Map<String, Sample> samples = Map.of("ISO2", sample);
 
         BlastReports.attachHits(this::report, Sample::files, samples, PRIMERS, OPTIONS, warning -> {});
@@ -105,7 +105,7 @@ class BlastReportsTest {
                 "24", "35", probe.substring(3), "4", "15", probe.substring(3)) + "\n");
 
         Sample sample = sample("sampleB");
-        sample.setFile(fasta);
+        sample.addFile(fasta);
         Map<String, Sample> samples = new HashMap<>();
         samples.put("sampleB", sample);
         PrimerPanel primers = PrimerPanel.of(Map.of("assay-P", probe));
@@ -119,7 +119,7 @@ class BlastReportsTest {
 
         Map<String, Sample> strict = new HashMap<>();
         Sample again = sample("sampleB");
-        again.setFile(fasta);
+        again.addFile(fasta);
         strict.put("sampleB", again);
         BlastReports.attachHits(this::report, Sample::files, strict, primers, new AmpliconOptions(0, 0, 5, 0, 5, 0, 5000), warning -> {});
         assertTrue(strict.get("sampleB").hits().byOligo().isEmpty());
@@ -137,7 +137,7 @@ class BlastReportsTest {
                 "contig7", "assay-P", "12", "0", "0", "0.01", "24.3", "15", "12",
                 "24", "35", probe.substring(3), "4", "15", probe.substring(3)) + "\n");
         Sample sample = sample("sampleC");
-        sample.setFile(fasta);
+        sample.addFile(fasta);
         java.util.List<String> warnings = new java.util.ArrayList<>();
 
         BlastReports.attachHits(this::report, Sample::files, Map.of("sampleC", sample), PrimerPanel.of(Map.of("assay-P", probe)),

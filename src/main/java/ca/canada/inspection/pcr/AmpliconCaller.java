@@ -75,10 +75,6 @@ public final class AmpliconCaller {
      * @param forwardStrand '+' when the forward primer matches the plus strand, '-' otherwise
      */
     public record Amplicon(String contig, int start, int end, int size, char forwardStrand) {
-        public String location() {
-            return start + "-" + end;
-        }
-
         public boolean contains(int positionStart, int positionEnd) {
             return positionStart >= start && positionEnd <= end;
         }

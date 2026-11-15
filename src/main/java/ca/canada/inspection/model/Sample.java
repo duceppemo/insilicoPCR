@@ -41,11 +41,6 @@ public class Sample {
 	/** The sample's files (one assembly, or the reads of one library), in name order; a copy. */
 	public List<Path> files() { return List.copyOf(sampleFiles); }
 
-	public void setFile(Path file) {
-		sampleFiles.clear();
-		sampleFiles.add(file);
-	}
-
 	public void addFile(Path file) {
 		sampleFiles.add(file);
 		sortFiles();

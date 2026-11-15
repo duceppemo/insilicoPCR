@@ -23,9 +23,6 @@ class SampleTest {
         sample.addFile(Path.of("a_1.fastq"));
         assertEquals(List.of(Path.of("a_1.fastq"), Path.of("b_2.fastq")), sample.files());
 
-        sample.setFile(Path.of("only.fasta"));
-        assertEquals(1, sample.files().size());
-
         sample.addFile(Path.of("z.fq"));
         sample.addFile(Path.of("a.fq"));
         assertEquals(Path.of("a.fq"), sample.files().getFirst());

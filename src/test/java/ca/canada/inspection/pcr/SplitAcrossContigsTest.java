@@ -71,10 +71,20 @@ class SplitAcrossContigsTest {
 
     @Test
     void convergentPrimersOnOneContigAreNotASplit() {
-        // A pair facing each other on one contig is a product, or none for its own reasons (here: too long).
-        Sample sample = genome(plusHit("assay-F", "plasmid", 11), minusHit("assay-R", "plasmid", 2901));
+        // A pair facing each other on one contig is a product, or none for its own reasons: here too
+        // short for --min-length, and short enough for the split's own limit, so that only the
+        // convergence rule keeps it from being a split.
+        Sample sample = genome(plusHit("assay-F", "plasmid", 11), minusHit("assay-R", "plasmid", 211));
 
-        assertTrue(find(sample, new AmpliconOptions(0, 0, 5, 0, 5, 0, 1000)).isEmpty());
+        assertTrue(find(sample, AmpliconOptions.builder().minLength(500).build()).isEmpty());
+    }
+
+    @Test
+    void contigsOfOverAGigabaseDoNotOverflowIntoANegativeSize() {
+        Map<String, Integer> lengths = Map.of("chr1", 1_200_000_000, "chr2", 1_200_000_000);
+        // Each primer over a gigabase from the end it points to: 2.4 Gb together, more than an int holds.
+        Sample sample = genome(plusHit("assay-F", "chr1", 1_000), minusHit("assay-R", "chr2", 1_199_999_000));
+        assertTrue(SplitAcrossContigs.find(sample, PRIMERS, DEFAULTS, () -> lengths).isEmpty());
     }
 
     @Test

@@ -336,4 +336,12 @@ class HtmlReportTest {
         assertFalse(page.contains("Input not analysed"));
         assertFalse(page.contains("not analysed: faulty"));
     }
+
+    @Test
+    void everyVerdictHasItsLookOnThePage() {
+        for (ca.canada.inspection.pcr.AssayVerdict.Kind kind : ca.canada.inspection.pcr.AssayVerdict.Kind.values()) {
+            assertEquals(kind.name(), HtmlReport.State.of(kind).name());
+        }
+        assertEquals(ca.canada.inspection.pcr.AssayVerdict.Kind.values().length, HtmlReport.State.values().length);
+    }
 }

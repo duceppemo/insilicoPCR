@@ -19,13 +19,15 @@ public final class BlastReports {
      * Reads the BLAST report of each of {@code samples} and attaches its accepted hits. Reports
      * of other samples, left by an earlier run in the same output folder, are not read.
      *
-     * @param reportOf where the BLAST stage wrote a sample's report, by sample name
+     * @param reportOf   where the BLAST stage wrote a sample's report, by sample name
+     * @param searchedOf the FASTA files BLAST searched for a sample, where trimmed hit ends are looked up
      * @param warning  told about trimmed hits whose sequence was not found ({@link BlastHits#missingWarning})
      */
-    public static void attachHits(Function<String, Path> reportOf, Map<String, Sample> samples, PrimerPanel primers,
-                                  AmpliconOptions options, Consumer<String> warning) {
+    public static void attachHits(Function<String, Path> reportOf, Function<Sample, List<Path>> searchedOf,
+                                  Map<String, Sample> samples, PrimerPanel primers, AmpliconOptions options,
+                                  Consumer<String> warning) {
         samples.forEach((sampleName, sample) -> {
-            List<Path> searched = sample.searchedFasta().stream().filter(Files::isRegularFile).toList();
+            List<Path> searched = searchedOf.apply(sample).stream().filter(Files::isRegularFile).toList();
             String missing = BlastHits.missingWarning(
                     BlastHits.read(reportOf.apply(sampleName), searched, sample.hits(), primers, options),
                     searched);

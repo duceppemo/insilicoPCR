@@ -116,7 +116,7 @@ public final class AmpliconSettingsDialog {
         Integer probeMismatches = probe.isBlank() ? null : SettingsDialog.parseInt(probe, "Probe mismatches", 0);
         int min = SettingsDialog.parseInt(minLength, "Min amplicon", 0);
         int max = SettingsDialog.parseInt(maxLength, "Max amplicon", 0);
-        if (max > 0 && min > max) {
+        if (!AmpliconOptions.lengthsInOrder(min, max)) {
             throw new IllegalArgumentException("Min amplicon (" + min + " bp) is larger than Max amplicon ("
                     + max + " bp).");
         }

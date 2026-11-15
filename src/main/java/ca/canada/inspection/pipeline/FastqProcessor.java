@@ -185,7 +185,6 @@ public final class FastqProcessor {
     private static void assemble(PipelineContext context, BbtoolsCommands commands, Sample sample) {
         SampleFiles files = context.directories().sample(sample.getName());
         Path output = files.assembly();
-        sample.setAssemblyFile(output);
         run(context, "Tadpole", commands.assemble(files.doubleTargetMatches(), output,
                 context.config().tadpole()));
     }

@@ -186,7 +186,7 @@ class EndToEndTest {
         assertTrue(monitor.messages.contains("BBTools: one sample at a time, with 2 threads and -Xmx8g"),
                 monitor.messages.toString());
         for (String sample : List.of("big", "small")) {
-            Path assembly = context.samples().get(sample).getAssemblyFile();
+            Path assembly = context.directories().sample(sample).assembly();
             assertTrue(Files.size(assembly) > 0, assembly.toString());
         }
     }

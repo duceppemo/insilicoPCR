@@ -206,8 +206,9 @@ class ReadExtensionStageTest {
         };
         Sample sample = new Sample("S");
         sample.setFileType(Sample.FileType.FASTQ);
-        Path detailed = dir.resolve("detailed_report");
-        SampleFiles files = SampleFiles.of(detailed, "S");
+        PipelineDirectories directories = new PipelineDirectories(dir, dir.resolve("detailed_report"),
+                dir.resolve(PipelineDirectories.CONSOLIDATED));
+        SampleFiles files = directories.sample("S");
         Files.createDirectories(files.directory());
         Files.writeString(files.doubleTargetMatches(), "");
         Files.writeString(files.baitedReadsFasta(), ">read_0 a/1\nACGT\n>read_1 a/2\nTTTT\n");
@@ -218,7 +219,7 @@ class ReadExtensionStageTest {
                 new ReadLevelStage.Settings(Path.of("blastn"), Path.of("primer_tmp.fasta"), 1e5, 1, 0.3, monitor),
                 new BbtoolsCommands("java", Path.of("bbtools.jar"), 4, 1), ReadExtensionCaller.Mode.UNREPORTED);
 
-        ReadExtensionStage.Result result = ReadExtensionStage.run(settings, detailed, Map.of("S", sample), PRIMERS,
+        ReadExtensionStage.Result result = ReadExtensionStage.run(settings, directories, Map.of("S", sample), PRIMERS,
                 AmpliconOptions.withMismatches(0), Map.of("S", evidence));
 
         assertEquals(List.of("Tadpole"), started);

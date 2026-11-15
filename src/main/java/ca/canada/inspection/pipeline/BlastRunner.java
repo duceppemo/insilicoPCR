@@ -16,12 +16,9 @@ public final class BlastRunner {
                 sample -> blast(context, sample), context.monitor()::blastProgress);
     }
 
-    /** The FASTA file searched for {@code sample} ({@link Sample#searchedFasta}): one, always. */
-    private static Path query(Sample sample) {
-        List<Path> searched = sample.searchedFasta();
-        if (sample.isFastq() && searched.isEmpty()) {
-            throw new PipelineException("FASTQ sample has no assembly file: " + sample.getName());
-        }
+    /** The FASTA file searched for {@code sample} ({@link PipelineContext#searchedFasta}): one, always. */
+    private static Path query(PipelineContext context, Sample sample) {
+        List<Path> searched = context.searchedFasta(sample);
         // The input check leaves out a FASTA sample of more than one file.
         if (searched.size() != 1) {
             throw new IllegalStateException("Sample " + sample.getName() + " is not one FASTA file: " + searched);
@@ -32,7 +29,7 @@ public final class BlastRunner {
     private static void blast(PipelineContext context, Sample sample) {
         // The report is named after the sample, not the file, so that it is read back for that
         // sample whatever the file is called (SampleFiles.blastReport).
-        Path query = query(sample);
+        Path query = query(context, sample);
         context.directories().createSampleDirectory(sample.getName());
         Path blastTsv = context.directories().sample(sample.getName()).blastReport();
         Path blastOutput = blastTsv.getParent();

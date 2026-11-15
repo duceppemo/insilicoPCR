@@ -25,7 +25,6 @@ import java.util.Map;
 final class QaLogWriter {
     private static final DateTimeFormatter QA_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss");
 
-    /** Starts the line naming the run's consolidated report, relative to the output folder. */
     /** The log of a folder's first run, which marks a finished run; the others are {@link #fileFor}. */
     static final String FILE_NAME = "QAlog.txt";
 
@@ -41,6 +40,8 @@ final class QaLogWriter {
         String base = ca.canada.inspection.report.ConsolidatedReport.baseName(report);
         return "QAlog" + (base.startsWith("report") ? base.substring("report".length()) : "") + ".txt";
     }
+
+    /** Starts the line naming the run's consolidated report, relative to the output folder. */
     static final String REPORT_PREFIX = "Consolidated report: ";
     /** Starts each line naming a sample the run analysed (one gel lane each). */
     static final String SAMPLE_PREFIX = "Sample analysed: ";

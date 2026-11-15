@@ -52,7 +52,7 @@ release/insilicoPCR-<version>-linux-x64.zip.sha256
 scripts/release-windows.ps1 -Version 0.15.1
 ```
 
-Without `-Version`, the ZIP is named for the script's default, 0.8.0, whatever version it holds.
+Without `-Version` (or the version argument of `package-linux-portable.sh`), the ZIP is named for the version in `pom.xml` (before 0.15.2, for a fixed 0.8.0, whatever version it held). CI builds that are not a release still pass 0.8.0, a placeholder the smoke test knows.
 
 Expected artifacts:
 

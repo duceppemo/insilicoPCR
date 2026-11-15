@@ -56,9 +56,6 @@ class SampleTest {
 
         sample.setFileType(Sample.FileType.FASTA);
         assertFalse(sample.isFastq());
-
-        sample.setAssemblyFile(Path.of("assembly.fasta"));
-        assertEquals(Path.of("assembly.fasta"), sample.getAssemblyFile());
     }
 
     /** A cache key of the tests, as Products has its own. */

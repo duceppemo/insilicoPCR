@@ -38,7 +38,7 @@ class ReadLevelCallerTest {
             reads.addBlastResult("assay-P", TestHits.plusHit("assay-P", read, 35));
         }
 
-        ReadEvidence evidence = ReadLevelCaller.evaluate(reads, Map.of("read_1", 101, "read_2", 101), PRIMERS, DEFAULTS);
+        ReadEvidence evidence = TestEvidence.evaluate(reads, Map.of("read_1", 101, "read_2", 101), PRIMERS, DEFAULTS);
         ReadCall call = evidence.products("assay").getFirst();
 
         assertEquals(2, call.supportingReads());
@@ -76,18 +76,18 @@ class ReadLevelCallerTest {
         lengths.put("read_11", 40);
         reads.addBlastResult("assay-F", TestHits.plusHit("assay-F", "read_11", 11));
 
-        ReadCall call = ReadLevelCaller.evaluate(reads, lengths, PRIMERS, DEFAULTS).products("assay").getFirst();
+        ReadCall call = TestEvidence.evaluate(reads, lengths, PRIMERS, DEFAULTS).products("assay").getFirst();
 
         assertEquals(2, call.supportingReads());
         assertEquals(10, call.informativeReads());
         assertTrue(!call.isReportable());
 
         // The same 20% support passes a lower --read-min-fraction.
-        ReadCall lenient = ReadLevelCaller.evaluate(reads, lengths, PRIMERS, DEFAULTS, 0.2).products("assay").getFirst();
+        ReadCall lenient = TestEvidence.evaluate(reads, lengths, PRIMERS, DEFAULTS, 0.2).products("assay").getFirst();
         assertTrue(lenient.isReportable());
         assertEquals("at least 2 reads or read pairs and 20% of informative reads", lenient.thresholdSummary());
         assertThrows(IllegalArgumentException.class,
-                () -> ReadLevelCaller.evaluate(reads, lengths, PRIMERS, DEFAULTS, 1.1));
+                () -> TestEvidence.evaluate(reads, lengths, PRIMERS, DEFAULTS, 1.1));
     }
 
     @Test
@@ -102,13 +102,13 @@ class ReadLevelCallerTest {
         }
         Map<String, Integer> lengths = Map.of("read_1", 101, "read_2", 101);
 
-        ReadCall paired = ReadLevelCaller.evaluate(reads, lengths, Map.of("read_1", "read_1", "read_2", "read_1"),
+        ReadCall paired = TestEvidence.evaluate(reads, lengths, Map.of("read_1", "read_1", "read_2", "read_1"),
                 PRIMERS, DEFAULTS, ReadLevelCaller.DEFAULT_MIN_SUPPORT_FRACTION).products("assay").getFirst();
         assertEquals(1, paired.supportingReads());
         assertEquals(1, paired.informativeReads());
         assertTrue(!paired.isReportable());
 
-        ReadCall separate = ReadLevelCaller.evaluate(reads, lengths, PRIMERS, DEFAULTS).products("assay").getFirst();
+        ReadCall separate = TestEvidence.evaluate(reads, lengths, PRIMERS, DEFAULTS).products("assay").getFirst();
         assertEquals(2, separate.supportingReads());
         assertTrue(separate.isReportable());
     }
@@ -120,7 +120,7 @@ class ReadLevelCallerTest {
         reads.addBlastResult("assay-R", TestHits.minusHit("assay-R", "read_1", 61));
         reads.addBlastResult("assay-P", TestHits.plusHit("assay-P", "read_1", 35));
 
-        ReadCall call = ReadLevelCaller.evaluate(reads, Map.of("read_1", 101), PRIMERS, DEFAULTS).products("assay").getFirst();
+        ReadCall call = TestEvidence.evaluate(reads, Map.of("read_1", 101), PRIMERS, DEFAULTS).products("assay").getFirst();
 
         assertEquals(1.0, call.supportFraction());
         assertTrue(!call.isReportable(), "one read is not enough");
@@ -135,7 +135,7 @@ class ReadLevelCallerTest {
         reads.addBlastResult("assay-R", TestHits.minusHit("assay-R", "read_2", 61));
         reads.addBlastResult("assay-P", TestHits.plusHit("assay-P", "read_1", 35));
 
-        ReadEvidence evidence = ReadLevelCaller.evaluate(reads, Map.of("read_1", 101, "read_2", 101), PRIMERS, DEFAULTS);
+        ReadEvidence evidence = TestEvidence.evaluate(reads, Map.of("read_1", 101, "read_2", 101), PRIMERS, DEFAULTS);
 
         assertTrue(evidence.calls().isEmpty());
     }
@@ -149,7 +149,7 @@ class ReadLevelCallerTest {
         reads.addBlastResult("assay-R", TestHits.minusHit("assay-R", "read_1", 51));
         reads.addBlastResult("assay-P", TestHits.plusHit("assay-P", "read_1", 25));
 
-        ReadEvidence evidence = ReadLevelCaller.evaluate(reads, Map.of("read_1", 101), PRIMERS, DEFAULTS);
+        ReadEvidence evidence = TestEvidence.evaluate(reads, Map.of("read_1", 101), PRIMERS, DEFAULTS);
 
         assertTrue(evidence.calls().isEmpty());
         assertEquals(null, evidence.readsWithOligo().get("assay-F"), "a clipped primer is not counted as carried");
@@ -161,7 +161,7 @@ class ReadLevelCallerTest {
         reads.addBlastResult("assay-F", TestHits.plusHit("assay-F", "read_1", 11));
         reads.addBlastResult("assay-R", TestHits.minusHit("assay-R", "read_1", 61));
 
-        assertTrue(ReadLevelCaller.evaluate(reads, Map.of("read_1", 101), PRIMERS, DEFAULTS).calls().isEmpty());
+        assertTrue(TestEvidence.evaluate(reads, Map.of("read_1", 101), PRIMERS, DEFAULTS).calls().isEmpty());
     }
 
     @Test
@@ -170,7 +170,7 @@ class ReadLevelCallerTest {
         reads.addBlastResult("assay-F", TestHits.plusHit("assay-F", "read_1", 31));   // 101 - 31 + 1 = 71
         reads.addBlastResult("assay-R", TestHits.minusHit("assay-R", "read_2", 61));  // ends at 80
 
-        ReadEvidence evidence = ReadLevelCaller.evaluate(reads, Map.of("read_1", 101, "read_2", 150), PRIMERS, DEFAULTS);
+        ReadEvidence evidence = TestEvidence.evaluate(reads, Map.of("read_1", 101, "read_2", 150), PRIMERS, DEFAULTS);
 
         assertEquals(80, evidence.checkableLength().get("assay"));
     }
@@ -256,7 +256,7 @@ class ReadLevelCallerTest {
                 reads.addBlastResult("assay-R", TestHits.minusHit("assay-R", "read_" + i, 61));
             }
         }
-        ReadCall call = ReadLevelCaller.evaluate(reads, lengths, PCR_PRIMERS, DEFAULTS).products("assay").getFirst();
+        ReadCall call = TestEvidence.evaluate(reads, lengths, PCR_PRIMERS, DEFAULTS).products("assay").getFirst();
 
         assertEquals(12, call.informativeReads(), "cannot be judged: counted, which only lowers the support");
         assertEquals(0, call.elsewhereReads());
@@ -332,7 +332,7 @@ class ReadLevelCallerTest {
             reads.addBlastResult("assay-R", TestHits.minusHit("assay-R", read, reverseStart[i]));
         }
 
-        List<ReadCall> products = ReadLevelCaller.evaluate(reads, lengths, PCR_PRIMERS, DEFAULTS).products("assay");
+        List<ReadCall> products = TestEvidence.evaluate(reads, lengths, PCR_PRIMERS, DEFAULTS).products("assay");
 
         assertEquals(1, products.size(), "70, 71 and 80 bp are within " + ReadLevelCaller.PRODUCT_SIZE_GAP + " bp of a neighbour");
         assertEquals(Set.of(70, 71, 80), products.getFirst().sizes());
@@ -358,7 +358,7 @@ class ReadLevelCallerTest {
                 reads.addBlastResult(exactVariant, TestHits.plusHit(exactVariant, read, 35));
             }
         }
-        ReadEvidence evidence = ReadLevelCaller.evaluate(reads, Map.of("read_1", 101, "read_2", 101), primers,
+        ReadEvidence evidence = TestEvidence.evaluate(reads, Map.of("read_1", 101, "read_2", 101), primers,
                 new AmpliconOptions(0, 1, 5, 0, 5, 0, 5000));
         return evidence.products("assay").getFirst().row();
     }
@@ -393,7 +393,7 @@ class ReadLevelCallerTest {
             reads.addBlastResult("plain-F", TestHits.plusHit("plain-F", read, 11));
             reads.addBlastResult("plain-R", TestHits.minusHit("plain-R", read, 61));
         }
-        ReadEvidence evidence = ReadLevelCaller.evaluate(reads, Map.of("read_1", 101, "read_2", 101),
+        ReadEvidence evidence = TestEvidence.evaluate(reads, Map.of("read_1", 101, "read_2", 101),
                 PrimerPanel.of(Map.of("plain-F", PRIMER_20, "plain-R", PRIMER_20)), DEFAULTS);
         ReportRow row = evidence.products("plain").getFirst().row();
 
@@ -416,7 +416,7 @@ class ReadLevelCallerTest {
                 }
                 reads.addBlastResult("deg-R", TestHits.minusHit("deg-R", read, 61));
             }
-            ReadEvidence evidence = ReadLevelCaller.evaluate(reads, Map.of("read_1", 101, "read_2", 101), primers,
+            ReadEvidence evidence = TestEvidence.evaluate(reads, Map.of("read_1", 101, "read_2", 101), primers,
                     DEFAULTS);
             ReportRow row = evidence.products("deg").getFirst().row();
 

@@ -73,6 +73,28 @@ class BlastQueryTest {
     }
 
     @Test
+    void aFastaWithAByteOrderMarkIsSearchedFromACopyWithoutIt() throws IOException {
+        // blastn: "CFastaReader: Near line 1, there's a line that doesn't look like plausible data".
+        byte[] text = FASTA.getBytes(StandardCharsets.UTF_8);
+        byte[] marked = new byte[text.length + 3];
+        marked[0] = (byte) 0xEF;
+        marked[1] = (byte) 0xBB;
+        marked[2] = (byte) 0xBF;
+        System.arraycopy(text, 0, marked, 3, text.length);
+        Path fasta = Files.write(directory.resolve("notepad.fasta"), marked);
+        Path gzipped = Files.write(directory.resolve("notepad.fasta.gz"), gzipBytes(marked));
+
+        try (BlastQuery query = BlastQuery.of(fasta, directory)) {
+            assertNotEquals(fasta, query.path());
+            assertEquals(FASTA, Files.readString(query.path()));
+        }
+        try (BlastQuery query = BlastQuery.of(gzipped, directory)) {
+            assertEquals(FASTA, Files.readString(query.path()));
+        }
+        assertTrue(Files.exists(fasta));
+    }
+
+    @Test
     void theLongestCopyNameIsTheLongestNameOfACopy() throws IOException {
         // WindowsPathLimit counts it among the files a run writes.
         Path fasta = Files.write(directory.resolve("s.fasta.gz"), gzip(FASTA));
@@ -125,9 +147,13 @@ class BlastQueryTest {
     }
 
     private static byte[] gzip(String text) throws IOException {
+        return gzipBytes(text.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private static byte[] gzipBytes(byte[] content) throws IOException {
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
         try (OutputStream out = new GZIPOutputStream(bytes)) {
-            out.write(text.getBytes(StandardCharsets.UTF_8));
+            out.write(content);
         }
         return bytes.toByteArray();
     }

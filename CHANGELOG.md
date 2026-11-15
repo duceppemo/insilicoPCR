@@ -32,7 +32,9 @@
   a small launcher that gives it its jar's path as it is.
 - A primer file saved by Notepad or another Windows editor as UTF-8 with a byte
   order mark was refused for "a sequence before its first header line". The mark
-  is now skipped in every FASTA and FASTQ file insilicoPCR reads itself.
+  is now skipped in every FASTA and FASTQ file insilicoPCR reads itself, and an
+  assembly saved so is searched from a copy without it, which blastn otherwise
+  refuses ("a line that doesn't look like plausible data").
 - Windows: a run ended from Task Manager, by a workflow manager or an IDE's stop
   button left its programs running: blastn, which prints nothing while it
   searches, ran on to the end of its search, writing into the output folder.

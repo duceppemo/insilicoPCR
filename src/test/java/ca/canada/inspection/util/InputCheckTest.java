@@ -271,4 +271,18 @@ class InputCheckTest {
             Thread.interrupted();
         }
     }
+
+    @Test
+    void anAssemblyWhoseSequencesShareAnIdIsLeftOut() throws IOException {
+        // Two assemblies joined into one file, each with a contig named 1: BLAST takes them, and a
+        // primer on each would be paired into a product of two molecules.
+        write("joined.fasta", ">1 chromosome\nACGTACGT\n>2\nACGT\n>1 plasmid\nGGGG\n");
+        write("fine.fasta", ">1\nACGT\n>2\nACGT\n");
+
+        Result full = InputCheck.scan(dir, Depth.FULL, 1);
+
+        assertEquals(List.of("fine"), List.copyOf(full.samples().keySet()));
+        assertTrue(full.warnings().getFirst().contains("two sequences share an ID"), full.warnings().toString());
+        assertTrue(full.warnings().getFirst().contains("the ID 1 names more than one sequence"), full.warnings().toString());
+    }
 }

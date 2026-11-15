@@ -87,7 +87,7 @@ When at least one assay in the primer file defines a `-P` probe, the report appe
 | `Probe` | Probe ID |
 | `ProbeLocation` | 1-based start-end of the probe on the contig |
 | `ProbeSize` | Length of the probe match |
-| `ProbeMismatches` | Mismatches + indels in the probe alignment. A degenerate probe is searched as its variants (`_0`, `_1`, ...): on a contig, each variant that hits within `--probe-mismatches` gives its own row; a product called from reads has one row, on a representative read, with the variant that matches best (since 0.13.0; before, an arbitrary one) |
+| `ProbeMismatches` | Mismatches + indels in the probe alignment. A degenerate probe is searched as its variants (`_0`, `_1`, ...); a product has one row, with the variants of primers and probe that match best (since 0.15.2 on contigs, as on reads since 0.13.0; before, on a contig, each variant that hit gave its own row) |
 
 For an assay that defines a probe, a row is only written when the probe lies entirely within the amplicon. Probe-less assays in the same run keep these columns empty.
 
@@ -160,8 +160,10 @@ nothing about it. A read is therefore informative only when the bases that follo
 the product) resemble those of a read holding the product: at most 20% of them may differ. That threshold is
 deliberately loose: the reads of a related organism at the same locus still count, and they are what
 separates a contaminant from the sample itself. Reads carrying the primer elsewhere are counted apart and
-shown in the diagnostics (`… more read(s) carry a primer elsewhere in the genome`). When too few bases lie
-between the primers to compare (under 10), every read carrying a primer counts as informative.
+shown in the diagnostics (`… more read(s) carry a primer elsewhere in the genome`). The bases compared run from the
+primer to the far end of the shortest product at most, the other primer's site included; when there are fewer
+than 10 (a product less than 10 bases longer than the primer), every read carrying a primer counts as
+informative.
 
 A low share can also be real biology rather than contamination: in a pooled or outbred sample, or for a
 multi-copy gene, only some copies of the locus may match the primers and probe within the mismatch budget. Such an assay

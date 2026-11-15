@@ -35,6 +35,24 @@
   a read file, or of a folder holding the reads but not the output) stops the
   run with a message naming the file to rename. A program that fails is named
   with the folder it ran in, to run it again by hand.
+- Two sequences of one assembly with the same ID (assemblies joined into one
+  file, each with contigs named `1`, `2`, ...) could pair a primer on one with a
+  primer on the other into a product of two molecules: BLAST names a hit's
+  sequence by its ID only. Such a file is left out with a warning (`two
+  sequences share an ID`), as other faulty files are.
+- A degenerate primer reported one product once for every pair of its variants
+  that made it (up to 64 rows for one product of two primers with three
+  degenerate bases each), and so did several primers of one role. A product is
+  one row now, naming the variants that bind best, as products called from
+  reads already were.
+- With `--max-length 0` (no limit), any two primers pointing off the ends of two
+  contigs were marked "primers at contig ends", megabases from them. Such a
+  product is looked for up to 5000 bp, as far as the read extension reaches.
+- FASTQ mode: the read-pair check of an extended product (`PairSupport`) merged
+  16-base seeds that differ in their first base (A with G, C with T): only more
+  alignments to check, no wrong verdict.
+- Docs: how many bases after a primer tell whether a read comes from the
+  product's locus (`Reports`) now says what the code does.
 - Command line: an input with no FASTA or FASTQ file at all (an empty folder, a
   mistyped `-i`) ended with empty reports and exit code 0, which a workflow
   manager took for success; it stops with exit code 1. Arguments the command

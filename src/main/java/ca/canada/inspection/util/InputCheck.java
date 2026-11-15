@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -351,7 +352,31 @@ public final class InputCheck {
         } catch (IOException e) {
             return new FileFault("the file cannot be read", String.valueOf(e.getMessage()), 0);
         }
-        return sequenceSeen ? FileFault.NONE
-                : new FileFault("the file holds no sequence", "header lines only", 0);
+        if (!sequenceSeen) {
+            return new FileFault("the file holds no sequence", "header lines only", 0);
+        }
+        return depth == Depth.FULL ? repeatedId(file) : FileFault.NONE;
+    }
+
+    /**
+     * Two sequences of one file with one ID (assemblies joined into one file, each with contigs
+     * named 1, 2, ...): BLAST takes them, but its hits name the ID only, so a primer on one and a
+     * primer on the other would be paired into a product of two molecules.
+     */
+    private static FileFault repeatedId(Path file) {
+        Set<String> ids = new HashSet<>();
+        try (FastaScanner scanner = new FastaScanner(List.of(file))) {
+            String header;
+            while ((header = scanner.nextHeader(null)) != null) {
+                String id = SequenceFileUtils.fastaId(header);
+                if (!ids.add(id)) {
+                    return new FileFault("two sequences share an ID", "the ID " + id + " names more than one"
+                            + " sequence; give each its own (the report and BLAST tell sequences apart by ID)", 0);
+                }
+            }
+        } catch (IOException e) {
+            return new FileFault("the file cannot be read", String.valueOf(e.getMessage()), 0);
+        }
+        return FileFault.NONE;
     }
 }

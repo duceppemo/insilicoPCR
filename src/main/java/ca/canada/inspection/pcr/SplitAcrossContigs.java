@@ -96,7 +96,7 @@ public final class SplitAcrossContigs {
                     }
                 }
             }
-            if (best != null && (options.maxAmpliconLength() <= 0 || best.minimumSize() <= options.maxAmpliconLength())) {
+            if (best != null && best.minimumSize() <= reach(options)) {
                 splits.add(best);
             }
         }
@@ -124,6 +124,16 @@ public final class SplitAcrossContigs {
         }
         return new Split(sample, assay, forward, toEnd(forward, forwardLength), reverse, toEnd(reverse, reverseLength),
                 fromFivePrimeEnd(forward, forwardLength) + fromFivePrimeEnd(reverse, reverseLength), sameContig, probe);
+    }
+
+    /**
+     * The longest product a split may hide: the maximum product length, or without one
+     * ({@code -l 0}) the reach of the read extension, which looks for products longer than a
+     * read no further. Without a limit, any two primers pointing off two contig ends, megabases
+     * from them, were a split.
+     */
+    static int reach(AmpliconOptions options) {
+        return options.maxAmpliconLength() > 0 ? options.maxAmpliconLength() : ReadExtensionCaller.DEFAULT_REACH;
     }
 
     /** Contig bases past the primer's 3' end, in the direction it extends (also in the FASTQ diagnostics). */

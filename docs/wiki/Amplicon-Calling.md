@@ -82,7 +82,7 @@ An accepted forward hit and an accepted reverse hit of the same assay are report
 
 ## Degenerate primers
 
-IUPAC degenerate bases are expanded into every explicit combination before BLAST (e.g. `...R...Y...` becomes 4 primers, suffixed `_0`, `_1`, ...). Mismatch counting and the 3' check are applied against each expanded variant, so a degenerate position never counts as a mismatch.
+IUPAC degenerate bases are expanded into every explicit combination before BLAST (e.g. `...R...Y...` becomes 4 primers, suffixed `_0`, `_1`, ...). Mismatch counting and the 3' check are applied against each expanded variant, so a degenerate position never counts as a mismatch. Several variants (or several primers of one role, `assay-F_1`, `assay-F_2`) can make the same product; it is reported once, in one row naming the variants that bind best (fewest primer mismatches, then fewest probe mismatches), as for a product called from reads. Before 0.15.2, each variant pair that made it gave a row of its own: up to 64 rows for one product of two primers with three degenerate bases each.
 
 ## BLAST e-value
 

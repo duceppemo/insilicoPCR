@@ -82,7 +82,8 @@ class SplitAcrossContigsTest {
     @Test
     void contigsOfOverAGigabaseDoNotOverflowIntoANegativeSize() {
         Map<String, Integer> lengths = Map.of("chr1", 1_200_000_000, "chr2", 1_200_000_000);
-        Sample sample = genome(minusHit("assay-F", "chr1", 1_000), plusHit("assay-R", "chr2", 1_000));
+        // Each primer over a gigabase from the end it points to: 2.4 Gb together, more than an int holds.
+        Sample sample = genome(plusHit("assay-F", "chr1", 1_000), minusHit("assay-R", "chr2", 1_199_999_000));
         assertTrue(SplitAcrossContigs.find(sample, PRIMERS, DEFAULTS, () -> lengths).isEmpty());
     }
 

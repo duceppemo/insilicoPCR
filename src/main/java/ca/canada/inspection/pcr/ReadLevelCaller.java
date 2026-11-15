@@ -296,20 +296,8 @@ public final class ReadLevelCaller {
     static Hits withContainedHits(Hits reads, Map<String, Integer> readLengths) {
         return reads.filtered(hit -> {
             Integer length = readLengths.get(hit.queryID());
-            return length != null && primerStart(hit) >= 1 && primerEnd(hit) <= length;
+            return length != null && hit.fullStart() >= 1 && hit.fullEnd() <= length;
         });
-    }
-
-    /** 1-based read position of the full primer's leftmost base. */
-    private static int primerStart(BlastResult hit) {
-        int leftUnaligned = hit.isPlusStrand() ? hit.fivePrimeUncovered() : hit.threePrimeUncovered();
-        return hit.qstart() - leftUnaligned;
-    }
-
-    /** 1-based read position of the full primer's rightmost base. */
-    private static int primerEnd(BlastResult hit) {
-        int rightUnaligned = hit.isPlusStrand() ? hit.threePrimeUncovered() : hit.fivePrimeUncovered();
-        return hit.qend() + rightUnaligned;
     }
 
     /** The hits of an assay's forward and reverse primers (not its probe). */
@@ -397,7 +385,7 @@ public final class ReadLevelCaller {
                 continue;
             }
             // The hit that bounds the amplicon, not another copy of the primer on the read.
-            boolean bounds = hit.isPlusStrand() ? primerStart(hit) == span[0] : primerEnd(hit) == span[1];
+            boolean bounds = hit.isPlusStrand() ? hit.fullStart() == span[0] : hit.fullEnd() == span[1];
             String flank = bounds ? flank(sequence, hit, flankLength(hit, shortest)) : null;
             if (flank != null) {
                 counts.computeIfAbsent(role(hit), ignored -> new HashMap<>()).merge(flank, 1, Integer::sum);
@@ -449,11 +437,11 @@ public final class ReadLevelCaller {
             return null;
         }
         if (hit.isPlusStrand()) {
-            int from = primerEnd(hit);
+            int from = hit.fullEnd();
             return from + length > sequence.length() ? null
                     : sequence.substring(from, from + length).toUpperCase(Locale.ROOT);
         }
-        int to = primerStart(hit) - 1;
+        int to = hit.fullStart() - 1;
         return to - length < 0 || to > sequence.length() ? null
                 : Dna.reverseComplement(sequence.substring(to - length, to).toUpperCase(Locale.ROOT));
     }
@@ -496,10 +484,7 @@ public final class ReadLevelCaller {
         if (readLength == null) {
             return 0;
         }
-        if (hit.isPlusStrand()) {
-            return readLength - (hit.qstart() - hit.fivePrimeUncovered()) + 1;
-        }
-        return hit.qend() + hit.fivePrimeUncovered();
+        return hit.toQueryEnd(readLength);
     }
 
     /**

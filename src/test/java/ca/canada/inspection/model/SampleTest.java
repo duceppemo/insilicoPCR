@@ -26,32 +26,33 @@ class SampleTest {
         sample.setFile(Path.of("only.fasta"));
         assertEquals(1, sample.files().size());
 
-        sample.setFiles(List.of(Path.of("z.fq"), Path.of("a.fq")));
+        sample.addFile(Path.of("z.fq"));
+        sample.addFile(Path.of("a.fq"));
         assertEquals(Path.of("a.fq"), sample.files().getFirst());
     }
 
     @Test
     void publicViewsAreImmutableCopies() {
         Sample sample = new Sample("s");
-        sample.addBlastResult("assay-F", hit("assay-F"));
-        sample.addContig("c1", "chromosome");
+        sample.hits().add("assay-F", hit("assay-F"));
+        sample.hits().describe("c1", "chromosome");
 
         assertThrows(UnsupportedOperationException.class, () -> sample.files().add(Path.of("x")));
-        assertThrows(UnsupportedOperationException.class, () -> sample.blastResults().put("x", List.of()));
-        assertThrows(UnsupportedOperationException.class, () -> sample.contigs().put("x", "y"));
-        assertEquals("chromosome", sample.contigs().get("c1"));
+        assertThrows(UnsupportedOperationException.class, () -> sample.hits().byOligo().put("x", List.of()));
+        assertThrows(UnsupportedOperationException.class, () -> sample.hits().descriptions().put("x", "y"));
+        assertEquals("chromosome", sample.hits().descriptions().get("c1"));
     }
 
     @Test
     void whatTheRunLearnsIsKept() {
         Sample sample = new Sample("s1");
         sample.setFileType(Sample.FileType.FASTQ);
-        sample.addBlastResult("assay-F", hit("assay-F"));
-        sample.addBlastResult("assay-F", hit("assay-F"));
+        sample.hits().add("assay-F", hit("assay-F"));
+        sample.hits().add("assay-F", hit("assay-F"));
 
         assertEquals("s1", sample.getName());
         assertTrue(sample.isFastq());
-        assertEquals(2, sample.blastResults().get("assay-F").size());
+        assertEquals(2, sample.hits().byOligo().get("assay-F").size());
 
         sample.setFileType(Sample.FileType.FASTA);
         assertFalse(sample.isFastq());
@@ -60,19 +61,24 @@ class SampleTest {
         assertEquals(Path.of("assembly.fasta"), sample.getAssemblyFile());
     }
 
+    /** A cache key of the tests, as Products has its own. */
+    private record Key(String name) implements Hits.Key<String> {
+    }
+
     @Test
     void derivedValuesAreKeptUntilTheHitsOrContigsChange() {
         Sample sample = new Sample("s");
         int[] computed = new int[1];
         java.util.function.Supplier<String> compute = () -> "products " + (++computed[0]);
+        Key key = new Key("key");
 
-        assertEquals("products 1", sample.hits().derived("key", compute));
-        assertEquals("products 1", sample.hits().derived("key", compute), "worked out once");
-        sample.addContig("c1", "len=10");
-        assertEquals("products 2", sample.hits().derived("key", compute), "a new contig changes the products");
-        sample.addBlastResult("a-F", null);
-        assertEquals("products 3", sample.hits().derived("key", compute), "so does a new hit");
-        assertEquals("products 4", sample.hits().derived("other key", compute));
+        assertEquals("products 1", sample.hits().derived(key, compute));
+        assertEquals("products 1", sample.hits().derived(new Key("key"), compute), "worked out once");
+        sample.hits().describe("c1", "len=10");
+        assertEquals("products 2", sample.hits().derived(key, compute), "a new contig changes the products");
+        sample.hits().add("a-F", null);
+        assertEquals("products 3", sample.hits().derived(key, compute), "so does a new hit");
+        assertEquals("products 4", sample.hits().derived(new Key("other key"), compute));
     }
 
     @Test

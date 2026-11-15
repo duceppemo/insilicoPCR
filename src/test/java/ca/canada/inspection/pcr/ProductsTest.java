@@ -30,9 +30,9 @@ class ProductsTest {
         // Twelve variants make the same product: one row, the same one every run.
         Sample sample = new Sample("S");
         for (int i = 12; i >= 1; i--) {
-            sample.addBlastResult("toxA-F_" + i, plusHit("toxA-F_" + i, "c1", 101));
+            sample.hits().add("toxA-F_" + i, plusHit("toxA-F_" + i, "c1", 101));
         }
-        sample.addBlastResult("toxA-R", minusHit("toxA-R", "c1", 581));
+        sample.hits().add("toxA-R", minusHit("toxA-R", "c1", 581));
 
         List<String> forward = Products.of(sample, degenerate(), AmpliconOptions.withMismatches(0)).stream()
                 .map(ReportRow::forwardPrimer).toList();
@@ -46,11 +46,11 @@ class ProductsTest {
         // elsewhere on the contig keeps its own row.
         Sample sample = new Sample("S");
         String mismatched = "ACGTTCGTACGTACGTACGT"; // a mismatch at base 5, outside the 3' window
-        sample.addBlastResult("toxA-F_1", plusHit("toxA-F_1", "c1", 101, mismatched, PRIMER_20));
-        sample.addBlastResult("toxA-F_2", plusHit("toxA-F_2", "c1", 101));
-        sample.addBlastResult("toxA-F_2", plusHit("toxA-F_2", "c1", 1101));
-        sample.addBlastResult("toxA-R", minusHit("toxA-R", "c1", 581));
-        sample.addBlastResult("toxA-R", minusHit("toxA-R", "c1", 1581));
+        sample.hits().add("toxA-F_1", plusHit("toxA-F_1", "c1", 101, mismatched, PRIMER_20));
+        sample.hits().add("toxA-F_2", plusHit("toxA-F_2", "c1", 101));
+        sample.hits().add("toxA-F_2", plusHit("toxA-F_2", "c1", 1101));
+        sample.hits().add("toxA-R", minusHit("toxA-R", "c1", 581));
+        sample.hits().add("toxA-R", minusHit("toxA-R", "c1", 1581));
 
         List<ReportRow> rows = Products.of(sample, degenerate(),
                 AmpliconOptions.builder().mismatches(1).maxLength(1000).build());
@@ -63,15 +63,15 @@ class ProductsTest {
     @Test
     void aSamplesProductsAreWorkedOutOnceUntilItsHitsChange() {
         Sample sample = new Sample("S");
-        sample.addBlastResult("toxA-F_1", plusHit("toxA-F_1", "c1", 101));
-        sample.addBlastResult("toxA-R", minusHit("toxA-R", "c1", 581));
+        sample.hits().add("toxA-F_1", plusHit("toxA-F_1", "c1", 101));
+        sample.hits().add("toxA-R", minusHit("toxA-R", "c1", 581));
         PrimerPanel primers = degenerate();
         AmpliconOptions options = AmpliconOptions.builder().maxLength(1000).build();
 
         List<ReportRow> first = Products.of(sample, primers, options);
         assertSame(first, Products.of(sample, primers, options));
-        sample.addBlastResult("toxA-F_2", plusHit("toxA-F_2", "c1", 1101));
-        sample.addBlastResult("toxA-R", minusHit("toxA-R", "c1", 1581));
+        sample.hits().add("toxA-F_2", plusHit("toxA-F_2", "c1", 1101));
+        sample.hits().add("toxA-R", minusHit("toxA-R", "c1", 1581));
         assertEquals(2, Products.of(sample, primers, options).size(), "a new product once the hits change");
     }
 }

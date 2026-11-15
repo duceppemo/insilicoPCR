@@ -26,7 +26,7 @@ class SplitAcrossContigsTest {
         Sample sample = new Sample("genome");
         sample.setFileType(Sample.FileType.FASTA);
         for (BlastResult hit : hits) {
-            sample.addBlastResult(hit.subjectID(), hit);
+            sample.hits().add(hit.subjectID(), hit);
         }
         return sample;
     }

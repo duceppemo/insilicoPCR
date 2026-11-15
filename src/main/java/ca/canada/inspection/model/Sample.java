@@ -2,11 +2,9 @@ package ca.canada.inspection.model;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -48,12 +46,6 @@ public class Sample {
 		sampleFiles.add(file);
 	}
 
-	public void setFiles(List<Path> files) {
-		sampleFiles.clear();
-		sampleFiles.addAll(files);
-		sortFiles();
-	}
-
 	public void addFile(Path file) {
 		sampleFiles.add(file);
 		sortFiles();
@@ -71,21 +63,8 @@ public class Sample {
 	/** The accepted hits on the sample's sequences, and their descriptions. */
 	public Hits hits() { return hits; }
 
-	/**
-	 * The accepted hits of each oligo, by oligo ID; a copy, in no particular order (the report
-	 * lists products in the primer file's order).
-	 */
-	public Map<String, List<BlastResult>> blastResults() { return hits.byOligo(); }
-
-	public void addBlastResult(String key, BlastResult result) { hits.add(key, result); }
-
 	public Path getAssemblyFile() { return assemblyFile; }
 	public void setAssemblyFile(Path assemblyFile) { this.assemblyFile = assemblyFile; }
-
-	public void addContig(String acc, String desc) { hits.describe(acc, desc); }
-
-	/** Contig descriptions (the FASTA header after the ID), by contig ID; a copy. */
-	public Map<String, String> contigs() { return hits.descriptions(); }
 
 	public boolean isFastq() { return fileType == FileType.FASTQ; }
 
@@ -99,7 +78,4 @@ public class Sample {
 		}
 		return files();
 	}
-
-	/** The accepted hits of {@code oligoIds}, in that order. */
-	public List<BlastResult> hitsOf(Collection<String> oligoIds) { return hits.of(oligoIds); }
 }

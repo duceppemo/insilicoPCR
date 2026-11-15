@@ -171,20 +171,20 @@ public final class FastqDiagnostics {
             int checkable = reads.checkableLength().getOrDefault(assay, 0);
             List<ReadCall> products = byStrength(reads.products(assay));
 
-            // Products the extended reads add to what the sample already shows for the assay.
+            // What the extended reads show beyond what the sample already shows for the assay: the
+            // products they add, and those the read pairs do not confirm. The status is decided from
+            // these; the text only describes them.
             ReadExtensionCaller.Outcome outcome = extension.get(assay);
-            String added = outcome == null || outcome.added().isEmpty() ? "" : calledByExtension(outcome.added());
-            // Products the extended reads hold that the read pairs do not confirm, and that are new too.
+            List<ReadExtensionCaller.Product> added = outcome == null ? List.of() : outcome.added();
             List<ReadExtensionCaller.Product> unconfirmed = outcome == null ? List.of() : outcome.withheld().stream()
                     .filter(product -> !outcome.isReported(product)).toList();
-            String withheld = unconfirmed.isEmpty() ? "" : withheldByPairs(unconfirmed);
+            String extended = extended(added, unconfirmed);
 
             Set<Integer> assembledSizes = assembled.get(assay);
             if (assembledSizes != null) {
                 // The assembly reports the assay: only a product it lacks needs explaining.
                 List<ReadCall> missing = ReadLevelCaller.missingFromAssembly(products, assembledSizes);
-                String extended = added.isEmpty() ? withheld : added + (withheld.isEmpty() ? "" : "; " + withheld);
-                if (!missing.isEmpty() || !extended.isEmpty()) {
+                if (!missing.isEmpty() || !added.isEmpty() || !unconfirmed.isEmpty()) {
                     findings.add(new Finding(sample.getName(), assay,
                             !missing.isEmpty() ? Status.CALLED_FROM_READS
                                     : !added.isEmpty() ? Status.CALLED_BY_EXTENSION : withheldStatus(unconfirmed),
@@ -202,7 +202,6 @@ public final class FastqDiagnostics {
             String readDetail;
             if (!products.isEmpty()) {
                 // Reads hold a product; the extension can only have added one of another size.
-                String extended = added.isEmpty() ? withheld : added + (withheld.isEmpty() ? "" : "; " + withheld);
                 if (products.getFirst().isReportable() || added.isEmpty()) {
                     status = products.getFirst().isReportable() ? Status.CALLED_FROM_READS : Status.WEAK_READ_SUPPORT;
                     readDetail = describe(products) + (extended.isEmpty() ? "" : "; " + extended);
@@ -218,9 +217,10 @@ public final class FastqDiagnostics {
                 readDetail = "no complete amplicon in the reads; reads carrying the primers could hold amplicons up to "
                         + checkable + " bp, so longer amplicons cannot be ruled out";
             } else {
-                status = !outcome.called().isEmpty() ? Status.CALLED_BY_EXTENSION
-                        : outcome.withheld().isEmpty() ? Status.NOT_CLOSED_BY_EXTENSION
-                        : withheldStatus(outcome.withheld());
+                // Nothing in the reads: all the extension holds is new to the sample.
+                status = !added.isEmpty() ? Status.CALLED_BY_EXTENSION
+                        : unconfirmed.isEmpty() ? Status.NOT_CLOSED_BY_EXTENSION
+                        : withheldStatus(unconfirmed);
                 readDetail = "no complete amplicon in the reads, which could hold amplicons up to " + checkable
                         + " bp; " + describe(outcome);
             }
@@ -229,6 +229,19 @@ public final class FastqDiagnostics {
                     readDetail, assembly.detail()));
         }
         return findings;
+    }
+
+    /** What the extended reads add and what read pairs do not confirm, as one text; empty for neither. */
+    private static String extended(List<ReadExtensionCaller.Product> added,
+                                   List<ReadExtensionCaller.Product> unconfirmed) {
+        List<String> parts = new ArrayList<>();
+        if (!added.isEmpty()) {
+            parts.add(calledByExtension(added));
+        }
+        if (!unconfirmed.isEmpty()) {
+            parts.add(withheldByPairs(unconfirmed));
+        }
+        return String.join("; ", parts);
     }
 
     /** Reportable products first, then by decreasing support. */
@@ -340,8 +353,8 @@ public final class FastqDiagnostics {
 
     private static AssemblyFinding classifyAssembly(PrimerId.Assay group, Sample sample,
                                                     Map<String, Integer> contigLengths) {
-        List<BlastResult> forwardHits = sample.hitsOf(group.forward());
-        List<BlastResult> reverseHits = sample.hitsOf(group.reverse());
+        List<BlastResult> forwardHits = sample.hits().of(group.forward());
+        List<BlastResult> reverseHits = sample.hits().of(group.reverse());
 
         if (forwardHits.isEmpty() || reverseHits.isEmpty()) {
             List<String> absent = new ArrayList<>();

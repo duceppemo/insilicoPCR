@@ -32,12 +32,12 @@ class ConsolidatedReportTest {
     private static Sample sampleWithHits() {
         Sample sample = new Sample("sampleA");
         sample.setFileType(Sample.FileType.FASTA);
-        sample.addContig("contig1", "chromosome");
+        sample.hits().describe("contig1", "chromosome");
         // Productive pair: 500 bp product.
-        sample.addBlastResult("assay-F", TestHits.plusHit("assay-F", "contig1", 101));
-        sample.addBlastResult("assay-R", TestHits.minusHit("assay-R", "contig1", 581));
+        sample.hits().add("assay-F", TestHits.plusHit("assay-F", "contig1", 101));
+        sample.hits().add("assay-R", TestHits.minusHit("assay-R", "contig1", 581));
         // Decoy reverse hit on the same strand as the forward primer: must not be reported.
-        sample.addBlastResult("assay-R", TestHits.plusHit("assay-R", "contig1", 5000));
+        sample.hits().add("assay-R", TestHits.plusHit("assay-R", "contig1", 5000));
         return sample;
     }
 
@@ -68,7 +68,7 @@ class ConsolidatedReportTest {
     void qPcrModeRequiresProbeInsideAmplicon() throws IOException {
         Sample sample = sampleWithHits();
         // Probe inside the amplicon.
-        sample.addBlastResult("assay-P", TestHits.plusHit("assay-P", "contig1", 300));
+        sample.hits().add("assay-P", TestHits.plusHit("assay-P", "contig1", 300));
         Map<String, Sample> samples = new HashMap<>(Map.of("sampleA", sample));
         PrimerPanel primers = PrimerPanel.of(Map.of(
                 "assay-F", PRIMER_20, "assay-R", PRIMER_20, "assay-P", PRIMER_20));
@@ -87,7 +87,7 @@ class ConsolidatedReportTest {
     @Test
     void qPcrModeWritesNothingWhenProbeIsOutsideAmplicon() throws IOException {
         Sample sample = sampleWithHits();
-        sample.addBlastResult("assay-P", TestHits.plusHit("assay-P", "contig1", 900)); // outside 101-600
+        sample.hits().add("assay-P", TestHits.plusHit("assay-P", "contig1", 900)); // outside 101-600
         Map<String, Sample> samples = new HashMap<>(Map.of("sampleA", sample));
         PrimerPanel primers = PrimerPanel.of(Map.of(
                 "assay-F", PRIMER_20, "assay-R", PRIMER_20, "assay-P", PRIMER_20));
@@ -100,9 +100,9 @@ class ConsolidatedReportTest {
     void mixedPcrAndQPcrAssaysAreReportedInOneRun() throws IOException {
         // "assay" has no probe in the primer file; "taq" is a qPCR assay with one.
         Sample sample = sampleWithHits();
-        sample.addBlastResult("taq-F", TestHits.plusHit("taq-F", "contig1", 2101));
-        sample.addBlastResult("taq-R", TestHits.minusHit("taq-R", "contig1", 2581));
-        sample.addBlastResult("taq-P", TestHits.plusHit("taq-P", "contig1", 2300));
+        sample.hits().add("taq-F", TestHits.plusHit("taq-F", "contig1", 2101));
+        sample.hits().add("taq-R", TestHits.minusHit("taq-R", "contig1", 2581));
+        sample.hits().add("taq-P", TestHits.plusHit("taq-P", "contig1", 2300));
         Map<String, Sample> samples = new HashMap<>(Map.of("sampleA", sample));
         PrimerPanel primers = PrimerPanel.of(Map.of(
                 "assay-F", PRIMER_20, "assay-R", PRIMER_20,
@@ -157,8 +157,8 @@ class ConsolidatedReportTest {
     void degeneratePrimerVariantsPairAcrossSuffixes() throws IOException {
         Sample sample = new Sample("sampleA");
         sample.setFileType(Sample.FileType.FASTA);
-        sample.addBlastResult("assay-F_0", TestHits.plusHit("assay-F_0", "contig1", 101));
-        sample.addBlastResult("assay-R_1", TestHits.minusHit("assay-R_1", "contig1", 581));
+        sample.hits().add("assay-F_0", TestHits.plusHit("assay-F_0", "contig1", 101));
+        sample.hits().add("assay-R_1", TestHits.minusHit("assay-R_1", "contig1", 581));
         Map<String, Sample> samples = new HashMap<>(Map.of("sampleA", sample));
         PrimerPanel primers = PrimerPanel.of(Map.of("assay-F_0", PRIMER_20, "assay-R_1", PRIMER_20));
 
@@ -174,8 +174,8 @@ class ConsolidatedReportTest {
     @Test
     void nonConformingHitIdsAreSkippedInsteadOfAborting() throws IOException {
         Sample sample = sampleWithHits();
-        sample.addBlastResult("plainname", TestHits.plusHit("plainname", "contig1", 900));
-        sample.addBlastResult("odd-X", TestHits.plusHit("odd-X", "contig1", 950));
+        sample.hits().add("plainname", TestHits.plusHit("plainname", "contig1", 900));
+        sample.hits().add("odd-X", TestHits.plusHit("odd-X", "contig1", 950));
         Map<String, Sample> samples = new HashMap<>(Map.of("sampleA", sample));
         PrimerPanel primers = PrimerPanel.of(Map.of("assay-F", PRIMER_20, "assay-R", PRIMER_20));
 
@@ -201,9 +201,9 @@ class ConsolidatedReportTest {
         // "assay" gives its 500 bp target and a 60 bp product nobody declared; "plain"
         // declares nothing. All three rows stay; only the label tells them apart.
         Sample sample = sampleWithHits();
-        sample.addBlastResult("assay-R", TestHits.minusHit("assay-R", "contig1", 141));
-        sample.addBlastResult("plain-F", TestHits.plusHit("plain-F", "contig1", 2001));
-        sample.addBlastResult("plain-R", TestHits.minusHit("plain-R", "contig1", 2181));
+        sample.hits().add("assay-R", TestHits.minusHit("assay-R", "contig1", 141));
+        sample.hits().add("plain-F", TestHits.plusHit("plain-F", "contig1", 2001));
+        sample.hits().add("plain-R", TestHits.minusHit("plain-R", "contig1", 2181));
         Map<String, Sample> samples = new HashMap<>(Map.of("sampleA", sample));
         PrimerPanel primers = PrimerPanel.of(Map.of(
                 "assay-F", PRIMER_20, "assay-R", PRIMER_20, "plain-F", PRIMER_20, "plain-R", PRIMER_20));
@@ -237,9 +237,9 @@ class ConsolidatedReportTest {
         // alignment, which --5p-truncation 8 accepts and the mismatch columns do not count.
         Sample sample = new Sample("sampleA");
         sample.setFileType(Sample.FileType.FASTA);
-        sample.addContig("contig1", "chromosome");
-        sample.addBlastResult("assay-F", TestHits.truncatedPlusHit("assay-F", "contig1", 109, 9, 20, PRIMER_20));
-        sample.addBlastResult("assay-R", TestHits.minusHit("assay-R", "contig1", 581));
+        sample.hits().describe("contig1", "chromosome");
+        sample.hits().add("assay-F", TestHits.truncatedPlusHit("assay-F", "contig1", 109, 9, 20, PRIMER_20));
+        sample.hits().add("assay-R", TestHits.minusHit("assay-R", "contig1", 581));
         AmpliconOptions lenient = new AmpliconOptions(0, 0, AmpliconOptions.DEFAULT_THREE_PRIME_WINDOW,
                 AmpliconOptions.DEFAULT_THREE_PRIME_PENALTY, 8, 0, 5000);
 
@@ -258,7 +258,7 @@ class ConsolidatedReportTest {
     @Test
     void sizeLabelFollowsTheProbeColumnsAndCoversRowsAddedFromReads() throws IOException {
         Sample sample = sampleWithHits();
-        sample.addBlastResult("assay-P", TestHits.plusHit("assay-P", "contig1", 300));
+        sample.hits().add("assay-P", TestHits.plusHit("assay-P", "contig1", 300));
         Map<String, Sample> samples = new HashMap<>(Map.of("sampleA", sample));
         PrimerPanel primers = PrimerPanel.of(Map.of("assay-F", PRIMER_20, "assay-R", PRIMER_20, "assay-P", PRIMER_20));
         ExpectedSizes sizes = ExpectedSizes.fromHeaders(Map.of("assay-F", "size=70 other=500"));

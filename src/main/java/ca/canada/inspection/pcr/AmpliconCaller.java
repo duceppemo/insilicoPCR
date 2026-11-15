@@ -46,8 +46,8 @@ public final class AmpliconCaller {
         // end): the size still counts them, since the product does not depend on where
         // the assembly stopped. Only the reported location is clamped at the contig start
         // (the contig end is unknown here).
-        int productStart = rightExtending.qstart() - rightExtending.fivePrimeUncovered();
-        int end = leftExtending.qend() + leftExtending.fivePrimeUncovered();
+        int productStart = rightExtending.fivePrimeTerminus();
+        int end = leftExtending.fivePrimeTerminus();
         int size = end - productStart + 1;
 
         if (size < options.minAmpliconLength()) {

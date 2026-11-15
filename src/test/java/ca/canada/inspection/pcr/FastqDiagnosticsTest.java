@@ -60,9 +60,9 @@ class FastqDiagnosticsTest {
     @Test
     void assayReportedOnTheAssemblyIsNotListed() {
         Sample sample = fastqSample();
-        sample.addBlastResult("assay-F", TestHits.plusHit("assay-F", "contig_0", 101));
-        sample.addBlastResult("assay-R", TestHits.minusHit("assay-R", "contig_0", 281));
-        sample.addBlastResult("assay-P", TestHits.plusHit("assay-P", "contig_0", 200));
+        sample.hits().add("assay-F", TestHits.plusHit("assay-F", "contig_0", 101));
+        sample.hits().add("assay-R", TestHits.minusHit("assay-R", "contig_0", 281));
+        sample.hits().add("assay-P", TestHits.plusHit("assay-P", "contig_0", 200));
 
         assertTrue(assess(sample, noReadCall(ALL_IN_READS), Map.of()).isEmpty());
     }
@@ -78,9 +78,9 @@ class FastqDiagnosticsTest {
         for (int i = 1; i <= count; i++) {
             String read = "read_" + i;
             lengths.put(read, 101);
-            reads.addBlastResult("assay-F", TestHits.plusHit("assay-F", read, 11));
-            reads.addBlastResult("assay-R", TestHits.minusHit("assay-R", read, 61));
-            reads.addBlastResult("assay-P", TestHits.plusHit("assay-P", read, 35));
+            reads.hits().add("assay-F", TestHits.plusHit("assay-F", read, 11));
+            reads.hits().add("assay-R", TestHits.minusHit("assay-R", read, 61));
+            reads.hits().add("assay-P", TestHits.plusHit("assay-P", read, 35));
         }
         return TestEvidence.evaluate(reads, lengths, PRIMERS, DEFAULTS);
     }
@@ -109,9 +109,9 @@ class FastqDiagnosticsTest {
         // The assembly holds the assay only where both primers land elsewhere (181 bp);
         // the reads hold the 70 bp product. Both belong in the report.
         Sample sample = fastqSample();
-        sample.addBlastResult("assay-F", TestHits.plusHit("assay-F", "contig_0", 101));
-        sample.addBlastResult("assay-R", TestHits.minusHit("assay-R", "contig_0", 262));
-        sample.addBlastResult("assay-P", TestHits.plusHit("assay-P", "contig_0", 200));
+        sample.hits().add("assay-F", TestHits.plusHit("assay-F", "contig_0", 101));
+        sample.hits().add("assay-R", TestHits.minusHit("assay-R", "contig_0", 262));
+        sample.hits().add("assay-P", TestHits.plusHit("assay-P", "contig_0", 200));
         ReadEvidence evidence = readsWithAmplicon(3);
 
         Finding finding = assess(sample, evidence, Map.of()).getFirst();
@@ -128,9 +128,9 @@ class FastqDiagnosticsTest {
     void productTheAssemblyAlreadyReportsIsNotRepeated() {
         // 72 bp on a contig, 70 bp in reads: one product, give or take a length variant.
         Sample sample = fastqSample();
-        sample.addBlastResult("assay-F", TestHits.plusHit("assay-F", "contig_0", 101));
-        sample.addBlastResult("assay-R", TestHits.minusHit("assay-R", "contig_0", 153));
-        sample.addBlastResult("assay-P", TestHits.plusHit("assay-P", "contig_0", 125));
+        sample.hits().add("assay-F", TestHits.plusHit("assay-F", "contig_0", 101));
+        sample.hits().add("assay-R", TestHits.minusHit("assay-R", "contig_0", 153));
+        sample.hits().add("assay-P", TestHits.plusHit("assay-P", "contig_0", 125));
         ReadEvidence evidence = readsWithAmplicon(3);
 
         assertTrue(assess(sample, evidence, Map.of()).isEmpty());
@@ -140,9 +140,9 @@ class FastqDiagnosticsTest {
     @Test
     void weakProductIsNotAddedToAnAssayTheAssemblyReports() {
         Sample sample = fastqSample();
-        sample.addBlastResult("assay-F", TestHits.plusHit("assay-F", "contig_0", 101));
-        sample.addBlastResult("assay-R", TestHits.minusHit("assay-R", "contig_0", 262));
-        sample.addBlastResult("assay-P", TestHits.plusHit("assay-P", "contig_0", 200));
+        sample.hits().add("assay-F", TestHits.plusHit("assay-F", "contig_0", 101));
+        sample.hits().add("assay-R", TestHits.minusHit("assay-R", "contig_0", 262));
+        sample.hits().add("assay-P", TestHits.plusHit("assay-P", "contig_0", 200));
 
         assertTrue(assess(sample, readsWithAmplicon(1), Map.of()).isEmpty(), "one read is not a call");
     }
@@ -235,9 +235,9 @@ class FastqDiagnosticsTest {
     void productAddedByExtensionToAnAssayTheAssemblyReportsElsewhereIsListed() {
         // Target mode: the assembly reports 181 bp; the extended reads add a 1074 bp product.
         Sample sample = fastqSample();
-        sample.addBlastResult("assay-F", TestHits.plusHit("assay-F", "contig_0", 101));
-        sample.addBlastResult("assay-R", TestHits.minusHit("assay-R", "contig_0", 262));
-        sample.addBlastResult("assay-P", TestHits.plusHit("assay-P", "contig_0", 200));
+        sample.hits().add("assay-F", TestHits.plusHit("assay-F", "contig_0", 101));
+        sample.hits().add("assay-R", TestHits.minusHit("assay-R", "contig_0", 262));
+        sample.hits().add("assay-P", TestHits.plusHit("assay-P", "contig_0", 200));
         ReadExtensionCaller.Product found = new ReadExtensionCaller.Product("assay", 1074, Set.of(1074), 12, 150,
                 9, 150, TestRows.any(), PAIRS_SUPPORT_IT);
         ReadExtensionCaller.Product again = new ReadExtensionCaller.Product("assay", 183, Set.of(183), 40, 150,
@@ -319,8 +319,8 @@ class FastqDiagnosticsTest {
         String contig6 = "contig_6,len=1534,cov=26.3";
         String contig60 = "contig_60,len=439,cov=53.2";
         Sample sample = fastqSample();
-        sample.addBlastResult("assay-F", TestHits.plusHit("assay-F", contig6, 1496));    // ends at 1515
-        sample.addBlastResult("assay-R", TestHits.minusHit("assay-R", contig60, 15));    // starts at 15
+        sample.hits().add("assay-F", TestHits.plusHit("assay-F", contig6, 1496));    // ends at 1515
+        sample.hits().add("assay-R", TestHits.minusHit("assay-R", contig60, 15));    // starts at 15
 
         Finding finding = assess(sample, noReadCall(ALL_IN_READS), Map.of(contig6, 1534, contig60, 439)).getFirst();
 
@@ -335,8 +335,8 @@ class FastqDiagnosticsTest {
     void primersOnOneContigWithoutValidAmpliconAreNoValidPair() {
         Sample sample = fastqSample();
         // Same strand: cannot amplify.
-        sample.addBlastResult("assay-F", TestHits.plusHit("assay-F", "contig_0,len=900", 101));
-        sample.addBlastResult("assay-R", TestHits.plusHit("assay-R", "contig_0,len=900", 400));
+        sample.hits().add("assay-F", TestHits.plusHit("assay-F", "contig_0,len=900", 101));
+        sample.hits().add("assay-R", TestHits.plusHit("assay-R", "contig_0,len=900", 400));
 
         Finding finding = assess(sample, noReadCall(ALL_IN_READS), Map.of()).getFirst();
 
@@ -412,9 +412,9 @@ class FastqDiagnosticsTest {
         // The diagnostics and the report rows are decided apart (assess, ReadLevelCaller.reportRows):
         // "called from reads" with no row, or a row with no such finding, would contradict each other.
         Sample otherSize = fastqSample();
-        otherSize.addBlastResult("assay-F", TestHits.plusHit("assay-F", "contig_0", 101));
-        otherSize.addBlastResult("assay-R", TestHits.minusHit("assay-R", "contig_0", 262));
-        otherSize.addBlastResult("assay-P", TestHits.plusHit("assay-P", "contig_0", 200));
+        otherSize.hits().add("assay-F", TestHits.plusHit("assay-F", "contig_0", 101));
+        otherSize.hits().add("assay-R", TestHits.minusHit("assay-R", "contig_0", 262));
+        otherSize.hits().add("assay-P", TestHits.plusHit("assay-P", "contig_0", 200));
         for (Sample sample : List.of(fastqSample(), otherSize)) {
             for (int reads = 1; reads <= 3; reads++) {
                 ReadEvidence evidence = readsWithAmplicon(reads);

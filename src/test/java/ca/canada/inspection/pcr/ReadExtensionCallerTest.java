@@ -57,8 +57,8 @@ class ReadExtensionCallerTest {
     @Test
     void assayTheAssemblyReportsIsLeftAlone() {
         Sample sample = fastqSample();
-        sample.addBlastResult("long-F", TestHits.plusHit("long-F", "contig_0", 101));
-        sample.addBlastResult("long-R", TestHits.minusHit("long-R", "contig_0", 281));
+        sample.hits().add("long-F", TestHits.plusHit("long-F", "contig_0", 101));
+        sample.hits().add("long-R", TestHits.minusHit("long-R", "contig_0", 281));
 
         assertTrue(candidates(sample, PRIMERS, DEFAULTS, primersInReads(5, 4)).isEmpty());
     }
@@ -67,10 +67,10 @@ class ReadExtensionCallerTest {
     void assayWithACompleteAmpliconInSomeReadIsLeftToTheReadLevelRules() {
         // One read holds the product: too few to report it, and not for the extension to overrule.
         Sample reads = FastqDiagnosticsTest.readsSample();
-        reads.addBlastResult("long-F", TestHits.plusHit("long-F", "read_1", 11));
-        reads.addBlastResult("long-R", TestHits.minusHit("long-R", "read_1", 61));
-        reads.addBlastResult("long-F", TestHits.plusHit("long-F", "read_2", 11));
-        reads.addBlastResult("long-R", TestHits.minusHit("long-R", "read_3", 61));
+        reads.hits().add("long-F", TestHits.plusHit("long-F", "read_1", 11));
+        reads.hits().add("long-R", TestHits.minusHit("long-R", "read_1", 61));
+        reads.hits().add("long-F", TestHits.plusHit("long-F", "read_2", 11));
+        reads.hits().add("long-R", TestHits.minusHit("long-R", "read_3", 61));
         ReadEvidence evidence = TestEvidence.evaluate(reads, Map.of("read_1", 101, "read_2", 101, "read_3", 101),
                 PRIMERS, DEFAULTS);
         assertFalse(evidence.products("long").getFirst().isReportable());
@@ -97,8 +97,8 @@ class ReadExtensionCallerTest {
     /** A sample whose mini-assembly reports the assay at 200 bp. */
     private static Sample assembledAt200() {
         Sample sample = fastqSample();
-        sample.addBlastResult("long-F", TestHits.plusHit("long-F", "contig_0", 101));
-        sample.addBlastResult("long-R", TestHits.minusHit("long-R", "contig_0", 281));
+        sample.hits().add("long-F", TestHits.plusHit("long-F", "contig_0", 101));
+        sample.hits().add("long-R", TestHits.minusHit("long-R", "contig_0", 281));
         return sample;
     }
 
@@ -139,10 +139,10 @@ class ReadExtensionCallerTest {
         // One read holds a 70 bp product, the declared target: not reported, and not for the
         // extension to overrule. Declared at another size, the same assay is extended.
         Sample reads = FastqDiagnosticsTest.readsSample();
-        reads.addBlastResult("long-F", TestHits.plusHit("long-F", "read_1", 11));
-        reads.addBlastResult("long-R", TestHits.minusHit("long-R", "read_1", 61));
-        reads.addBlastResult("long-F", TestHits.plusHit("long-F", "read_2", 11));
-        reads.addBlastResult("long-R", TestHits.minusHit("long-R", "read_3", 61));
+        reads.hits().add("long-F", TestHits.plusHit("long-F", "read_1", 11));
+        reads.hits().add("long-R", TestHits.minusHit("long-R", "read_1", 61));
+        reads.hits().add("long-F", TestHits.plusHit("long-F", "read_2", 11));
+        reads.hits().add("long-R", TestHits.minusHit("long-R", "read_3", 61));
         ReadEvidence evidence = TestEvidence.evaluate(reads, Map.of("read_1", 101, "read_2", 101, "read_3", 101),
                 PRIMERS, DEFAULTS);
         ExpectedSizes target70 = ExpectedSizes.fromHeaders(Map.of("long-F", "size=70"));
@@ -230,8 +230,8 @@ class ReadExtensionCallerTest {
 
     /** A product of {@code size} bp on the extended read, starting at base 101. */
     private static void product(Sample extended, String read, int size) {
-        extended.addBlastResult("long-F", TestHits.plusHit("long-F", read, 101));
-        extended.addBlastResult("long-R", TestHits.minusHit("long-R", read, 101 + size - 20));
+        extended.hits().add("long-F", TestHits.plusHit("long-F", read, 101));
+        extended.hits().add("long-R", TestHits.minusHit("long-R", read, 101 + size - 20));
     }
 
     private static Map<String, Integer> lengths(List<Seed> seeds) {
@@ -407,8 +407,8 @@ class ReadExtensionCallerTest {
         List<Seed> seeds = seeds(2, 2);
         Sample extended = extended();
         for (Seed seed : seeds) {
-            extended.addBlastResult("other-F", TestHits.plusHit("other-F", seed.id(), 101));
-            extended.addBlastResult("other-R", TestHits.minusHit("other-R", seed.id(), 601));
+            extended.hits().add("other-F", TestHits.plusHit("other-F", seed.id(), 101));
+            extended.hits().add("other-R", TestHits.minusHit("other-R", seed.id(), 601));
         }
 
         Map<String, Outcome> outcomes = ReadExtensionCaller.evaluate(extended.getName(), extended.hits(), lengths(seeds), seeds, primers,
@@ -427,7 +427,7 @@ class ReadExtensionCallerTest {
         for (Seed seed : seeds) {
             product(withoutProbe, seed.id(), 1074);
             product(withProbe, seed.id(), 1074);
-            withProbe.addBlastResult("long-P", TestHits.plusHit("long-P", seed.id(), 500));
+            withProbe.hits().add("long-P", TestHits.plusHit("long-P", seed.id(), 500));
         }
 
         assertTrue(ReadExtensionCaller.evaluate(withoutProbe.getName(), withoutProbe.hits(), lengths(seeds), seeds, primers, DEFAULTS, REACH)

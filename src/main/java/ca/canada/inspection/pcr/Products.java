@@ -48,7 +48,8 @@ public final class Products {
     }
 
     /** What a sample's products depend on besides its hits; the panel by identity, one per run. */
-    private record Key(String sampleName, PrimerPanel primers, AmpliconOptions options) {
+    private record Key(String sampleName, PrimerPanel primers, AmpliconOptions options)
+            implements Hits.Key<List<ReportRow>> {
     }
 
     /** The product sizes of {@code sample}, per assay; an assay without a product is absent. */

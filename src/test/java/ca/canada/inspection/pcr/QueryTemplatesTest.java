@@ -42,7 +42,7 @@ class QueryTemplatesTest {
             assertEquals("GG", templates.apply(on("c3")).bases().toString(), "c2 skipped");
             TrimmedEnds.Template c4 = templates.apply(on("c4"));
             assertEquals("CCCCAAAA", c4.bases().toString());
-            assertEquals(8, c4.length());
+            assertEquals(8, c4.bases().length());
             assertEquals(Set.of(), templates.missing());
         }
     }
@@ -74,7 +74,7 @@ class QueryTemplatesTest {
 
         try (QueryTemplates templates = new QueryTemplates(List.of(fasta))) {
             TrimmedEnds.Template template = templates.apply(on("long"));
-            assertEquals(1_600_000, template.length());
+            assertEquals(1_600_000, template.bases().length());
             assertEquals(contig, template.bases().toString());
             assertEquals("GG", templates.apply(on("last")).bases().toString(), "no line end after the last record");
         }

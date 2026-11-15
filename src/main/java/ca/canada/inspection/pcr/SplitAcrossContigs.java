@@ -79,8 +79,8 @@ public final class SplitAcrossContigs {
             if (reported.contains(assay)) {
                 continue;
             }
-            List<BlastResult> forward = sample.hitsOf(group.forward());
-            List<BlastResult> reverse = sample.hitsOf(group.reverse());
+            List<BlastResult> forward = sample.hits().of(group.forward());
+            List<BlastResult> reverse = sample.hits().of(group.reverse());
             if (forward.isEmpty() || reverse.isEmpty()) {
                 continue; // a primer that does not bind: an ordinary negative
             }
@@ -123,7 +123,7 @@ public final class SplitAcrossContigs {
             }
         }
         return new Split(sample, assay, forward, toEnd(forward, forwardLength), reverse, toEnd(reverse, reverseLength),
-                fromFivePrimeEnd(forward, forwardLength) + fromFivePrimeEnd(reverse, reverseLength), sameContig, probe);
+                forward.toQueryEnd(forwardLength) + reverse.toQueryEnd(reverseLength), sameContig, probe);
     }
 
     /**
@@ -141,9 +141,4 @@ public final class SplitAcrossContigs {
         return hit.isPlusStrand() ? contigLength - hit.qend() : hit.qstart() - 1;
     }
 
-    /** From the primer's 5' end, counted in full as in a product's size, to the contig end it points to. */
-    private static int fromFivePrimeEnd(BlastResult hit, int contigLength) {
-        int span = hit.isPlusStrand() ? contigLength - hit.qstart() + 1 : hit.qend();
-        return span + hit.fivePrimeUncovered();
-    }
 }

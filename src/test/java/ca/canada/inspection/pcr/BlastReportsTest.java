@@ -52,7 +52,7 @@ class BlastReportsTest {
         samples.put("sampleA", sample("sampleA"));
         BlastReports.attachHits(this::report, samples, PRIMERS, OPTIONS, warning -> {});
 
-        assertEquals(1, samples.get("sampleA").blastResults().get("assay-F").size());
+        assertEquals(1, samples.get("sampleA").hits().byOligo().get("assay-F").size());
     }
 
     @Test
@@ -64,7 +64,7 @@ class BlastReportsTest {
         samples.put("sampleA", sample("sampleA"));
 
         BlastReports.attachHits(this::report, samples, PRIMERS, OPTIONS, warning -> {});
-        assertTrue(samples.get("sampleA").blastResults().isEmpty());
+        assertTrue(samples.get("sampleA").hits().byOligo().isEmpty());
     }
 
     @Test
@@ -80,7 +80,7 @@ class BlastReportsTest {
         Map<String, Sample> samples = Map.of("ISO2", sample);
 
         BlastReports.attachHits(this::report, samples, PRIMERS, OPTIONS, warning -> {});
-        assertEquals(1, sample.blastResults().get("assay-F").size());
+        assertEquals(1, sample.hits().byOligo().get("assay-F").size());
     }
 
     @Test
@@ -112,7 +112,7 @@ class BlastReportsTest {
 
         // Before the fix this hit was rejected at any probe budget (3 unaligned bases).
         BlastReports.attachHits(this::report, samples, primers, new AmpliconOptions(0, 1, 5, 0, 5, 0, 5000), warning -> {});
-        var hit = samples.get("sampleB").blastResults().get("assay-P").getFirst();
+        var hit = samples.get("sampleB").hits().byOligo().get("assay-P").getFirst();
         assertEquals(1, hit.mismatch());
         assertEquals(21, hit.qstart());
         assertEquals(site, hit.qseq());
@@ -122,7 +122,7 @@ class BlastReportsTest {
         again.setFile(fasta);
         strict.put("sampleB", again);
         BlastReports.attachHits(this::report, strict, primers, new AmpliconOptions(0, 0, 5, 0, 5, 0, 5000), warning -> {});
-        assertTrue(strict.get("sampleB").blastResults().isEmpty());
+        assertTrue(strict.get("sampleB").hits().byOligo().isEmpty());
     }
 
     @Test

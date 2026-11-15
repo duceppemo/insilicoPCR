@@ -30,7 +30,7 @@ final class ContigService {
         try (FastaScanner scanner = new FastaScanner(List.of(fasta))) {
             String header;
             while ((header = scanner.nextHeader(null)) != null) {
-                sample.addContig(SequenceFileUtils.fastaId(header), SequenceFileUtils.fastaDescription(header));
+                sample.hits().describe(SequenceFileUtils.fastaId(header), SequenceFileUtils.fastaDescription(header));
             }
         } catch (IOException e) {
             throw new PipelineException("Could not parse contigs from: " + fasta, e);

@@ -37,9 +37,10 @@ public final class GelReportReader {
                     .sorted()
                     .forEach(sampleName -> lanes.put(sampleName, new ArrayList<>()));
         }
-        for (ReportRow row : ReportTsv.read(consolidatedReport)) {
+        for (ReportTsv.Checked checked : ReportTsv.readChecked(consolidatedReport)) {
+            ReportRow row = checked.row();
             lanes.computeIfAbsent(row.sample(), key -> new ArrayList<>())
-                    .add(new GelBand(row.sample(), row.assay(), row.size()));
+                    .add(new GelBand(row.sample(), row.assay(), row.size(), checked.sizeCheck()));
         }
 
         if (!keepEmptySampleLanes) {

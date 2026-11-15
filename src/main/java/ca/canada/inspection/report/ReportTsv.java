@@ -1,5 +1,6 @@
 package ca.canada.inspection.report;
 
+import ca.canada.inspection.pcr.ExpectedSizes;
 import ca.canada.inspection.pcr.ReadExtensionCaller;
 import ca.canada.inspection.pcr.ReadLevelCaller;
 import ca.canada.inspection.pcr.ReportRow;
@@ -38,8 +39,23 @@ public final class ReportTsv {
      *                              would otherwise read as products)
      */
     public static List<ReportRow> read(Path report) {
+        return readChecked(report).stream().map(Checked::row).toList();
+    }
+
+    /**
+     * A row and what its size is for its assay, as the report's {@value ExpectedSizes#COLUMN}
+     * column says.
+     *
+     * @param sizeCheck {@code null} when the row has none: the assay declares no size, or the
+     *                  report has no such column (no size declared, or a report before 0.12)
+     */
+    public record Checked(ReportRow row, ExpectedSizes.Label sizeCheck) {
+    }
+
+    /** As {@link #read}, each row with its size check. */
+    public static List<Checked> readChecked(Path report) {
         List<String> lines = lines(report);
-        List<ReportRow> rows = new ArrayList<>();
+        List<Checked> rows = new ArrayList<>();
         if (lines.isEmpty()) {
             return rows;
         }
@@ -59,17 +75,30 @@ public final class ReportTsv {
                 throw new UncheckedIOException("Not a consolidated report: " + report, new IOException(
                         "its first line has no " + ReportColumn.SIZE.header() + " column and is not a product"));
             }
-            rows.add(row(first));
+            rows.add(new Checked(row(first), null));
         }
+        Integer sizeCheck = columns.get(ExpectedSizes.COLUMN);
         for (String line : lines.subList(1, lines.size())) {
             if (!line.isBlank() && !(hasHeader && line.equals(headerLine))) {
-                ReportRow row = row(new Fields(columns, line.split("\t", -1)));
+                String[] values = line.split("\t", -1);
+                ReportRow row = row(new Fields(columns, values));
                 if (row != null) {
-                    rows.add(row);
+                    rows.add(new Checked(row, sizeCheck == null || sizeCheck >= values.length ? null
+                            : label(values[sizeCheck])));
                 }
             }
         }
         return rows;
+    }
+
+    /** The label a report writes, or {@code null} for an empty or unknown one. */
+    private static ExpectedSizes.Label label(String text) {
+        for (ExpectedSizes.Label label : ExpectedSizes.Label.values()) {
+            if (label.text().equals(text.strip())) {
+                return label;
+            }
+        }
+        return null;
     }
 
     /**

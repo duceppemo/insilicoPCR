@@ -139,7 +139,7 @@ How to read it:
 
 ![Synthetic gel of the tutorial run](https://raw.githubusercontent.com/duceppemo/insilicoPCR/master/docs/assets/tutorial/synthetic_gel_tutorial.png)
 
-Each positive lane shows the two bands you would expect on a real gel — the 702 bp conventional product and the 112 bp qPCR product — while the negative-control lanes are loaded but empty, exactly like a wet-lab exclusivity control. Bands are colored by assay with a gene legend, matching the "Color by gene" option of the interactive GUI viewer (**View Gel Image**), which additionally offers hover tooltips, pagination, and SVG/PDF export.
+Each positive lane shows the two bands you would expect on a real gel — the 702 bp conventional product and the 112 bp qPCR product — while the negative-control lanes are loaded but empty, exactly like a wet-lab exclusivity control. Bands are colored by assay with a gene legend, matching the **Color: By gene** choice of the interactive GUI viewer (**View Gel Image**), which additionally offers colours by size check (target, other known product, unexpected), hover tooltips, pagination, and SVG/PDF export.
 
 ## 7. The same run in the GUI
 

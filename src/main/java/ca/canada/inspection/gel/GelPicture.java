@@ -16,7 +16,7 @@ import java.util.Map;
  * A gel drawn as a picture to keep: the {@code --gel} image and the gel window's Save PNG, SVG
  * and PDF. All are drawn from one {@link GelScene}, at a fixed size whatever the window's, without
  * what the window adds while it is used (hover and selection outlines, search fading), and with
- * the gene legend when the bands are coloured by gene.
+ * the legend when the bands are coloured (by gene or by size check).
  */
 final class GelPicture {
     static final double BAND_HEIGHT = 2.0;
@@ -27,30 +27,25 @@ final class GelPicture {
     /**
      * The gel of {@code lanes}, one lane per sample in order.
      *
-     * @param geneColors  the run's colour of each gene, so that a gene keeps it from gel to gel
-     * @param colorByGene bands in their gene's colour, with a legend of the genes on this gel;
-     *                    otherwise black, without a legend
+     * @param geneColors the run's colour of each gene, so that a gene keeps it from gel to gel
+     * @param mode       black bands without a legend, or coloured by gene or by size check, with a
+     *                   legend of the genes or size checks on this gel
      */
     static GelScene scene(LinkedHashMap<String, List<GelBand>> lanes, Map<String, Color> geneColors,
-                          boolean colorByGene) {
-        Map<String, Color> legend = new LinkedHashMap<>();
-        if (colorByGene) {
-            geneColors.forEach((gene, color) -> {
-                if (lanes.values().stream().flatMap(List::stream).anyMatch(band -> band.geneName().equals(gene))) {
-                    legend.put(gene, color);
-                }
-            });
-        }
+                          GelColorMode mode) {
+        Map<String, Color> legend = GelColors.legend(mode, lanes.values().stream().flatMap(List::stream).toList(),
+                geneColors);
         GelLayout layout = GelLayout.image(lanes.keySet(), GelLayout.legendWidth(legend.keySet()), legend.size());
         List<String> names = List.copyOf(lanes.keySet());
         List<LaneBand> bands = new ArrayList<>();
         for (int lane = 1; lane <= names.size(); lane++) {
             bands.addAll(LaneBand.of(layout, lane, names.get(lane - 1), lanes.get(names.get(lane - 1)), BAND_HEIGHT,
-                    colorByGene));
+                    mode));
         }
-        return GelScene.of(layout, names, bands,
-                band -> colorByGene ? geneColors.getOrDefault(band.gene(), Color.BLACK) : BandPaint.BAND,
-                GelScene.LADDER_FONT_SIZE, legend);
+        return GelScene.of(layout, names, bands, band -> {
+            Color color = GelColors.of(mode, band.bands().getFirst(), geneColors);
+            return color == null ? BandPaint.BAND : color;
+        }, GelScene.LADDER_FONT_SIZE, mode.legendTitle(), legend);
     }
 
     /**

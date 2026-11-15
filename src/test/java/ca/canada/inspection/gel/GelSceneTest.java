@@ -19,9 +19,9 @@ class GelSceneTest {
     void aSceneHoldsTheGelLadderBandsAndLabels() {
         List<String> samples = List.of("s1", "s2");
         GelLayout layout = GelLayout.window(1000, 700, samples);
-        List<LaneBand> bands = LaneBand.of(layout, 1, "s1", List.of(new GelBand("s1", "toxA", 312)), 2.0, false);
+        List<LaneBand> bands = LaneBand.of(layout, 1, "s1", List.of(new GelBand("s1", "toxA", 312)), 2.0, GelColorMode.BLACK);
 
-        GelScene scene = GelScene.of(layout, samples, bands, band -> GENE, GelScene.LADDER_FONT_SIZE, java.util.Map.of());
+        GelScene scene = GelScene.of(layout, samples, bands, band -> GENE, GelScene.LADDER_FONT_SIZE, null, java.util.Map.of());
 
         assertEquals(layout.width(), scene.width());
         GelScene.Box gel = scene.background().get(1);
@@ -59,5 +59,19 @@ class GelSceneTest {
         assertEquals(100.5, boxes.get(2).y());
         assertEquals(103.25, boxes.get(3).y());
         assertEquals(BandPaint.shadow(GENE, 0.5), boxes.get(3).fill());
+    }
+
+    @Test
+    void aPictureColouredBySizeCheckHasItsLegend() {
+        java.util.LinkedHashMap<String, List<GelBand>> lanes = new java.util.LinkedHashMap<>();
+        lanes.put("a", List.of(new GelBand("a", "its", 434, ca.canada.inspection.pcr.ExpectedSizes.Label.TARGET)));
+        lanes.put("b", List.of(new GelBand("b", "its", 600, ca.canada.inspection.pcr.ExpectedSizes.Label.UNEXPECTED)));
+
+        GelScene scene = GelPicture.scene(lanes, java.util.Map.of("its", Color.BLUE), GelColorMode.SIZE_CHECK);
+
+        assertEquals(List.of("Size check", "Target size", "Unexpected size"),
+                scene.legendLabels().stream().map(GelScene.Label::text).toList());
+        assertEquals(Color.web("#d03b3b"), scene.bands().getLast().color());
+        assertEquals(List.of(), GelPicture.scene(lanes, java.util.Map.of(), GelColorMode.BLACK).legendLabels());
     }
 }

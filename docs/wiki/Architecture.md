@@ -110,6 +110,7 @@ The gel viewer (`InteractiveGelViewer`, one gel of up to 100 samples at a time, 
 | `GelText` | Text about the amplicons of a band: tooltips, details, selection and search |
 | `GelPages` | Splitting the lanes of a large run into pages of samples (the window's gels and the `--gel` files) |
 | `GelSelection` | The window's selected bands: what a click, a dragged box and Ctrl+A select |
+| `GelColorMode` | How the bands are coloured (black, by gene, by size check, read from the report's `SizeCheck` column) and so which bands of one size are drawn apart; `GelColors` gives the colours and legends |
 | `GelScene` | What a gel picture is made of (gel, lanes, ladder, bands, labels, gene legend), whatever draws it |
 | `GelNodes` | A `GelScene` as JavaFX nodes, for the viewer |
 | `GelSvg` | A `GelScene` as an SVG document |

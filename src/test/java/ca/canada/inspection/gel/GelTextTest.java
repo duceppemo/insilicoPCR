@@ -78,4 +78,16 @@ class GelTextTest {
         assertEquals("1 match", GelText.matches(1));
         assertEquals("12 matches", GelText.matches(12));
     }
+
+    @Test
+    void theSizeCheckIsShownAndSearched() {
+        GelBand unexpected = new GelBand("s", "its", 500, ca.canada.inspection.pcr.ExpectedSizes.Label.UNEXPECTED);
+        GelBand plain = new GelBand("s", "plain", 200);
+
+        assertEquals("Sample: s\nGene: its\nAmplicon size: 500 bp\nSize check: unexpected",
+                GelText.tooltip(List.of(unexpected)));
+        assertEquals("Sample: s\nGene: plain\nAmplicon size: 200 bp", GelText.tooltip(List.of(plain)));
+        assertEquals("s its 500 unexpected", GelText.searchText(List.of(unexpected)));
+        assertEquals(true, GelText.details("t", List.of(unexpected)).endsWith("s\tits\t500 bp\tunexpected"));
+    }
 }

@@ -64,15 +64,15 @@ final class GelNodes {
         return new BandShape(group, halo, body);
     }
 
-    /** The colour key shown beside a gel coloured by gene. */
-    static VBox legend(Map<String, Color> geneColors) {
+    /** The colour key shown beside a coloured gel: {@code title}, then each entry and its colour. */
+    static VBox legend(String title, Map<String, Color> entries) {
         VBox legend = new VBox(5);
         legend.setPadding(new Insets(10));
         legend.setStyle("-fx-background-color: rgba(255,255,255,0.94); -fx-border-color: #bbbbbb;");
-        Label title = new Label("Gene legend");
-        title.setStyle("-fx-font-weight: bold;");
-        legend.getChildren().add(title);
-        for (Map.Entry<String, Color> entry : geneColors.entrySet()) {
+        Label heading = new Label(title);
+        heading.setStyle("-fx-font-weight: bold;");
+        legend.getChildren().add(heading);
+        for (Map.Entry<String, Color> entry : entries.entrySet()) {
             HBox row = new HBox(6, new Rectangle(12, 12, entry.getValue()), new Label(entry.getKey()));
             row.setAlignment(Pos.CENTER_LEFT);
             legend.getChildren().add(row);

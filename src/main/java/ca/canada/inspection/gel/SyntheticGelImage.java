@@ -49,7 +49,7 @@ public final class SyntheticGelImage {
             pages.samples(page).forEach(name -> pageLanes.put(name, lanes.get(name)));
             Path file = GelImages.pageOutput(outputFile, page, pages.totalPages());
             // Drawn one gel at a time: the picture of a large run would not fit in one image.
-            onFxThread(() -> GelImages.writePng(GelPicture.image(GelPicture.scene(pageLanes, geneColors, true), false),
+            onFxThread(() -> GelImages.writePng(GelPicture.image(GelPicture.scene(pageLanes, geneColors, GelColorMode.GENE), false),
                     file), file);
             written.add(file);
         }

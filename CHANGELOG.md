@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+### Added
+
+- Gel viewer: **Color: By size check** draws each band by what its size is for
+  its assay, as the report's `SizeCheck` column says when the primer file
+  declares sizes: green for the target size, amber for another known product,
+  red for an unexpected size, blue when the assay declares no size, with a
+  legend. The hover text and band details give the size check, and searching
+  `unexpected`, `other` or `target` finds those products. It replaces the
+  **Color by gene** check box with a choice of black, by gene or by size check.
+  Every product is still drawn.
+
 ### Fixed
 
 - An output folder whose path holds a space (`C:\Users\Jane Doe\run`, `/data/my

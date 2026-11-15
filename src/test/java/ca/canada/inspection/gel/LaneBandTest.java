@@ -37,7 +37,7 @@ class LaneBandTest {
 
     @Test
     void bandsGroupCoMigratingAmpliconsFromSmallToLarge() {
-        List<LaneBand> bands = LaneBand.of(LAYOUT, 1, "s1", LANE, 2.0, false);
+        List<LaneBand> bands = LaneBand.of(LAYOUT, 1, "s1", LANE, 2.0, GelColorMode.BLACK);
         assertEquals(2, bands.size());
 
         LaneBand small = bands.get(0);
@@ -60,15 +60,15 @@ class LaneBandTest {
     @Test
     void bandsVaryByLaneButNotBetweenDraws() {
         List<GelBand> other = List.of(new GelBand("s2", "toxA", 312));
-        LaneBand first = LaneBand.of(LAYOUT, 2, "s2", other, 2.0, false).getFirst();
-        LaneBand again = LaneBand.of(LAYOUT, 2, "s2", other, 2.0, false).getFirst();
+        LaneBand first = LaneBand.of(LAYOUT, 2, "s2", other, 2.0, GelColorMode.BLACK).getFirst();
+        LaneBand again = LaneBand.of(LAYOUT, 2, "s2", other, 2.0, GelColorMode.BLACK).getFirst();
         assertEquals(first, again);
         assertEquals(LAYOUT.bandY(300) + GelScale.deterministicRange("s2:300", -0.45, 0.45), first.centerY(), 1e-12);
     }
 
     @Test
     void coloredByGeneOneBandPerGeneIsDrawnAtASharedSize() {
-        List<LaneBand> bands = LaneBand.of(LAYOUT, 1, "s1", LANE, 2.0, true);
+        List<LaneBand> bands = LaneBand.of(LAYOUT, 1, "s1", LANE, 2.0, GelColorMode.GENE);
         assertEquals(3, bands.size());
 
         // Smallest size first; genes at a size are sorted by name.
@@ -93,14 +93,27 @@ class LaneBandTest {
     @Test
     void aBandOfASingleGeneIsNotOffset() {
         List<GelBand> lane = List.of(new GelBand("s2", "toxA", 500));
-        LaneBand band = LaneBand.of(LAYOUT, 2, "s2", lane, 2.0, true).getFirst();
+        LaneBand band = LaneBand.of(LAYOUT, 2, "s2", lane, 2.0, GelColorMode.GENE).getFirst();
         assertEquals(LAYOUT.bandY(500) + GelScale.deterministicRange("s2:500", -0.45, 0.45), band.centerY(), 1e-12);
         assertEquals(LAYOUT.laneX(2), band.laneX(), 1e-12);
     }
 
     @Test
     void emptyLanesHaveNoBands() {
-        assertTrue(LaneBand.of(LAYOUT, 1, "s1", List.of(), 2.0, false).isEmpty());
-        assertTrue(LaneBand.of(LAYOUT, 1, "s1", List.of(), 2.0, true).isEmpty());
+        assertTrue(LaneBand.of(LAYOUT, 1, "s1", List.of(), 2.0, GelColorMode.BLACK).isEmpty());
+        assertTrue(LaneBand.of(LAYOUT, 1, "s1", List.of(), 2.0, GelColorMode.GENE).isEmpty());
+    }
+
+    @Test
+    void coloredBySizeCheckBandsOfOneSizeAreDrawnApartByTheirCheck() {
+        // Two products of one assay at one size cannot differ in their check; two assays can.
+        List<GelBand> lane = List.of(new GelBand("s1", "a", 300, ca.canada.inspection.pcr.ExpectedSizes.Label.TARGET),
+                new GelBand("s1", "b", 302, ca.canada.inspection.pcr.ExpectedSizes.Label.UNEXPECTED), new GelBand("s1", "c", 301, ca.canada.inspection.pcr.ExpectedSizes.Label.TARGET));
+
+        List<LaneBand> bands = LaneBand.of(LAYOUT, 1, "s1", lane, 2.0, GelColorMode.SIZE_CHECK);
+
+        assertEquals(2, bands.size());
+        assertEquals(List.of(2, 1), bands.stream().map(band -> band.bands().size()).toList());
+        assertEquals(1, LaneBand.of(LAYOUT, 1, "s1", lane, 2.0, GelColorMode.BLACK).size());
     }
 }

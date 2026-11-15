@@ -15,14 +15,19 @@ final class GelText {
             GelBand band = bands.getFirst();
             return "Sample: " + band.sampleName() + '\n'
                     + "Gene: " + band.geneName() + '\n'
-                    + "Amplicon size: " + band.ampliconSize() + " bp";
+                    + "Amplicon size: " + band.ampliconSize() + " bp" + sizeCheck(band, "\nSize check: ");
         }
         String details = bands.stream()
-                .map(gelBand -> gelBand.geneName() + " — " + gelBand.ampliconSize() + " bp")
+                .map(gelBand -> gelBand.geneName() + " — " + gelBand.ampliconSize() + " bp" + sizeCheck(gelBand, ", "))
                 .collect(Collectors.joining("\n"));
         return "Sample: " + bands.getFirst().sampleName() + '\n'
                 + "Co-migrating amplicons: " + bands.size() + '\n'
                 + details;
+    }
+
+    /** {@code prefix} and what the amplicon's size is for its assay; empty when not checked. */
+    private static String sizeCheck(GelBand band, String prefix) {
+        return band.sizeCheck() == null ? "" : prefix + band.sizeCheck().text();
     }
 
     /** Gene of the first amplicon of a band, which sets the band's colour; empty for no amplicon. */
@@ -51,14 +56,19 @@ final class GelText {
             return "No band details available.";
         }
         return tooltip + "\n\nRows:\n" + bands.stream()
-                .map(gelBand -> gelBand.sampleName() + '\t' + gelBand.geneName() + '\t' + gelBand.ampliconSize() + " bp")
+                .map(gelBand -> gelBand.sampleName() + '\t' + gelBand.geneName() + '\t' + gelBand.ampliconSize() + " bp"
+                        + (gelBand.sizeCheck() == null ? "" : "\t" + gelBand.sizeCheck().text()))
                 .collect(Collectors.joining("\n"));
     }
 
-    /** Lower-case text a search query is matched against: sample, gene and size of each amplicon. */
+    /**
+     * Lower-case text a search query is matched against: sample, gene, size and size check
+     * ({@code target}, {@code other}, {@code unexpected}) of each amplicon.
+     */
     static String searchText(List<GelBand> bands) {
         return bands.stream()
-                .map(gelBand -> gelBand.sampleName() + " " + gelBand.geneName() + " " + gelBand.ampliconSize())
+                .map(gelBand -> gelBand.sampleName() + " " + gelBand.geneName() + " " + gelBand.ampliconSize()
+                        + (gelBand.sizeCheck() == null ? "" : " " + gelBand.sizeCheck().text()))
                 .collect(Collectors.joining(" "))
                 .toLowerCase();
     }

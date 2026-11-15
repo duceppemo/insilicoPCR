@@ -94,4 +94,13 @@ class GelReportReaderTest {
         assertEquals(2, grouped.get(500).size());
         assertEquals(1, grouped.get(110).size());
     }
+
+    @Test
+    void eachBandKeepsTheSizeCheckOfItsRow() throws IOException {
+        Path file = Files.writeString(dir.resolve("checked.tsv"),
+                "Sample\tGene\tGenomeLocation\tAmpliconSize\tContig\tSizeCheck\n"
+                        + "s1\tits\t1-600\t600\tc1\tunexpected\n");
+        assertEquals(ca.canada.inspection.pcr.ExpectedSizes.Label.UNEXPECTED,
+                GelReportReader.read(file, List.of()).get("s1").getFirst().sizeCheck());
+    }
 }

@@ -10,7 +10,7 @@ import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
-import javafx.scene.control.CheckBox;
+import javafx.scene.control.ChoiceBox;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
 import javafx.scene.control.MenuItem;
@@ -68,9 +68,9 @@ public final class InteractiveGelViewer {
      * Opens the gel of {@code consolidatedReport}: one lane per sample of {@code sampleNames} (with or
      * without a band; only the samples with a band when it is empty), {@link #SAMPLES_PER_GEL} lanes a
      * page. Every page has the same tools: selection, search (which turns to the first page with a
-     * match), colour by gene, zoom and saving. A gel is saved as {@code --gel} draws it, at its own
-     * size, without the outlines and fading of selection and search, with the gene legend when
-     * coloured by gene.
+     * match), colours (by gene, or by size check: target, other known product, unexpected), zoom
+     * and saving. A gel is saved as {@code --gel} draws it, at its own size, without the outlines
+     * and fading of selection and search, with its colours and their legend.
      */
     public static void show(Path consolidatedReport, Collection<String> sampleNames) {
         LinkedHashMap<String, List<GelBand>> lanes = GelReportReader.read(consolidatedReport, sampleNames);
@@ -86,10 +86,12 @@ public final class InteractiveGelViewer {
         Path automaticOutput = GelImages.defaultOutput(consolidatedReport);
         java.util.function.Supplier<Path> pageOutput = () ->
                 GelImages.pageOutput(automaticOutput, current.page, pages.totalPages());
-        CheckBox colorByGene = new CheckBox("Color by gene");
+        ChoiceBox<GelColorMode> colorMode = new ChoiceBox<>();
+        colorMode.getItems().setAll(GelColorMode.values());
+        colorMode.setValue(GelColorMode.BLACK);
         // The gel shown, as a picture to save.
         java.util.function.Supplier<GelScene> picture = () ->
-                GelPicture.scene(pageLanes(lanes, pages, current.page), geneColors, colorByGene.isSelected());
+                GelPicture.scene(pageLanes(lanes, pages, current.page), geneColors, colorMode.getValue());
 
         Group zoomGroup = new Group();
         Button savePngButton = new Button("Save PNG...");
@@ -113,7 +115,7 @@ public final class InteractiveGelViewer {
         searchField.setPromptText("Search sample, gene, or size");
         Button clearSearchButton = new Button("Clear");
 
-        HBox toolbar = new HBox(8, savePngButton, saveSvgButton, savePdfButton, colorByGene,
+        HBox toolbar = new HBox(8, savePngButton, saveSvgButton, savePdfButton, new Label("Color:"), colorMode,
                 new Label("Search:"), searchField, clearSearchButton, matchLabel,
                 new Label("Zoom:"), zoomOutButton, zoomResetButton, zoomInButton, selectedLabel);
         toolbar.setAlignment(Pos.CENTER_LEFT);
@@ -136,9 +138,15 @@ public final class InteractiveGelViewer {
         scrollPane.setFitToWidth(false);
         scrollPane.setPannable(true);
 
-        VBox legend = GelNodes.legend(geneColors);
-        legend.setVisible(false);
-        legend.setManaged(false);
+        // The legend of the colours shown, for the whole run: a gene or a size check keeps its
+        // colour from gel to gel.
+        List<GelBand> runBands = lanes.values().stream().flatMap(List::stream).toList();
+        VBox legend = new VBox();
+        Runnable showLegend = () -> {
+            Map<String, Color> entries = GelColors.legend(colorMode.getValue(), runBands, geneColors);
+            legend.getChildren().setAll(entries.isEmpty() ? List.of()
+                    : List.of(GelNodes.legend(colorMode.getValue().legendTitle(), entries)));
+        };
 
         ZoomState zoomState = new ZoomState();
         Runnable refreshZoomButton = () -> zoomResetButton.setText(Math.round(zoomState.zoom * 100) + "%");
@@ -172,8 +180,8 @@ public final class InteractiveGelViewer {
         };
         // Draws page current.page: its gel, with the run's tools wired to its bands.
         Runnable render = () -> {
-            // Coloured by gene, bands of one size from different genes are drawn apart.
-            current.view = buildGel(pageLanes(lanes, pages, current.page), geneColors, colorByGene.isSelected());
+            // Coloured, bands of one size that differ in what colours them are drawn apart.
+            current.view = buildGel(pageLanes(lanes, pages, current.page), geneColors, colorMode.getValue());
             Pane gelPane = current.view.pane();
             gelPane.setScaleX(zoomState.zoom);
             gelPane.setScaleY(zoomState.zoom);
@@ -182,7 +190,6 @@ public final class InteractiveGelViewer {
             updateSelectedLabel(selection, selectedLabel);
             for (BandNode bandNode : current.view.bands()) {
                 bandNode.installSelectionHandler(selection, selectedLabel);
-                bandNode.colorByGene = colorByGene.isSelected();
                 bandNode.updateVisual();
             }
             installBoxSelection(gelPane, current.view.bands(), selection, selectedLabel);
@@ -221,9 +228,8 @@ public final class InteractiveGelViewer {
             showSearch.accept(result);
         });
         clearSearchButton.setOnAction(event -> searchField.clear());
-        colorByGene.selectedProperty().addListener((observable, oldValue, selected) -> {
-            legend.setVisible(selected);
-            legend.setManaged(selected);
+        colorMode.valueProperty().addListener((observable, oldValue, mode) -> {
+            showLegend.run();
             render.run();
         });
 
@@ -265,7 +271,7 @@ public final class InteractiveGelViewer {
     }
 
     private static GelView buildGel(LinkedHashMap<String, List<GelBand>> lanes, Map<String, Color> geneColors,
-                                    boolean byGene) {
+                                    GelColorMode mode) {
         GelLayout layout = GelLayout.window(LAYOUT_WIDTH, LAYOUT_HEIGHT, lanes.keySet());
         List<String> laneNames = List.copyOf(lanes.keySet());
         List<LaneBand> laneBands = new ArrayList<>();
@@ -273,7 +279,7 @@ public final class InteractiveGelViewer {
         List<Rectangle> laneHighlights = new ArrayList<>();
         for (int lane = 1; lane <= laneNames.size(); lane++) {
             laneBands.addAll(LaneBand.of(layout, lane, laneNames.get(lane - 1),
-                    lanes.get(laneNames.get(lane - 1)), BAND_HEIGHT, byGene));
+                    lanes.get(laneNames.get(lane - 1)), BAND_HEIGHT, mode));
             Rectangle highlight = new Rectangle(layout.laneX(lane), layout.gelTop(), layout.laneWidth(), layout.gelHeight());
             highlight.setFill(Color.TRANSPARENT);
             highlight.setMouseTransparent(true);
@@ -283,11 +289,11 @@ public final class InteractiveGelViewer {
         List<BandNode> bandNodes = new ArrayList<>();
         // The window's own legend sits beside the gel, outside the scrolled pane.
         GelScene scene = GelScene.of(layout, laneNames, laneBands, band -> BandPaint.BAND, GelScene.LADDER_FONT_SIZE,
-                Map.of());
+                null, Map.of());
         Pane pane = GelNodes.pane(scene, laneHighlights, band -> {
-            BandNode node = bandNode(band, laneHighlights.get(band.lane().lane() - 1),
-                    geneColors.getOrDefault(band.lane().gene(), Color.BLACK));
-            node.colorByGene = byGene;
+            Color color = GelColors.of(mode, band.lane().bands().getFirst(), geneColors);
+            BandNode node = bandNode(band, laneHighlights.get(band.lane().lane() - 1), color);
+            node.colored = color != null;
             node.updateVisual();
             bandNodes.add(node);
             return node.group;
@@ -296,7 +302,7 @@ public final class InteractiveGelViewer {
         return new GelView(pane, bandNodes);
     }
 
-    private static BandNode bandNode(GelScene.Band sceneBand, Rectangle laneHighlight, Color geneColor) {
+    private static BandNode bandNode(GelScene.Band sceneBand, Rectangle laneHighlight, Color bandColor) {
         GelNodes.BandShape shape = GelNodes.band(sceneBand);
         BandRect rect = sceneBand.rect();
         double centerY = sceneBand.lane().centerY();
@@ -311,7 +317,7 @@ public final class InteractiveGelViewer {
         Group group = new Group(shape.group(), hitBox);
         group.setPickOnBounds(false);
         BandNode bandNode = new BandNode(group, hitBox, shape.body(), shape.halo(), laneHighlight,
-                sceneBand.lane().bands(), sceneBand.intensity(), popupText, rect, geneColor);
+                sceneBand.lane().bands(), sceneBand.intensity(), popupText, rect, bandColor);
 
         if (popupText != null && !popupText.isBlank()) {
             Popup popup = createMetadataPopup(popupText);
@@ -661,12 +667,12 @@ public final class InteractiveGelViewer {
         private final String popupText;
         private final String searchText;
         private final BandRect rect;
-        private final Color geneColor;
+        private final Color bandColor;
         private boolean hovered;
         private boolean selected;
         private boolean searchMatch = true;
         private boolean searching;
-        private boolean colorByGene;
+        private boolean colored;
 
         private BandNode(Group group,
                          Rectangle hitBox,
@@ -677,7 +683,7 @@ public final class InteractiveGelViewer {
                          double intensity,
                          String popupText,
                          BandRect rect,
-                         Color geneColor) {
+                         Color bandColor) {
             this.group = group;
             this.hitBox = hitBox;
             this.band = band;
@@ -687,7 +693,7 @@ public final class InteractiveGelViewer {
             this.intensity = intensity;
             this.popupText = popupText;
             this.rect = rect;
-            this.geneColor = geneColor;
+            this.bandColor = bandColor;
             this.searchText = GelText.searchText(bands);
             updateVisual();
         }
@@ -704,7 +710,7 @@ public final class InteractiveGelViewer {
         }
 
         private void updateVisual() {
-            BandPaint.State state = BandPaint.State.of(hovered, selected, searching, searchMatch, colorByGene, geneColor, intensity);
+            BandPaint.State state = BandPaint.State.of(hovered, selected, searching, searchMatch, colored, bandColor, intensity);
             group.setOpacity(state.opacity());
             if (laneHighlight != null) {
                 laneHighlight.setFill(state.laneFill());

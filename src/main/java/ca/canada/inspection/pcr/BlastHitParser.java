@@ -40,9 +40,8 @@ public final class BlastHitParser {
     }
 
     /** Parses a hit without templates: trimmed bases are judged as BLAST left them. */
-    public static Optional<BlastResult> parse(String line, String sampleName,
-                                              PrimerPanel primers, AmpliconOptions options) {
-        return parse(line, sampleName, primers, options, hit -> null);
+    public static Optional<BlastResult> parse(String line, PrimerPanel primers, AmpliconOptions options) {
+        return parse(line, primers, options, hit -> null);
     }
 
     /**
@@ -52,17 +51,16 @@ public final class BlastHitParser {
      *                  when unknown; asked only for hits whose trimmed bases matter
      *                  ({@link TrimmedEnds#needsTemplate}), in the order of the report
      */
-    public static Optional<BlastResult> parse(String line, String sampleName,
-                                              PrimerPanel primers, AmpliconOptions options,
+    public static Optional<BlastResult> parse(String line, PrimerPanel primers, AmpliconOptions options,
                                               Function<BlastResult, TrimmedEnds.Template> templates) {
-        return toHit(line, sampleName, primers)
+        return toHit(line, primers)
                 .map(hit -> TrimmedEnds.needsTemplate(hit, options)
                         ? TrimmedEnds.extend(hit, templates.apply(hit))
                         : hit)
                 .filter(hit -> accepts(hit, options));
     }
 
-    private static Optional<BlastResult> toHit(String line, String sampleName, PrimerPanel primers) {
+    private static Optional<BlastResult> toHit(String line, PrimerPanel primers) {
         String[] fields = line.split("\t", -1);
         if (fields.length < EXPECTED_FIELDS) {
             return Optional.empty();
@@ -76,7 +74,6 @@ public final class BlastHitParser {
 
         try {
             return Optional.of(new BlastResult(
-                    sampleName,
                     BlastField.QSEQID.of(fields),   // the contig (or read)
                     sseqid,                         // the oligo
                     number(BlastField.MISMATCH, fields),

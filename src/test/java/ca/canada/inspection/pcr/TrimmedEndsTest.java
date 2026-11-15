@@ -88,7 +88,7 @@ class TrimmedEndsTest {
     }
 
     private static Optional<BlastResult> parse(String line, String template, AmpliconOptions options) {
-        return BlastHitParser.parse(line, "s", PRIMERS, options,
+        return BlastHitParser.parse(line, PRIMERS, options,
                 hit -> "contig1".equals(hit.queryID()) ? TrimmedEnds.Template.whole(template) : null);
     }
 
@@ -181,7 +181,7 @@ class TrimmedEndsTest {
     void withoutATemplateTheHitIsUnchanged() {
         String template = FLANK_L + mutate(PROBE, 1) + FLANK_R;
         String blastLine = plusLine(template, 2, 15);
-        BlastResult hit = BlastHitParser.parse(blastLine, "s", PRIMERS, PROBE_BUDGET_0).orElseThrow();
+        BlastResult hit = BlastHitParser.parse(blastLine, PRIMERS, PROBE_BUDGET_0).orElseThrow();
         assertEquals(1, hit.fivePrimeUncovered());
         assertEquals(0, hit.mismatch());
     }
@@ -189,7 +189,7 @@ class TrimmedEndsTest {
     /** Whether parsing the line asks for its template. */
     private static boolean asksForTemplate(String line, AmpliconOptions options) {
         boolean[] asked = {false};
-        BlastHitParser.parse(line, "s", PRIMERS, options, hit -> {
+        BlastHitParser.parse(line, PRIMERS, options, hit -> {
             asked[0] = true;
             return null;
         });
@@ -223,7 +223,7 @@ class TrimmedEndsTest {
         String template = FLANK_L + mutate(PROBE, 14) + FLANK_R;
         String blastLine = asPrimer(plusLine(template, 1, 13));
 
-        assertTrue(BlastHitParser.parse(blastLine, "s", PRIMERS, RELAXED).isEmpty(), "without template");
+        assertTrue(BlastHitParser.parse(blastLine, PRIMERS, RELAXED).isEmpty(), "without template");
         BlastResult hit = parse(blastLine, template, RELAXED).orElseThrow();
         assertEquals(1, hit.mismatch());
         assertEquals(0, hit.threePrimeUncovered());
@@ -264,7 +264,7 @@ class TrimmedEndsTest {
         assertEquals(1, hit.fivePrimeUnpairedBases());
         assertEquals(PROBE_START + 3, hit.qstart(), "the 5' end is not added to the alignment");
 
-        BlastResult untouched = BlastHitParser.parse(blastLine, "s", PRIMERS, strict).orElseThrow();
+        BlastResult untouched = BlastHitParser.parse(blastLine, PRIMERS, strict).orElseThrow();
         assertEquals(3, untouched.fivePrimeUnpairedBases(), "without template every trimmed base is unpaired");
     }
 

@@ -23,14 +23,14 @@ public final class BlastHits {
     }
 
     /**
-     * Adds the accepted hits of {@code tsv} to {@code into}, the hits of sample {@code sampleName}.
+     * Adds the accepted hits of {@code tsv} to {@code into}.
      *
      * @param searched the FASTA files BLAST searched, in which trimmed hit ends are looked up
      * @return the sequences of trimmed hits not found in {@code searched}; their trimmed bases
      *         are not compared (see {@link #missingWarning})
      * @throws UncheckedIOException when the report or a searched file cannot be read
      */
-    public static Set<String> read(Path tsv, List<Path> searched, String sampleName, Hits into, PrimerPanel primers,
+    public static Set<String> read(Path tsv, List<Path> searched, Hits into, PrimerPanel primers,
                                    AmpliconOptions options) {
         try (BufferedReader reader = Files.newBufferedReader(tsv, StandardCharsets.UTF_8);
              QueryTemplates templates = new QueryTemplates(searched)) {
@@ -39,7 +39,7 @@ public final class BlastHits {
                 if (line.isBlank() || line.startsWith("qseqid")) {
                     continue;
                 }
-                BlastHitParser.parse(line, sampleName, primers, options, templates)
+                BlastHitParser.parse(line, primers, options, templates)
                         .ifPresent(hit -> into.add(hit.subjectID(), hit));
             }
             return templates.missing();

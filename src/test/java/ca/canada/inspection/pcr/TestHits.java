@@ -19,7 +19,7 @@ public final class TestHits {
     /** Full-length plus-strand hit with explicit aligned sequences. */
     public static BlastResult plusHit(String primerId, String contig, int qstart, String qseq, String sseq) {
         int slen = sseq.replace("-", "").length();
-        return new BlastResult("sample", contig, primerId,
+        return new BlastResult(contig, primerId,
                 countMismatches(qseq, sseq), countGaps(qseq, sseq),
                 qstart, qstart + qseq.replace("-", "").length() - 1,
                 1, slen, slen, sseq.length(), qseq, sseq, sseq.replace("-", ""));
@@ -33,7 +33,7 @@ public final class TestHits {
     /** Full-length minus-strand hit (sstart > send) with explicit aligned sequences. */
     public static BlastResult minusHit(String primerId, String contig, int qstart, String qseq, String sseq) {
         int slen = sseq.replace("-", "").length();
-        return new BlastResult("sample", contig, primerId,
+        return new BlastResult(contig, primerId,
                 countMismatches(qseq, sseq), countGaps(qseq, sseq),
                 qstart, qstart + qseq.replace("-", "").length() - 1,
                 slen, 1, slen, sseq.length(), qseq, sseq, sseq.replace("-", ""));
@@ -43,7 +43,7 @@ public final class TestHits {
     public static BlastResult truncatedPlusHit(String primerId, String contig, int qstart,
                                         int sstart, int send, String primerSeq) {
         String aligned = primerSeq.substring(sstart - 1, send);
-        return new BlastResult("sample", contig, primerId,
+        return new BlastResult(contig, primerId,
                 0, 0, qstart, qstart + aligned.length() - 1,
                 sstart, send, primerSeq.length(), aligned.length(), aligned, aligned, primerSeq);
     }

@@ -34,7 +34,7 @@ class PairSupportTest {
         for (int start = 0; start + FRAGMENT <= genome.length(); start += step) {
             String fragment = genome.substring(start, start + FRAGMENT);
             String forward = fragment.substring(0, READ);
-            String reverse = PairSupport.reverseComplement(fragment).substring(0, READ);
+            String reverse = Dna.reverseComplement(fragment).substring(0, READ);
             // Half of the fragments are sequenced from the other strand.
             if ((start / step) % 2 == 0) {
                 tally.addPair(forward, reverse);
@@ -55,7 +55,7 @@ class PairSupportTest {
         Placement plus = tally.place(product.substring(50, 150))[0];
         assertEquals(new Placement(0, true, 50, 150, true, false, false), plus);
 
-        Placement minus = tally.place(PairSupport.reverseComplement(product.substring(200, 300)))[0];
+        Placement minus = tally.place(Dna.reverseComplement(product.substring(200, 300)))[0];
         assertEquals(new Placement(0, false, 200, 300, true, false, false), minus);
 
         // Two mismatches in 100 bases are within the 3% allowed; a read from elsewhere is not placed.
@@ -231,7 +231,7 @@ class PairSupportTest {
         Tally tally = new Tally(List.of(genome.substring(200, 800)));
         for (int start = 0; start + 250 <= genome.length(); start += 3) {
             tally.addRead(start % 2 == 0 ? genome.substring(start, start + 250)
-                    : PairSupport.reverseComplement(genome.substring(start, start + 250)));
+                    : Dna.reverseComplement(genome.substring(start, start + 250)));
         }
 
         Verdict verdict = tally.verdict(0);

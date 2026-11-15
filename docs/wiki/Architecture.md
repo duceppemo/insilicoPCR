@@ -70,6 +70,7 @@ The pipeline delegates the scientific decisions to one JavaFX-free package:
 | `TrimmedEnds` | Compares the oligo bases BLAST trimmed off the ends of an alignment with the template: probe ends and primer 3' ends count only where they do not pair |
 | `QueryTemplates` | Reads the contig or read a hit lies on from the FASTA that was searched, one query at a time and at one byte per base (`PackedBases`), for `TrimmedEnds` |
 | `Products` | Finds the products in a set of `Hits` as `ReportRow`s: hits paired into amplicons, an assay with a probe only where its probe binds within; the same rules for a sample's contigs and for the reads and extended reads FASTQ mode searches, which are given as `Hits`, not as samples. `Products.ofRun` makes the run's rows, in report order, once: the report file, the HTML report and the gel show these |
+| `ProductSizes` | When amplicons of different sizes are one product (10 bp apart at most): the rule the read search, the read extension and the declared sizes share |
 | `ReportRow` | One product as the report lists it (amplicon, primers, mismatches, probe); passed between the steps of a run, and turned into TSV columns only when the report is written |
 | `ReadLevelCaller` | FASTQ mode: calls amplicons on baited reads treated as tiny contigs, one call per product size, with the support rules (≥ 2 fragments, `--read-min-fraction` of the informative ones: reads carrying a primer at the product's locus) |
 | `ReadExtensionCaller` | FASTQ mode: for assays in no contig and in no read, picks the primer-carrying reads to extend and finds products on the extended reads (at least 2 reads seeded from each primer), reported when `PairSupport` confirms them |
@@ -118,7 +119,9 @@ The gel viewer (`InteractiveGelViewer`, one gel of up to 100 samples at a time, 
 
 `BlastResult` (in `model`) carries full alignment context (strand, subject coordinates, aligned sequences) and computes the mismatch counts (`primerMismatches`, as `-m` and the report count them; `alignedMismatches`, as a probe's budget does), the 3'-end mismatch counts and weighted penalties. The rules themselves are documented on the [Amplicon Calling](Amplicon-Calling) page, and covered by unit tests under `src/test/java`. `EndToEndTest` runs whole runs on the five-isolate example with the BLAST+ and BBTools of the checkout.
 
-## High-level layers
+## How a run flows
+
+The order a run goes through, from the entry point to the files it writes. It is not the package layering: there, `report` and `gel` build on `pcr`, below them (see [Packages](#packages) above).
 
 ```text
 Dispatcher

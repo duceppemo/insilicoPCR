@@ -247,20 +247,6 @@ public final class HtmlReport {
 
     static String render(String reportName, List<Product> products, Collection<String> sampleNames,
                          Set<String> fastqSamples, List<String> assays, ExpectedSizes sizes,
-                         List<Finding> findings, RunDetails runDetails) {
-        return render(reportName, products, sampleNames, fastqSamples, assays, sizes, findings, runDetails, List.of());
-    }
-
-    static String render(String reportName, List<Product> products, Collection<String> sampleNames,
-                         Set<String> fastqSamples, List<String> assays, ExpectedSizes sizes,
-                         List<Finding> findings, RunDetails runDetails,
-                         List<InputCheck.Issue> inputIssues) {
-        return render(reportName, products, sampleNames, fastqSamples, assays, sizes, findings, runDetails, inputIssues,
-                List.of());
-    }
-
-    static String render(String reportName, List<Product> products, Collection<String> sampleNames,
-                         Set<String> fastqSamples, List<String> assays, ExpectedSizes sizes,
                          List<Finding> findings, RunDetails runDetails,
                          List<InputCheck.Issue> inputIssues, List<SplitAcrossContigs.Split> splits) {
         Set<String> samples = new TreeSet<>(sampleNames);
@@ -565,11 +551,12 @@ public final class HtmlReport {
             String source = comma > 0 ? contig.substring(0, comma) : contig;
             String description = product.row().contigDescription();
             String sourceTitle = contig + (description.isEmpty() ? "" : " — " + description);
+            // A call from reads is tagged "reads", followed by the support that made it.
             switch (product.row().source()) {
-                case ReportRow.Source.Extension extension -> source = "reads extended ("
+                case ReportRow.Source.Extension extension -> source = "extended ("
                         + extension.forwardClosing() + " of " + extension.forwardSeeds() + " forward-seeded, "
                         + extension.reverseClosing() + " of " + extension.reverseSeeds() + " reverse-seeded)";
-                case ReportRow.Source.Reads reads -> source = "reads (" + reads.supporting() + " of "
+                case ReportRow.Source.Reads reads -> source = "(" + reads.supporting() + " of "
                         + reads.informative() + ", " + reads.percent() + ")";
                 case ReportRow.Source.Assembly assembly -> {
                 }
@@ -587,8 +574,7 @@ public final class HtmlReport {
                 html.append("</td>");
             }
             html.append("<td title=\"").append(escape(sourceTitle)).append("\">")
-                    .append(product.fromReads() ? "<span class=\"tag\">reads</span> " + escape(source.substring(5).trim())
-                            : escape(source))
+                    .append(product.fromReads() ? "<span class=\"tag\">reads</span> " + escape(source) : escape(source))
                     .append("</td><td>").append(escape(product.row().location())).append("</td><td class=\"num\">")
                     .append(escape(product.row().forwardMismatches() + " / " + product.row().reverseMismatches()))
                     .append("</td><td class=\"num\">").append(escape(product.row().forwardThreePrime() + " / "

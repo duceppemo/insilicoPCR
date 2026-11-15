@@ -15,7 +15,6 @@ import java.nio.file.Path;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -43,7 +42,7 @@ class IoFailureTest {
         Sample sample = new Sample("s");
 
         RuntimeException error = assertThrows(RuntimeException.class, () -> BlastReports.attachHits(
-                name -> SampleFiles.of(dir, name).blastReport(), Map.of("s", sample), PrimerPanel.EMPTY, AmpliconOptions.withMismatches(0), warning -> {}));
+                name -> SampleFiles.of(dir, name).blastReport(), Map.of("s", sample), PrimerPanel.of(Map.of()), AmpliconOptions.withMismatches(0), warning -> {}));
 
         assertTrue(RunFailure.isForTheUser(error), error.toString());
         assertEquals("Error: Unable to read BLAST report: " + dir.resolve("s").resolve("s.tsv"),

@@ -180,6 +180,33 @@
   `Open Previous Run` finds a pre-0.15.1 run's reports by the rule that names
   them (`ConsolidatedReport.isReportFile`); two drawing helpers nothing used
   are gone.
+- Code: the output folder's layout is written in two places
+  (`PipelineDirectories`, and `SampleFiles` for the files of a sample), which
+  the steps that write a file and those that read it both ask; the BLAST
+  report reader is given where a sample's report is.
+- Code: the command line sets only the options it is given, so its defaults
+  are those of `PipelineConfig.builder` and `AmpliconOptions.builder`, which
+  sets the amplicon rules by name; its help reads them from the same constants.
+- Code: what counts as positive, how the kinds of verdict group and which
+  products decide one are on `pcr.AssayVerdict.Kind`, and which FASTQ
+  statuses are called or withheld on `FastqDiagnostics.Status`; the HTML report
+  counts by these, with no rule of its own. A test keeps the FASTQ diagnostics
+  and the report rows agreeing on which assays were called from reads.
+- Code: a sample's accepted hits are a value of their own (`model.Hits`); the
+  read searches give their reads' hits as one, instead of a stand-in sample
+  whose "contigs" were reads, and a sample's name is fixed when it is made.
+  The mismatch count is written once (`BlastResult.primerMismatches`,
+  `alignedMismatches`), the run's rows are made once (`Products.ofRun`) and
+  `ConsolidatedReport` only writes them.
+- Code (FASTQ mode): one reader of FASTQ records (`util.FastqRecords`), one
+  owner of the baited reads written as FASTA (`BaitedReads`); every external
+  program is started through the run's monitor, so tests stand in for a
+  failing one (the read extension's out-of-memory note is tested).
+- Code: a primer's role is passed as `PrimerId.Role`, not a letter; the DNA
+  complement, the "same product" size rule (`ProductSizes`) and the list of
+  sequence-file extensions are each written once; unused code is gone
+  (`BlastResult` getters and its sample name, two `HtmlReport.render`
+  overloads, test-only overloads and constants).
 
 ## 0.15.1 (2026-11-14)
 

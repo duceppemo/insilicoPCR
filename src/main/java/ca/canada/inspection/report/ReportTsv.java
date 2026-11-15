@@ -18,8 +18,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Reads a {@code report.tsv} back into {@link ReportRow}s: for the HTML report, the gel, and a
- * past run opened in the application. Columns are found by their header ({@link ReportColumn}), so a report of an
+ * Reads a {@code report.tsv} back into {@link ReportRow}s: for the gel, and for a past run opened
+ * in the application (a finished run's HTML report is made from its rows, not from the file). Columns are found by their header ({@link ReportColumn}), so a report of an
  * earlier release (without the probe or the 5' columns) reads too, with those left empty.
  * A line that is not a product (blank, a header again, a size that is not a number) is
  * skipped. A file without an insilicoPCR header (saved from a spreadsheet without it) is read

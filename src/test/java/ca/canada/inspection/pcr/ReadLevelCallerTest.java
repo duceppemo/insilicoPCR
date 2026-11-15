@@ -334,7 +334,7 @@ class ReadLevelCallerTest {
 
         List<ReadCall> products = TestEvidence.evaluate(reads, lengths, PCR_PRIMERS, DEFAULTS).products("assay");
 
-        assertEquals(1, products.size(), "70, 71 and 80 bp are within " + ReadLevelCaller.PRODUCT_SIZE_GAP + " bp of a neighbour");
+        assertEquals(1, products.size(), "70, 71 and 80 bp are within " + ProductSizes.GAP + " bp of a neighbour");
         assertEquals(Set.of(70, 71, 80), products.getFirst().sizes());
         assertEquals("70,71,80", products.getFirst().sizeSummary());
         assertTrue(products.getFirst().matches(60) && products.getFirst().matches(90));
@@ -428,9 +428,9 @@ class ReadLevelCallerTest {
     @Test
     void aProductCoversItsSizesGiveOrTakeALengthVariant() {
         // The one rule for calls from reads and from extended reads alike.
-        assertEquals(true, ReadLevelCaller.sameProduct(List.of(300, 310, 318), 328));
-        assertEquals(true, ReadLevelCaller.sameProduct(Set.of(300), 290));
-        assertEquals(false, ReadLevelCaller.sameProduct(List.of(300, 310, 318), 329));
-        assertEquals(false, ReadLevelCaller.sameProduct(Set.of(300), 289));
+        assertEquals(true, ProductSizes.sameProduct(List.of(300, 310, 318), 328));
+        assertEquals(true, ProductSizes.sameProduct(Set.of(300), 290));
+        assertEquals(false, ProductSizes.sameProduct(List.of(300, 310, 318), 329));
+        assertEquals(false, ProductSizes.sameProduct(Set.of(300), 289));
     }
 }

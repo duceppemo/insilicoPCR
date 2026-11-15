@@ -51,7 +51,7 @@ class ReadExtensionCallerTest {
     @Test
     void assayInNoContigAndNoReadWithBothPrimersInReadsIsACandidate() {
         assertEquals(List.of("long"),
-                ReadExtensionCaller.candidates(fastqSample(), PRIMERS, DEFAULTS, primersInReads(5, 4)));
+                candidates(fastqSample(), PRIMERS, DEFAULTS, primersInReads(5, 4)));
     }
 
     @Test
@@ -60,7 +60,7 @@ class ReadExtensionCallerTest {
         sample.addBlastResult("long-F", TestHits.plusHit("long-F", "contig_0", 101));
         sample.addBlastResult("long-R", TestHits.minusHit("long-R", "contig_0", 281));
 
-        assertTrue(ReadExtensionCaller.candidates(sample, PRIMERS, DEFAULTS, primersInReads(5, 4)).isEmpty());
+        assertTrue(candidates(sample, PRIMERS, DEFAULTS, primersInReads(5, 4)).isEmpty());
     }
 
     @Test
@@ -75,13 +75,13 @@ class ReadExtensionCallerTest {
                 PRIMERS, DEFAULTS);
         assertFalse(evidence.products("long").getFirst().isReportable());
 
-        assertTrue(ReadExtensionCaller.candidates(fastqSample(), PRIMERS, DEFAULTS, evidence).isEmpty());
+        assertTrue(candidates(fastqSample(), PRIMERS, DEFAULTS, evidence).isEmpty());
     }
 
     @Test
     void assayWithOnlyOnePrimerInReadsIsNotACandidate() {
-        assertTrue(ReadExtensionCaller.candidates(fastqSample(), PRIMERS, DEFAULTS, primersInReads(5, 0)).isEmpty());
-        assertTrue(ReadExtensionCaller.candidates(fastqSample(), PRIMERS, DEFAULTS, primersInReads(0, 5)).isEmpty());
+        assertTrue(candidates(fastqSample(), PRIMERS, DEFAULTS, primersInReads(5, 0)).isEmpty());
+        assertTrue(candidates(fastqSample(), PRIMERS, DEFAULTS, primersInReads(0, 5)).isEmpty());
     }
 
     // --- which assays, by mode ---
@@ -90,7 +90,7 @@ class ReadExtensionCallerTest {
 
     private static List<String> candidates(Sample sample, ReadEvidence reads, ReadExtensionCaller.Mode mode,
                                            ExpectedSizes sizes) {
-        return ReadExtensionCaller.candidates(sample, PrimerPanel.of(PRIMERS.sequences(), sizes), DEFAULTS, reads,
+        return candidates(sample, PrimerPanel.of(PRIMERS.sequences(), sizes), DEFAULTS, reads,
                 mode);
     }
 
@@ -170,18 +170,18 @@ class ReadExtensionCallerTest {
     void everyReadIsASeedWhenFewCarryThePrimer() {
         List<Seed> seeds = ReadExtensionCaller.seeds(List.of("long"), PRIMERS, primersInReads(3, 2));
 
-        assertEquals(List.of(new Seed("extended_read_0", "read_0", "long", 'F'),
-                new Seed("extended_read_1", "read_1", "long", 'F'),
-                new Seed("extended_read_2", "read_2", "long", 'F'),
-                new Seed("extended_read_3", "read_1000", "long", 'R'),
-                new Seed("extended_read_4", "read_1001", "long", 'R')), seeds);
+        assertEquals(List.of(new Seed("extended_read_0", "read_0", "long", PrimerId.Role.FORWARD),
+                new Seed("extended_read_1", "read_1", "long", PrimerId.Role.FORWARD),
+                new Seed("extended_read_2", "read_2", "long", PrimerId.Role.FORWARD),
+                new Seed("extended_read_3", "read_1000", "long", PrimerId.Role.REVERSE),
+                new Seed("extended_read_4", "read_1001", "long", PrimerId.Role.REVERSE)), seeds);
     }
 
     @Test
     void seedsAreCappedPerPrimerAndSpreadOverTheReads() {
         List<Seed> seeds = ReadExtensionCaller.seeds(List.of("long"), PRIMERS, primersInReads(600, 40));
 
-        List<Seed> forward = seeds.stream().filter(seed -> seed.role() == 'F').toList();
+        List<Seed> forward = seeds.stream().filter(seed -> seed.role() == PrimerId.Role.FORWARD).toList();
         assertEquals(ReadExtensionCaller.MAX_SEEDS_PER_PRIMER, forward.size());
         assertEquals(40, seeds.size() - forward.size());
         // Every fourth of the 600 reads, in read order: not the first 150.
@@ -203,7 +203,7 @@ class ReadExtensionCallerTest {
 
         List<Seed> seeds = ReadExtensionCaller.seeds(List.of("long"), primers, evidence);
 
-        List<Seed> forward = seeds.stream().filter(seed -> seed.role() == 'F').toList();
+        List<Seed> forward = seeds.stream().filter(seed -> seed.role() == PrimerId.Role.FORWARD).toList();
         assertEquals(ReadExtensionCaller.MAX_SEEDS_PER_PRIMER, forward.size(), "220 distinct reads, capped once");
         assertEquals(forward.size(), forward.stream().map(Seed::read).distinct().count());
     }
@@ -443,7 +443,7 @@ class ReadExtensionCallerTest {
     void reportRowSaysWhereTheCallComesFrom() {
         List<Seed> seeds = seeds(3, 2);
         Sample extended = extended();
-        seeds.forEach(seed -> product(extended, seed.id(), seed.role() == 'F' ? 1074 : 1072));
+        seeds.forEach(seed -> product(extended, seed.id(), seed.role() == PrimerId.Role.FORWARD ? 1074 : 1072));
         Product product = evaluate(extended, seeds).closed().getFirst();
 
         ReportRow row = ReadExtensionCaller.reportRow(product, "ERR1.5 5/1");
@@ -462,5 +462,17 @@ class ReadExtensionCallerTest {
         assertTrue(ReadExtensionCaller.reportRow(product.withSupport(SUPPORTED), "")
                 .contigDescription().contains("hold it at 1072,1074 bp; every 300-base"
                         + " window held by at least 9 read pairs; the extended read is the best-supported path"));
+    }
+
+    /** The assays a sample's reads are extended for, from what it shows already. */
+    private static List<String> candidates(Sample sample, PrimerPanel primers, AmpliconOptions options,
+                                           ReadEvidence reads, ReadExtensionCaller.Mode mode) {
+        return ReadExtensionCaller.candidates(ReadExtensionCaller.knownSizes(sample, primers, options, reads), primers,
+                reads, mode);
+    }
+
+    private static List<String> candidates(Sample sample, PrimerPanel primers, AmpliconOptions options,
+                                           ReadEvidence reads) {
+        return candidates(sample, primers, options, reads, ReadExtensionCaller.Mode.DEFAULT);
     }
 }

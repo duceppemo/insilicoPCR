@@ -30,9 +30,9 @@ public final class ExpectedSizes {
     /**
      * A single declared size matches amplicons this many bp either side of it: length
      * variants of one locus, as for read-level products
-     * ({@link ReadLevelCaller#PRODUCT_SIZE_GAP}). A declared range matches exactly.
+     * ({@link ProductSizes#GAP}). A declared range matches exactly.
      */
-    public static final int TOLERANCE = ReadLevelCaller.PRODUCT_SIZE_GAP;
+    public static final int TOLERANCE = ProductSizes.GAP;
 
     private static final String TARGET_KEY = "size";
     private static final String OTHER_KEY = "other";

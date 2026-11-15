@@ -13,7 +13,6 @@ package ca.canada.inspection.model;
  * see {@code ca.canada.inspection.pcr.TrimmedEnds}).</p>
  */
 public record BlastResult(
-		String name,
 		String queryID,
 		String subjectID,
 		int mismatch,
@@ -30,21 +29,12 @@ public record BlastResult(
 		int fivePrimeUnpaired
 ) {
 	/** A hit whose unaligned 5' bases were not compared with the template. */
-	public BlastResult(String name, String queryID, String subjectID, int mismatch, int gaps,
+	public BlastResult(String queryID, String subjectID, int mismatch, int gaps,
 					   int qstart, int qend, int sstart, int send, int slen, int length,
 					   String qseq, String sseq, String primerSeq) {
-		this(name, queryID, subjectID, mismatch, gaps, qstart, qend, sstart, send, slen, length,
+		this(queryID, subjectID, mismatch, gaps, qstart, qend, sstart, send, slen, length,
 				qseq, sseq, primerSeq, -1);
 	}
-
-	public String getName() { return name; }
-	public String getQueryID() { return queryID; }
-	public String getSubjectID() { return subjectID; }
-	public int getMismatch() { return mismatch; }
-	public int getStart() { return qstart; }
-	public int getEnd() { return qend; }
-	public int getLength() { return length; }
-	public String getSeq() { return sseq; }
 
 	/**
 	 * True when the primer matches the forward strand of the query, which means

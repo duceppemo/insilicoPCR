@@ -7,7 +7,6 @@ import ca.canada.inspection.model.Sample;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -31,7 +30,7 @@ import java.util.stream.Collectors;
  *
  * <p>An assay can give more than one product in a sample (the target, and another
  * place where both primers happen to land). Each product is called on its own
- * support, like bands on a gel: see {@link #PRODUCT_SIZE_GAP}.</p>
+ * support, like bands on a gel: see {@link ProductSizes#GAP}.</p>
  */
 public final class ReadLevelCaller {
 
@@ -47,26 +46,9 @@ public final class ReadLevelCaller {
     /** Minimum reads holding the amplicon for a read-level call. */
     public static final int MIN_SUPPORTING_READS = 2;
 
-    /**
-     * Amplicon sizes at most this many bp apart are one product: length variants of one
-     * locus (indels between gene copies or individuals, a homopolymer miscounted by the
-     * sequencer). Sizes further apart are separate products with their own support.
-     */
-    public static final int PRODUCT_SIZE_GAP = 10;
-
     /** How the {@code Contig Description} of a read-level call starts. */
     public static final String ROW_PREFIX = "FASTQ read-level call";
 
-    /**
-     * Whether an amplicon of {@code size} bp is the product seen at {@code productSizes}, give
-     * or take a length variant: the one rule for "the same product" when a call from reads is
-     * compared with what the sample already shows.
-     */
-    public static boolean sameProduct(Collection<Integer> productSizes, int size) {
-        int smallest = productSizes.stream().mapToInt(Integer::intValue).min().orElseThrow();
-        int largest = productSizes.stream().mapToInt(Integer::intValue).max().orElseThrow();
-        return size >= smallest - PRODUCT_SIZE_GAP && size <= largest + PRODUCT_SIZE_GAP;
-    }
 
     /**
      * The read-level products to report next to the assembly's own rows: those with
@@ -165,7 +147,7 @@ public final class ReadLevelCaller {
 
         /** Whether an amplicon of {@code size} bp is this product, give or take a length variant. */
         public boolean matches(int size) {
-            return sameProduct(sizes, size);
+            return ProductSizes.sameProduct(sizes, size);
         }
 
         /** Whether any of {@code otherSizes} is this product. */
@@ -276,7 +258,7 @@ public final class ReadLevelCaller {
             Evidence evidence = new Evidence(pcrPrimerHits(reads, groups.get(assay)), readLengths, fragments,
                     readSequences, minSupportFraction);
             List<ReadCall> products = new ArrayList<>();
-            for (List<ReportRow> productRows : splitBySize(rows)) {
+            for (List<ReportRow> productRows : ProductSizes.splitBySize(rows)) {
                 products.add(call(assay, productRows, evidence));
             }
             calls.put(assay, products);
@@ -304,24 +286,6 @@ public final class ReadLevelCaller {
         }
     }
 
-    /**
-     * Splits an assay's amplicons into products: runs of sizes with no gap above
-     * {@link #PRODUCT_SIZE_GAP}, by increasing size.
-     */
-    static List<List<ReportRow>> splitBySize(List<ReportRow> rows) {
-        List<ReportRow> sorted = new ArrayList<>(rows);
-        sorted.sort(Comparator.comparingInt(ReportRow::size));
-        List<List<ReportRow>> products = new ArrayList<>();
-        int previous = Integer.MIN_VALUE;
-        for (ReportRow row : sorted) {
-            if (products.isEmpty() || row.size() - previous > PRODUCT_SIZE_GAP) {
-                products.add(new ArrayList<>());
-            }
-            products.getLast().add(row);
-            previous = row.size();
-        }
-        return products;
-    }
 
     /**
      * Keeps only hits whose full primer lies inside the read. The hit filters tolerate a
@@ -382,7 +346,7 @@ public final class ReadLevelCaller {
             spans.putIfAbsent(read, new int[]{row.start(), row.end()});
         }
         int shortest = sizes.iterator().next();
-        Map<Character, List<String>> flanks = productFlanks(spans, evidence, shortest);
+        Map<PrimerId.Role, List<String>> flanks = productFlanks(spans, evidence, shortest);
 
         // Fragments that would have shown the product had they carried it: a read carries a
         // primer at the product's locus and reaches far enough from the primer's 5' end.
@@ -419,13 +383,13 @@ public final class ReadLevelCaller {
 
     /**
      * The sequence next to each primer inside the product, as the supporting reads show
-     * it: per primer role ({@code F}/{@code R}), the most frequent distinct flanks.
+     * it: per primer role, the most frequent distinct flanks.
      *
      * @param spans amplicon start and end per supporting read
      */
-    private static Map<Character, List<String>> productFlanks(Map<String, int[]> spans, Evidence evidence,
+    private static Map<PrimerId.Role, List<String>> productFlanks(Map<String, int[]> spans, Evidence evidence,
                                                               int shortest) {
-        Map<Character, Map<String, Integer>> counts = new HashMap<>();
+        Map<PrimerId.Role, Map<String, Integer>> counts = new HashMap<>();
         for (BlastResult hit : evidence.primerHits()) {
             int[] span = spans.get(hit.queryID());
             String sequence = evidence.sequences().get(hit.queryID());
@@ -439,7 +403,7 @@ public final class ReadLevelCaller {
                 counts.computeIfAbsent(role(hit), ignored -> new HashMap<>()).merge(flank, 1, Integer::sum);
             }
         }
-        Map<Character, List<String>> flanks = new HashMap<>();
+        Map<PrimerId.Role, List<String>> flanks = new HashMap<>();
         counts.forEach((role, byFlank) -> flanks.put(role, byFlank.entrySet().stream()
                 .sorted(Map.Entry.<String, Integer>comparingByValue().reversed().thenComparing(Map.Entry.comparingByKey()))
                 .limit(MAX_REFERENCE_WINDOWS)
@@ -491,22 +455,9 @@ public final class ReadLevelCaller {
         }
         int to = primerStart(hit) - 1;
         return to - length < 0 || to > sequence.length() ? null
-                : reverseComplement(sequence.substring(to - length, to).toUpperCase(Locale.ROOT));
+                : Dna.reverseComplement(sequence.substring(to - length, to).toUpperCase(Locale.ROOT));
     }
 
-    private static String reverseComplement(String sequence) {
-        StringBuilder result = new StringBuilder(sequence.length());
-        for (int i = sequence.length() - 1; i >= 0; i--) {
-            result.append(switch (sequence.charAt(i)) {
-                case 'A' -> 'T';
-                case 'C' -> 'G';
-                case 'G' -> 'C';
-                case 'T' -> 'A';
-                default -> 'N';
-            });
-        }
-        return result.toString();
-    }
 
     /** Edit distance between the first {@code length} bases of two sequences. */
     static int editDistance(String a, String b, int length) {
@@ -528,13 +479,13 @@ public final class ReadLevelCaller {
         return previous[length];
     }
 
-    /** {@code F} or {@code R}: the role letter of the primer a hit belongs to. */
-    private static char role(BlastResult hit) {
+    /** The role of the primer a hit belongs to. */
+    private static PrimerId.Role role(BlastResult hit) {
         PrimerId.Role role = PrimerId.roleOf(hit.subjectID());
         if (role == null) {
             throw new IllegalArgumentException("Not a primer ID of the <assay>-F/-R/-P convention: " + hit.subjectID());
         }
-        return role.letter();
+        return role;
     }
 
     /**

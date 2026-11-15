@@ -10,7 +10,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.HashMap;
 import java.nio.file.Path;
-import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -23,23 +22,35 @@ import java.util.zip.GZIPInputStream;
 public final class SequenceFileUtils {
     private SequenceFileUtils() {}
 
-    public static final String[] FASTA_EXTENSIONS = {".fasta", ".ffn", ".fna", ".fsa", ".fa",
-            ".fasta.gz", ".ffn.gz", ".fna.gz", ".fsa.gz", ".fa.gz"};
-    public static final String[] FASTQ_EXTENSIONS = {".fastq", ".fq", ".fastq.gz", ".fq.gz"};
-    public static final String[] ACCEPTED_EXTENSIONS = {".fasta", ".ffn", ".fna", ".fsa", ".fa", ".fastq", ".fq",
-            ".fasta.gz", ".ffn.gz", ".fna.gz", ".fsa.gz", ".fa.gz", ".fastq.gz", ".fq.gz"};
+    /** The names of assemblies and reads, each also gzipped: the one list, which the others are made from. */
+    private static final List<String> FASTA_NAMES = List.of("fasta", "ffn", "fna", "fsa", "fa");
+    private static final List<String> FASTQ_NAMES = List.of("fastq", "fq");
 
-    private static final Pattern SEQUENCE_EXTENSION = Pattern.compile("(?i)\\.(fasta|ffn|fna|fsa|fa|fastq|fq)(\\.gz)?$");
+    public static final List<String> FASTA_EXTENSIONS = withGzipped(FASTA_NAMES);
+    public static final List<String> FASTQ_EXTENSIONS = withGzipped(FASTQ_NAMES);
+    /** Every sequence file the input may hold: {@link #FASTA_EXTENSIONS} and {@link #FASTQ_EXTENSIONS}. */
+    public static final List<String> ACCEPTED_EXTENSIONS =
+            java.util.stream.Stream.concat(FASTA_EXTENSIONS.stream(), FASTQ_EXTENSIONS.stream()).toList();
+
+    private static final Pattern SEQUENCE_EXTENSION = Pattern.compile("(?i)\\.("
+            + String.join("|", java.util.stream.Stream.concat(FASTA_NAMES.stream(), FASTQ_NAMES.stream()).toList())
+            + ")(\\.gz)?$");
+
+    private static List<String> withGzipped(List<String> names) {
+        return java.util.stream.Stream.concat(names.stream().map(name -> "." + name),
+                names.stream().map(name -> "." + name + ".gz")).toList();
+    }
+
     private static final Pattern READ_PAIR_SUFFIX = Pattern.compile("(?i)_R([12])(_001)?$");
     // FASTQ reads from ENA/SRA (fasterq-dump) are named <run>_1 / <run>_2.
     private static final Pattern BARE_FASTQ_PAIR_SUFFIX = Pattern.compile("_([12])$");
 
-    public static boolean hasExtension(String filename, String[] extensions) {
+    public static boolean hasExtension(String filename, List<String> extensions) {
         String lower = filename.toLowerCase(Locale.ROOT);
-        return Arrays.stream(extensions).anyMatch(lower::endsWith);
+        return extensions.stream().anyMatch(lower::endsWith);
     }
 
-    public static boolean hasExtension(Path path, String[] extensions) {
+    public static boolean hasExtension(Path path, List<String> extensions) {
         return hasExtension(path.getFileName().toString(), extensions);
     }
 

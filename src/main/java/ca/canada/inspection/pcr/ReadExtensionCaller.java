@@ -114,9 +114,14 @@ public final class ReadExtensionCaller {
      * @param id    ID of the seed and of the extended read made from it
      * @param read  ID of the baited read
      * @param assay assay whose primer the read carries
-     * @param role  {@code F} or {@code R}: which of the assay's primers
+     * @param role  which of the assay's primers: forward or reverse
      */
-    public record Seed(String id, String read, String assay, char role) {
+    public record Seed(String id, String read, String assay, PrimerId.Role role) {
+        public Seed {
+            if (role == PrimerId.Role.PROBE) {
+                throw new IllegalArgumentException("A seed carries a primer, not a probe: " + id);
+            }
+        }
     }
 
     /**
@@ -219,7 +224,7 @@ public final class ReadExtensionCaller {
 
         /**
          * The products to add to the report: those called that the sample does not report
-         * already, give or take a length variant ({@link ReadLevelCaller#PRODUCT_SIZE_GAP}).
+         * already, give or take a length variant ({@link ProductSizes#GAP}).
          */
         public List<Product> added() {
             return called().stream().filter(product -> !isReported(product)).toList();
@@ -227,7 +232,7 @@ public final class ReadExtensionCaller {
 
         /** Whether the sample already shows the product, give or take a length variant. */
         public boolean isReported(Product product) {
-            return reported.stream().anyMatch(known -> ReadLevelCaller.sameProduct(product.sizes(), known));
+            return reported.stream().anyMatch(known -> ProductSizes.sameProduct(product.sizes(), known));
         }
     }
 
@@ -248,15 +253,9 @@ public final class ReadExtensionCaller {
      * A product of the target size seen in too few reads to be reported also keeps the
      * assay out: that call stays with the read-level rules.</p>
      *
-     * @param sample FASTQ sample with its accepted contig hits attached
-     * @param reads  read-level evidence for the sample
+     * @param known what the sample already shows ({@link #knownSizes})
+     * @param reads read-level evidence for the sample
      */
-    public static List<String> candidates(Sample sample, PrimerPanel primers, AmpliconOptions options,
-                                          ReadEvidence reads, Mode mode) {
-        return candidates(knownSizes(sample, primers, options, reads), primers, reads, mode);
-    }
-
-    /** As {@link #candidates(Sample, PrimerPanel, AmpliconOptions, ReadEvidence, Mode)}, from the sample's {@link #knownSizes}. */
     public static List<String> candidates(Map<String, Set<Integer>> known, PrimerPanel primers, ReadEvidence reads,
                                           Mode mode) {
         ExpectedSizes sizes = primers.expectedSizes();
@@ -295,12 +294,6 @@ public final class ReadExtensionCaller {
         return known;
     }
 
-    /** As the full {@code candidates}, in the default mode. */
-    public static List<String> candidates(Sample sample, PrimerPanel primers, AmpliconOptions options,
-                                          ReadEvidence reads) {
-        return candidates(sample, primers, options, reads, Mode.DEFAULT);
-    }
-
     /**
      * Picks the seeds: for each assay and each of its two primers, up to
      * {@link #MAX_SEEDS_PER_PRIMER} of the reads carrying it, spread evenly over the
@@ -317,8 +310,8 @@ public final class ReadExtensionCaller {
             if (group == null) {
                 continue;
             }
-            for (char role : new char[]{'F', 'R'}) {
-                for (String read : spread(carrying(reads, role == 'F' ? group.forward() : group.reverse()),
+            for (PrimerId.Role role : List.of(PrimerId.Role.FORWARD, PrimerId.Role.REVERSE)) {
+                for (String read : spread(carrying(reads, group.of(role)),
                         MAX_SEEDS_PER_PRIMER)) {
                     seeds.add(new Seed("extended_read_" + seeds.size(), read, assay, role));
                 }
@@ -389,7 +382,7 @@ public final class ReadExtensionCaller {
         Map<String, int[]> seedCounts = new TreeMap<>();
         for (Seed seed : seeds) {
             seedById.put(seed.id(), seed);
-            seedCounts.computeIfAbsent(seed.assay(), ignored -> new int[2])[seed.role() == 'F' ? 0 : 1]++;
+            seedCounts.computeIfAbsent(seed.assay(), ignored -> new int[2])[seed.role() == PrimerId.Role.FORWARD ? 0 : 1]++;
         }
 
         // A product must lie wholly on the extended read, primers included, as on a read.
@@ -407,7 +400,7 @@ public final class ReadExtensionCaller {
         Map<String, Outcome> outcomes = new LinkedHashMap<>();
         seedCounts.forEach((assay, counts) -> {
             List<Product> products = new ArrayList<>();
-            for (List<ReportRow> rows : ReadLevelCaller.splitBySize(rowsByAssay.getOrDefault(assay, List.of()))) {
+            for (List<ReportRow> rows : ProductSizes.splitBySize(rowsByAssay.getOrDefault(assay, List.of()))) {
                 products.add(product(assay, rows, seedById, counts[0], counts[1]));
             }
             outcomes.put(assay, new Outcome(assay, counts[0], counts[1], reach, products,
@@ -424,7 +417,7 @@ public final class ReadExtensionCaller {
         Map<Integer, Set<String>> readsBySize = new TreeMap<>();
         for (ReportRow row : rows) {
             String read = row.contig();
-            (seedById.get(read).role() == 'F' ? forward : reverse).add(read);
+            (seedById.get(read).role() == PrimerId.Role.FORWARD ? forward : reverse).add(read);
             readsBySize.computeIfAbsent(row.size(), ignored -> new HashSet<>()).add(read);
         }
         int size = readsBySize.entrySet().stream()
@@ -443,7 +436,6 @@ public final class ReadExtensionCaller {
         return new Product(assay, size, readsBySize.keySet(), forward.size(), forwardSeeds, reverse.size(),
                 reverseSeeds, best);
     }
-
 
     /**
      * The report row for a product called by extension: the representative extended

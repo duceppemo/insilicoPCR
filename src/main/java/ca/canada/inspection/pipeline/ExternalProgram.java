@@ -44,17 +44,20 @@ final class ExternalProgram {
             builder.redirectErrorStream(true);
         }
         Process process;
+        // The job object made before the program starts, so that it is put in it at once (WindowsJob).
+        WindowsJob.active();
         try {
             process = builder.start();
         } catch (IOException e) {
             throw new PipelineException("Could not run " + program + ": " + String.join(" ", command)
                     + tooLongForWindows(workingDirectory), e);
         }
-        // On Windows, ended with this program even when it is killed (Task Manager, a workflow manager).
-        WindowsJob.adopt(process);
+        // Registered first: a run stopped now (the window closed, a kill) must find it to end it.
         if (monitor.processes() != null) {
             monitor.processes().add(process);
         }
+        // On Windows, ended with this program even when it is killed (Task Manager, a workflow manager).
+        WindowsJob.adopt(process);
         // Read on another thread, so that this one waits in waitFor(), which an interrupt stops
         // (and the program is then killed below); a blocking read would not stop.
         FutureTask<Boolean> reading = new FutureTask<>(() -> {

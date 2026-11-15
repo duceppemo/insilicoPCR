@@ -1,5 +1,7 @@
 package ca.canada.inspection.report;
 
+import ca.canada.inspection.pcr.ReadExtensionCaller;
+import ca.canada.inspection.pcr.ReadLevelCaller;
 import ca.canada.inspection.pcr.ReportRow;
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -11,6 +13,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Reads a {@code report.tsv} back into {@link ReportRow}s: for the HTML report, the gel, and a
@@ -73,13 +77,43 @@ public final class ReportTsv {
         ReportRow.Probe probe = probeId.isEmpty() ? null : new ReportRow.Probe(probeId,
                 probeLocation[0], probeLocation[1], fields.numberOrZero(ReportColumn.PROBE_MISMATCHES));
         String strand = fields.text(ReportColumn.STRAND);
-        return new ReportRow(fields.text(ReportColumn.SAMPLE), fields.text(ReportColumn.GENE), location[0], location[1],
-                size, fields.text(ReportColumn.CONTIG), fields.text(ReportColumn.CONTIG_DESCRIPTION),
-                fields.text(ReportColumn.FORWARD_PRIMERS), fields.text(ReportColumn.REVERSE_PRIMERS),
-                fields.numberOrZero(ReportColumn.FORWARD_MISMATCHES), fields.numberOrZero(ReportColumn.REVERSE_MISMATCHES),
-                fields.numberOrZero(ReportColumn.FORWARD_THREE_PRIME), fields.numberOrZero(ReportColumn.REVERSE_THREE_PRIME),
-                strand.isEmpty() ? ' ' : strand.charAt(0), probe,
-                fields.numberOrZero(ReportColumn.FORWARD_UNALIGNED), fields.numberOrZero(ReportColumn.REVERSE_UNALIGNED));
+        String description = fields.text(ReportColumn.CONTIG_DESCRIPTION);
+        return new ReportRow(fields.text(ReportColumn.SAMPLE), fields.text(ReportColumn.GENE),
+                new ReportRow.Site(location[0], location[1], size, fields.text(ReportColumn.CONTIG), description,
+                        strand.isEmpty() ? ' ' : strand.charAt(0)),
+                new ReportRow.Binding(fields.text(ReportColumn.FORWARD_PRIMERS),
+                        fields.numberOrZero(ReportColumn.FORWARD_MISMATCHES),
+                        fields.numberOrZero(ReportColumn.FORWARD_THREE_PRIME),
+                        fields.numberOrZero(ReportColumn.FORWARD_UNALIGNED)),
+                new ReportRow.Binding(fields.text(ReportColumn.REVERSE_PRIMERS),
+                        fields.numberOrZero(ReportColumn.REVERSE_MISMATCHES),
+                        fields.numberOrZero(ReportColumn.REVERSE_THREE_PRIME),
+                        fields.numberOrZero(ReportColumn.REVERSE_UNALIGNED)),
+                probe, source(description));
+    }
+
+    private static final Pattern READ_SUPPORT = Pattern.compile(Pattern.quote(ReadLevelCaller.ROW_PREFIX)
+            + ": complete amplicon in (\\d+) of (\\d+) informative read\\(s\\) \\((\\d+%)\\)");
+    private static final Pattern EXTENSION_SUPPORT = Pattern.compile(Pattern.quote(ReadExtensionCaller.ROW_PREFIX)
+            + ".*?(\\d+) of (\\d+) forward-seeded and (\\d+) of (\\d+) reverse-seeded reads");
+
+    /**
+     * Where a row read back from a report was called, from its {@code Contig Description}: a run
+     * keeps this as data ({@link ReportRow#source}); a report on disk keeps only the text.
+     */
+    static ReportRow.Source source(String description) {
+        Matcher reads = READ_SUPPORT.matcher(description);
+        if (reads.lookingAt()) {
+            return new ReportRow.Source.Reads(Integer.parseInt(reads.group(1)), Integer.parseInt(reads.group(2)),
+                    reads.group(3));
+        }
+        Matcher extension = EXTENSION_SUPPORT.matcher(description);
+        if (extension.lookingAt()) {
+            return new ReportRow.Source.Extension(Integer.parseInt(extension.group(1)),
+                    Integer.parseInt(extension.group(2)), Integer.parseInt(extension.group(3)),
+                    Integer.parseInt(extension.group(4)));
+        }
+        return ReportRow.Source.ASSEMBLY;
     }
 
     /** One line's values, by column name. */

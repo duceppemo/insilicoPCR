@@ -44,7 +44,9 @@ class HtmlReportTest {
 
     private static Path write(Path tsv, List<String> samples, Set<String> fastqSamples, PrimerPanel primers,
                               List<Finding> findings, Map<String, String> details) {
-        return HtmlReport.write(tsv, samples, fastqSamples, primers, findings, details, List.of(), List.of());
+        // As a run gives them, the rows made from the report's text (their source read back from it).
+        return HtmlReport.write(tsv, ReportTsv.read(tsv), samples, fastqSamples, primers, findings, details,
+                List.of(), List.of());
     }
 
     @TempDir
@@ -311,7 +313,7 @@ class HtmlReportTest {
                 new InputCheck.Issue("odd <b>", List.of("odd_R1.fastq", "odd_R2.fastq"),
                         "the two files of the pair hold different numbers of reads", "3 and 2"));
 
-        String page = Files.readString(HtmlReport.write(tsv, List.of("a"), Set.of(), panel(List.of("its-F", "its-R"), SIZES),
+        String page = Files.readString(HtmlReport.write(tsv, ReportTsv.read(tsv), List.of("a"), Set.of(), panel(List.of("its-F", "its-R"), SIZES),
                 List.of(), Map.of(), issues, List.of()));
 
         assertTrue(page.contains("<h2>Input not analysed</h2>"));

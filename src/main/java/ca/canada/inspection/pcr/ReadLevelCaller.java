@@ -54,6 +54,9 @@ public final class ReadLevelCaller {
      */
     public static final int PRODUCT_SIZE_GAP = 10;
 
+    /** How the {@code Contig Description} of a read-level call starts. */
+    public static final String ROW_PREFIX = "FASTQ read-level call";
+
     /**
      * Whether an amplicon of {@code size} bp is the product seen at {@code productSizes}, give
      * or take a length variant: the one rule for "the same product" when a call from reads is
@@ -591,7 +594,9 @@ public final class ReadLevelCaller {
      */
     public static ReportRow reportRow(ReadCall call) {
         String original = call.row().contigDescription();
-        return call.row().withContigDescription("FASTQ read-level call: complete amplicon in " + call.supportSummary()
-                + ", not in the mini-assembly" + (original.isEmpty() ? "" : "; representative read " + original));
+        return call.row().calledFrom(
+                new ReportRow.Source.Reads(call.supportingReads(), call.informativeReads(), percent(call.supportFraction())),
+                ROW_PREFIX + ": complete amplicon in " + call.supportSummary() + ", not in the mini-assembly"
+                        + (original.isEmpty() ? "" : "; representative read " + original));
     }
 }

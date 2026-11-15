@@ -90,7 +90,7 @@ public final class FastqDiagnosticsStage {
             List<Finding> called = withStatus(Status.CALLED_FROM_READS);
             if (!called.isEmpty()) {
                 lines.add("FASTQ mode: " + called.size() + " assay(s) missing from the mini-assembly were called from"
-                        + " reads (rows marked 'FASTQ read-level call' in the report):");
+                        + " reads (rows marked '" + ReadLevelCaller.ROW_PREFIX + "' in the report):");
                 called.forEach(finding -> lines.add("  " + finding.message()));
             }
             List<Finding> extended = withStatus(Status.CALLED_BY_EXTENSION);

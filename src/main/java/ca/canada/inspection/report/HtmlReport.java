@@ -5,7 +5,6 @@ import ca.canada.inspection.pcr.ExpectedSizes;
 import ca.canada.inspection.pcr.FastqDiagnostics.Finding;
 import ca.canada.inspection.pcr.FastqDiagnostics.Status;
 import ca.canada.inspection.pcr.PrimerPanel;
-import ca.canada.inspection.pcr.ReadExtensionCaller;
 import ca.canada.inspection.pcr.ReportRow;
 import ca.canada.inspection.pcr.SplitAcrossContigs;
 import ca.canada.inspection.util.InputCheck;
@@ -28,8 +27,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.OptionalInt;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -110,12 +107,12 @@ public final class HtmlReport {
 
         /** Called from the reads themselves, whole or extended, not from the mini-assembly. */
         boolean fromReads() {
-            return row.contigDescription().startsWith("FASTQ read-level call") || fromExtension();
+            return !(row.source() instanceof ReportRow.Source.Assembly);
         }
 
         /** Called on reads extended through the baited reads: a product no single read holds. */
         boolean fromExtension() {
-            return row.contigDescription().startsWith(ReadExtensionCaller.ROW_PREFIX);
+            return row.source() instanceof ReportRow.Source.Extension;
         }
 
         /** Bases at the 5' end of the forward or reverse primer that do not pair with the template. */
@@ -183,19 +180,14 @@ public final class HtmlReport {
         }
     }
 
-    private static final Pattern READ_SUPPORT =
-            Pattern.compile("complete amplicon in (\\d+ of \\d+) informative read\\(s\\) \\((\\d+%)\\)");
-
-    private static final Pattern EXTENSION_SUPPORT =
-            Pattern.compile("(\\d+ of \\d+) forward-seeded and (\\d+ of \\d+) reverse-seeded reads");
-
     private HtmlReport() {
     }
 
     /**
      * Writes {@code <report>.html} next to {@code reportTsv}.
      *
-     * @param reportTsv    consolidated report just written; the page shows exactly its rows
+     * @param reportTsv    consolidated report just written; names the page
+     * @param rows         its rows, as the run made them: the page shows exactly these
      * @param sampleNames  every sample of the run, so that samples without a product show too
      * @param fastqSamples samples given as reads (marked in the page)
      * @param primers      the run's primers: they give the assays, the primer lengths (so the page
@@ -207,13 +199,14 @@ public final class HtmlReport {
      * @param splits       assays without a product whose product could span a break in the assembly
      * @return the HTML file written
      */
-    public static Path write(Path reportTsv, Collection<String> sampleNames, Set<String> fastqSamples,
+    public static Path write(Path reportTsv, List<ReportRow> rows, Collection<String> sampleNames,
+                             Set<String> fastqSamples,
                              PrimerPanel primers, List<Finding> findings, Map<String, String> runDetails,
                              List<InputCheck.Issue> inputIssues, List<SplitAcrossContigs.Split> splits) {
         Path html = pathFor(reportTsv);
         ExpectedSizes sizes = primers.expectedSizes();
         try {
-            String page = render(reportTsv.getFileName().toString(), readProducts(reportTsv, primers), sampleNames,
+            String page = render(reportTsv.getFileName().toString(), products(rows, primers), sampleNames,
                     fastqSamples, List.copyOf(primers.completeAssays().keySet()),
                     sizes, findings, runDetails, inputIssues, splits);
             Files.writeString(html, page, StandardCharsets.UTF_8);
@@ -240,8 +233,8 @@ public final class HtmlReport {
         return details;
     }
 
-    static List<Product> readProducts(Path reportTsv, PrimerPanel primers) {
-        return ReportTsv.read(reportTsv).stream()
+    static List<Product> products(List<ReportRow> rows, PrimerPanel primers) {
+        return rows.stream()
                 .map(row -> new Product(row, primers.length(row.forwardPrimer()),
                         primers.length(row.reversePrimer()), primers.expectedSizes().label(row.assay(), row.size())))
                 .toList();
@@ -622,13 +615,14 @@ public final class HtmlReport {
             String source = comma > 0 ? contig.substring(0, comma) : contig;
             String description = product.row().contigDescription();
             String sourceTitle = contig + (description.isEmpty() ? "" : " — " + description);
-            if (product.fromExtension()) {
-                Matcher support = EXTENSION_SUPPORT.matcher(description);
-                source = "reads extended" + (support.find() ? " (" + support.group(1) + " forward-seeded, "
-                        + support.group(2) + " reverse-seeded)" : "");
-            } else if (product.fromReads()) {
-                Matcher support = READ_SUPPORT.matcher(description);
-                source = "reads" + (support.find() ? " (" + support.group(1) + ", " + support.group(2) + ")" : "");
+            switch (product.row().source()) {
+                case ReportRow.Source.Extension extension -> source = "reads extended ("
+                        + extension.forwardClosing() + " of " + extension.forwardSeeds() + " forward-seeded, "
+                        + extension.reverseClosing() + " of " + extension.reverseSeeds() + " reverse-seeded)";
+                case ReportRow.Source.Reads reads -> source = "reads (" + reads.supporting() + " of "
+                        + reads.informative() + ", " + reads.percent() + ")";
+                case ReportRow.Source.Assembly assembly -> {
+                }
             }
             html.append("<tr data-s=\"").append(escape(product.sample())).append("\" data-a=\"")
                     .append(escape(product.assay())).append("\"><td>").append(escape(product.sample())).append("</td><td>")

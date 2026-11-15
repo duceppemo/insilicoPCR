@@ -27,7 +27,7 @@ class ReportTsvTest {
     void rowsWrittenToAReportReadBackUnchanged() {
         Sample sample = new Sample();
         sample.setName("S");
-        ReportRow withProbe = new ReportRow("S", "qpcr", 101, 220, 120, "contig_1,len=900", "a description",
+        ReportRow withProbe = TestRows.of("S", "qpcr", 101, 220, 120, "contig_1,len=900", "a description",
                 "qpcr-F", "qpcr-R_1", 1, 0, 1, 0, '-', new ReportRow.Probe("qpcr-P", 140, 163, 2), 3, 0);
         ReportRow withoutProbe = TestRows.row("S", "plain", 11, 80, "read_7", "FASTQ read-level call: ...");
         // A probe in the panel gives the report its probe columns, empty for the plain assay.
@@ -85,5 +85,24 @@ class ReportTsvTest {
                 List.of(row.sample(), row.assay(), row.location(), String.valueOf(row.size()), row.contig()));
         assertNull(row.probe());
         assertEquals(0, row.forwardUnpaired());
+    }
+
+    @Test
+    void theSourceOfACallFromReadsReadsBackFromTheDescriptionItsCallerWrites() {
+        // A run keeps where a row was called as data; a report read back from disk has only the
+        // description, written by the callers: the two must agree whatever the wording.
+        ReportRow representative = TestRows.row("S", "its", 11, 444, "read_7", "read 7 description");
+        ReportRow fromReads = ca.canada.inspection.pcr.ReadLevelCaller.reportRow(
+                new ca.canada.inspection.pcr.ReadLevelCaller.ReadCall("its", 15, 24, 0, representative,
+                        java.util.Set.of(434), 0.3));
+        ReportRow extended = ca.canada.inspection.pcr.ReadExtensionCaller.reportRow(
+                new ca.canada.inspection.pcr.ReadExtensionCaller.Product("its", 1074, java.util.Set.of(1074), 3, 5, 2, 4,
+                        representative, ca.canada.inspection.pcr.PairSupport.Verdict.NOT_CHECKED), "seed read");
+
+        assertEquals(new ReportRow.Source.Reads(15, 24, "63%"), fromReads.source());
+        assertEquals(fromReads.source(), ReportTsv.source(fromReads.contigDescription()));
+        assertEquals(new ReportRow.Source.Extension(3, 5, 2, 4), extended.source());
+        assertEquals(extended.source(), ReportTsv.source(extended.contigDescription()));
+        assertEquals(ReportRow.Source.ASSEMBLY, ReportTsv.source("len=9000 cov=12"));
     }
 }

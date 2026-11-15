@@ -94,13 +94,31 @@ public final class Products {
             String assayName = assayEntry.getKey();
             PrimerId.Assay group = assayEntry.getValue();
             boolean probeRequired = assaysWithProbe.contains(assayName);
+            List<ReportRow> assayRows = new ArrayList<>();
             for (String forwardPrimer : group.forward()) {
                 for (String reversePrimer : group.reverse()) {
-                    pairs(rows, sampleName, contigs, hits, assayName, group,
+                    pairs(assayRows::add, sampleName, contigs, hits, assayName, group,
                             forwardPrimer, reversePrimer, options, probeRequired);
                 }
             }
+            bestPerProduct(assayRows).forEach(rows);
         }
+    }
+
+    /**
+     * One row per product: of the rows that differ only by which primers or probe (variants
+     * of a degenerate oligo, or several oligos of one role) made the same amplicon, the one
+     * that binds best ({@link ReportRow#BEST_BOUND}, then {@link ReportRow#VARIANT_ORDER}), as
+     * a call from reads shows. Products keep the order they were found in.
+     */
+    private static List<ReportRow> bestPerProduct(List<ReportRow> rows) {
+        Map<List<Object>, ReportRow> best = new java.util.LinkedHashMap<>();
+        java.util.Comparator<ReportRow> order = ReportRow.BEST_BOUND.thenComparing(ReportRow.VARIANT_ORDER);
+        for (ReportRow row : rows) {
+            best.merge(List.of(row.contig(), row.start(), row.end(), row.strand()), row,
+                    (kept, other) -> order.compare(other, kept) < 0 ? other : kept);
+        }
+        return List.copyOf(best.values());
     }
 
     /**

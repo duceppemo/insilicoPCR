@@ -181,7 +181,7 @@ public final class PairSupport {
      */
     public static final class Tally {
         private final List<String> products;
-        private final Map<Integer, int[]> seeds = new HashMap<>();
+        private final Map<Long, int[]> seeds = new HashMap<>();
         private final List<List<int[]>> fragments = new ArrayList<>();
         private final List<int[]> depthChanges = new ArrayList<>();
         private final List<int[]> entering = new ArrayList<>();
@@ -204,7 +204,7 @@ public final class PairSupport {
 
         private void index(int product, String strand, boolean plus) {
             for (int i = 0; i + SEED <= strand.length(); i++) {
-                int key = encode(strand, i);
+                long key = encode(strand, i);
                 if (key >= 0) {
                     // {product, strand, position}, appended to the entries of this seed
                     int[] old = seeds.get(key);
@@ -273,7 +273,7 @@ public final class PairSupport {
                 return best;
             }
             for (int offset : new int[]{0, (length - SEED) / 2, length - SEED}) {
-                int key = encode(upper, offset);
+                long key = encode(upper, offset);
                 int[] entries = key < 0 ? null : seeds.get(key);
                 if (entries == null) {
                     continue;
@@ -544,9 +544,13 @@ public final class PairSupport {
         return part.length == 0 ? 0 : part[part.length / 2];
     }
 
-    /** The {@link #SEED} bases from {@code position} as two bits each, or -1 when one is not A, C, G or T. */
-    private static int encode(String sequence, int position) {
-        int key = 0;
+    /**
+     * The {@link #SEED} bases from {@code position} as two bits each, or -1 when one is not A, C, G
+     * or T. A long: 16 bases fill the 32 bits of an int, sign included, and masking the sign merged
+     * seeds that differ in their first base (A with G, C with T).
+     */
+    private static long encode(String sequence, int position) {
+        long key = 0;
         for (int i = position; i < position + SEED; i++) {
             int code = switch (sequence.charAt(i)) {
                 case 'A' -> 0;
@@ -560,7 +564,7 @@ public final class PairSupport {
             }
             key = (key << 2) | code;
         }
-        return key & Integer.MAX_VALUE;
+        return key;
     }
 
 }

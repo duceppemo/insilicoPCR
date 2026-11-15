@@ -84,7 +84,19 @@ class SplitAcrossContigsTest {
 
         assertEquals(1, find(sample, DEFAULTS).size());
         assertTrue(find(sample, new AmpliconOptions(0, 0, 5, 0, 5, 0, 900)).isEmpty());
-        assertEquals(1, find(sample, new AmpliconOptions(0, 0, 5, 0, 5, 0, 0)).size(), "0 is no limit");
+        assertEquals(1, find(sample, new AmpliconOptions(0, 0, 5, 0, 5, 0, 0)).size(), "-l 0");
+    }
+
+    @Test
+    void withoutALimitAProductAcrossTheBreakGoesNoFurtherThanTheReadExtension() {
+        // -l 0: any two primers pointing off two contig ends, megabases apart, were a split.
+        Map<String, Integer> lengths = Map.of("chr1", 3_000_000, "chr2", 2_000_000);
+        Sample far = genome(plusHit("assay-F", "chr1", 1_900_000), minusHit("assay-R", "chr2", 500_000));
+        Sample near = genome(plusHit("assay-F", "chr1", 2_998_000), minusHit("assay-R", "chr2", 1_000));
+        AmpliconOptions unlimited = new AmpliconOptions(0, 0, 5, 0, 5, 0, 0);
+
+        assertTrue(SplitAcrossContigs.find(far, PRIMERS, unlimited, () -> lengths).isEmpty());
+        assertEquals(1, SplitAcrossContigs.find(near, PRIMERS, unlimited, () -> lengths).size());
     }
 
     @Test

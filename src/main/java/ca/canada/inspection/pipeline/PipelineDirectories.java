@@ -27,8 +27,20 @@ public record PipelineDirectories(Path output, Path detailed, Path consolidated)
         return SampleFiles.of(detailed, sampleName);
     }
 
+    /**
+     * Makes the folder of sample {@code sampleName}, without the decompressed assembly a run killed
+     * while searching it left there ({@code blast_query_*.fasta}, a whole genome).
+     */
     public void createSampleDirectory(String sampleName) {
-        createDirectory(sample(sampleName).directory());
+        Path directory = sample(sampleName).directory();
+        createDirectory(directory);
+        try (java.nio.file.DirectoryStream<Path> left = Files.newDirectoryStream(directory, BlastQuery.LEFT_BEHIND)) {
+            for (Path file : left) {
+                Files.deleteIfExists(file);
+            }
+        } catch (IOException ignored) {
+            // A leftover is only clutter; the search writes a new one under its own name.
+        }
     }
 
     private void createAll() {

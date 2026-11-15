@@ -73,6 +73,7 @@ public final class RunFailure {
                         case java.nio.file.AccessDeniedException denied -> "permission denied";
                         case java.nio.file.NoSuchFileException missing -> "no such file or folder";
                         case java.nio.file.FileAlreadyExistsException exists -> "already exists";
+                        case java.nio.file.NotDirectoryException notFolder -> "not a folder";
                         default -> refused.getClass().getSimpleName();
                     };
             return refused.getFile() + ": " + reason

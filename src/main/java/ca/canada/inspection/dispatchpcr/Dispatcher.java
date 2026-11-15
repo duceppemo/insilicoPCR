@@ -4,9 +4,11 @@ import ca.canada.inspection.insilicopcr.MainRun;
 import ca.canada.inspection.pcr.AmpliconOptions;
 import ca.canada.inspection.pcr.ReadExtensionCaller;
 import ca.canada.inspection.pcr.ReadLevelCaller;
+import ca.canada.inspection.pipeline.ExternalProcessTracker;
 import ca.canada.inspection.pipeline.InSilicoPcrPipeline;
 import ca.canada.inspection.pipeline.PipelineConfig;
 import ca.canada.inspection.pipeline.RunFailure;
+import ca.canada.inspection.pipeline.RunMonitor;
 import ca.canada.inspection.pipeline.TadpoleOptions;
 import ca.canada.inspection.util.Version;
 import org.apache.commons.cli.CommandLine;
@@ -69,7 +71,7 @@ public final class Dispatcher {
             return 2;
         }
         try {
-            new InSilicoPcrPipeline(config).run();
+            new InSilicoPcrPipeline(config, consoleMonitor()).run();
             return 0;
         } catch (RuntimeException e) {
             // A failure the user can act on is its message; anything else is a bug and
@@ -81,6 +83,23 @@ public final class Dispatcher {
             }
             return 1;
         }
+    }
+
+    /**
+     * The console, with the external programs tracked: killed with this program (kill, a workflow
+     * manager stopping its job, Task Manager), which left them running and writing, holding their
+     * memory, with nothing to stop them.
+     */
+    static RunMonitor consoleMonitor() {
+        ExternalProcessTracker programs = new ExternalProcessTracker();
+        Runtime.getRuntime().addShutdownHook(Thread.ofPlatform().name("stop external programs")
+                .unstarted(programs::destroyAll));
+        return new RunMonitor() {
+            @Override
+            public ExternalProcessTracker processes() {
+                return programs;
+            }
+        };
     }
 
     /** Package-private for unit tests. */

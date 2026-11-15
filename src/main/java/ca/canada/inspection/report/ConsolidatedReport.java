@@ -39,7 +39,9 @@ public final class ConsolidatedReport {
         List<ReportColumn> columns = ReportColumn.of(probeColumns);
         Path report = nextAvailableReportFile(consolidatedDir);
 
-        try (BufferedWriter writer = Files.newBufferedWriter(report, StandardCharsets.UTF_8)) {
+        // A new file: never over another run's report.
+        try (BufferedWriter writer = Files.newBufferedWriter(report, StandardCharsets.UTF_8,
+                java.nio.file.StandardOpenOption.CREATE_NEW, java.nio.file.StandardOpenOption.WRITE)) {
             writer.write(header(probeColumns, sizeColumn));
             writer.newLine();
             for (ReportRow row : rows) {
@@ -76,14 +78,30 @@ public final class ConsolidatedReport {
         return REPORT_NAME.matcher(file.getFileName().toString()).matches();
     }
 
-    private static Path nextAvailableReportFile(Path consolidatedDir) {
-        Path report = consolidatedDir.resolve("report.tsv");
-        int counter = 1;
-        while (Files.exists(report)) {
-            report = consolidatedDir.resolve("report(" + counter + ").tsv");
-            counter++;
+    /**
+     * The name of a new report: numbered after the highest one in the folder ({@code report.tsv}
+     * when there is none), so that a run's number says it is the latest even when an earlier report
+     * was deleted. Taking the lowest free name gave a later run a lower number than an earlier one,
+     * and Open Previous Run, which opens the highest, opened the earlier run.
+     */
+    static Path nextAvailableReportFile(Path consolidatedDir) {
+        int highest = -1;
+        try (java.util.stream.Stream<Path> files = Files.list(consolidatedDir)) {
+            for (Path file : files.toList()) {
+                java.util.regex.Matcher name = REPORT_NAME.matcher(file.getFileName().toString());
+                if (name.matches()) {
+                    highest = Math.max(highest, number(name.group(1)));
+                }
+            }
+        } catch (IOException e) {
+            throw new UncheckedIOException("Unable to write consolidated report: " + consolidatedDir, e);
         }
-        return report;
+        return consolidatedDir.resolve(highest < 0 ? "report.tsv" : "report(" + (highest + 1) + ").tsv");
+    }
+
+    /** The number in {@code (n)}, or 0 for none (report.tsv). */
+    private static int number(String parenthesised) {
+        return parenthesised == null ? 0 : Integer.parseInt(parenthesised.substring(1, parenthesised.length() - 1));
     }
 
     private static String header(boolean probeColumns, boolean sizeColumn) {

@@ -42,6 +42,13 @@ public final class InSilicoPcrPipeline {
         monitor.info("Beginning Program Run");
         RuntimeDependencies dependencies = RuntimeDependencies.discover();
         PipelineDirectories directories = PipelineDirectories.create(config.output());
+        // One run at a time in an output folder, held until this run ends, however it ends.
+        try (OutputLock ignored = OutputLock.take(directories.output(), monitor::warning)) {
+            return run(startTime, dependencies, directories);
+        }
+    }
+
+    private RunResult run(long startTime, RuntimeDependencies dependencies, PipelineDirectories directories) {
         done(Step.DEPENDENCIES);
 
         // The primer file first: a mistake there is found at once, not after reading every input.

@@ -126,4 +126,28 @@ class DispatcherTest {
         assertTrue(err().contains("No FASTA or FASTQ file in " + input + ": nothing to analyse")
                 || err().contains("Missing"), err());
     }
+
+    @Test
+    @org.junit.jupiter.api.condition.EnabledOnOs(org.junit.jupiter.api.condition.OS.LINUX)
+    void aCommandLineRunKilledStopsItsPrograms() throws Exception {
+        // kill <pid>, a workflow manager stopping its job: BBTools went on running and writing.
+        String javaCommand = ProcessHandle.current().info().command().orElse("java");
+        Process run = new ProcessBuilder(javaCommand, "-cp", System.getProperty("java.class.path"),
+                KilledRun.class.getName()).redirectErrorStream(true).start();
+        ProcessHandle program = null;
+        for (int i = 0; i < 100 && program == null; i++) {
+            Thread.sleep(100);
+            program = run.toHandle().descendants().filter(child -> child.info().command().orElse("").endsWith("sleep"))
+                    .findFirst().orElse(null);
+        }
+        assertTrue(program != null, "the program never started");
+
+        run.destroy(); // SIGTERM
+        assertTrue(run.waitFor(10, java.util.concurrent.TimeUnit.SECONDS));
+        ProcessHandle started = program;
+        for (int i = 0; i < 50 && started.isAlive(); i++) {
+            Thread.sleep(100);
+        }
+        assertFalse(started.isAlive(), "the program was left running");
+    }
 }

@@ -145,4 +145,27 @@ class ParallelStageRunnerTest {
         assertTrue(!stage.isAlive() && System.nanoTime() - start < 5_000_000_000L, "the stage waited for its items");
         assertEquals(List.of("a", "b"), interrupted.stream().sorted().toList());
     }
+
+    @Test
+    void theFirstFailureStopsTheItemsStillRunning() throws InterruptedException {
+        // A sample failing at once was reported only after the others' programs had finished.
+        List<String> interrupted = Collections.synchronizedList(new ArrayList<>());
+        long start = System.nanoTime();
+        PipelineException error = assertThrows(PipelineException.class, () -> ParallelStageRunner.run("Tadpole",
+                List.of("slow", "bad"), 2, item -> {
+                    if (item.equals("bad")) {
+                        throw new PipelineException("bad failed");
+                    }
+                    try {
+                        Thread.sleep(10_000);
+                    } catch (InterruptedException e) {
+                        interrupted.add(item);
+                        throw new java.util.concurrent.CancellationException("interrupted");
+                    }
+                }));
+
+        assertEquals("bad failed", error.getCause().getMessage(), "the failure, not the item it stopped");
+        assertTrue(System.nanoTime() - start < 5_000_000_000L, "waited for the slow item");
+        assertEquals(List.of("slow"), interrupted);
+    }
 }

@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletionService;
+import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -43,14 +45,16 @@ final class ParallelStageRunner {
         // the program running.
         try (ExecutorService executor = Executors.newFixedThreadPool(poolSize,
                 Thread.ofPlatform().name(stageName, 1).daemon().factory())) {
-            List<Future<?>> futures = new ArrayList<>(items.size());
+            // Waited for in the order they end: the first to fail stops the others at once, rather
+            // than after every item before it in the list has run (an hour of Tadpole, say).
+            CompletionService<Void> completion = new ExecutorCompletionService<>(executor);
             for (T item : items) {
-                futures.add(executor.submit(() -> {
+                completion.submit(() -> {
                     if (monitor.isCancelled()) {
                         throw cancelled(stageName);
                     }
                     if (failed.get()) {
-                        return;
+                        return null;
                     }
                     try {
                         action.accept(item);
@@ -59,11 +63,22 @@ final class ParallelStageRunner {
                         throw e;
                     }
                     progress.done(done.incrementAndGet(), items.size());
-                }));
+                    return null;
+                });
             }
             try {
-                for (Future<?> future : futures) {
-                    future.get();
+                for (int i = 0; i < items.size(); i++) {
+                    try {
+                        completion.take().get();
+                    } catch (ExecutionException e) {
+                        // The items still running are stopped: their programs killed, their own
+                        // failure (an interrupted program) never looked at. This one is the stage's.
+                        executor.shutdownNow();
+                        if (e.getCause() instanceof CancellationException cancelled) {
+                            throw cancelled; // the run was cancelled: not a failure of this stage
+                        }
+                        throw new PipelineException(stageName + " failed", e.getCause());
+                    }
                 }
             } catch (InterruptedException e) {
                 // The run thread is interrupted when the application cancels the run. The wait
@@ -73,11 +88,6 @@ final class ParallelStageRunner {
                 Thread.currentThread().interrupt();
                 throw cancelled(stageName);
             }
-        } catch (ExecutionException e) {
-            if (e.getCause() instanceof CancellationException cancelled) {
-                throw cancelled; // the run was cancelled: not a failure of this stage
-            }
-            throw new PipelineException(stageName + " failed", e.getCause());
         }
     }
 

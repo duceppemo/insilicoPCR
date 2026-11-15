@@ -183,4 +183,27 @@ class PreviousRunTest {
         assertEquals(second, PreviousRun.open(output).report());
         assertEquals("QAlog(10).txt", QaLogWriter.fileFor(Path.of("report(10).tsv")));
     }
+
+    @Test
+    void aDeletedReportDoesNotMakeALaterRunLookOlder() throws IOException {
+        // report.tsv deleted, report(1).tsv left: the next run writes report(2).tsv, not report.tsv.
+        Path consolidated = Files.createDirectories(dir.resolve("results").resolve(PipelineDirectories.CONSOLIDATED));
+        Files.writeString(consolidated.resolve("report(1).tsv"), "Sample\tGene\n");
+        assertEquals(consolidated.resolve("report(2).tsv"),
+                ca.canada.inspection.report.ConsolidatedReport.write(consolidated, List.of(),
+                        ca.canada.inspection.pcr.PrimerPanel.of(Map.of())));
+    }
+
+    @Test
+    void theLatestRunWhoseReportIsThereIsReopened() throws IOException {
+        // QAlog(1).txt names report(1).tsv, which was deleted: the run of QAlog.txt opens.
+        Path report = finishedRun(); // report(1).tsv and QAlog(1).txt
+        Path first = report.resolveSibling("report.tsv");
+        Files.writeString(first, "Sample\tGene\n");
+        QaLogWriter.write(TestContexts.writingTo(output, Map.of("beta", sample("beta", "beta.fasta"))), "0.0.0",
+                first, List.of());
+        Files.delete(report);
+
+        assertEquals(first, PreviousRun.open(output).report());
+    }
 }

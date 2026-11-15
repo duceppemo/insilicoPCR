@@ -13,6 +13,11 @@ fi
 if [[ ! -d "$WORKDIR/.git" ]]; then
   rm -rf "$WORKDIR"
   git clone "$WIKI_REMOTE" "$WORKDIR"
+else
+  # A clone kept from an earlier publish: brought up to date, or a page changed on the wiki since
+  # would make the push fail (or the copy below drop that change from the clone).
+  git -C "$WORKDIR" fetch --quiet origin
+  git -C "$WORKDIR" reset --quiet --hard "origin/$(git -C "$WORKDIR" rev-parse --abbrev-ref HEAD)"
 fi
 
 rsync -av --delete \

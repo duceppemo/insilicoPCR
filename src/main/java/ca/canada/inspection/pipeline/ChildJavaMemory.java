@@ -25,7 +25,15 @@ public final class ChildJavaMemory {
     private ChildJavaMemory() {
     }
 
-    /** Heap, in GiB, that the child processes running at once may use between them. */
+    /**
+     * Heap, in GiB, that the child processes running at once may use between them: {@code requested}
+     * ({@code --bbtools-memory}) when given, otherwise worked out from the computer ({@link #budgetGiB()}).
+     */
+    public static int budgetGiB(int requested) {
+        return requested > 0 ? requested : budgetGiB();
+    }
+
+    /** Heap, in GiB, that the child processes running at once may use between them, by the computer. */
     public static int budgetGiB() {
         return budgetGiB(physicalMemoryBytes(), Runtime.getRuntime().maxMemory());
     }

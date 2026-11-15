@@ -131,9 +131,8 @@ class BbtoolsCommandsTest {
     void runningOutOfMemoryBelowTheCapSaysToRaiseTheHeap() {
         String message = BbtoolsCommands.outOfMemoryMessage("Tadpole", " on sample s", 8);
 
-        assertTrue(message.startsWith("Tadpole ran out of memory on sample s with -Xmx8g, all it could have: three"
-                + " quarters of the memory insilicoPCR leaves free on this computer. Run it on a computer with more"
-                + " memory, or give insilicoPCR a larger heap with Java's -Xmx option"), message);
+        assertTrue(message.startsWith("Tadpole ran out of memory on sample s with -Xmx8g, all it had. Give the BBTools"
+                + " programs more with --bbtools-memory <GB>"), message);
         assertTrue(message.endsWith("use fewer threads (-t) instead."), message);
     }
 

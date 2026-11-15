@@ -59,7 +59,7 @@ public final class InSilicoPcrPipeline {
         checked.warnings().forEach(line -> monitor.warning("Warning: " + line));
         Map<String, Sample> sampleMap = new LinkedHashMap<>(checked.samples());
         PipelineContext context = new PipelineContext(config, dependencies, directories, sampleMap, primers,
-                ChildJavaMemory.budgetGiB(), checked.issues(), monitor);
+                ChildJavaMemory.budgetGiB(config.bbtoolsMemoryGiB()), checked.issues(), monitor);
         logRuntime(context);
         RunSettings.lines(config, context.hasFastqSamples()).forEach(monitor::info);
         done(Step.INPUT_CHECK);
@@ -124,6 +124,8 @@ public final class InSilicoPcrPipeline {
         monitor.info("BLAST: " + context.dependencies().blastBinDirectory());
         monitor.info("Java: " + context.dependencies().javaCommand());
         monitor.info("Child Java memory: " + context.childJavaMemoryBudgetGiB() + " GB for the BBTools programs"
-                + " running at once, at most " + ChildJavaMemory.MAX_CHILD_GIB + " GB each");
+                + " running at once, at most " + ChildJavaMemory.MAX_CHILD_GIB + " GB each"
+                + (context.config().bbtoolsMemoryGiB() > 0 ? " (--bbtools-memory)"
+                : " (three quarters of the memory insilicoPCR leaves free; --bbtools-memory sets it)"));
     }
 }

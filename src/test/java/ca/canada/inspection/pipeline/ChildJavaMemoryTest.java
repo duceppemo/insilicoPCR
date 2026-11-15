@@ -73,4 +73,12 @@ class ChildJavaMemoryTest {
     void eachChildIsCapped() {
         assertEquals(new ChildJavaMemory.Share(2, 8, 0, 64), ChildJavaMemory.share(500, 16, 2));
     }
+
+    @Test
+    void aBudgetAskedForIsTheBudget() {
+        // --bbtools-memory, on a computer shared with others.
+        assertEquals(24, ChildJavaMemory.budgetGiB(24));
+        assertEquals(ChildJavaMemory.budgetGiB(), ChildJavaMemory.budgetGiB(PipelineConfig.AUTOMATIC_BBTOOLS_MEMORY));
+        assertEquals(64, ChildJavaMemory.forOneChild(ChildJavaMemory.budgetGiB(200)), "each still at most 64 GB");
+    }
 }

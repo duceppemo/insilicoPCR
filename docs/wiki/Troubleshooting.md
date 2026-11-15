@@ -70,9 +70,9 @@ Releases before 0.9.0 ran the second baiting pass with the `-m` mismatch budget 
 
 ## FASTQ run fails with `ran out of memory on sample`
 
-The message is `Tadpole ran out of memory on sample <name> with -Xmx<n>g` (or `BBDuk`, `BBMerge`). The sample had all the memory insilicoPCR gives a BBTools program: three quarters of the memory it leaves free on the computer, at least half of its own heap, up to 64 GB. (Samples that run out of only their share, when several run at once, are run again alone automatically; see [Threads and memory in FASTQ mode](Command-line-Interface#threads-and-memory-in-fastq-mode).)
+The message is `Tadpole ran out of memory on sample <name> with -Xmx<n>g` (or `BBDuk`, `BBMerge`). The sample had all the memory insilicoPCR gives a BBTools program: `--bbtools-memory` when given, otherwise three quarters of the memory it leaves free on the computer, at least half of its own heap; up to 64 GB. (Samples that run out of only their share, when several run at once, are run again alone automatically; see [Threads and memory in FASTQ mode](Command-line-Interface#threads-and-memory-in-fastq-mode).)
 
-- Below 64 GB (`all it could have`): run it on a computer with more memory, or give insilicoPCR a larger heap with Java's `-Xmx` option, of which BBTools gets at least half (`java -Xmx96g -jar insilicoPCR.jar ...`, or `JDK_JAVA_OPTIONS=-Xmx96g` before the launcher or the application).
+- Below 64 GB (`all it had`): give the BBTools programs more with `--bbtools-memory <GB>` (in the application, **FASTQ settings…**), as much as the computer can spare, or run on a computer with more memory.
 - At 64 GB (`the most insilicoPCR gives a BBTools program`): more memory does not help. The sample holds too many reads that match the primers; check the primers and the `-m` and `--5p-truncation` settings.
 - If the program's output above the message says `unable to create native thread`, it is the computer's limit on threads, not memory: use fewer threads with `-t`.
 

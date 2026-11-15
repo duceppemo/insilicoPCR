@@ -81,4 +81,11 @@ class RunSettingsTest {
         return settings.stream().filter(setting -> setting.label().startsWith(labelStart)).findFirst()
                 .orElseThrow().value();
     }
+
+    @Test
+    void theBbtoolsMemoryIsListedWithTheFastqSettings() {
+        assertEquals("24 GB for the programs running at once", value(RunSettings.of(config().bbtoolsMemory(24).build(),
+                true), "BBTools memory"));
+        assertTrue(value(RunSettings.of(config().build(), true), "BBTools memory").startsWith("automatic"));
+    }
 }

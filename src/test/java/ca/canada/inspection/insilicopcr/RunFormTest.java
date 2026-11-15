@@ -61,4 +61,15 @@ class RunFormTest {
                 new RunForm(dir, dir, primers, 1, 0, "1e5", AmpliconSettings.DEFAULTS, FastqSettings.DEFAULTS).toConfig());
         assertEquals("The output folder must not be the input folder: " + dir, invalid.message());
     }
+
+    @Test
+    void theBbtoolsMemoryOfTheFastqSettingsReachesTheRun() throws IOException {
+        Path input = Files.writeString(dir.resolve("genome.fasta"), ">c1\nACGT\n");
+        Path primers = Files.writeString(dir.resolve("primers.fasta"), ">a-F\nACGTACGT\n>a-R\nACGTACGT\n");
+        FastqSettings fastq = new FastqSettings(FastqSettings.DEFAULTS.tadpole(), 0.3,
+                FastqSettings.DEFAULTS.readExtension(), 16);
+        PipelineConfig config = assertInstanceOf(RunForm.Outcome.Run.class, new RunForm(input, dir.resolve("out"),
+                primers, 2, 0, "1e5", AmpliconSettings.DEFAULTS, fastq).toConfig()).config();
+        assertEquals(16, config.bbtoolsMemoryGiB());
+    }
 }

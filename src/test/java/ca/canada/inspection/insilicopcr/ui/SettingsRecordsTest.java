@@ -87,12 +87,25 @@ class SettingsRecordsTest {
         FastqSettings custom = new FastqSettings(new TadpoleOptions(25, 2, 1, 60), 0.3);
         assertEquals("FASTQ settings… *", FastqSettingsDialog.buttonLabel(custom));
         assertTrue(FastqSettingsDialog.summary(custom).contains("k=25"));
-        assertTrue(FastqSettingsDialog.summary(custom).endsWith("Read extension: unreported"));
+        assertTrue(FastqSettingsDialog.summary(custom).contains("\nRead extension: unreported\n"));
+        assertTrue(FastqSettingsDialog.summary(custom).endsWith("BBTools memory: automatic: three quarters of the"
+                + " memory insilicoPCR leaves free, at least half of its heap"));
 
         FastqSettings noExtension = new FastqSettings(TadpoleOptions.DEFAULTS, 0.3, ReadExtensionCaller.Mode.OFF);
         assertEquals(ReadExtensionCaller.Mode.UNREPORTED, FastqSettings.DEFAULTS.readExtension());
         assertTrue(!noExtension.isDefault());
         assertEquals("FASTQ settings… *", FastqSettingsDialog.buttonLabel(noExtension));
-        assertTrue(FastqSettingsDialog.summary(noExtension).endsWith("Read extension: off"));
+        assertTrue(FastqSettingsDialog.summary(noExtension).contains("\nRead extension: off\n"));
+    }
+
+    @Test
+    void fastqDialogReadsTheBbtoolsMemoryOrLeavesItAutomatic() {
+        var mode = ca.canada.inspection.pcr.ReadExtensionCaller.Mode.DEFAULT;
+        assertEquals(24, FastqSettingsDialog.parse("31", "2", "1", "60", "0.3", mode, " 24 ").bbtoolsMemoryGiB());
+        assertEquals(ca.canada.inspection.pipeline.PipelineConfig.AUTOMATIC_BBTOOLS_MEMORY,
+                FastqSettingsDialog.parse("31", "2", "1", "60", "0.3", mode, "").bbtoolsMemoryGiB());
+        assertThrows(IllegalArgumentException.class,
+                () -> FastqSettingsDialog.parse("31", "2", "1", "60", "0.3", mode, "0"));
+        assertTrue(FastqSettingsDialog.FastqSettings.DEFAULTS.isDefault());
     }
 }

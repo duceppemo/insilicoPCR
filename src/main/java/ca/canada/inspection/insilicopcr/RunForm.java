@@ -51,6 +51,7 @@ record RunForm(Path input, Path output, Path primers, int threads, int mismatche
                     .tadpole(fastq.tadpole())
                     .readMinFraction(fastq.readMinFraction())
                     .readExtension(fastq.readExtension())
+                    .bbtoolsMemory(fastq.bbtoolsMemoryGiB())
                     .build());
         } catch (IllegalArgumentException e) {
             return new Outcome.Invalid(e.getMessage());

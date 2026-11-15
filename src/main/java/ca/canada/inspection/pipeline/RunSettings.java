@@ -48,6 +48,7 @@ public final class RunSettings {
             settings.add(new Setting("Read-level calls (FASTQ, --read-min-fraction)",
                     readLevelCalls(config.readMinFraction())));
             settings.add(new Setting("Read extension (FASTQ, --read-extension)", readExtension(config.readExtension())));
+            settings.add(new Setting("BBTools memory (FASTQ, --bbtools-memory)", bbtoolsMemory(config.bbtoolsMemoryGiB())));
         }
         return settings;
     }
@@ -68,6 +69,12 @@ public final class RunSettings {
         lines.add("Settings:");
         of(config, withFastq).forEach(setting -> lines.add("  " + setting.label() + ": " + setting.value()));
         return lines;
+    }
+
+    /** The BBTools memory asked for: so many GB, or worked out from the computer. */
+    public static String bbtoolsMemory(int gib) {
+        return gib > 0 ? gib + " GB for the programs running at once"
+                : "automatic: three quarters of the memory insilicoPCR leaves free, at least half of its heap";
     }
 
     /** What a read-level call needs, with this share of informative reads. */

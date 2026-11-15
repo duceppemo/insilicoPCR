@@ -9,8 +9,9 @@ import java.util.Objects;
 
 /**
  * One sample of a run and what the run learns about it. Its name is fixed when it is made; the
- * steps fill in the rest as they go: the input check its files and type, FASTQ mode its
- * assembly, the BLAST step its contigs and its accepted hits ({@link Hits}). Its accessors
+ * steps fill in the rest as they go: the input check its files and type, the BLAST step its
+ * contigs and its accepted hits ({@link Hits}). Where its files are in the output folder (the
+ * mini-assembly of reads among them) is the pipeline's {@code SampleFiles}. Its accessors
  * return copies; it changes only through its own methods.
  */
 public class Sample {
@@ -29,7 +30,6 @@ public class Sample {
 	private final Hits hits = new Hits();
 	private final String name;
 	private FileType fileType;
-	private Path assemblyFile;
 
 	/** A sample of this name, which names its files in the run's output folder and its rows in the reports. */
 	public Sample(String name) {
@@ -63,19 +63,5 @@ public class Sample {
 	/** The accepted hits on the sample's sequences, and their descriptions. */
 	public Hits hits() { return hits; }
 
-	public Path getAssemblyFile() { return assemblyFile; }
-	public void setAssemblyFile(Path assemblyFile) { this.assemblyFile = assemblyFile; }
-
 	public boolean isFastq() { return fileType == FileType.FASTQ; }
-
-	/**
-	 * The FASTA files BLAST searches for this sample: its mini-assembly for FASTQ input (none
-	 * before it is assembled), its own file otherwise.
-	 */
-	public List<Path> searchedFasta() {
-		if (isFastq()) {
-			return assemblyFile == null ? List.of() : List.of(assemblyFile);
-		}
-		return files();
-	}
 }

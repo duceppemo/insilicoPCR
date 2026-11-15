@@ -15,11 +15,7 @@ final class ContigService {
 
     static void load(PipelineContext context) {
         for (Sample sample : context.samples().values()) {
-            List<Path> searched = sample.searchedFasta();
-            if (searched.isEmpty()) {
-                throw new PipelineException("Sample has no FASTA/assembly file for contig loading: " + sample.getName());
-            }
-            for (Path file : searched) {
+            for (Path file : context.searchedFasta(sample)) {
                 addContigsFromFasta(sample, file);
             }
         }

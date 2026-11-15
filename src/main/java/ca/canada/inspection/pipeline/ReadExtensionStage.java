@@ -83,7 +83,8 @@ public final class ReadExtensionStage {
     /**
      * @param evidence read-level evidence per FASTQ sample name, from {@link ReadLevelStage#run}
      */
-    static Result run(Settings settings, Path detailedDir, Map<String, Sample> samples, PrimerPanel primers,
+    static Result run(Settings settings, PipelineDirectories directories, Map<String, Sample> samples,
+                      PrimerPanel primers,
                       AmpliconOptions options, Map<String, ReadEvidence> evidence) {
         if (settings.mode() == ReadExtensionCaller.Mode.OFF) {
             return Result.NONE;
@@ -103,7 +104,7 @@ public final class ReadExtensionStage {
             }
             stopIfCancelled(settings);
             try {
-                extendSample(settings, SampleFiles.of(detailedDir, sample.getName()), sample, primers, options, reads,
+                extendSample(settings, directories.sample(sample.getName()), sample, primers, options, reads,
                         outcomes, rows);
             } catch (PipelineException | UncheckedIOException e) {
                 // A failed program or a file that cannot be read or written: the assays stay as

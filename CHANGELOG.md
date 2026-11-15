@@ -292,6 +292,13 @@
   adds or withholds, not from whether their description is empty. A sample's
   hits are reached one way (`Sample.hits()`), and the products worked out from
   them are kept under typed keys.
+- Code: a FASTQ sample's mini-assembly has one path, its `SampleFiles`, which
+  the steps ask through the run (`PipelineContext.searchedFasta`), instead of a
+  path the read step set on the sample for three later steps to read. The read
+  search and the read extension take the run's folders, as the other steps do.
+  The settings dialogs take their limits and rules (Tadpole minimums, length
+  order, a share from 0 to 1) from the setting classes, which keep checking them.
+  The release scripts name a ZIP built without a version after the project's.
 
 ## 0.15.1 (2026-11-14)
 

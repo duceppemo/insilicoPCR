@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-VERSION="${1:-0.8.0}"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+# The version the ZIP is named for: given (CI gives the tag's), or the project's own.
+VERSION="${1:-$(sed -n 's:.*<version>\(.*\)</version>.*:\1:p' "$ROOT/pom.xml" | head -1)}"
 RELEASE_DIR="$ROOT/release"
 STAGE_DIR="$ROOT/build/insilicoPCR-linux-x64"
 

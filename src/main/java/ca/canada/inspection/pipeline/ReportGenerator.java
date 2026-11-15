@@ -45,7 +45,7 @@ public final class ReportGenerator {
             GelImageWriter.write(report, SyntheticGelImage.defaultPng(report), context.samples().keySet(),
                     monitor::info, monitor::warning);
         }
-        FastqDiagnosticsStage.Result diagnostics = FastqDiagnosticsStage.run(report, context.samples(),
+        FastqDiagnosticsStage.Result diagnostics = FastqDiagnosticsStage.run(report, context.samples(), context.directories(),
                 context.primers(), context.config().ampliconOptions(), readEvidence, extension);
         diagnostics.logLines().forEach(monitor::warning);
         List<SplitAcrossContigs.Split> splits = assemblySplits(context);
@@ -97,15 +97,15 @@ public final class ReportGenerator {
         for (Sample sample : context.samples().values()) {
             if (!sample.isFastq()) {
                 splits.addAll(SplitAcrossContigs.find(sample, context.primers(), context.config().ampliconOptions(),
-                        () -> sequenceLengths(sample)));
+                        () -> sequenceLengths(context, sample)));
             }
         }
         return splits;
     }
 
-    private static Map<String, Integer> sequenceLengths(Sample sample) {
+    private static Map<String, Integer> sequenceLengths(PipelineContext context, Sample sample) {
         Map<String, Integer> lengths = new HashMap<>();
-        sample.searchedFasta().stream().filter(Files::isRegularFile)
+        context.searchedFasta(sample).stream().filter(Files::isRegularFile)
                 .forEach(file -> lengths.putAll(SequenceFileUtils.sequenceLengths(file)));
         return lengths;
     }

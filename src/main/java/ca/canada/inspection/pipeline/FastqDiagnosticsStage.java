@@ -129,7 +129,8 @@ public final class FastqDiagnosticsStage {
     }
 
     /** The FASTQ diagnostics of a run, taking into account what the read extension showed. */
-    public static Result run(Path consolidatedReport, Map<String, Sample> samples, PrimerPanel primers,
+    public static Result run(Path consolidatedReport, Map<String, Sample> samples, PipelineDirectories directories,
+                             PrimerPanel primers,
                              AmpliconOptions options, Map<String, ReadEvidence> evidence,
                              ReadExtensionStage.Result extension) {
         List<Finding> findings = new ArrayList<>();
@@ -146,8 +147,8 @@ public final class FastqDiagnosticsStage {
                 notes.add("sample " + sample.getName() + " was not searched at read level");
                 continue;
             }
-            Map<String, Integer> lengths = sample.getAssemblyFile() != null && Files.isRegularFile(sample.getAssemblyFile())
-                    ? SequenceFileUtils.sequenceLengths(sample.getAssemblyFile())
+            Path assembly = directories.sample(sample.getName()).assembly();
+            Map<String, Integer> lengths = Files.isRegularFile(assembly) ? SequenceFileUtils.sequenceLengths(assembly)
                     : Map.of();
             findings.addAll(FastqDiagnostics.assess(sample, primers, options, reads, lengths,
                     extension.of(sample.getName())));

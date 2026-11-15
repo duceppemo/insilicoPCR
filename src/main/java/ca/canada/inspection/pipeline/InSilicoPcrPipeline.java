@@ -73,7 +73,7 @@ public final class InSilicoPcrPipeline {
 
         BlastRunner.run(context);
         ContigService.load(context);
-        BlastReports.attachHits(name -> directories.sample(name).blastReport(), sampleMap, context.primers(),
+        BlastReports.attachHits(name -> directories.sample(name).blastReport(), context::searchedFasta, sampleMap, context.primers(),
                 config.ampliconOptions(), monitor::warning);
         monitor.info("Completed BLAST");
         done(Step.BLAST);
@@ -82,7 +82,7 @@ public final class InSilicoPcrPipeline {
         ReadLevelStage.Settings search = ReadLevelStage.Settings.of(context);
         Map<String, ReadEvidence> readEvidence = Map.of();
         if (context.hasFastqSamples()) {
-            readEvidence = ReadLevelStage.run(search, directories.detailed(), sampleMap, context.primers(),
+            readEvidence = ReadLevelStage.run(search, directories, sampleMap, context.primers(),
                     config.ampliconOptions());
             monitor.info("Completed read-level amplicon search");
         }
@@ -91,7 +91,7 @@ public final class InSilicoPcrPipeline {
         // FASTQ samples: products longer than a read, looked for by extending reads.
         ReadExtensionStage.Result extension = ReadExtensionStage.Result.NONE;
         if (context.hasFastqSamples() && config.readExtension() != ReadExtensionCaller.Mode.OFF) {
-            extension = ReadExtensionStage.run(ReadExtensionStage.Settings.of(context, search), directories.detailed(),
+            extension = ReadExtensionStage.run(ReadExtensionStage.Settings.of(context, search), directories,
                     sampleMap, context.primers(), config.ampliconOptions(), readEvidence);
             monitor.info("Completed read extension");
         }

@@ -1,6 +1,5 @@
 package ca.canada.inspection.report;
 
-import ca.canada.inspection.pcr.AmpliconOptions;
 import ca.canada.inspection.pcr.ExpectedSizes;
 import ca.canada.inspection.pcr.FastqDiagnostics.Assembly;
 import ca.canada.inspection.pcr.FastqDiagnostics.Finding;

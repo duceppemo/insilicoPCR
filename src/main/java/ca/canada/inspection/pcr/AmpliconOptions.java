@@ -45,10 +45,15 @@ public record AmpliconOptions(
         requireNonNegative(maxFivePrimeTruncation, "maxFivePrimeTruncation");
         requireNonNegative(minAmpliconLength, "minAmpliconLength");
         requireNonNegative(maxAmpliconLength, "maxAmpliconLength");
-        if (maxAmpliconLength > 0 && minAmpliconLength > maxAmpliconLength) {
+        if (!lengthsInOrder(minAmpliconLength, maxAmpliconLength)) {
             throw new IllegalArgumentException(
                     "minAmpliconLength (" + minAmpliconLength + ") is larger than maxAmpliconLength (" + maxAmpliconLength + ")");
         }
+    }
+
+    /** Whether a product length range is one: the minimum at most the maximum, 0 being no maximum. */
+    public static boolean lengthsInOrder(int minLength, int maxLength) {
+        return maxLength <= 0 || minLength <= maxLength;
     }
 
     /** Default options with the given number of allowed total mismatches. */

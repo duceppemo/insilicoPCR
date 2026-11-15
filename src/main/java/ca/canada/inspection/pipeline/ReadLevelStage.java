@@ -56,7 +56,8 @@ public final class ReadLevelStage {
     }
 
     /** @return read-level evidence per FASTQ sample name */
-    public static Map<String, ReadEvidence> run(Settings settings, Path detailedDir, Map<String, Sample> samples,
+    public static Map<String, ReadEvidence> run(Settings settings, PipelineDirectories directories,
+                                                Map<String, Sample> samples,
                                                 PrimerPanel primers, AmpliconOptions options) {
         List<Sample> fastq = samples.values().stream()
                 .filter(Sample::isFastq)
@@ -70,7 +71,7 @@ public final class ReadLevelStage {
         Map<String, ReadEvidence> evidence = new ConcurrentHashMap<>();
         ParallelStageRunner.run("Read-level amplicon search", fastq, settings.threads(), settings.monitor(),
                 sample -> evidence.put(sample.getName(), searchSample(settings, blastThreads,
-                        SampleFiles.of(detailedDir, sample.getName()), sample, primers, options)),
+                        directories.sample(sample.getName()), sample, primers, options)),
                 ParallelStageRunner.Progress.NONE);
         return Map.copyOf(evidence);
     }

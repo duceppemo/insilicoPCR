@@ -1,10 +1,14 @@
 param(
-    [string]$Version = "0.8.0"
+    # The version the ZIP is named for: given (CI gives the tag's), or the project's own.
+    [string]$Version = ""
 )
 
 $ErrorActionPreference = "Stop"
 
 $Root = Split-Path -Parent $PSScriptRoot
+if (-not $Version) {
+    $Version = ([xml](Get-Content (Join-Path $Root "pom.xml"))).project.version
+}
 $ReleaseDir = Join-Path $Root "release"
 $StageDir = Join-Path $Root "build\insilicoPCR-windows-x64"
 

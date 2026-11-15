@@ -311,8 +311,13 @@ public final class ReadLevelCaller {
     }
 
     /** Rejects a support fraction outside 0 to 1. */
+    /** Whether {@code fraction} is a share: from 0 to 1. */
+    public static boolean isFraction(double fraction) {
+        return fraction >= 0.0 && fraction <= 1.0;
+    }
+
     public static double requireFraction(double fraction) {
-        if (!(fraction >= 0.0 && fraction <= 1.0)) {
+        if (!isFraction(fraction)) {
             throw new IllegalArgumentException("read support fraction must be between 0 and 1, got: " + fraction);
         }
         return fraction;

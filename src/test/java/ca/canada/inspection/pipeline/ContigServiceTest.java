@@ -47,9 +47,12 @@ class ContigServiceTest {
         Files.writeString(directory.resolve("reads.fastq"), "@r1\nACGT\n+\nIIII\n");
         Map<String, Sample> samples = new LinkedHashMap<>(InputCheck.scan(directory, InputCheck.Depth.QUICK, 1).samples());
         Sample reads = samples.get("reads");
-        reads.setAssemblyFile(Files.writeString(directory.resolve("reads_assembly.fasta"), ">contig_9 cov=3\nACGT\n"));
+        PipelineContext context = contextOf(samples);
+        Path assembly = context.directories().sample("reads").assembly();
+        Files.createDirectories(assembly.getParent());
+        Files.writeString(assembly, ">contig_9 cov=3\nACGT\n");
 
-        ContigService.load(contextOf(samples));
+        ContigService.load(context);
 
         assertEquals(Map.of("contig_9", "cov=3"), reads.hits().descriptions());
     }
@@ -62,7 +65,8 @@ class ContigServiceTest {
         PipelineException error = assertThrows(PipelineException.class,
                 () -> ContigService.load(contextOf(samples)));
 
-        assertEquals("Sample has no FASTA/assembly file for contig loading: reads", error.getMessage());
+        assertEquals("FASTQ sample reads has no mini-assembly: "
+                + contextOf(samples).directories().sample("reads").assembly(), error.getMessage());
         assertTrue(RunFailure.isForTheUser(error));
     }
 
@@ -79,7 +83,10 @@ class ContigServiceTest {
         assertTrue(RunFailure.isForTheUser(error));
     }
 
-    private static PipelineContext contextOf(Map<String, Sample> samples) {
-        return new PipelineContext(null, null, null, samples, PrimerPanel.of(Map.of()), 1, List.of(), RunMonitor.CONSOLE);
+    private PipelineContext contextOf(Map<String, Sample> samples) {
+        Path output = directory.resolve("out");
+        return new PipelineContext(null, null, new PipelineDirectories(output, output.resolve("detailed_report"),
+                output.resolve(PipelineDirectories.CONSOLIDATED)), samples, PrimerPanel.of(Map.of()), 1, List.of(),
+                RunMonitor.CONSOLE);
     }
 }

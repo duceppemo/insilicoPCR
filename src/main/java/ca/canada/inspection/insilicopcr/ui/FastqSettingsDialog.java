@@ -113,17 +113,17 @@ public final class FastqSettingsDialog {
     static FastqSettings parse(String k, String minSeed, String minCov, String minContig, String readFraction,
                                ReadExtensionCaller.Mode readExtension) {
         TadpoleOptions tadpole = new TadpoleOptions(
-                SettingsDialog.parseInt(k, "k-mer length", 1),
-                SettingsDialog.parseInt(minSeed, "Min k-mer count to seed", 1),
-                SettingsDialog.parseInt(minCov, "Min contig coverage", 0),
-                SettingsDialog.parseInt(minContig, "Min contig length", 1));
+                SettingsDialog.parseInt(k, "k-mer length", TadpoleOptions.MIN_K),
+                SettingsDialog.parseInt(minSeed, "Min k-mer count to seed", TadpoleOptions.MIN_COUNT_SEED),
+                SettingsDialog.parseInt(minCov, "Min contig coverage", TadpoleOptions.MIN_COVERAGE),
+                SettingsDialog.parseInt(minContig, "Min contig length", TadpoleOptions.MIN_CONTIG));
         double fraction;
         try {
             fraction = Double.parseDouble(readFraction.trim());
         } catch (NumberFormatException e) {
             throw new IllegalArgumentException("Min share of informative reads must be a number between 0 and 1.");
         }
-        if (!(fraction >= 0.0 && fraction <= 1.0)) {
+        if (!ReadLevelCaller.isFraction(fraction)) {
             throw new IllegalArgumentException("Min share of informative reads must be between 0 and 1.");
         }
         return new FastqSettings(tadpole, fraction, readExtension);

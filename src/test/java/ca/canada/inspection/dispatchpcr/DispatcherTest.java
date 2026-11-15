@@ -128,21 +128,26 @@ class DispatcherTest {
     }
 
     @Test
-    @org.junit.jupiter.api.condition.EnabledOnOs(org.junit.jupiter.api.condition.OS.LINUX)
+    @org.junit.jupiter.api.condition.EnabledOnOs({org.junit.jupiter.api.condition.OS.LINUX,
+            org.junit.jupiter.api.condition.OS.WINDOWS})
     void aCommandLineRunKilledStopsItsPrograms() throws Exception {
-        // kill <pid>, a workflow manager stopping its job: BBTools went on running and writing.
+        // kill <pid>, a workflow manager stopping its job: BBTools went on running and writing. On Windows,
+        // destroy() is Task Manager's End task (TerminateProcess): no shutdown hook runs, and blastn,
+        // which prints nothing while it searches, ran on to its end.
         String javaCommand = ProcessHandle.current().info().command().orElse("java");
         Process run = new ProcessBuilder(javaCommand, "-cp", System.getProperty("java.class.path"),
                 KilledRun.class.getName()).redirectErrorStream(true).start();
         ProcessHandle program = null;
         for (int i = 0; i < 100 && program == null; i++) {
             Thread.sleep(100);
-            program = run.toHandle().descendants().filter(child -> child.info().command().orElse("").endsWith("sleep"))
+            String sleeper = KilledRun.SLEEP.getFirst();
+            program = run.toHandle().descendants().filter(child -> child.info().command().orElse("")
+                            .toLowerCase(java.util.Locale.ROOT).matches(".*[\\\\/]?" + sleeper + "(\\.exe)?"))
                     .findFirst().orElse(null);
         }
         assertTrue(program != null, "the program never started");
 
-        run.destroy(); // SIGTERM
+        run.destroy(); // SIGTERM; on Windows, TerminateProcess
         assertTrue(run.waitFor(10, java.util.concurrent.TimeUnit.SECONDS));
         ProcessHandle started = program;
         for (int i = 0; i < 50 && started.isAlive(); i++) {

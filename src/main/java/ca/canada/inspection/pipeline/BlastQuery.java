@@ -11,6 +11,9 @@ import java.util.zip.GZIPInputStream;
 /**
  * The FASTA file given to {@code blastn} as its query.
  *
+ * <p>A file that starts with a byte order mark is copied without it, and on Windows, a file whose
+ * path is too long for BLAST+ is copied ({@link #of(Path, Path, boolean)}).</p>
+ *
  * <p>{@code blastn} does not read gzipped FASTA: given a {@code .gz} file it stops with
  * "BLAST query error". A gzipped assembly is therefore decompressed to a file that lasts
  * as long as the search; any other file is searched where it is.</p>
@@ -19,6 +22,8 @@ final class BlastQuery implements AutoCloseable {
     private static final String PREFIX = "blast_query_";
     /** The decompressed copies this class writes, as a file name pattern. */
     static final String LEFT_BEHIND = PREFIX + "*.fasta";
+    /** The longest name such a copy can have ({@link Files#createTempFile}: the prefix, a number, the suffix). */
+    static final String LONGEST_NAME = PREFIX + Long.toUnsignedString(-1L) + ".fasta";
 
     private final Path path;
     private final boolean temporary;
@@ -33,17 +38,52 @@ final class BlastQuery implements AutoCloseable {
      * {@code scratchDirectory} when its name ends with {@code .gz}.
      */
     static BlastQuery of(Path fasta, Path scratchDirectory) throws IOException {
-        if (!fasta.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(".gz")) {
+        return of(fasta, scratchDirectory, WindowsPathLimit.tooLong(fasta));
+    }
+
+    /**
+     * @param tooLong whether {@code blastn} cannot open {@code fasta} where it is: on Windows, BLAST+
+     *                cannot open a path of 260 characters or more ("File is not accessible"), which Java
+     *                reads and writes, so a FASTA file in a deep folder is searched from a copy
+     */
+    static BlastQuery of(Path fasta, Path scratchDirectory, boolean tooLong) throws IOException {
+        boolean gzipped = fasta.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(".gz");
+        if (!gzipped && !tooLong && !startsWithByteOrderMark(fasta)) {
             return new BlastQuery(fasta, false);
         }
         Path plain = Files.createTempFile(scratchDirectory, PREFIX, ".fasta");
-        try (InputStream in = new GZIPInputStream(Files.newInputStream(fasta))) {
+        try (InputStream in = withoutByteOrderMark(gzipped ? new GZIPInputStream(Files.newInputStream(fasta))
+                : Files.newInputStream(fasta))) {
             Files.copy(in, plain, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
             Files.deleteIfExists(plain);
-            throw new IOException("Unable to decompress " + fasta + ": " + e.getMessage(), e);
+            throw new IOException("Unable to " + (gzipped ? "decompress " : "copy ") + fasta + ": " + e.getMessage(), e);
         }
         return new BlastQuery(plain, true);
+    }
+
+    /** The UTF-8 byte order mark, which Notepad writes at the start of a file. */
+    private static final byte[] BYTE_ORDER_MARK = {(byte) 0xEF, (byte) 0xBB, (byte) 0xBF};
+
+    /**
+     * Whether {@code fasta} starts with a byte order mark: blastn takes it for a line of data and stops
+     * ("CFastaReader: Near line 1, there's a line that doesn't look like plausible data"), and the
+     * input check, which reads past it, had let the file through.
+     */
+    static boolean startsWithByteOrderMark(Path fasta) throws IOException {
+        try (InputStream in = Files.newInputStream(fasta)) {
+            return java.util.Arrays.equals(in.readNBytes(BYTE_ORDER_MARK.length), BYTE_ORDER_MARK);
+        }
+    }
+
+    /** {@code in} past the byte order mark it starts with, if any. */
+    private static InputStream withoutByteOrderMark(InputStream in) throws IOException {
+        java.io.BufferedInputStream buffered = new java.io.BufferedInputStream(in);
+        buffered.mark(BYTE_ORDER_MARK.length);
+        if (!java.util.Arrays.equals(buffered.readNBytes(BYTE_ORDER_MARK.length), BYTE_ORDER_MARK)) {
+            buffered.reset();
+        }
+        return buffered;
     }
 
     /** The file to pass to {@code blastn -query}. */

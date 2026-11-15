@@ -176,4 +176,26 @@ class CliConfigTest {
         assertThrows(IllegalArgumentException.class, () -> parse("--bbtools-memory", "0"));
         assertThrows(IllegalArgumentException.class, () -> parse("--bbtools-memory", "lots"));
     }
+
+    @Test
+    void aPathThatIsNoPathSaysWhyOnWindows() {
+        // "C:\my data\" -p ...: the backslash keeps the quote; -i took the rest of the line, and the error
+        // was "Unexpected argument(s)" or "Illegal char <">".
+        String quoted = "C:\\my data\" -p C:\\my";
+        String message = CliConfig.notAPath("input", quoted);
+        assertTrue(message.startsWith("--input " + quoted + ": a quote is in the path."), message);
+        assertTrue(message.contains("leave out the last backslash"), message);
+        // A letter outside the code page reaches Java as ?: "Illegal char <?> at index 55".
+        assertTrue(CliConfig.notAPath("output", "C:\\data\\?? ?\\out").contains("reaches the Java runtime as ?"));
+        assertEquals("--primers <x>: not a valid path", CliConfig.notAPath("primers", "<x>"));
+    }
+
+    @Test
+    @org.junit.jupiter.api.condition.EnabledOnOs(org.junit.jupiter.api.condition.OS.WINDOWS)
+    void aQuoteInAPathIsAWrongCommandLineOnWindows() throws ParseException {
+        CommandLine cmd = new DefaultParser().parse(Dispatcher.options(),
+                new String[]{"-i", "C:\\my data\" -p C:\\my", "-o", "out"});
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class, () -> CliConfig.checkQuotes(cmd));
+        assertTrue(error.getMessage().contains("leave out the last backslash"), error.getMessage());
+    }
 }

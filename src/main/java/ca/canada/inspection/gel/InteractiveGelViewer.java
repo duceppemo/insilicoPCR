@@ -274,7 +274,15 @@ public final class InteractiveGelViewer {
                 zoomIn, zoomOut, zoomReset, savePng, saveSvg, savePdf, paged ? goPrevious : null,
                 paged ? goNext : null);
         stage.setScene(scene);
-        stage.setMinWidth(Math.min(900, windowWidth));
+        // At least as wide as the toolbar: the window of a gel of one or two lanes was narrower, and every
+        // label of its toolbar was cut short ("Save F...", "Zo...", "..."), with Windows' wider font.
+        root.applyCss();
+        double toolbarWidth = toolbar.prefWidth(-1) + 16;
+        double width = Math.min(Math.max(windowWidth, toolbarWidth), Math.max(900, screenBounds.getWidth() - 80));
+        if (width > windowWidth) {
+            stage.setWidth(width);
+        }
+        stage.setMinWidth(Math.min(900, width));
         stage.setMinHeight(Math.min(650, windowHeight));
         stage.show();
     }

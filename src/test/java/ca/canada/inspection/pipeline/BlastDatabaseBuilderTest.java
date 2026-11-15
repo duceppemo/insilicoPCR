@@ -74,6 +74,39 @@ class BlastDatabaseBuilderTest {
     }
 
     @Test
+    void theDatabaseIsAVersion4DatabaseWithoutItsLmdbIndex() throws IOException {
+        // makeblastdb on Windows cannot create the LMDB index of a version 5 database in a folder whose
+        // path has a letter outside ASCII ("Résultats"): every run into such a folder failed.
+        Messages messages = new Messages();
+        PipelineContext context = context("résultats", messages,
+                "[ \"$8\" = -blastdb_version ] && [ \"$9\" = 4 ] || exit 3\n" + WRITES_THE_DATABASE, true);
+
+        BlastDatabaseBuilder.build(context);
+
+        assertTrue(BlastDatabaseBuilder.written(context.directories().primerDatabase(), 0));
+    }
+
+    @Test
+    void theDatabaseOfAnEarlierRunIsDeletedFirst() throws IOException {
+        // Its version 5 files (.njs, .ndb) are not replaced by a version 4 database: blastn would read the
+        // earlier run's primers from them.
+        Messages messages = new Messages();
+        PipelineContext context = context("out", messages, WRITES_THE_DATABASE, true);
+        Path database = context.directories().primerDatabase();
+        Files.writeString(database, ">a-F\nACGT\n");
+        for (String extension : List.of(".njs", ".ndb", ".nin", ".not")) {
+            Files.writeString(database.resolveSibling(database.getFileName() + extension), "old");
+        }
+
+        BlastDatabaseBuilder.build(context);
+
+        assertFalse(Files.exists(database.resolveSibling(database.getFileName() + ".njs")));
+        assertFalse(Files.exists(database.resolveSibling(database.getFileName() + ".ndb")));
+        assertTrue(Files.exists(database), "the primers themselves are kept");
+        assertTrue(BlastDatabaseBuilder.written(database, 0));
+    }
+
+    @Test
     void aFailedCheckOfACompleteDatabaseInAFolderWithASpaceIsANote() throws IOException {
         Messages messages = new Messages();
         PipelineContext context = context("results with space", messages, WRITES_THE_DATABASE + "exit 1\n", true);

@@ -92,11 +92,13 @@ if (Test-Path "docs\runtime-layout.md") { Copy-Item "docs\runtime-layout.md" (Jo
 @echo off
 rem setlocal keeps DIR and JAVA out of the caller's session. No ( ) block expands %JAVA%: a folder
 rem name holding a parenthesis ("... (1)", "Program Files (x86)") would end the block early.
+rem Native access: the programs a run starts are put in a job object, so they end with it (WindowsJob),
+rem and JavaFX loads its native libraries without a warning in the console window.
 setlocal
 set "DIR=%~dp0"
 set "JAVA=%DIR%runtime\windows\jdk\bin\java.exe"
 if not exist "%JAVA%" goto nojava
-"%JAVA%" -p "%DIR%lib;%DIR%insilicoPCR.jar" -m ca.canada.inspection.insilicopcr/ca.canada.inspection.dispatchpcr.Dispatcher %*
+"%JAVA%" --enable-native-access=ca.canada.inspection.insilicopcr,javafx.graphics -p "%DIR%lib;%DIR%insilicoPCR.jar" -m ca.canada.inspection.insilicopcr/ca.canada.inspection.dispatchpcr.Dispatcher %*
 exit /b %ERRORLEVEL%
 :nojava
 echo Could not find bundled Java runtime at: %JAVA%

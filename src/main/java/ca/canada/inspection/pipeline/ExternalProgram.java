@@ -44,14 +44,20 @@ final class ExternalProgram {
             builder.redirectErrorStream(true);
         }
         Process process;
+        // The job object made before the program starts, so that it is put in it at once (WindowsJob).
+        WindowsJob.active();
         try {
             process = builder.start();
         } catch (IOException e) {
-            throw new PipelineException("Could not run " + program + ": " + String.join(" ", command), e);
+            throw new PipelineException("Could not run " + program + ": " + String.join(" ", command)
+                    + tooLongForWindows(workingDirectory), e);
         }
+        // Registered first: a run stopped now (the window closed, a kill) must find it to end it.
         if (monitor.processes() != null) {
             monitor.processes().add(process);
         }
+        // On Windows, ended with this program even when it is killed (Task Manager, a workflow manager).
+        WindowsJob.adopt(process);
         // Read on another thread, so that this one waits in waitFor(), which an interrupt stops
         // (and the program is then killed below); a blocking read would not stop.
         FutureTask<Boolean> reading = new FutureTask<>(() -> {
@@ -100,10 +106,18 @@ final class ExternalProgram {
         }
     }
 
+    /**
+     * The encoding of what the programs print: on Windows, the computer's code page, in which BLAST+ and a
+     * Java runtime writing to a pipe both print, so that a path with an accent showed in the application's
+     * log as "R�sultats". Elsewhere UTF-8, as before.
+     */
+    static final java.nio.charset.Charset OUTPUT_ENCODING = AppPaths.isWindows() ? WindowsCodePage.system()
+            : StandardCharsets.UTF_8;
+
     /** Gives each line to {@code output}; whether one says the program ran out of memory. */
     private static boolean passLines(InputStream stream, Consumer<String> output) throws IOException {
         boolean saidOutOfMemory = false;
-        try (BufferedReader lines = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))) {
+        try (BufferedReader lines = new BufferedReader(new InputStreamReader(stream, OUTPUT_ENCODING))) {
             String line;
             while ((line = lines.readLine()) != null) {
                 output.accept(line);
@@ -134,6 +148,19 @@ final class ExternalProgram {
             }
         }
         return saidOutOfMemory;
+    }
+
+    /**
+     * Why a program could not start in {@code workingDirectory}, when its path is too long for Windows
+     * ("CreateProcess error=267, The directory name is invalid"), or nothing.
+     */
+    static String tooLongForWindows(Path workingDirectory) {
+        if (workingDirectory == null || !WindowsPathLimit.tooLong(workingDirectory)) {
+            return "";
+        }
+        return " (the path of the folder it runs in is " + workingDirectory.toAbsolutePath().toString().length()
+                + " characters long: Windows starts no program in a folder whose path has "
+                + WindowsPathLimit.MAX_PATH + " characters or more; choose an output folder with a shorter path)";
     }
 
     private static void stopIfCancelled(RunMonitor monitor, String program) {

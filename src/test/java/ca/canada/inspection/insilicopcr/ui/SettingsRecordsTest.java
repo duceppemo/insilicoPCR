@@ -81,6 +81,17 @@ class SettingsRecordsTest {
     }
 
     @Test
+    void aPathPastedWithItsQuotesIsThePathInside() {
+        // Windows Explorer's "Copy as path" (Ctrl+Shift+C) quotes the path: the field was then
+        // cleared on Windows, a quote being no part of a file name there.
+        java.nio.file.Path reads = java.nio.file.Path.of("data dir", "reads").toAbsolutePath().normalize();
+        assertEquals(reads, PathFieldBinder.toPath("\"" + reads + "\""));
+        assertEquals(reads, PathFieldBinder.toPath("  \"" + reads + "\"\r\n"));
+        assertEquals(null, PathFieldBinder.toPath("\"\""));
+        assertEquals(null, PathFieldBinder.toPath("\"  \""));
+    }
+
+    @Test
     void fastqSettingsDefaultsAndLabel() {
         assertTrue(FastqSettings.DEFAULTS.isDefault());
         assertEquals("FASTQ settings…", FastqSettingsDialog.buttonLabel(FastqSettings.DEFAULTS));

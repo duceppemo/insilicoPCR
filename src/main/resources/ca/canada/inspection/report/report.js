@@ -1,4 +1,9 @@
 (function () {
+  // Typing filters once the keys stop, not on each key: a large run has tens of thousands of rows.
+  function settled(run) {
+    var timer;
+    return function () { clearTimeout(timer); timer = setTimeout(run, 150); };
+  }
   var rows = Array.prototype.slice.call(document.querySelectorAll('#rows tbody tr'));
   var rowFilter = document.getElementById('rowFilter'), rowCount = document.getElementById('rowCount');
   var showAll = document.getElementById('showAll');
@@ -14,7 +19,7 @@
     rowCount.textContent = words.length ? shown + ' of ' + rows.length + ' shown' : rows.length + ' amplicons';
   }
   if (rowFilter) {
-    rowFilter.addEventListener('input', filterRows);
+    rowFilter.addEventListener('input', settled(filterRows));
     showAll.addEventListener('click', function () { rowFilter.value = ''; filterRows(); });
     filterRows();
   }
@@ -38,5 +43,5 @@
       tr.hidden = tr.dataset.sample.toLowerCase().indexOf(word) < 0 || (only.checked && tr.dataset.any !== '1');
     });
   }
-  if (sampleFilter) { sampleFilter.addEventListener('input', filterSamples); only.addEventListener('change', filterSamples); }
+  if (sampleFilter) { sampleFilter.addEventListener('input', settled(filterSamples)); only.addEventListener('change', filterSamples); }
 })();

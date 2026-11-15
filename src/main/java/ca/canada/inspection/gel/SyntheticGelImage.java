@@ -45,8 +45,7 @@ public final class SyntheticGelImage {
         GelPages pages = new GelPages(List.copyOf(lanes.keySet()), InteractiveGelViewer.SAMPLES_PER_GEL);
         List<Path> written = new ArrayList<>();
         for (int page = 0; page < pages.totalPages(); page++) {
-            LinkedHashMap<String, List<GelBand>> pageLanes = new LinkedHashMap<>();
-            pages.samples(page).forEach(name -> pageLanes.put(name, lanes.get(name)));
+            LinkedHashMap<String, List<GelBand>> pageLanes = pages.lanes(page, lanes);
             Path file = GelImages.pageOutput(outputFile, page, pages.totalPages());
             // Drawn one gel at a time: the picture of a large run would not fit in one image.
             onFxThread(() -> GelImages.writePng(GelPicture.image(GelPicture.scene(pageLanes, geneColors, GelColorMode.GENE), false),

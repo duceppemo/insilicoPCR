@@ -344,4 +344,16 @@ class HtmlReportTest {
         }
         assertEquals(ca.canada.inspection.pcr.AssayVerdict.Kind.values().length, HtmlReport.State.values().length);
     }
+
+    @Test
+    void notCheckableFromReadsHasItsTileAndAPlainNegativeNoTitle() throws IOException {
+        // The FASTQ sample S has both primers in reads that could not hold the declared 434 bp.
+        Path tsv = Files.write(dir.resolve("report.tsv"), List.of(HEADER));
+        String page = Files.readString(write(tsv, List.of("S", "neg"), Set.of("S"), panel(PRIMERS, SIZES),
+                List.of(finding(Status.NOT_IN_READS, 300)), DETAILS));
+
+        assertTrue(page.contains("no product, not checkable from reads"), "a tile for it");
+        // neg shows "no product" with nothing to add: no title, a third of a large run's page.
+        assertTrue(page.contains("<span class=\"chip none\">"), "a plain negative cell without a title");
+    }
 }

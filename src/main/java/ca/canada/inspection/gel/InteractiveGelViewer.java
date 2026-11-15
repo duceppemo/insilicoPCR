@@ -35,6 +35,7 @@ import javafx.stage.FileChooser;
 import javafx.stage.Popup;
 import javafx.stage.Screen;
 import javafx.stage.Stage;
+import javafx.stage.Window;
 
 import java.io.File;
 import java.io.IOException;
@@ -49,7 +50,6 @@ import java.util.Map;
 /** Interactive synthetic gel viewer backed by JavaFX scene-graph nodes. */
 public final class InteractiveGelViewer {
     private static final double BAND_HOVER_TARGET_HEIGHT = 14.0;
-    private static final double BAND_HEIGHT = 2.0;
     /** Lanes on one gel; a run of more samples is shown a gel (a page) at a time. */
     public static final int SAMPLES_PER_GEL = 100;
     private static final double MIN_ZOOM = 0.45;
@@ -91,19 +91,21 @@ public final class InteractiveGelViewer {
         colorMode.setValue(GelColorMode.BLACK);
         // The gel shown, as a picture to save.
         java.util.function.Supplier<GelScene> picture = () ->
-                GelPicture.scene(pageLanes(lanes, pages, current.page), geneColors, colorMode.getValue());
+                GelPicture.scene(pages.lanes(current.page, lanes), geneColors, colorMode.getValue());
 
+        // Made first: the save dialogs and messages open over it, not behind it.
+        Stage stage = new Stage();
         Group zoomGroup = new Group();
         Button savePngButton = new Button("Save PNG...");
-        Runnable savePng = () -> chooseAndSave("PNG", "png", picture.get(), pageOutput.get());
+        Runnable savePng = () -> chooseAndSave(stage, "PNG", "png", picture.get(), pageOutput.get());
         savePngButton.setOnAction(event -> savePng.run());
 
         Button saveSvgButton = new Button("Save SVG...");
-        Runnable saveSvg = () -> chooseAndSave("SVG", "svg", picture.get(), pageOutput.get());
+        Runnable saveSvg = () -> chooseAndSave(stage, "SVG", "svg", picture.get(), pageOutput.get());
         saveSvgButton.setOnAction(event -> saveSvg.run());
 
         Button savePdfButton = new Button("Save PDF...");
-        Runnable savePdf = () -> chooseAndSave("PDF", "pdf", picture.get(), pageOutput.get());
+        Runnable savePdf = () -> chooseAndSave(stage, "PDF", "pdf", picture.get(), pageOutput.get());
         savePdfButton.setOnAction(event -> savePdf.run());
 
         Button zoomOutButton = new Button("−");
@@ -173,7 +175,9 @@ public final class InteractiveGelViewer {
             band.updateVisual();
         });
         java.util.function.Consumer<SearchResult> showSearch = result -> {
-            matchLabel.setText(result.searching() ? GelText.matches(result.matchCount()) : "");
+            int onAllGels = paged && result.searching()
+                    ? pages.find(lanes, searchField.getText(), colorMode.getValue()).matches() : result.matchCount();
+            matchLabel.setText(result.searching() ? GelText.matches(result.matchCount(), onAllGels) : "");
             if (result.firstMatch() != null) {
                 scrollToBand(scrollPane, zoomGroup, result.firstMatch());
             }
@@ -181,7 +185,7 @@ public final class InteractiveGelViewer {
         // Draws page current.page: its gel, with the run's tools wired to its bands.
         Runnable render = () -> {
             // Coloured, bands of one size that differ in what colours them are drawn apart.
-            current.view = buildGel(pageLanes(lanes, pages, current.page), geneColors, colorMode.getValue());
+            current.view = buildGel(pages.lanes(current.page, lanes), geneColors, colorMode.getValue());
             Pane gelPane = current.view.pane();
             gelPane.setScaleX(zoomState.zoom);
             gelPane.setScaleY(zoomState.zoom);
@@ -218,7 +222,7 @@ public final class InteractiveGelViewer {
             SearchResult result = applySearch(current.view.bands(), newValue);
             if (paged && result.searching() && result.matchCount() == 0) {
                 // Nothing on this gel: turn to the first one with a match, if any.
-                GelPages.Search found = pages.find(lanes, newValue);
+                GelPages.Search found = pages.find(lanes, newValue, colorMode.getValue());
                 if (found.pageIndex() >= 0 && found.pageIndex() != current.page) {
                     current.page = found.pageIndex();
                     render.run();
@@ -244,7 +248,6 @@ public final class InteractiveGelViewer {
         double windowWidth = Math.min(preferredWidth, Math.max(900, screenBounds.getWidth() - 80));
         double windowHeight = Math.min(preferredHeight, Math.max(700, screenBounds.getHeight() - 80));
 
-        Stage stage = new Stage();
         stage.setTitle("Synthetic Gel - " + consolidatedReport.getFileName());
         Scene scene = new Scene(root, windowWidth, windowHeight);
         installKeyboardShortcuts(scene, searchField, selection, selectedLabel, () -> current.view.bands(),
@@ -262,14 +265,6 @@ public final class InteractiveGelViewer {
         private GelView view;
     }
 
-    /** The samples of gel {@code page} and their bands. */
-    private static LinkedHashMap<String, List<GelBand>> pageLanes(Map<String, List<GelBand>> lanes, GelPages pages,
-                                                                  int page) {
-        LinkedHashMap<String, List<GelBand>> pageLanes = new LinkedHashMap<>();
-        pages.samples(page).forEach(name -> pageLanes.put(name, lanes.get(name)));
-        return pageLanes;
-    }
-
     private static GelView buildGel(LinkedHashMap<String, List<GelBand>> lanes, Map<String, Color> geneColors,
                                     GelColorMode mode) {
         GelLayout layout = GelLayout.window(LAYOUT_WIDTH, LAYOUT_HEIGHT, lanes.keySet());
@@ -279,7 +274,7 @@ public final class InteractiveGelViewer {
         List<Rectangle> laneHighlights = new ArrayList<>();
         for (int lane = 1; lane <= laneNames.size(); lane++) {
             laneBands.addAll(LaneBand.of(layout, lane, laneNames.get(lane - 1),
-                    lanes.get(laneNames.get(lane - 1)), BAND_HEIGHT, mode));
+                    lanes.get(laneNames.get(lane - 1)), GelScene.BAND_HEIGHT, mode));
             Rectangle highlight = new Rectangle(layout.laneX(lane), layout.gelTop(), layout.laneWidth(), layout.gelHeight());
             highlight.setFill(Color.TRANSPARENT);
             highlight.setMouseTransparent(true);
@@ -287,9 +282,10 @@ public final class InteractiveGelViewer {
         }
 
         List<BandNode> bandNodes = new ArrayList<>();
-        // The window's own legend sits beside the gel, outside the scrolled pane.
-        GelScene scene = GelScene.of(layout, laneNames, laneBands, band -> BandPaint.BAND, GelScene.LADDER_FONT_SIZE,
-                null, Map.of());
+        // The window's own legend sits beside the gel, outside the scrolled pane. The bands are drawn
+        // in their colours, as in a saved picture; hovering, selecting and searching restyle them.
+        GelScene scene = GelScene.of(layout, laneNames, laneBands, GelColors.band(mode, geneColors),
+                GelScene.LADDER_FONT_SIZE, null, Map.of());
         Pane pane = GelNodes.pane(scene, laneHighlights, band -> {
             Color color = GelColors.of(mode, band.lane().bands().getFirst(), geneColors);
             BandNode node = bandNode(band, laneHighlights.get(band.lane().lane() - 1), color);
@@ -590,17 +586,18 @@ public final class InteractiveGelViewer {
      * Asks where to save {@code picture} as {@code format}, offering the name {@code --gel} gives
      * the gel shown (with this format's extension), then saves it there.
      */
-    private static void chooseAndSave(String format, String extension, GelScene picture, Path automaticOutput) {
+    private static void chooseAndSave(Window owner, String format, String extension, GelScene picture,
+                                      Path automaticOutput) {
         FileChooser chooser = new FileChooser();
         chooser.setTitle("Save Synthetic Gel " + format);
         chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter(format + " file", "*." + extension));
         chooser.setInitialFileName(GelImages.withExtension(automaticOutput, extension));
         setInitialDirectory(chooser, automaticOutput);
-        File selectedFile = chooser.showSaveDialog(null);
+        File selectedFile = chooser.showSaveDialog(owner);
         if (selectedFile == null) {
             return;
         }
-        save(format, selectedFile.toPath(), file -> {
+        save(owner, format, selectedFile.toPath(), file -> {
             switch (extension) {
                 case "svg" -> GelImages.writeText(GelSvg.of(picture), file);
                 case "pdf" -> GelImages.writePdf(GelPicture.image(picture, true), file);
@@ -626,20 +623,22 @@ public final class InteractiveGelViewer {
      * Writes {@code what} to {@code outputFile} and says so; a failure (a folder that cannot be
      * written to, a full disk) is a message, not a silent trace on the console.
      */
-    private static void save(String what, Path outputFile, FileWrite write) {
+    private static void save(Window owner, String what, Path outputFile, FileWrite write) {
         try {
             write.to(outputFile);
-            showInfo(what + " saved", "Saved the synthetic gel " + what + " to:\n" + outputFile.toAbsolutePath());
+            showInfo(owner, what + " saved", "Saved the synthetic gel " + what + " to:\n" + outputFile.toAbsolutePath());
         } catch (IOException | RuntimeException e) {
             Alert alert = new Alert(Alert.AlertType.ERROR, "Could not save the synthetic gel " + what + " to "
                     + outputFile.toAbsolutePath() + ":\n" + e.getMessage(), ButtonType.OK);
+            alert.initOwner(owner);
             alert.setHeaderText(null);
             alert.showAndWait();
         }
     }
 
-    private static void showInfo(String title, String message) {
+    private static void showInfo(Window owner, String title, String message) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.initOwner(owner);
         alert.setTitle(title);
         alert.setHeaderText(title);
         alert.setContentText(message);

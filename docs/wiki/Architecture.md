@@ -105,13 +105,13 @@ The gel viewer (`InteractiveGelViewer`, one gel of up to 100 samples at a time, 
 |---|---|
 | `GelScale` | The gel's log scale (base pairs to position), the ladder, and the small per-band variations |
 | `GelLayout` | Geometry of a gel picture: where the gel sits, lane width, picture size, the baseline of the slanted lane labels |
-| `LaneBand` | One band of a sample lane: the amplicons it stands for, where it sits, how strong it looks; one factory for the window and every picture, splitting bands of one size by gene when coloured by gene |
+| `LaneBand` | One band of a sample lane: the amplicons it stands for, where it sits, how strong it looks; one factory for the window and every picture, splitting bands of one size by what colours them (gene or size check); a search across gels counts bands the same way (`LaneBand.groups`) |
 | `BandPaint` | Colours of the gel and of the bands |
 | `GelText` | Text about the amplicons of a band: tooltips, details, selection and search |
 | `GelPages` | Splitting the lanes of a large run into pages of samples (the window's gels and the `--gel` files) |
 | `GelSelection` | The window's selected bands: what a click, a dragged box and Ctrl+A select |
 | `GelColorMode` | How the bands are coloured (black, by gene, by size check, read from the report's `SizeCheck` column) and so which bands of one size are drawn apart; `GelColors` gives the colours and legends |
-| `GelScene` | What a gel picture is made of (gel, lanes, ladder, bands, labels, gene legend), whatever draws it |
+| `GelScene` | What a gel picture is made of (gel, lanes, ladder, bands, labels, the legend of its colours), whatever draws it; the window draws its bands in their colours too, and restyles them when hovered, selected or searched |
 | `GelNodes` | A `GelScene` as JavaFX nodes, for the viewer |
 | `GelSvg` | A `GelScene` as an SVG document |
 | `GelImages` | PNG and PDF files of the gel and their default names, one a gel for a paged run |

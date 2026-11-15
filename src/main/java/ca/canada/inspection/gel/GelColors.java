@@ -1,6 +1,8 @@
 package ca.canada.inspection.gel;
 
+import ca.canada.inspection.pcr.AssayVerdict;
 import ca.canada.inspection.pcr.ExpectedSizes;
+import ca.canada.inspection.report.HtmlReport;
 import javafx.scene.paint.Color;
 
 import java.util.Collection;
@@ -43,18 +45,14 @@ public final class GelColors {
             ExpectedSizes.Label.OTHER, Color.web("#fab219"),
             ExpectedSizes.Label.UNEXPECTED, Color.web("#d03b3b")));
     private static final Color NO_SIZE_DECLARED = Color.web("#2a78d6");
-    private static final String NO_SIZE_DECLARED_NAME = "No size declared";
 
-    /** The name of a size check in the legend and the band text. */
+    /**
+     * The name of a size check in the legend, as the HTML report names its outcome: "Amplified"
+     * for an assay that declares no size.
+     */
     static String sizeCheckName(ExpectedSizes.Label label) {
-        if (label == null) {
-            return NO_SIZE_DECLARED_NAME;
-        }
-        return switch (label) {
-            case TARGET -> "Target size";
-            case OTHER -> "Other known product";
-            case UNEXPECTED -> "Unexpected size";
-        };
+        AssayVerdict.Kind kind = label == null ? AssayVerdict.Kind.AMPLIFIED : AssayVerdict.Kind.of(label);
+        return HtmlReport.State.of(kind).label();
     }
 
     /** The colour of a band of this size check. */
@@ -71,7 +69,7 @@ public final class GelColors {
             }
         }
         if (bands.stream().anyMatch(band -> band.sizeCheck() == null)) {
-            legend.put(NO_SIZE_DECLARED_NAME, NO_SIZE_DECLARED);
+            legend.put(sizeCheckName(null), NO_SIZE_DECLARED);
         }
         return legend;
     }
@@ -87,6 +85,14 @@ public final class GelColors {
             case BLACK -> null;
             case GENE -> geneColors.getOrDefault(band.geneName(), Color.BLACK);
             case SIZE_CHECK -> sizeCheck(band.sizeCheck());
+        };
+    }
+
+    /** The colour of each band drawn in {@code mode}: black, or its gene's, or its size check's. */
+    static java.util.function.Function<LaneBand, Color> band(GelColorMode mode, Map<String, Color> geneColors) {
+        return band -> {
+            Color color = of(mode, band.bands().getFirst(), geneColors);
+            return color == null ? BandPaint.BAND : color;
         };
     }
 

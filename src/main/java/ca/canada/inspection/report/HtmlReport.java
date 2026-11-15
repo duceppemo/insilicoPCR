@@ -71,7 +71,7 @@ public final class HtmlReport {
         private final String glyph;
 
         /** How the page shows {@code kind}: the verdict is decided in {@link AssayVerdict}. */
-        static State of(AssayVerdict.Kind kind) {
+        public static State of(AssayVerdict.Kind kind) {
             return valueOf(kind.name());
         }
 
@@ -336,6 +336,9 @@ public final class HtmlReport {
         if (totals.getOrDefault(State.ACROSS_ENDS, 0) > 0) {
             tile(html, totals.get(State.ACROSS_ENDS), "no product, primers at contig ends", "inconclusive");
         }
+        if (totals.getOrDefault(State.UNCHECKED, 0) > 0) {
+            tile(html, totals.get(State.UNCHECKED), "no product, not checkable from reads", "inconclusive");
+        }
         tile(html, products, products == 1 ? "amplicon in the report" : "amplicons in the report", "");
         html.append("</section>\n");
     }
@@ -453,8 +456,11 @@ public final class HtmlReport {
             tip.append("\n").append(cell.note());
         }
         String element = cell.products().isEmpty() ? "span" : "button";
+        // A plain "no product" says nothing its row and column do not: no title, which was a third
+        // of the page on a large run (5,000 samples by 40 assays).
+        boolean plain = state == State.NONE && cell.note().isEmpty();
         return "<" + element + (element.equals("button") ? " type=\"button\"" : "") + " class=\"chip " + state.css()
-                + "\" title=\"" + escape(tip.toString()) + "\""
+                + "\"" + (plain ? "" : " title=\"" + escape(tip.toString()) + "\"")
                 + (inGrid && !cell.products().isEmpty()
                 ? " data-s=\"" + escape(sample) + "\" data-a=\"" + escape(assay) + "\"" : "")
                 + ">" + escape(text.toString())
@@ -515,7 +521,8 @@ public final class HtmlReport {
                             .append(switch (state) {
                                 case NONE -> " with no product";
                                 case ACROSS_ENDS -> " with the primers at contig ends";
-                                default -> " not checkable from reads";
+                                case UNCHECKED -> " not checkable from reads";
+                                default -> ": " + state.label.toLowerCase(java.util.Locale.ROOT);
                             })
                             .append("</summary><ul class=\"names muted\">");
                     names.forEach(sample -> html.append("<li>").append(escape(sample)).append("</li>"));

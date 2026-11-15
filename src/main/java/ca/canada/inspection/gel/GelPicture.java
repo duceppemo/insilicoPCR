@@ -19,8 +19,6 @@ import java.util.Map;
  * the legend when the bands are coloured (by gene or by size check).
  */
 final class GelPicture {
-    static final double BAND_HEIGHT = 2.0;
-
     private GelPicture() {
     }
 
@@ -39,13 +37,11 @@ final class GelPicture {
         List<String> names = List.copyOf(lanes.keySet());
         List<LaneBand> bands = new ArrayList<>();
         for (int lane = 1; lane <= names.size(); lane++) {
-            bands.addAll(LaneBand.of(layout, lane, names.get(lane - 1), lanes.get(names.get(lane - 1)), BAND_HEIGHT,
+            bands.addAll(LaneBand.of(layout, lane, names.get(lane - 1), lanes.get(names.get(lane - 1)), GelScene.BAND_HEIGHT,
                     mode));
         }
-        return GelScene.of(layout, names, bands, band -> {
-            Color color = GelColors.of(mode, band.bands().getFirst(), geneColors);
-            return color == null ? BandPaint.BAND : color;
-        }, GelScene.LADDER_FONT_SIZE, mode.legendTitle(), legend);
+        return GelScene.of(layout, names, bands, GelColors.band(mode, geneColors), GelScene.LADDER_FONT_SIZE,
+                mode.legendTitle(), legend);
     }
 
     /**

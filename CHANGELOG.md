@@ -19,6 +19,42 @@
 
 ### Fixed
 
+- Windows: an output folder whose path has a letter outside ASCII (`Données`,
+  `Résultats`, `C:\Users\Rémi\...`) stopped every run at `makeblastdb`
+  ("LMDB runtime error: mdb_env_open: The system cannot find the path
+  specified"). The primer database is now a version 4 BLAST database, which has
+  no LMDB index; the database files of an earlier run into the folder are
+  deleted first, so that blastn cannot read its primers.
+- FASTQ mode: insilicoPCR installed in a folder whose path has a letter outside
+  ASCII (`C:\Users\Rémi\Downloads\insilicoPCR`) could run no FASTQ sample:
+  BBTools looked for its resources at a garbled path ("Cannot find
+  primes.txt.gz", then a NullPointerException). BBTools is then started through
+  a small launcher that gives it its jar's path as it is.
+- A primer file saved by Notepad or another Windows editor as UTF-8 with a byte
+  order mark was refused for "a sequence before its first header line". The mark
+  is now skipped in every FASTA and FASTQ file insilicoPCR reads itself.
+- Windows: a run ended from Task Manager, by a workflow manager or an IDE's stop
+  button left its programs running: blastn, which prints nothing while it
+  searches, ran on to the end of its search, writing into the output folder.
+  The programs a run starts are now put in a Windows job object that ends them
+  with insilicoPCR, however it ends. The launcher and the JAR's manifest enable
+  the native access this needs.
+- Windows: an output folder deep enough that the files of a run passed 260
+  characters failed once a program started, with "CreateProcess error=267, The
+  directory name is invalid" or BLAST's "File is not accessible". It is now
+  refused before any program runs, with the path, its length and how much
+  shorter it must be. A FASTA file whose own path is that long, which Java reads
+  but BLAST+ cannot, is searched from a copy in the sample's folder.
+- A report of the last run held open in Excel stopped the next run into the
+  folder with blastn's "File is not accessible"; the run now stops before
+  blastn, naming the file and saying that it is open in another program.
+- Windows command line: a path typed with a backslash before its closing quote
+  (`-i "C:\my data\" -p ...`), which keeps the quote and the rest of the line
+  in the path, was reported as unexpected arguments; a letter outside the
+  computer's code page (such as `数`), which reaches Java as `?`, as "Illegal
+  char <?>". Both now say what happened and what to type instead.
+- Application: a path pasted with its quotes, as Windows Explorer's **Copy as
+  path** gives it, cleared the field; the quotes are now dropped.
 - An output folder whose path holds a space (`C:\Users\Jane Doe\run`, `/data/my
   results`) stopped every run at `makeblastdb`: BLAST+ splits database paths at
   their spaces itself. The BLAST programs now run in the output folder and are

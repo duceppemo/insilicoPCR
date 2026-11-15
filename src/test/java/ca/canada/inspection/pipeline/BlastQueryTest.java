@@ -56,6 +56,36 @@ class BlastQueryTest {
     }
 
     @Test
+    void aFastaTooLongForBlastIsSearchedFromACopy() throws IOException {
+        // On Windows, blastn cannot open a path of 260 characters or more ("File is not accessible").
+        Path fasta = Files.writeString(directory.resolve("sample.fasta"), FASTA);
+        Path scratch = Files.createDirectory(directory.resolve("scratch"));
+        Path copy;
+
+        try (BlastQuery query = BlastQuery.of(fasta, scratch, true)) {
+            copy = query.path();
+            assertEquals(scratch, copy.getParent());
+            assertEquals(FASTA, Files.readString(copy));
+        }
+
+        assertFalse(Files.exists(copy));
+        assertTrue(Files.exists(fasta));
+    }
+
+    @Test
+    void theLongestCopyNameIsTheLongestNameOfACopy() throws IOException {
+        // WindowsPathLimit counts it among the files a run writes.
+        Path fasta = Files.write(directory.resolve("s.fasta.gz"), gzip(FASTA));
+        for (int i = 0; i < 20; i++) {
+            try (BlastQuery query = BlastQuery.of(fasta, directory)) {
+                String name = query.path().getFileName().toString();
+                assertTrue(name.length() <= BlastQuery.LONGEST_NAME.length(), name);
+                assertTrue(name.startsWith("blast_query_") && name.endsWith(".fasta"), name);
+            }
+        }
+    }
+
+    @Test
     void theExtensionIsReadWhateverItsCase() throws IOException {
         Path fasta = Files.write(directory.resolve("SAMPLE.FNA.GZ"), gzip(FASTA));
 

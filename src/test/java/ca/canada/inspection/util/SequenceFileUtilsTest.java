@@ -144,4 +144,28 @@ class SequenceFileUtilsTest {
                     SequenceFileUtils.FASTQ_EXTENSIONS), extension);
         }
     }
+
+    @Test
+    void aByteOrderMarkIsNotReadAsText() throws IOException {
+        // Notepad's UTF-8: the mark stood before the first > of a FASTA file.
+        Path plain = Files.write(dir.resolve("bom.fasta"), new byte[]{(byte) 0xEF, (byte) 0xBB, (byte) 0xBF, '>', 'a', '\n'});
+        try (var reader = SequenceFileUtils.openMaybeGzip(plain)) {
+            assertEquals(">a", reader.readLine());
+        }
+        Path gzipped = dir.resolve("bom.fasta.gz");
+        try (var out = new java.util.zip.GZIPOutputStream(Files.newOutputStream(gzipped))) {
+            out.write(new byte[]{(byte) 0xEF, (byte) 0xBB, (byte) 0xBF, '>', 'b', '\n'});
+        }
+        try (var reader = SequenceFileUtils.openMaybeGzip(gzipped)) {
+            assertEquals(">b", reader.readLine());
+        }
+        Path without = Files.writeString(dir.resolve("plain.fasta"), ">c\n");
+        try (var reader = SequenceFileUtils.openMaybeGzip(without)) {
+            assertEquals(">c", reader.readLine());
+        }
+        Path empty = Files.writeString(dir.resolve("empty.fasta"), "");
+        try (var reader = SequenceFileUtils.openMaybeGzip(empty)) {
+            assertEquals(null, reader.readLine());
+        }
+    }
 }

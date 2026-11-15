@@ -47,8 +47,11 @@ final class ExternalProgram {
         try {
             process = builder.start();
         } catch (IOException e) {
-            throw new PipelineException("Could not run " + program + ": " + String.join(" ", command), e);
+            throw new PipelineException("Could not run " + program + ": " + String.join(" ", command)
+                    + tooLongForWindows(workingDirectory), e);
         }
+        // On Windows, ended with this program even when it is killed (Task Manager, a workflow manager).
+        WindowsJob.adopt(process);
         if (monitor.processes() != null) {
             monitor.processes().add(process);
         }
@@ -134,6 +137,19 @@ final class ExternalProgram {
             }
         }
         return saidOutOfMemory;
+    }
+
+    /**
+     * Why a program could not start in {@code workingDirectory}, when its path is too long for Windows
+     * ("CreateProcess error=267, The directory name is invalid"), or nothing.
+     */
+    static String tooLongForWindows(Path workingDirectory) {
+        if (workingDirectory == null || !WindowsPathLimit.tooLong(workingDirectory)) {
+            return "";
+        }
+        return " (the path of the folder it runs in is " + workingDirectory.toAbsolutePath().toString().length()
+                + " characters long: Windows starts no program in a folder whose path has "
+                + WindowsPathLimit.MAX_PATH + " characters or more; choose an output folder with a shorter path)";
     }
 
     private static void stopIfCancelled(RunMonitor monitor, String program) {

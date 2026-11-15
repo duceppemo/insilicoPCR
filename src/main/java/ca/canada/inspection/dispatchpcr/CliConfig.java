@@ -9,6 +9,7 @@ import org.apache.commons.cli.CommandLine;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.function.IntConsumer;
 
 /**
@@ -119,7 +120,45 @@ public final class CliConfig {
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException("Missing required option: --" + option);
         }
-        return Path.of(value).toAbsolutePath().normalize();
+        try {
+            return Path.of(value).toAbsolutePath().normalize();
+        } catch (java.nio.file.InvalidPathException e) {
+            throw new IllegalArgumentException(notAPath(option, value), e);
+        }
+    }
+
+    /**
+     * Why {@code value}, given to {@code --option}, is not a path: on Windows, a quote kept by a backslash
+     * before it, or a letter the Java runtime received as {@code ?}; otherwise, that it is not one.
+     */
+    static String notAPath(String option, String value) {
+        if (value.indexOf('"') >= 0) {
+            return "--" + option + " " + value + ": a quote is in the path. On Windows, a backslash just before a"
+                    + " closing quote keeps the quote, and what follows, in the path (\"C:\\my data\\\" -p ...):"
+                    + " leave out the last backslash (\"C:\\my data\")";
+        }
+        if (value.indexOf('?') >= 0) {
+            return "--" + option + " " + value + ": not a path. On Windows, a letter outside the computer's code page"
+                    + " (such as \u6570 or \u0394) reaches the Java runtime as ?: use a folder and file whose names have"
+                    + " none, or a path that does not name them (a relative path from inside such a folder)";
+        }
+        return "--" + option + " " + value + ": not a valid path";
+    }
+
+    /**
+     * @throws IllegalArgumentException on Windows, when a path given on the command line holds a quote,
+     *                                  which no path there can ({@link #notAPath})
+     */
+    static void checkQuotes(CommandLine cmd) {
+        if (!ca.canada.inspection.pipeline.AppPaths.isWindows()) {
+            return;
+        }
+        for (String option : List.of("input", "output", "primers")) {
+            String value = cmd.getOptionValue(option);
+            if (value != null && value.indexOf('"') >= 0) {
+                throw new IllegalArgumentException(notAPath(option, value));
+            }
+        }
     }
 
     private static int parseInt(CommandLine cmd, String option) {

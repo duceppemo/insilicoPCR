@@ -14,6 +14,7 @@ public final class BlastDatabaseBuilder {
         makeExecutable(context, context.dependencies().makeblastdb(), context.dependencies().blastn());
         // BLAST+ splits the -in path at its spaces itself: run in the database's folder with its bare name.
         Path database = context.directories().primerDatabase().toAbsolutePath();
+        removeEarlierDatabase(database);
         long started = System.currentTimeMillis();
         try {
             context.monitor().runProgram(database.getParent(), List.of(
@@ -22,7 +23,12 @@ public final class BlastDatabaseBuilder {
                     "-hash_index",
                     "-in", database.getFileName().toString(),
                     // Without -out, makeblastdb names the database after the absolute path of -in.
-                    "-out", database.getFileName().toString()), "makeblastdb");
+                    "-out", database.getFileName().toString(),
+                    // A version 5 database adds an LMDB index, which makeblastdb on Windows cannot create in a
+                    // folder whose path has a letter outside ASCII ("Données", "Résultats"): "mdb_env_open:
+                    // The system cannot find the path specified", and no run. Version 4 has no such index,
+                    // and a primer database needs none of what it is for (accessions, taxonomy).
+                    "-blastdb_version", "4"), "makeblastdb");
         } catch (ProgramFailedException e) {
             // In a folder whose path has a space, makeblastdb writes the database, then checks it by its
             // absolute path, which it splits at the space: the check fails, not the database, which
@@ -32,6 +38,26 @@ public final class BlastDatabaseBuilder {
             }
             context.monitor().info("Note: makeblastdb's own check of the primer database fails in a folder whose"
                     + " path has a space (its error above); the database is complete and is used.");
+        }
+    }
+
+    /**
+     * Deletes the database files an earlier run into the folder left ({@code primer_tmp.fasta.n*}). Before
+     * 0.15.2 the database was a version 5 one: blastn would read the earlier run's primers from its files
+     * (.njs, .ndb...) that a version 4 database does not replace. A file another program holds open (an
+     * antivirus, a blastn still running) stops the run here, saying so, rather than in makeblastdb.
+     */
+    static void removeEarlierDatabase(Path database) {
+        try (java.nio.file.DirectoryStream<Path> files = Files.newDirectoryStream(database.getParent(),
+                database.getFileName() + ".n*")) {
+            for (Path file : files) {
+                Files.deleteIfExists(file);
+            }
+        } catch (java.nio.file.NoSuchFileException e) {
+            // No folder yet, no database.
+        } catch (java.io.IOException e) {
+            throw new PipelineException("Could not replace the primer database of the last run in "
+                    + database.getParent() + ": " + OpenElsewhere.describe(e), e);
         }
     }
 

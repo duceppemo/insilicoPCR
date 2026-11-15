@@ -180,10 +180,30 @@ record BbtoolsCommands(String javaCommand, Path bbtoolsJar, int childMemoryGiB, 
         return new Command(directory, arguments);
     }
 
-    /** The Java runtime running {@code program} of the BBTools jar. */
+    /**
+     * The Java runtime running {@code program} of the BBTools jar: directly, or through
+     * {@link BbtoolsLauncher} when the jar's path has a letter outside ASCII.
+     */
     private List<String> start(String program) {
-        return new ArrayList<>(List.of(javaCommand, "-ea", "-Xmx" + childMemoryGiB + "g", EXIT_ON_OUT_OF_MEMORY,
-                "-cp", bbtoolsJar.toString(), program));
+        List<String> arguments = new ArrayList<>(List.of(javaCommand, "-ea", "-Xmx" + childMemoryGiB + "g",
+                EXIT_ON_OUT_OF_MEMORY));
+        if (BbtoolsLauncher.needed(bbtoolsJar)) {
+            arguments.addAll(List.of("-cp", launcherClassPath(), BbtoolsLauncher.class.getName(),
+                    bbtoolsJar.toAbsolutePath().normalize().toString(), program));
+        } else {
+            arguments.addAll(List.of("-cp", bbtoolsJar.toString(), program));
+        }
+        return arguments;
+    }
+
+    /** Where {@link BbtoolsLauncher} is: insilicoPCR's jar, or its classes folder while developing. */
+    static String launcherClassPath() {
+        try {
+            return Path.of(BbtoolsLauncher.class.getProtectionDomain().getCodeSource().getLocation().toURI())
+                    .toAbsolutePath().normalize().toString();
+        } catch (java.net.URISyntaxException | RuntimeException e) {
+            throw new IllegalStateException("Unable to find insilicoPCR's own classes, to start BBTools from them", e);
+        }
     }
 
     private static Command withOption(Command command, String option) {

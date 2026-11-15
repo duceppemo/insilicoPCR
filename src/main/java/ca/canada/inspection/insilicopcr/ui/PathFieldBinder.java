@@ -34,7 +34,10 @@ public final class PathFieldBinder {
         if (text == null || text.isBlank()) {
             return null;
         }
-        String path = text.strip();
+        String path = unquoted(text.strip());
+        if (path.isEmpty()) {
+            return null;
+        }
         if (path.equals("~") || path.startsWith("~/") || path.startsWith("~\\")) {
             path = System.getProperty("user.home") + path.substring(1);
         }
@@ -43,6 +46,18 @@ public final class PathFieldBinder {
         } catch (InvalidPathException e) {
             return null;
         }
+    }
+
+    /**
+     * {@code path} without the double quotes around it. Windows Explorer's "Copy as path" puts them
+     * there, and a path pasted with them was refused on Windows (a quote cannot be in a file name),
+     * and on Linux named a file that does not exist.
+     */
+    private static String unquoted(String path) {
+        if (path.length() >= 2 && path.startsWith("\"") && path.endsWith("\"")) {
+            return path.substring(1, path.length() - 1).strip();
+        }
+        return path;
     }
 
     public static void bindDropTarget(TextField field, Consumer<Path> onPathSelected) {

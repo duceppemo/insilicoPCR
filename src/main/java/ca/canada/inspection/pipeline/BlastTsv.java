@@ -27,6 +27,13 @@ final class BlastTsv {
      */
     static void runBlastn(RunMonitor monitor, Path blastn, Path query, Path database, double evalue, int threads,
                           Path out) {
+        // A report of the last run open in Excel: blastn said only "File is not accessible".
+        try {
+            Files.deleteIfExists(out);
+        } catch (IOException e) {
+            throw new PipelineException("Could not replace " + out + ", written by the last run into this folder: "
+                    + OpenElsewhere.describe(e), e);
+        }
         monitor.runProgram(database.toAbsolutePath().getParent(),
                 blastn(blastn, query.toAbsolutePath(), database.getFileName().toString(), evalue, threads,
                         out.toAbsolutePath()), "blastn");

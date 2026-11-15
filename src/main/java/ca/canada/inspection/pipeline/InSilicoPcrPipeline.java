@@ -69,6 +69,8 @@ public final class InSilicoPcrPipeline {
                 ChildJavaMemory.budgetGiB(config.bbtoolsMemoryGiB()), checked.issues(), monitor);
         logRuntime(context);
         RunSettings.lines(config, context.hasFastqSamples()).forEach(monitor::info);
+        // Before any program runs: on Windows, a path too long fails them all, with an obscure error.
+        WindowsPathLimit.check(directories, sampleMap.values());
         done(Step.INPUT_CHECK);
 
         // FASTQ samples: baited and assembled into a mini-assembly, searched like an assembly.

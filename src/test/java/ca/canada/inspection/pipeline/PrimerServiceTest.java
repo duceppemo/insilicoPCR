@@ -210,4 +210,21 @@ class PrimerServiceTest {
         assertTrue(assertThrows(PipelineException.class, () -> PrimerService.read(empty)).getMessage()
                 .startsWith("The primer file " + empty + " has no primer"));
     }
+
+    @Test
+    void aPrimerFileSavedByNotepadIsRead() throws java.io.IOException {
+        // UTF-8 with a byte order mark and CRLF line ends: refused for "a sequence before its first header line".
+        byte[] bom = {(byte) 0xEF, (byte) 0xBB, (byte) 0xBF};
+        byte[] text = ">toxA-F size=312\r\nTTTCCTCATGCAATTCAAAACC\r\n>toxA-R\r\nATGTCCGTAATGTAGGCGAAA\r\n"
+                .getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        byte[] both = new byte[bom.length + text.length];
+        System.arraycopy(bom, 0, both, 0, bom.length);
+        System.arraycopy(text, 0, both, bom.length, text.length);
+        java.nio.file.Path notepad = java.nio.file.Files.write(dir.resolve("notepad.fasta"), both);
+
+        PrimerService.PrimerFile file = PrimerService.read(notepad);
+
+        assertEquals(java.util.Set.of("toxA-F", "toxA-R"), file.sequences().keySet());
+        assertEquals("TTTCCTCATGCAATTCAAAACC", file.sequences().get("toxA-F"));
+    }
 }

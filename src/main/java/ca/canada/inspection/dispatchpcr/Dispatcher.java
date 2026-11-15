@@ -57,6 +57,8 @@ public final class Dispatcher {
                 out.println("insilicoPCR " + Version.VERSION);
                 return 0;
             }
+            // "C:\my data\" -p ...: the backslash kept the quote, and -i took the rest of the line.
+            CliConfig.checkQuotes(cmd);
             if (!cmd.getArgList().isEmpty()) {
                 // A shell pattern (-i reads/*.fastq.gz) gives -i its first file and leaves the
                 // others here: run, the run would quietly analyse one file.

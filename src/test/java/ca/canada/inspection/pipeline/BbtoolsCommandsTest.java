@@ -207,4 +207,61 @@ class BbtoolsCommandsTest {
         assertEquals("first.fq.gz", ref);
         assertTrue(java.nio.file.Files.isSameFile(sampleDir.toRealPath().resolve(in), reads));
     }
+
+    @Test
+    void aJarAtAPathWithAccentsIsStartedThroughTheLauncher() {
+        // BBTools looked for its resources in "Donn??es" and stopped: no FASTQ sample could be run.
+        Path jar = Path.of("Données Rémi", "bbmap", "bbtools.jar");
+        List<String> command = new BbtoolsCommands("java", jar, 6, 4)
+                .assemble(Path.of("in.fq.gz"), Path.of("out.fasta"), TadpoleOptions.DEFAULTS).arguments();
+
+        assertEquals(List.of("java", "-ea", "-Xmx6g", "-XX:+ExitOnOutOfMemoryError", "-cp",
+                BbtoolsCommands.launcherClassPath(), BbtoolsLauncher.class.getName(),
+                jar.toAbsolutePath().normalize().toString(), "assemble.Tadpole"), command.subList(0, 9));
+        assertTrue(BbtoolsLauncher.needed(jar));
+        assertFalse(BbtoolsLauncher.needed(Path.of("C:", "My Apps (x86)", "bbtools.jar")));
+    }
+
+    @Test
+    void theLauncherGivesBbtoolsTheJarsPathAsItIs() throws java.net.MalformedURLException {
+        Path jar = Path.of("Données Rémi", "bbtools.jar").toAbsolutePath().normalize();
+        String url = BbtoolsLauncher.asIs(jar).toString();
+
+        assertTrue(url.startsWith("file:/"), url);
+        assertFalse(url.contains("%"), url);
+        assertTrue(url.endsWith("/Données Rémi/bbtools.jar"), url);
+    }
+
+    @Test
+    @org.junit.jupiter.api.Tag("end-to-end")
+    void bbdukRunsFromAnInstallationWhosePathHasAccents(@TempDir Path dir) throws java.io.IOException {
+        Path bbmap = AppPaths.applicationRoot().resolve("runtime").resolve("common").resolve("bbmap");
+        Path jar = bbmap.resolve("bbtools.jar");
+        Path primes = bbmap.resolve("resources").resolve("primes.txt.gz");
+        org.junit.jupiter.api.Assumptions.assumeTrue(java.nio.file.Files.isRegularFile(jar)
+                && java.nio.file.Files.size(jar) > 100_000 && java.nio.file.Files.size(primes) > 1_000,
+                "BBTools is not in runtime/ (Git LFS)");
+        Path installed = java.nio.file.Files.createDirectories(dir.resolve("Données Rémi").resolve("bbmap"));
+        java.nio.file.Files.copy(jar, installed.resolve("bbtools.jar"));
+        java.nio.file.Files.copy(primes, java.nio.file.Files.createDirectories(installed.resolve("resources"))
+                .resolve("primes.txt.gz"));
+        Path example = Path.of("docs", "examples", "five-isolates").toAbsolutePath();
+        Path out = java.nio.file.Files.createDirectories(dir.resolve("out")).resolve("baited.fastq.gz");
+        String java = ProcessHandle.current().info().command().orElse("java");
+        List<String> lines = new java.util.ArrayList<>();
+        RunMonitor monitor = new RunMonitor() {
+            @Override
+            public java.util.function.Consumer<String> programOutput() {
+                return lines::add;
+            }
+        };
+
+        new BbtoolsCommands(java, installed.resolve("bbtools.jar"), 1, 1)
+                .firstBait(example.resolve("primers.fasta"), List.of(example.resolve("reads").resolve("isolate_01_R1.fastq.gz"),
+                        example.resolve("reads").resolve("isolate_01_R2.fastq.gz")), out, 20, 0)
+                .run(monitor, "BBDuk");
+
+        assertFalse(lines.stream().anyMatch(line -> line.contains("Cannot find")), String.join("\n", lines));
+        assertTrue(java.nio.file.Files.size(out) > 1_000, String.join("\n", lines));
+    }
 }

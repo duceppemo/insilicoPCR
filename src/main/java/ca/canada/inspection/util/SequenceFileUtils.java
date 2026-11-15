@@ -157,11 +157,32 @@ public final class SequenceFileUtils {
     public static BufferedReader openMaybeGzip(Path file) throws IOException {
         // Decoded leniently either way: a byte that is not UTF-8 (an accented letter in a
         // header, say) becomes a replacement character instead of ending the run.
+        BufferedReader reader;
         if (file.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(".gz")) {
-            return new BufferedReader(new InputStreamReader(new GZIPInputStream(Files.newInputStream(file)),
+            reader = new BufferedReader(new InputStreamReader(new GZIPInputStream(Files.newInputStream(file)),
                     StandardCharsets.UTF_8));
+        } else {
+            reader = new BufferedReader(new InputStreamReader(Files.newInputStream(file), StandardCharsets.UTF_8));
         }
-        return new BufferedReader(new InputStreamReader(Files.newInputStream(file), StandardCharsets.UTF_8));
+        return withoutByteOrderMark(reader);
+    }
+
+    /**
+     * {@code reader} past the byte order mark its text starts with, if any. Notepad and other Windows
+     * editors save UTF-8 with one; read as a character, it stood before the first {@code >}, and a primer
+     * file saved so was refused for "a sequence before its first header line".
+     */
+    private static BufferedReader withoutByteOrderMark(BufferedReader reader) throws IOException {
+        try {
+            reader.mark(1);
+            if (reader.read() != '﻿') {
+                reader.reset();
+            }
+            return reader;
+        } catch (IOException | RuntimeException e) {
+            reader.close();
+            throw e;
+        }
     }
 
     /**

@@ -164,4 +164,23 @@ class ReportTsvTest {
                 "S\tits\t11-444\t434\tcontig_1\t\tits-F\tits-R\t0\t0\t0\t0\t+"));
         assertNull(ReportTsv.readChecked(plain).getFirst().sizeCheck());
     }
+
+    @Test
+    void aReportSavedAsUnicodeTextWithQuotedCellsReads() throws IOException {
+        // Excel's "Unicode Text": UTF-16 with a byte order mark; a cell holding a quote or a comma
+        // is put between quotes, its own quotes doubled.
+        String header = String.join("\t", ReportColumn.FIRST.stream().map(ReportColumn::header).toList());
+        String text = header + "\r\n" + "\"S,1 \"\"a\"\"\"\tits\t11-444\t434\tcontig_1\t\tits-F\tits-R\t0\t0\t0\t0\t+\r\n";
+        byte[] utf16 = text.getBytes(java.nio.charset.StandardCharsets.UTF_16LE);
+        byte[] withMark = new byte[utf16.length + 2];
+        withMark[0] = (byte) 0xff;
+        withMark[1] = (byte) 0xfe;
+        System.arraycopy(utf16, 0, withMark, 2, utf16.length);
+        Path report = Files.write(dir.resolve("unicode.txt"), withMark);
+
+        ReportRow row = ReportTsv.read(report).getFirst();
+
+        assertEquals("S,1 \"a\"", row.sample());
+        assertEquals(434, row.size());
+    }
 }

@@ -34,6 +34,13 @@ record GelPages(List<String> sampleNames, int samplesPerGel) {
         return sampleNames.subList(startIndex(pageIndex), endIndex(pageIndex));
     }
 
+    /** The lanes of page {@code pageIndex}, in lane order, with their bands from {@code lanes}. */
+    java.util.LinkedHashMap<String, List<GelBand>> lanes(int pageIndex, Map<String, List<GelBand>> lanes) {
+        java.util.LinkedHashMap<String, List<GelBand>> page = new java.util.LinkedHashMap<>();
+        samples(pageIndex).forEach(name -> page.put(name, lanes.getOrDefault(name, List.of())));
+        return page;
+    }
+
     /** "Samples 101–200 of 250 (first ... last)". */
     String rangeText(int pageIndex) {
         int start = startIndex(pageIndex);
@@ -44,11 +51,11 @@ record GelPages(List<String> sampleNames, int samplesPerGel) {
 
     /**
      * The bands of every page that {@code query} matches, as the viewer matches them on the page
-     * it shows: a band (the amplicons of a lane that run together) matches when its sample name,
-     * genes, sizes and size checks hold the query ({@link GelText#searchText}). A lane without a band matches
-     * nothing, as on the page.
+     * it shows: a band, drawn as {@code mode} draws it ({@link LaneBand#groups}), matches when its
+     * sample name, genes, sizes and size checks hold the query ({@link GelText#searchText}). A lane
+     * without a band matches nothing, as on the page.
      */
-    Search find(Map<String, List<GelBand>> lanes, String query) {
+    Search find(Map<String, List<GelBand>> lanes, String query, GelColorMode mode) {
         String normalized = GelText.normalizeQuery(query);
         if (normalized.isBlank()) {
             return new Search(-1, 0);
@@ -56,8 +63,8 @@ record GelPages(List<String> sampleNames, int samplesPerGel) {
         int first = -1;
         int count = 0;
         for (int i = 0; i < sampleNames.size(); i++) {
-            for (List<GelBand> band : GelReportReader.groupByRoundedSize(
-                    lanes.getOrDefault(sampleNames.get(i), List.of())).values()) {
+            for (List<GelBand> band : LaneBand.groups(lanes.getOrDefault(sampleNames.get(i), List.of()), mode)
+                    .values().stream().flatMap(List::stream).toList()) {
                 if (GelText.searchText(band).contains(normalized)) {
                     count++;
                     if (first < 0) {

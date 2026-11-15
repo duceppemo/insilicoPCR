@@ -40,25 +40,34 @@ record LaneBand(int lane, double laneX, String gene, List<GelBand> bands, double
         List<LaneBand> result = new ArrayList<>();
         double laneX = layout.laneX(lane);
         double laneVariation = GelScale.deterministicRange(sampleName, 0.90, 1.10);
-        for (Map.Entry<Integer, List<GelBand>> sizeEntry
-                : new TreeMap<>(GelReportReader.groupByRoundedSize(laneBands)).entrySet()) {
+        for (Map.Entry<Integer, List<List<GelBand>>> sizeEntry : groups(laneBands, mode).entrySet()) {
             int size = sizeEntry.getKey();
+            List<List<GelBand>> groups = sizeEntry.getValue();
             double verticalJitter = GelScale.deterministicRange(sampleName + ':' + size, -0.45, 0.45);
-            Map<String, List<GelBand>> groups = new TreeMap<>();
-            sizeEntry.getValue().forEach(band ->
-                    groups.computeIfAbsent(mode.group(band), ignored -> new ArrayList<>()).add(band));
-            int index = 0;
-            for (Map.Entry<String, List<GelBand>> group : groups.entrySet()) {
+            for (int index = 0; index < groups.size(); index++) {
+                List<GelBand> group = groups.get(index);
                 double offset = (index - (groups.size() - 1) / 2.0) * 3.0;
-                double intensity = Math.min(1.0, GelScale.sizeIntensity(size, group.getValue().size()) * laneVariation);
+                double intensity = Math.min(1.0, GelScale.sizeIntensity(size, group.size()) * laneVariation);
                 double centerY = belowTheWells(layout, layout.bandY(size) + verticalJitter + offset);
-                result.add(new LaneBand(lane, laneX, GelText.primaryGene(group.getValue()), group.getValue(), centerY,
-                        intensity,
+                result.add(new LaneBand(lane, laneX, GelText.primaryGene(group), group, centerY, intensity,
                         BandRect.inLane(laneX, centerY, layout.laneWidth(), baseBandHeight + (intensity * 1.2))));
-                index++;
             }
         }
         return result;
+    }
+
+    /**
+     * The amplicons of a lane as bands, as {@link #of} draws them and a search counts them: by
+     * rounded size, smallest first, then apart by what colours them in {@code mode}.
+     */
+    static Map<Integer, List<List<GelBand>>> groups(List<GelBand> lane, GelColorMode mode) {
+        Map<Integer, List<List<GelBand>>> groups = new TreeMap<>();
+        new TreeMap<>(GelReportReader.groupByRoundedSize(lane)).forEach((size, sameSize) -> {
+            Map<String, List<GelBand>> byColour = new TreeMap<>();
+            sameSize.forEach(band -> byColour.computeIfAbsent(mode.group(band), ignored -> new ArrayList<>()).add(band));
+            groups.put(size, List.copyOf(byColour.values()));
+        });
+        return groups;
     }
 
     /**

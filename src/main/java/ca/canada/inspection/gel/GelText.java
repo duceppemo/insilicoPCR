@@ -94,4 +94,13 @@ final class GelText {
     static String matches(int count) {
         return count + " match" + (count == 1 ? "" : "es");
     }
+
+    /**
+     * The matches of a search on the gel shown, and on every gel of a run of several when they
+     * hold more: Ctrl+A selects those of the gel shown.
+     */
+    static String matches(int onThisGel, int onAllGels) {
+        return onAllGels > onThisGel ? matches(onThisGel) + " on this gel, " + onAllGels + " on all gels"
+                : matches(onThisGel);
+    }
 }

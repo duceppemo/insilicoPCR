@@ -32,7 +32,8 @@ record GelScene(double width, double height, List<Box> background, List<Band> la
 
     static final String FONT = "Verdana";
     static final double LADDER_FONT_SIZE = 10.0;
-    private static final double BAND_HEIGHT = 2.0;
+    /** Height of a band before its strength adds to it, for the ladder and the samples alike. */
+    static final double BAND_HEIGHT = 2.0;
     private static final double LADDER_INTENSITY = 0.45;
 
     GelScene {

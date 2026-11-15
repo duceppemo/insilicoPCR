@@ -61,7 +61,7 @@ public final class ReportTsv {
         }
         // A spreadsheet may save the file with a byte order mark before the first name.
         String headerLine = lines.getFirst().startsWith("\uFEFF") ? lines.getFirst().substring(1) : lines.getFirst();
-        List<String> header = List.of(headerLine.split("\t", -1));
+        List<String> header = List.of(cells(headerLine));
         boolean hasHeader = header.contains(ReportColumn.SIZE.header());
         Map<String, Integer> columns = new HashMap<>();
         List<String> names = hasHeader ? header : ReportColumn.FIRST.stream().map(ReportColumn::header).toList();
@@ -70,7 +70,7 @@ public final class ReportTsv {
         }
         if (!hasHeader) {
             // Without a header, the first line must be a product: a location and a size.
-            Fields first = new Fields(columns, headerLine.split("\t", -1));
+            Fields first = new Fields(columns, cells(headerLine));
             if (!first.text(ReportColumn.LOCATION).matches("\\d+-\\d+") || first.number(ReportColumn.SIZE) == null) {
                 throw new UncheckedIOException("Not a consolidated report: " + report, new IOException(
                         "its first line has no " + ReportColumn.SIZE.header() + " column and is not a product"));
@@ -80,7 +80,7 @@ public final class ReportTsv {
         Integer sizeCheck = columns.get(ExpectedSizes.COLUMN);
         for (String line : lines.subList(1, lines.size())) {
             if (!line.isBlank() && !(hasHeader && line.equals(headerLine))) {
-                String[] values = line.split("\t", -1);
+                String[] values = cells(line);
                 ReportRow row = row(new Fields(columns, values));
                 if (row != null) {
                     rows.add(new Checked(row, sizeCheck == null || sizeCheck >= values.length ? null
@@ -102,19 +102,46 @@ public final class ReportTsv {
     }
 
     /**
-     * The lines of a report: UTF-8, as the run writes it, or the Windows encoding a spreadsheet
-     * may save it in ("Text (Tab delimited)" in Excel), whose accented letters are not UTF-8.
+     * The lines of a report: UTF-8, as the run writes it, or what a spreadsheet may save it in:
+     * UTF-16 with its byte order mark ("Unicode Text" in Excel), or the Windows encoding ("Text
+     * (Tab delimited)"), whose accented letters are not UTF-8.
      */
     private static List<String> lines(Path report) {
         try {
-            try {
-                return Files.readAllLines(report, StandardCharsets.UTF_8);
-            } catch (CharacterCodingException notUtf8) {
-                return Files.readAllLines(report, Charset.forName("windows-1252"));
+            byte[] bytes = Files.readAllBytes(report);
+            Charset utf16 = bytes.length >= 2 && (bytes[0] & 0xff) == 0xff && (bytes[1] & 0xff) == 0xfe
+                    ? StandardCharsets.UTF_16LE
+                    : bytes.length >= 2 && (bytes[0] & 0xff) == 0xfe && (bytes[1] & 0xff) == 0xff
+                    ? StandardCharsets.UTF_16BE : null;
+            String text;
+            if (utf16 != null) {
+                text = new String(bytes, 2, bytes.length - 2, utf16);
+            } else {
+                try {
+                    text = StandardCharsets.UTF_8.newDecoder().decode(java.nio.ByteBuffer.wrap(bytes)).toString();
+                } catch (CharacterCodingException notUtf8) {
+                    text = new String(bytes, Charset.forName("windows-1252"));
+                }
             }
+            return text.lines().toList();
         } catch (IOException e) {
             throw new UncheckedIOException("Unable to read consolidated report: " + report, e);
         }
+    }
+
+    /**
+     * The cells of a line. A spreadsheet saving a cell that holds a quote (or, for some, a comma)
+     * puts it between quotes and doubles the quotes in it: those are taken off.
+     */
+    private static String[] cells(String line) {
+        String[] cells = line.split("\t", -1);
+        for (int i = 0; i < cells.length; i++) {
+            String cell = cells[i];
+            if (cell.length() >= 2 && cell.startsWith("\"") && cell.endsWith("\"")) {
+                cells[i] = cell.substring(1, cell.length() - 1).replace("\"\"", "\"");
+            }
+        }
+        return cells;
     }
 
     private static ReportRow row(Fields fields) {

@@ -61,21 +61,34 @@ class GelPagesTest {
         lanes.put("s4", List.of(new GelBand("s4", "TOXA", 583)));
         GelPages pages = new GelPages(SAMPLES, 2);
 
-        assertEquals(new GelPages.Search(1, 1), pages.find(lanes, " alpha "));
-        assertEquals(new GelPages.Search(0, 2), pages.find(lanes, "ToxA"));
-        assertEquals(new GelPages.Search(1, 1), pages.find(lanes, "118"));
+        assertEquals(new GelPages.Search(1, 1), pages.find(lanes, " alpha ", GelColorMode.BLACK));
+        assertEquals(new GelPages.Search(0, 2), pages.find(lanes, "ToxA", GelColorMode.BLACK));
+        assertEquals(new GelPages.Search(1, 1), pages.find(lanes, "118", GelColorMode.BLACK));
         // As on a page: bands match (Alpha's through its gene stxQ), lanes without one do not.
-        assertEquals(new GelPages.Search(0, 3), pages.find(lanes, "s"));
-        assertEquals(new GelPages.Search(-1, 0), pages.find(lanes, "S5"));
+        assertEquals(new GelPages.Search(0, 3), pages.find(lanes, "s", GelColorMode.BLACK));
+        assertEquals(new GelPages.Search(-1, 0), pages.find(lanes, "S5", GelColorMode.BLACK));
         // A query across a band's fields: its sample and gene.
-        assertEquals(new GelPages.Search(1, 1), pages.find(lanes, "s4 toxa"));
-        assertEquals(new GelPages.Search(-1, 0), pages.find(lanes, "nothing"));
+        assertEquals(new GelPages.Search(1, 1), pages.find(lanes, "s4 toxa", GelColorMode.BLACK));
+        assertEquals(new GelPages.Search(-1, 0), pages.find(lanes, "nothing", GelColorMode.BLACK));
     }
 
     @Test
     void blankSearchFindsNothing() {
         GelPages pages = new GelPages(SAMPLES, 2);
-        assertEquals(new GelPages.Search(-1, 0), pages.find(Map.of(), null));
-        assertEquals(new GelPages.Search(-1, 0), pages.find(Map.of(), "  "));
+        assertEquals(new GelPages.Search(-1, 0), pages.find(Map.of(), null, GelColorMode.BLACK));
+        assertEquals(new GelPages.Search(-1, 0), pages.find(Map.of(), "  ", GelColorMode.BLACK));
+    }
+
+    @Test
+    void aSearchCountsBandsAsTheGelShownDrawsThem() {
+        // toxA at 310 and toxB at 305 run together: one band in black, two coloured by gene.
+        GelPages pages = new GelPages(List.of("s1"), 100);
+        Map<String, List<GelBand>> lanes = Map.of("s1",
+                List.of(new GelBand("s1", "toxA", 310), new GelBand("s1", "toxB", 305)));
+
+        assertEquals(1, pages.find(lanes, "s1", GelColorMode.BLACK).matches());
+        assertEquals(2, pages.find(lanes, "s1", GelColorMode.GENE).matches());
+        assertEquals("2 matches on this gel, 7 on all gels", GelText.matches(2, 7));
+        assertEquals("2 matches", GelText.matches(2, 2));
     }
 }

@@ -63,6 +63,20 @@
   three quarters of the memory insilicoPCR leaves free on the computer (a
   container's limit inside one), and at least half of its heap, rounded: 9 GB
   on that computer.
+- **Open Report TSV**: a report saved by Excel as "Unicode Text" (UTF-16) was
+  refused as not a report, and a cell Excel put between quotes (a name with a
+  quote or a comma) kept them; both read now.
+- HTML report: assay/sample pairs "not checkable from reads" had no summary
+  tile, unlike the other outcomes. On large runs the page carried a hover text
+  on every "No product" cell, a third of its size (47 MB for 5,000 samples by 40
+  assays); a cell with nothing to add has none now, and the filter boxes wait
+  for typing to stop before filtering tens of thousands of rows.
+- Gel viewer: on a run of several gels, the search counted bands of the gel
+  shown only, and the search across gels grouped bands of one size otherwise
+  than the gel drawn by gene or by size check; the count gives both (`2 matches
+  on this gel, 7 on all gels`). The save dialogs and their messages could open
+  behind the gel window. In the window, a coloured band's lower edge was drawn
+  from black, not from its colour as in a saved picture.
 - Command line: an input with no FASTA or FASTQ file at all (an empty folder, a
   mistyped `-i`) ended with empty reports and exit code 0, which a workflow
   manager took for success; it stops with exit code 1. Arguments the command

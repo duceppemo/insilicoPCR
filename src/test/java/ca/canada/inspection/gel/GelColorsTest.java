@@ -40,7 +40,7 @@ class GelColorsTest {
         List<GelBand> bands = List.of(new GelBand("a", "its", 500, ca.canada.inspection.pcr.ExpectedSizes.Label.UNEXPECTED),
                 new GelBand("a", "its", 434, ca.canada.inspection.pcr.ExpectedSizes.Label.TARGET), new GelBand("b", "plain", 200));
 
-        assertEquals(List.of("Target size", "Unexpected size", "No size declared"),
+        assertEquals(List.of("Target size", "Unexpected size", "Amplified"),
                 List.copyOf(GelColors.sizeCheckLegend(bands).keySet()));
         assertEquals(Color.web("#008300"), GelColors.of(GelColorMode.SIZE_CHECK, bands.get(1), Map.of()));
         assertEquals(Color.web("#d03b3b"), GelColors.of(GelColorMode.SIZE_CHECK, bands.get(0), Map.of()));
@@ -49,5 +49,23 @@ class GelColorsTest {
         assertTrue(GelColors.legend(GelColorMode.BLACK, bands, Map.of()).isEmpty());
         assertEquals(List.of("its"), List.copyOf(GelColors.legend(GelColorMode.GENE, bands.subList(0, 2),
                 Map.of("its", Color.RED, "plain", Color.BLUE)).keySet()), "only the genes shown");
+    }
+
+    @Test
+    void theSizeCheckColoursAreTheHtmlReports() throws java.io.IOException {
+        // Written twice, in Java and in report.css: kept in step here.
+        String css;
+        try (var in = ca.canada.inspection.report.HtmlReport.class.getResourceAsStream("report.css")) {
+            css = new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+        }
+        Map<String, Color> expected = Map.of("target", GelColors.sizeCheck(ca.canada.inspection.pcr.ExpectedSizes.Label.TARGET),
+                "other", GelColors.sizeCheck(ca.canada.inspection.pcr.ExpectedSizes.Label.OTHER),
+                "unexpected", GelColors.sizeCheck(ca.canada.inspection.pcr.ExpectedSizes.Label.UNEXPECTED),
+                "amplified", GelColors.sizeCheck(null));
+        expected.forEach((name, color) -> {
+            java.util.regex.Matcher css1 = java.util.regex.Pattern.compile("--" + name + ": (#[0-9a-fA-F]{6})").matcher(css);
+            assertTrue(css1.find(), name);
+            assertEquals(Color.web(css1.group(1)), color, name);
+        });
     }
 }

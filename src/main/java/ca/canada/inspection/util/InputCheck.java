@@ -355,7 +355,8 @@ public final class InputCheck {
         if (!sequenceSeen) {
             return new FileFault("the file holds no sequence", "header lines only", 0);
         }
-        return depth == Depth.FULL ? repeatedId(file) : FileFault.NONE;
+        // At either depth: headers only, quick on an assembly, and what it prevents is a wrong product.
+        return repeatedId(file);
     }
 
     /**

@@ -26,8 +26,10 @@ public final class FastaScanner implements AutoCloseable {
 
     /**
      * Reads on to the next header line and returns it, {@code >} included, or
-     * {@code null} after the last record. Each base passed on the way, without line ends
-     * and blanks, is given to {@code bases}, or skipped when it is {@code null}.
+     * {@code null} after the last record. Each base passed on the way is given to {@code bases},
+     * or skipped when it is {@code null}: the nucleotide letters (IUPAC codes and U, either case),
+     * the characters BLAST counts. Anything else (line ends, blanks, alignment gaps {@code -} and
+     * {@code .}, digits, {@code *}) BLAST drops, and so does this: a position here is BLAST's.
      */
     public String nextHeader(IntConsumer bases) throws IOException {
         int c;
@@ -38,12 +40,26 @@ public final class FastaScanner implements AutoCloseable {
                 return headerLine();
             } else {
                 atLineStart = false;
-                if (bases != null && !Character.isWhitespace(c)) {
+                if (bases != null && isNucleotide(c)) {
                     bases.accept(c);
                 }
             }
         }
         return null;
+    }
+
+    private static final boolean[] NUCLEOTIDE = new boolean[128];
+
+    static {
+        for (char c : "ACGTURYKMSWBDHVN".toCharArray()) {
+            NUCLEOTIDE[c] = true;
+            NUCLEOTIDE[Character.toLowerCase(c)] = true;
+        }
+    }
+
+    /** Whether BLAST counts {@code c} as a base of a nucleotide sequence. */
+    static boolean isNucleotide(int c) {
+        return c < NUCLEOTIDE.length && NUCLEOTIDE[c];
     }
 
     /** The rest of a header line whose {@code >} was just read. */

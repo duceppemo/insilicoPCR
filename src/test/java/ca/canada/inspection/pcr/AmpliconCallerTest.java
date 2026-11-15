@@ -23,7 +23,7 @@ class AmpliconCallerTest {
         assertEquals(600, amplicon.end());
         assertEquals(500, amplicon.size());
         assertEquals('+', amplicon.forwardStrand());
-        assertEquals("101-600", amplicon.location());
+        assertEquals("101-600", amplicon.start() + "-" + amplicon.end());
     }
 
     @Test
@@ -123,7 +123,7 @@ class AmpliconCallerTest {
 
         AmpliconCaller.Amplicon amplicon = AmpliconCaller.call(forward, reverse, DEFAULTS).orElseThrow();
         assertEquals(500, amplicon.size());
-        assertEquals("1-494", amplicon.location());
+        assertEquals("1-494", amplicon.start() + "-" + amplicon.end());
 
         // Both size limits see the full product, not the part on the contig.
         assertTrue(AmpliconCaller.call(forward, reverse, new AmpliconOptions(0, 0, 5, 0, 8, 0, 499)).isEmpty());

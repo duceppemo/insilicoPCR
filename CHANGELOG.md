@@ -97,6 +97,19 @@
   than an earlier run's, and **Open Previous Run** opened the earlier run; a new
   report is numbered after the highest one. A run whose report was deleted is
   passed over for the one before it, not an error.
+- An assembly holding characters BLAST leaves out of a sequence (alignment gaps
+  `-` and `.`, digits, `*`) was read with them: the bases compared with a hit's
+  trimmed ends were shifted from BLAST's positions, which could wrongly reject
+  or accept the hit, and contig lengths were off. Only the nucleotide letters
+  BLAST counts are read now.
+- `--input-check quick` let an assembly with two sequences of one ID through;
+  the check of the IDs is made at both depths.
+- Two products of different sizes at a contig's start (primers of different
+  lengths hanging off it) were reported as one row; each keeps its own.
+- Two contigs of over a gigabase each gave "primers at contig ends" a negative
+  size (an integer overflow).
+- FASTQ diagnostics: when the reads carry only the probe of an assay, the detail
+  said the forward primer alone was missing; it names both.
 - Command line: an input with no FASTA or FASTQ file at all (an empty folder, a
   mistyped `-i`) ended with empty reports and exit code 0, which a workflow
   manager took for success; it stops with exit code 1. Arguments the command

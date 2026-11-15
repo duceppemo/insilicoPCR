@@ -74,4 +74,23 @@ class ProductsTest {
         sample.hits().add("toxA-R", minusHit("toxA-R", "c1", 1581));
         assertEquals(2, Products.of(sample, primers, options).size(), "a new product once the hits change");
     }
+
+    @Test
+    void productsOfDifferentSizesAtAContigStartKeepTheirOwnRows() {
+        // Both hang off the contig start, so both locations are clamped to 1: sizes 203 and 207.
+        Map<String, String> sequences = new LinkedHashMap<>();
+        sequences.put("B-F_1", PRIMER_20);
+        sequences.put("B-F_2", PRIMER_20 + "ACGT");
+        sequences.put("B-R", PRIMER_20);
+        Sample sample = new Sample("S");
+        // Aligned from base 5 (of 20) and base 9 (of 24) on: 4 and 8 bases hang off the contig start.
+        sample.hits().add("B-F_1", TestHits.truncatedPlusHit("B-F_1", "c1", 1, 5, 20, PRIMER_20));
+        sample.hits().add("B-F_2", TestHits.truncatedPlusHit("B-F_2", "c1", 1, 9, 24, PRIMER_20 + "ACGT"));
+        sample.hits().add("B-R", minusHit("B-R", "c1", 180));
+
+        List<ReportRow> rows = Products.of(sample, PrimerPanel.of(sequences),
+                AmpliconOptions.builder().fivePrimeTruncation(8).build());
+
+        assertEquals(List.of(203, 207), rows.stream().map(ReportRow::size).sorted().toList(), rows.toString());
+    }
 }

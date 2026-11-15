@@ -96,7 +96,8 @@ class QueryTemplatesTest {
         Path fasta = Files.writeString(dir.resolve("odd.fasta"), ">c1 a>b\nAC>c9\nGT\n>c2\nTT\n");
 
         try (QueryTemplates templates = new QueryTemplates(List.of(fasta))) {
-            assertEquals("AC>c9GT", templates.apply(on("c1")).bases().toString());
+            // Not a header; not bases either: BLAST drops the > and the digit, so the template does too.
+            assertEquals("ACcGT", templates.apply(on("c1")).bases().toString());
             assertNull(templates.apply(on("c9")));
         }
     }

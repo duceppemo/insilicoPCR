@@ -122,8 +122,13 @@ public final class SplitAcrossContigs {
                 return null; // convergent: a product on the contig, or none for another reason
             }
         }
+        // Summed as a long: two chromosomes of over a gigabase overflowed an int into a negative size.
+        long minimumSize = (long) forward.toQueryEnd(forwardLength) + reverse.toQueryEnd(reverseLength);
+        if (minimumSize > Integer.MAX_VALUE) {
+            return null; // longer than any product looked for
+        }
         return new Split(sample, assay, forward, toEnd(forward, forwardLength), reverse, toEnd(reverse, reverseLength),
-                forward.toQueryEnd(forwardLength) + reverse.toQueryEnd(reverseLength), sameContig, probe);
+                (int) minimumSize, sameContig, probe);
     }
 
     /**

@@ -60,4 +60,18 @@ class FastaScannerTest {
             assertNull(scanner.nextHeader(null));
         }
     }
+
+    @Test
+    void charactersBlastDropsAreNotBases() throws IOException {
+        // An alignment's gaps and other non-nucleotide characters: BLAST leaves them out of its
+        // positions, so a template or a length that kept them was shifted from BLAST's.
+        Path fasta = Files.writeString(dir.resolve("gapped.fasta"), ">g\nAC--GT..1*nr\n");
+        assertEquals(Map.of("g", 6), SequenceFileUtils.sequenceLengths(fasta));
+        StringBuilder bases = new StringBuilder();
+        try (FastaScanner scanner = new FastaScanner(List.of(fasta))) {
+            scanner.nextHeader(null);
+            scanner.nextHeader(base -> bases.append((char) base));
+        }
+        assertEquals("ACGTnr", bases.toString());
+    }
 }

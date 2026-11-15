@@ -281,4 +281,38 @@ class PairSupportTest {
         entering[300] = 5;
         assertNull(PairSupport.unbridgedRepeat(depth, entering, leaving, 300));
     }
+
+    @Test
+    void aReadOfAnotherRepeatCopyOnTheMinusStrandIsClippedOnTheProductsSide() {
+        // As the plus-strand reads above, read from the other strand: where it enters the repeat is
+        // still the product's left, whatever strand the read is on.
+        Random random = new Random(3);
+        String repeat = random(random, 200);
+        String product = random(random, 150) + repeat + random(random, 150);
+        String elsewhere = random(random, 150) + repeat + random(random, 150);
+        Tally tally = new Tally(List.of(product));
+
+        Placement entering = tally.place(Dna.reverseComplement(elsewhere.substring(110, 210)))[0];
+        assertTrue(entering.entersHere(), entering.toString());
+        assertFalse(entering.leavesHere(), entering.toString());
+        Placement leaving = tally.place(Dna.reverseComplement(elsewhere.substring(290, 390)))[0];
+        assertTrue(leaving.leavesHere(), leaving.toString());
+        assertFalse(leaving.entersHere(), leaving.toString());
+    }
+
+    @Test
+    void onlyPairsFacingEachOtherOnOppositeStrandsMakeFragments() {
+        // Same-strand pairs, and pairs facing away from each other, come from no fragment of the product.
+        Random random = new Random(4);
+        String genome = random(random, 1400);
+        Tally sameStrand = new Tally(List.of(genome.substring(200, 1200)));
+        Tally facingAway = new Tally(List.of(genome.substring(200, 1200)));
+        for (int start = 0; start + FRAGMENT <= genome.length(); start += 5) {
+            String fragment = genome.substring(start, start + FRAGMENT);
+            sameStrand.addPair(fragment.substring(0, READ), fragment.substring(FRAGMENT - READ));
+            facingAway.addPair(Dna.reverseComplement(fragment.substring(0, READ)), fragment.substring(FRAGMENT - READ));
+        }
+        assertEquals(Kind.TOO_FEW_PAIRS, sameStrand.verdict(0).kind(), sameStrand.verdict(0).summary());
+        assertEquals(Kind.TOO_FEW_PAIRS, facingAway.verdict(0).kind(), facingAway.verdict(0).summary());
+    }
 }

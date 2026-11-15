@@ -9,6 +9,7 @@ import org.apache.commons.cli.CommandLine;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.function.IntConsumer;
 
 /**
  * Reads the run a command line asks for. The defaults and the checks of the settings are
@@ -33,22 +34,23 @@ public final class CliConfig {
             throw new IllegalArgumentException("Primer file does not exist or is not a regular file: " + primers);
         }
 
-        int mismatches = parseNonNegative(cmd, "mismatches", 0);
-        AmpliconOptions options = new AmpliconOptions(
-                mismatches,
-                parseNonNegative(cmd, "probe-mismatches", mismatches),
-                parseNonNegative(cmd, "3p-window", AmpliconOptions.DEFAULT_THREE_PRIME_WINDOW),
-                parseNonNegative(cmd, "3p-penalty", AmpliconOptions.DEFAULT_THREE_PRIME_PENALTY),
-                parseNonNegative(cmd, "5p-truncation", AmpliconOptions.DEFAULT_FIVE_PRIME_TRUNCATION),
-                parseNonNegative(cmd, "min-length", AmpliconOptions.DEFAULT_MIN_AMPLICON_LENGTH),
-                parseNonNegative(cmd, "max-length", AmpliconOptions.DEFAULT_MAX_AMPLICON_LENGTH)
-        );
+        // Only what is given is set: the defaults are the builders' own, the application's too.
+        AmpliconOptions.Builder amplicon = AmpliconOptions.builder();
+        ifGiven(cmd, "mismatches", amplicon::mismatches);
+        ifGiven(cmd, "probe-mismatches", amplicon::probeMismatches);
+        ifGiven(cmd, "3p-window", amplicon::threePrimeWindow);
+        ifGiven(cmd, "3p-penalty", amplicon::threePrimePenalty);
+        ifGiven(cmd, "5p-truncation", amplicon::fivePrimeTruncation);
+        ifGiven(cmd, "min-length", amplicon::minLength);
+        ifGiven(cmd, "max-length", amplicon::maxLength);
 
         PipelineConfig.Builder config = PipelineConfig.builder(input, output, primers)
-                .ampliconOptions(options)
+                .ampliconOptions(amplicon.build())
                 .gel(cmd.hasOption("gel"))
-                .tadpole(tadpoleOptions(cmd))
-                .inputCheck(InputCheck.Depth.parse(cmd.getOptionValue("input-check", "full")));
+                .tadpole(tadpoleOptions(cmd));
+        if (cmd.hasOption("input-check")) {
+            config.inputCheck(InputCheck.Depth.parse(cmd.getOptionValue("input-check")));
+        }
         if (cmd.hasOption("threads")) {
             config.threads(parseInt(cmd, "threads"));
         }
@@ -62,6 +64,12 @@ public final class CliConfig {
             config.readExtension(readExtension(cmd.getOptionValue("read-extension")));
         }
         return config.build();
+    }
+
+    private static void ifGiven(CommandLine cmd, String option, IntConsumer set) {
+        if (cmd.hasOption(option)) {
+            set.accept(parseNonNegative(cmd, option, 0));
+        }
     }
 
     private static ReadExtensionCaller.Mode readExtension(String value) {

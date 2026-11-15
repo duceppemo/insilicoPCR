@@ -45,6 +45,8 @@ public record PipelineConfig(
 
     /** The blastn e-value both front-ends start from, as the application's field shows it. */
     public static final String DEFAULT_EVALUE_TEXT = "1e5";
+    /** Every read of every FASTQ file, as the application always does. */
+    public static final InputCheck.Depth DEFAULT_INPUT_CHECK = InputCheck.Depth.FULL;
     /**
      * Deliberately permissive: primer hits are filtered by the mismatch and 3'/5'-end rules
      * instead, and a short primer's e-value grows with contig length.
@@ -67,12 +69,12 @@ public record PipelineConfig(
         private final Path primers;
         private int threads = Runtime.getRuntime().availableProcessors();
         private double evalue = DEFAULT_EVALUE;
-        private AmpliconOptions ampliconOptions = AmpliconOptions.withMismatches(0);
+        private AmpliconOptions ampliconOptions = AmpliconOptions.builder().build();
         private boolean gel;
         private TadpoleOptions tadpole = TadpoleOptions.DEFAULTS;
         private double readMinFraction = ReadLevelCaller.DEFAULT_MIN_SUPPORT_FRACTION;
         private ReadExtensionCaller.Mode readExtension = ReadExtensionCaller.Mode.DEFAULT;
-        private InputCheck.Depth inputCheck = InputCheck.Depth.FULL;
+        private InputCheck.Depth inputCheck = DEFAULT_INPUT_CHECK;
 
         private Builder(Path input, Path output, Path primers) {
             this.input = input;

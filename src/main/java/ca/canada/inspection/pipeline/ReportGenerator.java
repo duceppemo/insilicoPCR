@@ -49,15 +49,14 @@ public final class ReportGenerator {
         diagnostics.logLines().forEach(monitor::warning);
         List<SplitAcrossContigs.Split> splits = assemblySplits(context);
         splits.forEach(split -> monitor.warning("Warning: " + split.message()));
-        Path html = HtmlReport.write(report, written.rows(), context.samples().keySet(), RunDetails.fastqSampleNames(context.samples()),
+        Path html = HtmlReport.write(report, written.rows(), context.samples().keySet(), fastqSampleNames(context.samples()),
                 context.primers(), diagnostics.findings(),
-                RunDetails.of(Version.VERSION, context.config(), context.hasFastqSamples()),
+                RunSettings.details(Version.VERSION, context.config(), context.hasFastqSamples()),
                 context.inputIssues(), splits);
         monitor.info("HTML report written to " + html);
-        List<String> qaLines = new ArrayList<>(RunDetails.inputIssueLines(context.inputIssues()));
+        List<String> qaLines = new ArrayList<>(QaLogWriter.inputIssueLines(context.inputIssues()));
         qaLines.addAll(context.primers().expectedSizes().qaLogLines());
-        qaLines.addAll(diagnostics.qaLogLines(context.config().tadpole(), context.config().readMinFraction(),
-                context.config().readExtension()));
+        qaLines.addAll(diagnostics.qaLogLines());
         splits.forEach(split -> qaLines.add("Primers at contig ends: " + split.message()));
         // QAlog.txt marks the run finished and names its report: a run stopped before it does not
         // write it, and the folder's log still names the last finished run's report.
@@ -108,5 +107,16 @@ public final class ReportGenerator {
         sample.searchedFasta().stream().filter(Files::isRegularFile)
                 .forEach(file -> lengths.putAll(SequenceFileUtils.sequenceLengths(file)));
         return lengths;
+    }
+
+    /** Names of the samples given as reads. */
+    private static java.util.Set<String> fastqSampleNames(Map<String, Sample> samples) {
+        java.util.Set<String> names = new java.util.TreeSet<>();
+        samples.forEach((name, sample) -> {
+            if (sample.isFastq()) {
+                names.add(name);
+            }
+        });
+        return names;
     }
 }

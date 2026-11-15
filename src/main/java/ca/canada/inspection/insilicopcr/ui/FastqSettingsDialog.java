@@ -2,6 +2,7 @@ package ca.canada.inspection.insilicopcr.ui;
 
 import ca.canada.inspection.pcr.ReadExtensionCaller;
 import ca.canada.inspection.pcr.ReadLevelCaller;
+import ca.canada.inspection.pipeline.RunSettings;
 import ca.canada.inspection.pipeline.TadpoleOptions;
 import javafx.scene.control.ChoiceBox;
 import javafx.scene.control.TextField;
@@ -95,8 +96,7 @@ public final class FastqSettingsDialog {
     public static String summary(FastqSettings settings) {
         return (settings.isDefault() ? "Defaults" : "Changed from defaults (*)")
                 + "\nTadpole: " + String.join(" ", settings.tadpole().arguments())
-                + "\nRead-level calls: at least " + ReadLevelCaller.MIN_SUPPORTING_READS + " reads or read pairs and "
-                + Math.round(100 * settings.readMinFraction()) + "% of informative reads"
+                + "\nRead-level calls: " + RunSettings.readLevelCalls(settings.readMinFraction())
                 + "\nRead extension: " + settings.readExtension();
     }
 

@@ -172,28 +172,14 @@ class ReadExtensionStageTest {
                 + " the primers through a repeat longer than the read pairs can bridge; not reported")),
                 log.toString());
 
-        List<String> on = result.qaLogLines(TadpoleOptions.DEFAULTS, 0.3, ReadExtensionCaller.Mode.UNREPORTED);
-        assertTrue(on.stream().anyMatch(line -> line.startsWith("FASTQ mode read extension: unreported"
-                + " (--read-extension unreported); for assays in no contig and in no read, when reads carry both"
-                + " primers, up to 150 reads per primer")
-                && line.contains("Tadpole mode=extend k=31 branchmult1=1 branchmult2=1 mincountextend=2")
-                && line.contains("at least 2 extended reads seeded from each primer")), on.toString());
+        List<String> on = result.qaLogLines();
         assertTrue(on.stream().anyMatch(line -> line.startsWith("FASTQ mode: 1 assay(s) have a product in no contig"
                 + " and in no read, called by extending reads (rows marked 'FASTQ read-extension call'")), on.toString());
         assertTrue(on.stream().anyMatch(line -> line.startsWith("FASTQ mode: 1 negative assay(s) have both primers in"
                 + " the reads, but neither a read nor the extended reads hold a complete amplicon")), on.toString());
 
-        assertTrue(on.stream().anyMatch(line -> line.contains("read pairs holding each of its windows (the largest"
-                + " window of 100, 150, ... bases whose median is held by 10 pairs; none held by fewer than 2 or 10%"
-                + " of the median), and no repeat that long with another copy in the sample")), on.toString());
         assertTrue(on.stream().anyMatch(line -> line.startsWith("FASTQ mode WARNING: 2 assay(s) have a product that"
                 + " extended reads of both primers hold but read pairs do not confirm; NOT reported")), on.toString());
-        List<String> target = result.qaLogLines(TadpoleOptions.DEFAULTS, 0.3, ReadExtensionCaller.Mode.TARGET);
-        assertTrue(target.stream().anyMatch(line -> line.startsWith("FASTQ mode read extension: target"
-                + " (--read-extension target); for assays in no contig and in no read, and assays without a product"
-                + " of their declared target size, when reads carry both primers")), target.toString());
-        List<String> off = result.qaLogLines(TadpoleOptions.DEFAULTS, 0.3, ReadExtensionCaller.Mode.OFF);
-        assertTrue(off.contains("FASTQ mode read extension: off (--read-extension off)"), off.toString());
     }
 
     /** One BLAST TSV line: a perfect full-length primer hit at positions {@code qstart-qend}. */

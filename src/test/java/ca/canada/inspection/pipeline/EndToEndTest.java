@@ -136,7 +136,8 @@ class EndToEndTest {
         assertTrue(monitor.messages.contains("Completed read-level amplicon search"), monitor.messages.toString());
         assertTrue(monitor.messages.stream().anyMatch(line -> line.startsWith("Done in ")));
         assertFalse(monitor.blastProgress.isEmpty());
-        assertTrue(Files.readString(output.resolve("QAlog.txt")).contains("FASTQ mode Tadpole settings"));
+        assertTrue(Files.readString(output.resolve("QAlog.txt")).contains("  Tadpole assembly (FASTQ, --tadpole-...): k="));
+        assertTrue(monitor.messages.contains("  BLAST e-value (-e): 100000"), "the run's log lists its settings");
     }
 
     @Test
@@ -227,7 +228,7 @@ class EndToEndTest {
         // The 312 bp product is still reported, as a product of another size than the one declared.
         assertTrue(products(report(output)).stream().anyMatch(row -> row.startsWith("isolate_01 toxA 312 ")),
                 products(report(output)).toString());
-        assertTrue(Files.readString(output.resolve("QAlog.txt")).contains("read extension"));
+        assertTrue(Files.readString(output.resolve("QAlog.txt")).contains("  Read extension (FASTQ, --read-extension): target"));
     }
 
     @Test

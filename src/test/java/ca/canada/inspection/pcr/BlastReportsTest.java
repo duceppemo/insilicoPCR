@@ -22,6 +22,11 @@ class BlastReportsTest {
     @TempDir
     Path detailedDir;
 
+    /** Where the run writes a sample's BLAST report (pipeline.SampleFiles). */
+    private Path report(String sampleName) {
+        return detailedDir.resolve(sampleName).resolve(sampleName + ".tsv");
+    }
+
     private static String hitLine(int mismatches) {
         return String.join("\t",
                 "contig1", "assay-F", "20", String.valueOf(mismatches), "0", "1e-5", "40.1",
@@ -46,7 +51,7 @@ class BlastReportsTest {
 
         Map<String, Sample> samples = new HashMap<>();
         samples.put("sampleA", sample("sampleA"));
-        BlastReports.attachHits(detailedDir, samples, PRIMERS, OPTIONS, warning -> {});
+        BlastReports.attachHits(this::report, samples, PRIMERS, OPTIONS, warning -> {});
 
         assertEquals(1, samples.get("sampleA").blastResults().get("assay-F").size());
     }
@@ -59,7 +64,7 @@ class BlastReportsTest {
         Map<String, Sample> samples = new HashMap<>();
         samples.put("sampleA", sample("sampleA"));
 
-        BlastReports.attachHits(detailedDir, samples, PRIMERS, OPTIONS, warning -> {});
+        BlastReports.attachHits(this::report, samples, PRIMERS, OPTIONS, warning -> {});
         assertTrue(samples.get("sampleA").blastResults().isEmpty());
     }
 
@@ -67,7 +72,7 @@ class BlastReportsTest {
     void theReportIsReadForTheSampleWhateverItsFileIsCalled() throws IOException {
         // The file ISO2.FASTA is the sample ISO2: its report is ISO2/ISO2.tsv (it was looked
         // for under the file name, and its hits dropped, before 0.15.1).
-        Path report = BlastReports.reportFile(detailedDir, "ISO2");
+        Path report = report("ISO2");
         assertEquals(detailedDir.resolve("ISO2").resolve("ISO2.tsv"), report);
         Files.createDirectories(report.getParent());
         Files.writeString(report, hitLine(0) + "\n");
@@ -75,7 +80,7 @@ class BlastReportsTest {
         sample.setFile(detailedDir.resolve("ISO2.FASTA"));
         Map<String, Sample> samples = Map.of("ISO2", sample);
 
-        BlastReports.attachHits(detailedDir, samples, PRIMERS, OPTIONS, warning -> {});
+        BlastReports.attachHits(this::report, samples, PRIMERS, OPTIONS, warning -> {});
         assertEquals(1, sample.blastResults().get("assay-F").size());
     }
 
@@ -83,7 +88,7 @@ class BlastReportsTest {
     void aMissingReportFailsLoudly() {
         Map<String, Sample> samples = Map.of("ghost", sample("ghost"));
         org.junit.jupiter.api.Assertions.assertThrows(java.io.UncheckedIOException.class,
-                () -> BlastReports.attachHits(detailedDir, samples, PRIMERS, OPTIONS, warning -> {}));
+                () -> BlastReports.attachHits(this::report, samples, PRIMERS, OPTIONS, warning -> {}));
     }
 
     @Test
@@ -107,7 +112,7 @@ class BlastReportsTest {
         PrimerPanel primers = PrimerPanel.of(Map.of("assay-P", probe));
 
         // Before the fix this hit was rejected at any probe budget (3 unaligned bases).
-        BlastReports.attachHits(detailedDir, samples, primers, new AmpliconOptions(0, 1, 5, 0, 5, 0, 5000), warning -> {});
+        BlastReports.attachHits(this::report, samples, primers, new AmpliconOptions(0, 1, 5, 0, 5, 0, 5000), warning -> {});
         var hit = samples.get("sampleB").blastResults().get("assay-P").getFirst();
         assertEquals(1, hit.mismatch());
         assertEquals(21, hit.qstart());
@@ -117,7 +122,7 @@ class BlastReportsTest {
         Sample again = sample("sampleB");
         again.setFile(fasta);
         strict.put("sampleB", again);
-        BlastReports.attachHits(detailedDir, strict, primers, new AmpliconOptions(0, 0, 5, 0, 5, 0, 5000), warning -> {});
+        BlastReports.attachHits(this::report, strict, primers, new AmpliconOptions(0, 0, 5, 0, 5, 0, 5000), warning -> {});
         assertTrue(strict.get("sampleB").blastResults().isEmpty());
     }
 
@@ -136,7 +141,7 @@ class BlastReportsTest {
         sample.setFile(fasta);
         java.util.List<String> warnings = new java.util.ArrayList<>();
 
-        BlastReports.attachHits(detailedDir, Map.of("sampleC", sample), PrimerPanel.of(Map.of("assay-P", probe)),
+        BlastReports.attachHits(this::report, Map.of("sampleC", sample), PrimerPanel.of(Map.of("assay-P", probe)),
                 new AmpliconOptions(0, 1, 5, 0, 5, 0, 5000), warnings::add);
 
         assertEquals(1, warnings.size(), warnings.toString());

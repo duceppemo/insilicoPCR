@@ -32,7 +32,7 @@ public record PreviousRun(Path report, List<String> samples) {
     }
 
     public static PreviousRun open(Path runDirectory) {
-        Path qaLog = runDirectory.resolve("QAlog.txt");
+        Path qaLog = runDirectory.resolve(QaLogWriter.FILE_NAME);
         if (!Files.isRegularFile(qaLog)) {
             throw new PipelineException("QAlog.txt not found in " + runDirectory
                     + ": not the output folder of a finished run");

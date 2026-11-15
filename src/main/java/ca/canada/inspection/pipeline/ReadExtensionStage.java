@@ -103,7 +103,7 @@ public final class ReadExtensionStage {
             }
             stopIfCancelled(settings);
             try {
-                extendSample(settings, detailedDir.resolve(sample.getName()), sample, primers, options, reads,
+                extendSample(settings, SampleFiles.of(detailedDir, sample.getName()), sample, primers, options, reads,
                         outcomes, rows);
             } catch (PipelineException | UncheckedIOException e) {
                 // A failed program or a file that cannot be read or written: the assays stay as
@@ -120,20 +120,20 @@ public final class ReadExtensionStage {
         return new Result(Map.copyOf(outcomes), Map.copyOf(rows), List.copyOf(notes));
     }
 
-    private static void extendSample(Settings settings, Path sampleDir, Sample sample, PrimerPanel primers,
+    private static void extendSample(Settings settings, SampleFiles files, Sample sample, PrimerPanel primers,
                                      AmpliconOptions options, ReadEvidence reads,
                                      Map<String, Map<String, Outcome>> outcomes,
                                      Map<String, List<ReportRow>> rows) {
         String name = sample.getName();
-        Path seedsFile = BbtoolsCommands.extensionSeeds(sampleDir, name);
-        Path extendedFile = BbtoolsCommands.extendedReads(sampleDir, name);
-        Path hitsFile = BbtoolsCommands.extendedReadsHits(sampleDir, name);
+        Path seedsFile = files.extensionSeeds();
+        Path extendedFile = files.extendedReads();
+        Path hitsFile = files.extendedReadsHits();
         // No stale files from an earlier run in this folder.
         deleteQuietly(seedsFile);
         deleteQuietly(extendedFile);
         deleteQuietly(hitsFile);
-        deleteQuietly(BbtoolsCommands.extensionCandidates(sampleDir, name));
-        deleteQuietly(BbtoolsCommands.candidateReads(sampleDir, name));
+        deleteQuietly(files.extensionCandidates());
+        deleteQuietly(files.candidateReads());
 
         // What the sample shows already, on contigs and in reads: worked out once for the sample.
         Map<String, Set<Integer>> known = ReadExtensionCaller.knownSizes(sample, primers, options, reads);
@@ -141,13 +141,13 @@ public final class ReadExtensionStage {
         if (assays.isEmpty()) {
             return;
         }
-        Path baitedReads = BbtoolsCommands.doubleTargetMatches(sampleDir, name);
+        Path baitedReads = files.doubleTargetMatches();
         if (!Files.isRegularFile(baitedReads)) {
             throw new PipelineException("no baited reads file " + baitedReads.getFileName());
         }
         List<Seed> seeds = ReadExtensionCaller.seeds(assays, primers, reads);
         Map<String, ReadLevelStage.ReadRecord> seedReads = writeSeeds(seeds,
-                BbtoolsCommands.baitedReadsFasta(sampleDir, name), seedsFile);
+                files.baitedReadsFasta(), seedsFile);
         int reach = options.maxAmpliconLength() > 0 ? options.maxAmpliconLength() : ReadExtensionCaller.DEFAULT_REACH;
 
         settings.bbtools().extend(seedsFile, baitedReads, extendedFile, ReadExtensionCaller.K, reach)
@@ -163,7 +163,7 @@ public final class ReadExtensionStage {
                 extendedSample(name, hitsFile, extendedFile, lengths, primers, options,
                         settings.search().monitor()::warning), lengths, seeds, primers, options, reach,
                 known),
-                extendedFile, sampleDir, sample);
+                extendedFile, files, sample);
         outcomes.put(name, sampleOutcomes);
 
         Map<String, String> readOfSeed = new HashMap<>();
@@ -191,7 +191,7 @@ public final class ReadExtensionStage {
      * @param extendedFile the extended reads the products lie on
      */
     static Map<String, Outcome> checkAgainstReadPairs(Settings settings, Map<String, Outcome> outcomes,
-                                                      Path extendedFile, Path sampleDir, Sample sample) {
+                                                      Path extendedFile, SampleFiles files, Sample sample) {
         List<Product> closed = new ArrayList<>();
         outcomes.values().forEach(outcome -> closed.addAll(outcome.closed()));
         if (closed.isEmpty()) {
@@ -199,7 +199,7 @@ public final class ReadExtensionStage {
         }
         String name = sample.getName();
         List<String> sequences = candidateSequences(closed, extendedFile);
-        Path candidates = BbtoolsCommands.extensionCandidates(sampleDir, name);
+        Path candidates = files.extensionCandidates();
         try (BufferedWriter writer = Files.newBufferedWriter(candidates, StandardCharsets.UTF_8)) {
             for (int i = 0; i < closed.size(); i++) {
                 Product product = closed.get(i);
@@ -213,7 +213,7 @@ public final class ReadExtensionStage {
         } catch (IOException e) {
             throw new PipelineException("Could not write the candidate products: " + candidates, e);
         }
-        Path candidateReads = BbtoolsCommands.candidateReads(sampleDir, name);
+        Path candidateReads = files.candidateReads();
         settings.bbtools().recruit(candidates, sample.files(), candidateReads, ReadExtensionCaller.K)
                 .run(settings.search().monitor(), "BBDuk");
         PairSupport.Tally tally = tally(sequences, candidateReads, sample.files().size() == 2, settings);

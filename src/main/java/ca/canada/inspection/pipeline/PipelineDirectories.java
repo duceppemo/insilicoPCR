@@ -22,8 +22,13 @@ public record PipelineDirectories(Path output, Path detailed, Path consolidated)
         return output.resolve("primer_tmp.fasta");
     }
 
+    /** The files of sample {@code sampleName}. */
+    public SampleFiles sample(String sampleName) {
+        return SampleFiles.of(detailed, sampleName);
+    }
+
     public void createSampleDirectory(String sampleName) {
-        createDirectory(detailed.resolve(sampleName));
+        createDirectory(sample(sampleName).directory());
     }
 
     private void createAll() {

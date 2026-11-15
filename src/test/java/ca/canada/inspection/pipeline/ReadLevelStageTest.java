@@ -24,12 +24,13 @@ class ReadLevelStageTest {
     @Test
     void singleEndSampleIgnoresMergeOutputLeftByAnEarlierPairedRun() throws IOException {
         // A reused output folder: an earlier paired run of sample S left merge output.
-        Files.writeString(BbtoolsCommands.mergedReads(dir, "S"), "@old\nACGT\n+\nIIII\n");
-        Files.writeString(BbtoolsCommands.unmergedReads(dir, "S"), "");
+        SampleFiles files = new SampleFiles(dir, "S");
+        Files.writeString(files.mergedReads(), "@old\nACGT\n+\nIIII\n");
+        Files.writeString(files.unmergedReads(), "");
 
-        assertEquals(List.of(BbtoolsCommands.targetMatches(dir, "S")), ReadLevelStage.readInputs(dir, "S", false));
-        assertEquals(List.of(BbtoolsCommands.mergedReads(dir, "S"), BbtoolsCommands.unmergedReads(dir, "S")),
-                ReadLevelStage.readInputs(dir, "S", true));
+        assertEquals(List.of(files.targetMatches()), ReadLevelStage.readInputs(files, false));
+        assertEquals(List.of(files.mergedReads(), files.unmergedReads()),
+                ReadLevelStage.readInputs(files, true));
     }
 
     @Test

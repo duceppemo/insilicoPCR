@@ -26,6 +26,8 @@ final class QaLogWriter {
     private static final DateTimeFormatter QA_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss");
 
     /** Starts the line naming the run's consolidated report, relative to the output folder. */
+    /** The log's name in the output folder, which marks a finished run. */
+    static final String FILE_NAME = "QAlog.txt";
     static final String REPORT_PREFIX = "Consolidated report: ";
     /** Starts each line naming a sample the run analysed (one gel lane each). */
     static final String SAMPLE_PREFIX = "Sample analysed: ";
@@ -41,10 +43,10 @@ final class QaLogWriter {
      */
     static void write(PipelineContext context, String version, Path report, List<String> extraLines) {
         Path output = context.directories().output();
-        Path qLog = output.resolve("QAlog.txt");
+        Path qLog = output.resolve(FILE_NAME);
         // Written beside it, then moved over it: a write that stops partway (a full disk, the
         // program ending) leaves the last finished run's log whole, not half of this one.
-        Path written = output.resolve("QAlog.txt.part");
+        Path written = output.resolve(FILE_NAME + ".part");
         try (BufferedWriter writer = Files.newBufferedWriter(written, StandardCharsets.UTF_8)) {
             writeLine(writer, "In Silico PCR version: " + version);
             writeLine(writer, "Date run: " + QA_DATE_FORMAT.format(LocalDateTime.now()));
@@ -56,7 +58,7 @@ final class QaLogWriter {
             writeLine(writer, REPORT_PREFIX + relative(output, report));
             // The files of the samples analysed: a folder may hold other files, and files may be
             // added to it after the run.
-            writeLine(writer, "Input File(s) :");
+            writeLine(writer, QaLogInputs.INPUTS_MARKER);
             for (Path file : context.samples().values().stream().flatMap(sample -> sample.files().stream())
                     .toList()) {
                 writeLine(writer, file.toAbsolutePath().toString());

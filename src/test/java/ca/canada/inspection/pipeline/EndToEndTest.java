@@ -221,8 +221,8 @@ class EndToEndTest {
         new InSilicoPcrPipeline(config, monitor).run();
 
         Path sampleDir = output.resolve("detailed_report").resolve("isolate_01");
-        assertTrue(Files.size(BbtoolsCommands.extendedReads(sampleDir, "isolate_01")) > 0, "no extended reads");
-        assertTrue(Files.isRegularFile(BbtoolsCommands.extendedReadsHits(sampleDir, "isolate_01")));
+        assertTrue(Files.size(new SampleFiles(sampleDir, "isolate_01").extendedReads()) > 0, "no extended reads");
+        assertTrue(Files.isRegularFile(new SampleFiles(sampleDir, "isolate_01").extendedReadsHits()));
         assertTrue(monitor.messages.contains("Completed read extension"), monitor.messages.toString());
         assertTrue(monitor.programLines.stream().anyMatch(line -> line.contains("extend")), "Tadpole did not extend");
         // The 312 bp product is still reported, as a product of another size than the one declared.

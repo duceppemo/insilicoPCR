@@ -47,18 +47,16 @@ public final class ReadExtensionStage {
 
     /**
      * @param search           blastn settings, logging and cancellation, as for the read-level search
-     * @param bbtools          builds the Tadpole command
-     * @param bbtoolsDirectory working directory of BBTools child processes
+     * @param bbtools          builds the Tadpole and BBDuk commands
      * @param mode             which assays reads are extended for
      */
-    record Settings(ReadLevelStage.Settings search, BbtoolsCommands bbtools, Path bbtoolsDirectory,
-                    ReadExtensionCaller.Mode mode) {
+    record Settings(ReadLevelStage.Settings search, BbtoolsCommands bbtools, ReadExtensionCaller.Mode mode) {
 
         /** The settings of a run: one sample at a time, so each BBTools child gets everything. */
         static Settings of(PipelineContext context, ReadLevelStage.Settings search) {
             return new Settings(search, BbtoolsCommands.of(context.dependencies(),
                     ChildJavaMemory.forOneChild(context.childJavaMemoryBudgetGiB()), context.config().threads()),
-                    context.dependencies().bbmapDirectory(), context.config().readExtension());
+                    context.config().readExtension());
         }
     }
 
@@ -152,9 +150,8 @@ public final class ReadExtensionStage {
                 BbtoolsCommands.baitedReadsFasta(sampleDir, name), seedsFile);
         int reach = options.maxAmpliconLength() > 0 ? options.maxAmpliconLength() : ReadExtensionCaller.DEFAULT_REACH;
 
-        ExternalProgram.run(settings.search().monitor(), settings.bbtoolsDirectory(),
-                settings.bbtools().extend(seedsFile, baitedReads, extendedFile, ReadExtensionCaller.K, reach),
-                "Tadpole");
+        settings.bbtools().extend(seedsFile, baitedReads, extendedFile, ReadExtensionCaller.K, reach)
+                .run(settings.search().monitor(), "Tadpole");
         if (!Files.isRegularFile(extendedFile)) {
             throw new PipelineException("Tadpole wrote no extended reads");
         }
@@ -217,8 +214,8 @@ public final class ReadExtensionStage {
             throw new PipelineException("Could not write the candidate products: " + candidates, e);
         }
         Path candidateReads = BbtoolsCommands.candidateReads(sampleDir, name);
-        ExternalProgram.run(settings.search().monitor(), settings.bbtoolsDirectory(),
-                settings.bbtools().recruit(candidates, sample.files(), candidateReads, ReadExtensionCaller.K), "BBDuk");
+        settings.bbtools().recruit(candidates, sample.files(), candidateReads, ReadExtensionCaller.K)
+                .run(settings.search().monitor(), "BBDuk");
         PairSupport.Tally tally = tally(sequences, candidateReads, sample.files().size() == 2, settings);
         Map<Product, PairSupport.Verdict> verdicts = new java.util.IdentityHashMap<>();
         for (int i = 0; i < closed.size(); i++) {

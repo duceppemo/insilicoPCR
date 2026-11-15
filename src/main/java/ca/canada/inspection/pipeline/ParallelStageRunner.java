@@ -61,13 +61,18 @@ final class ParallelStageRunner {
                     progress.done(done.incrementAndGet(), items.size());
                 }));
             }
-            for (Future<?> future : futures) {
-                future.get();
+            try {
+                for (Future<?> future : futures) {
+                    future.get();
+                }
+            } catch (InterruptedException e) {
+                // The run thread is interrupted when the application cancels the run. The wait
+                // took the interrupt: without passing it on, closing the pool would wait for the
+                // items running to finish.
+                executor.shutdownNow();
+                Thread.currentThread().interrupt();
+                throw cancelled(stageName);
             }
-        } catch (InterruptedException e) {
-            // The run thread is interrupted when the application cancels the run.
-            Thread.currentThread().interrupt();
-            throw cancelled(stageName);
         } catch (ExecutionException e) {
             if (e.getCause() instanceof CancellationException cancelled) {
                 throw cancelled; // the run was cancelled: not a failure of this stage

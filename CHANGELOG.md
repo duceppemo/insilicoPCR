@@ -10,6 +10,15 @@
   given the database by its name; the application's "Path MUST NOT contain
   spaces" warning is gone. There, makeblastdb still prints an error from a check
   of its own, followed by a `Note:` that the database is complete; the run goes on.
+- FASTQ mode: an output folder whose path holds a comma (`results, run 2`)
+  stopped the run at Tadpole: BBTools reads a comma in a file name as a list of
+  files. The BBTools programs now run in the sample's folder and are given their
+  files by paths relative to it, as the BLAST programs are. A comma that is left
+  (in the name of a read file, or of a folder holding the reads but not the
+  output) stops the run with a message naming the file to rename.
+- Cancelling a run waited for the work under way in a step that handles several
+  samples at once (writing a sample's baited reads, for one) to finish; that work
+  is stopped now.
 - FASTQ mode: single-end reads (one FASTQ file) were given to BBDuk as
   interleaved pairs. A file with an odd number of reads stopped the run
   (`Incomplete interleaved FASTQ pair`), and with an even number each baited
@@ -24,6 +33,14 @@
   alone; and of two records with one ID, only the last was searched. Both now
   stop the run with a message, as does a primer too degenerate to search (more
   than 65,536 sequences).
+- Primer file: a primer named like a sequence of a degenerate primer (`X-F_1`
+  beside a degenerate `X-F`, whose sequences are named `X-F_0`, `X-F_1`, ...)
+  replaced that sequence without a word, and a file without a `>` line left the
+  run with no primer. Both stop the run with a message now.
+- Application: a primer file not named like a FASTA file (`primers.txt`) was
+  refused, although the command line reads it, and a gzipped one
+  (`primers.fasta.gz`) was accepted, then could not be read. Both read now, in
+  the application as on the command line.
 - The output folder may no longer be the input folder: the primer database the
   run writes there was analysed as a sample.
 - Application, gel viewer:
@@ -34,6 +51,8 @@
   - The last lane's slanted name was cut at the right edge of saved pictures,
     and names longer than about 85 characters at the bottom.
   - Ctrl+A in the search box selected every band instead of the text.
+  - Ctrl+A (select the bands that match the search) left bands selected
+    before, which did not match it, highlighted and counted as selected.
   - Searching across gels counted samples by name and lanes without a band,
     unlike the search on the gel shown: they match the same way now.
   - Bands of products longer than 25 kb (`--max-length 0`) were drawn under the
@@ -41,6 +60,10 @@
 - `--gel` image: a gene legend of more than about 33 assays was cut off, and
   beyond 10 assays genes shared colours (and legend entries); every gene has a
   colour of its own and the picture is tall enough for the legend.
+- `--gel` on a run without a product warned that a graphical environment was
+  required; it draws the gel with empty lanes, as the gel viewer does. An image
+  that cannot be written (a full disk) now says so, instead of blaming the
+  graphical environment.
 - **Open Report TSV** read a BLAST TSV of `detailed_report` as a report and drew
   a gel of meaningless 0 bp bands; it now says the file is not a report. A
   report saved by Excel as "Text (Tab delimited)" with an accented letter did

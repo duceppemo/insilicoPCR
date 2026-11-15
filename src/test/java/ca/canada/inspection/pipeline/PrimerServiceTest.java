@@ -188,4 +188,26 @@ class PrimerServiceTest {
         org.junit.jupiter.api.Assertions.assertTrue(error.getMessage().startsWith("Primer wide-F is too degenerate"),
                 error.getMessage());
     }
+
+    @org.junit.jupiter.api.Test
+    void aPrimerFileThatWouldLoseAPrimerSilentlyIsRejected() throws java.io.IOException {
+        // X-F_1 would replace the second sequence of the degenerate X-F (R: A or G).
+        java.nio.file.Path clash = java.nio.file.Files.writeString(dir.resolve("clash.fasta"),
+                ">X-F\nACGTRACGTACG\n>X-F_1\nTTTTTTTTTTTT\n>X-R\nCCCCCCCCCCCC\n");
+        java.nio.file.Path out = dir.resolve("out4");
+        var config = PipelineConfig.builder(clash, out, clash).build();
+        assertEquals("Primer X-F is degenerate: its sequences are named X-F_0 to X-F_1, and X-F_1 is also the ID"
+                        + " of a primer; give that primer another ID",
+                assertThrows(PipelineException.class,
+                        () -> PrimerService.loadAndPrepare(config, PipelineDirectories.create(out))).getMessage());
+
+        java.nio.file.Path noHeader = java.nio.file.Files.writeString(dir.resolve("plain.txt"), "ACGTACGTACGT\n");
+        assertEquals("The primer file " + noHeader + " has a sequence before its first header line (a line starting"
+                + " with > and the primer ID)", assertThrows(PipelineException.class,
+                () -> PrimerService.read(noHeader)).getMessage());
+
+        java.nio.file.Path empty = java.nio.file.Files.writeString(dir.resolve("empty.fasta"), "\n");
+        assertTrue(assertThrows(PipelineException.class, () -> PrimerService.read(empty)).getMessage()
+                .startsWith("The primer file " + empty + " has no primer"));
+    }
 }

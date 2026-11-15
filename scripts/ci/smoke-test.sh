@@ -12,7 +12,7 @@ EXAMPLE="$ROOT/docs/examples/five-isolates"
 WORK="${2:-$(mktemp -d)}"
 
 mkdir -p "$WORK"
-rm -rf "$WORK/app" "$WORK/genomes" "$WORK/results" "$WORK/reads-results" "$WORK/broken" "$WORK/broken-results"
+rm -rf "$WORK/app" "$WORK/genomes" "$WORK/results" "$WORK/reads results, run 1" "$WORK/broken" "$WORK/broken-results"
 unzip -q "$ZIP" -d "$WORK/app"
 
 JAR="$(find "$WORK/app" -maxdepth 2 -name insilicoPCR.jar | head -n 1)"
@@ -81,11 +81,15 @@ fi
 LEFT="$(find "$RESULTS" -name 'blast_query_*' | wc -l)"
 [[ "$LEFT" -eq 0 ]] || { echo "FAIL: $LEFT decompressed BLAST queries left in the results" >&2; exit 1; }
 
-echo "== FASTQ mode on simulated reads of isolate_01"
+echo "== FASTQ mode on simulated reads of isolate_01, into a folder with a space and a comma in its path"
 # Baiting (BBDuk), merging (BBMerge) and the mini-assembly (Tadpole), then the same search.
-"$JAVA" -jar "$JAR" -i "$EXAMPLE/reads" -p "$EXAMPLE/primers.fasta" -o "$WORK/reads-results" -t 2
+# BBTools reads a comma in a file argument as a list of files: its commands name files from
+# the sample's folder, without the folders above it.
+READS_RESULTS="$WORK/reads results, run 1"
+rm -rf "$READS_RESULTS"
+"$JAVA" -jar "$JAR" -i "$EXAMPLE/reads" -p "$EXAMPLE/primers.fasta" -o "$READS_RESULTS" -t 2
 
-READS_REPORT="$WORK/reads-results/consolidated_report/report.tsv"
+READS_REPORT="$READS_RESULTS/consolidated_report/report.tsv"
 [[ -s "$READS_REPORT" ]] || { echo "FAIL: no report at $READS_REPORT" >&2; exit 1; }
 # Contig names and positions depend on the assembly; the products and their sizes must not.
 products() {

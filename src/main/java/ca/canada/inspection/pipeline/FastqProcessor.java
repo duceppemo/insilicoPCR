@@ -194,7 +194,7 @@ public final class FastqProcessor {
         return context.directories().detailed().resolve(sample.getName());
     }
 
-    private static void run(PipelineContext context, String program, List<String> command) {
-        ExternalProgram.run(context.monitor(), context.dependencies().bbmapDirectory(), command, program);
+    private static void run(PipelineContext context, String program, BbtoolsCommands.Command command) {
+        command.run(context.monitor(), program);
     }
 }

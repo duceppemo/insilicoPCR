@@ -123,4 +123,26 @@ class ParallelStageRunnerTest {
             Thread.interrupted();
         }
     }
+
+    @Test
+    void anInterruptStopsTheItemsRunning() throws InterruptedException {
+        // A cancelled run must not wait for the work in flight (in the application, the run
+        // thread is interrupted when the window is closed or the run cancelled).
+        List<String> interrupted = Collections.synchronizedList(new ArrayList<>());
+        Thread stage = Thread.ofPlatform().start(() -> assertThrows(CancellationException.class,
+                () -> ParallelStageRunner.run("BLAST", List.of("a", "b"), 2, item -> {
+                    try {
+                        Thread.sleep(10_000);
+                    } catch (InterruptedException e) {
+                        interrupted.add(item);
+                    }
+                })));
+        Thread.sleep(300);
+        long start = System.nanoTime();
+        stage.interrupt();
+        stage.join(5_000);
+
+        assertTrue(!stage.isAlive() && System.nanoTime() - start < 5_000_000_000L, "the stage waited for its items");
+        assertEquals(List.of("a", "b"), interrupted.stream().sorted().toList());
+    }
 }

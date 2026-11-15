@@ -174,9 +174,9 @@ public final class InteractiveGelViewer {
             band.selected = selected;
             band.updateVisual();
         });
-        java.util.function.Consumer<SearchResult> showSearch = result -> {
-            int onAllGels = paged && result.searching()
-                    ? pages.find(lanes, searchField.getText(), colorMode.getValue()).matches() : result.matchCount();
+        // The matches on the gel shown, and on all gels: worked out once per search.
+        java.util.function.BiConsumer<SearchResult, GelPages.Search> showSearch = (result, found) -> {
+            int onAllGels = found != null ? found.matches() : result.matchCount();
             matchLabel.setText(result.searching() ? GelText.matches(result.matchCount(), onAllGels) : "");
             if (result.firstMatch() != null) {
                 scrollToBand(scrollPane, zoomGroup, result.firstMatch());
@@ -197,7 +197,9 @@ public final class InteractiveGelViewer {
                 bandNode.updateVisual();
             }
             installBoxSelection(gelPane, current.view.bands(), selection, selectedLabel);
-            showSearch.accept(applySearch(current.view.bands(), searchField.getText()));
+            SearchResult result = applySearch(current.view.bands(), searchField.getText());
+            showSearch.accept(result, paged && result.searching()
+                    ? pages.find(lanes, searchField.getText(), colorMode.getValue()) : null);
             pageLabel.setText("Gel " + (current.page + 1) + " of " + pages.totalPages() + " · "
                     + pages.rangeText(current.page));
             previousPage.setDisable(current.page == 0);
@@ -218,18 +220,29 @@ public final class InteractiveGelViewer {
         previousPage.setOnAction(event -> goPrevious.run());
         nextPage.setOnAction(event -> goNext.run());
 
-        searchField.textProperty().addListener((observable, oldValue, newValue) -> {
-            SearchResult result = applySearch(current.view.bands(), newValue);
-            if (paged && result.searching() && result.matchCount() == 0) {
-                // Nothing on this gel: turn to the first one with a match, if any.
-                GelPages.Search found = pages.find(lanes, newValue, colorMode.getValue());
-                if (found.pageIndex() >= 0 && found.pageIndex() != current.page) {
-                    current.page = found.pageIndex();
-                    render.run();
-                    return;
-                }
+        Runnable search = () -> {
+            String query = searchField.getText();
+            SearchResult result = applySearch(current.view.bands(), query);
+            GelPages.Search found = paged && result.searching() ? pages.find(lanes, query, colorMode.getValue()) : null;
+            if (found != null && result.matchCount() == 0 && found.pageIndex() >= 0 && found.pageIndex() != current.page) {
+                // Nothing on this gel: turn to the first one with a match.
+                current.page = found.pageIndex();
+                render.run();
+                return;
             }
-            showSearch.accept(result);
+            showSearch.accept(result, found);
+        };
+        // With several gels, every search looks through the whole run: it waits for a pause in the
+        // typing rather than running on every key.
+        javafx.animation.PauseTransition typing = new javafx.animation.PauseTransition(javafx.util.Duration.millis(200));
+        typing.setOnFinished(event -> search.run());
+        searchField.textProperty().addListener((observable, oldValue, newValue) -> {
+            if (paged && !newValue.isEmpty()) {
+                typing.playFromStart();
+            } else {
+                typing.stop();
+                search.run();
+            }
         });
         clearSearchButton.setOnAction(event -> searchField.clear());
         colorMode.valueProperty().addListener((observable, oldValue, mode) -> {
@@ -240,7 +253,14 @@ public final class InteractiveGelViewer {
         render.run();
         BorderPane root = new BorderPane(scrollPane);
         root.setTop(new VBox(toolbar, pageBar));
-        root.setRight(legend);
+        // A long legend (many genes) scrolls instead of running off the window.
+        ScrollPane legendPane = new ScrollPane(legend);
+        legendPane.setFitToWidth(true);
+        legendPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        legendPane.setStyle("-fx-background-color: transparent; -fx-background: white;");
+        legendPane.visibleProperty().bind(javafx.beans.binding.Bindings.isNotEmpty(legend.getChildren()));
+        legendPane.managedProperty().bind(legendPane.visibleProperty());
+        root.setRight(legendPane);
 
         var screenBounds = Screen.getPrimary().getVisualBounds();
         double preferredWidth = current.view.pane().getPrefWidth() + 32;
@@ -271,14 +291,14 @@ public final class InteractiveGelViewer {
         List<String> laneNames = List.copyOf(lanes.keySet());
         List<LaneBand> laneBands = new ArrayList<>();
         // Behind each sample lane, a highlight shown while one of its bands is hovered or selected.
-        List<Rectangle> laneHighlights = new ArrayList<>();
+        List<LaneHighlight> laneHighlights = new ArrayList<>();
         for (int lane = 1; lane <= laneNames.size(); lane++) {
             laneBands.addAll(LaneBand.of(layout, lane, laneNames.get(lane - 1),
                     lanes.get(laneNames.get(lane - 1)), GelScene.BAND_HEIGHT, mode));
             Rectangle highlight = new Rectangle(layout.laneX(lane), layout.gelTop(), layout.laneWidth(), layout.gelHeight());
             highlight.setFill(Color.TRANSPARENT);
             highlight.setMouseTransparent(true);
-            laneHighlights.add(highlight);
+            laneHighlights.add(new LaneHighlight(highlight));
         }
 
         List<BandNode> bandNodes = new ArrayList<>();
@@ -286,7 +306,7 @@ public final class InteractiveGelViewer {
         // in their colours, as in a saved picture; hovering, selecting and searching restyle them.
         GelScene scene = GelScene.of(layout, laneNames, laneBands, GelColors.band(mode, geneColors),
                 GelScene.LADDER_FONT_SIZE, null, Map.of());
-        Pane pane = GelNodes.pane(scene, laneHighlights, band -> {
+        Pane pane = GelNodes.pane(scene, laneHighlights.stream().map(LaneHighlight::rectangle).toList(), band -> {
             Color color = GelColors.of(mode, band.lane().bands().getFirst(), geneColors);
             BandNode node = bandNode(band, laneHighlights.get(band.lane().lane() - 1), color);
             node.colored = color != null;
@@ -298,7 +318,7 @@ public final class InteractiveGelViewer {
         return new GelView(pane, bandNodes);
     }
 
-    private static BandNode bandNode(GelScene.Band sceneBand, Rectangle laneHighlight, Color bandColor) {
+    private static BandNode bandNode(GelScene.Band sceneBand, LaneHighlight laneHighlight, Color bandColor) {
         GelNodes.BandShape shape = GelNodes.band(sceneBand);
         BandRect rect = sceneBand.rect();
         double centerY = sceneBand.lane().centerY();
@@ -316,26 +336,28 @@ public final class InteractiveGelViewer {
                 sceneBand.lane().bands(), sceneBand.intensity(), popupText, rect, bandColor);
 
         if (popupText != null && !popupText.isBlank()) {
-            Popup popup = createMetadataPopup(popupText);
-            ContextMenu menu = createContextMenu(bandNode);
+            // The popup and the menu are made when first needed: a gel of 100 lanes has hundreds
+            // of bands, most never pointed at.
             hitBox.addEventHandler(MouseEvent.MOUSE_ENTERED, event -> {
-                showPopup(popup, hitBox, event);
+                showPopup(bandNode.popup(), hitBox, event);
                 bandNode.hovered = true;
                 bandNode.updateVisual();
             });
-            hitBox.addEventHandler(MouseEvent.MOUSE_MOVED, event -> showPopup(popup, hitBox, event));
+            hitBox.addEventHandler(MouseEvent.MOUSE_MOVED, event -> showPopup(bandNode.popup(), hitBox, event));
             hitBox.addEventHandler(MouseEvent.MOUSE_EXITED, event -> {
-                popup.hide();
+                if (bandNode.popup != null) {
+                    bandNode.popup.hide();
+                }
                 bandNode.hovered = false;
                 bandNode.updateVisual();
             });
             hitBox.addEventHandler(MouseEvent.MOUSE_CLICKED, event -> {
                 if (event.getButton() == MouseButton.SECONDARY) {
-                    menu.show(hitBox, event.getScreenX(), event.getScreenY());
+                    bandNode.menu().show(hitBox, event.getScreenX(), event.getScreenY());
                     event.consume();
                 }
             });
-            hitBox.setOnContextMenuRequested(event -> menu.show(hitBox, event.getScreenX(), event.getScreenY()));
+            hitBox.setOnContextMenuRequested(event -> bandNode.menu().show(hitBox, event.getScreenX(), event.getScreenY()));
         } else {
             hitBox.setMouseTransparent(true);
         }
@@ -651,6 +673,28 @@ public final class InteractiveGelViewer {
     private record SearchResult(boolean searching, int matchCount, BandNode firstMatch) {
     }
 
+    /**
+     * The highlight behind a sample lane, from all of its bands: the last band of a lane to change
+     * does not decide it alone.
+     */
+    private static final class LaneHighlight {
+        private final Rectangle rectangle;
+        private final List<BandNode> bands = new ArrayList<>();
+
+        private LaneHighlight(Rectangle rectangle) {
+            this.rectangle = rectangle;
+        }
+
+        private Rectangle rectangle() {
+            return rectangle;
+        }
+
+        private void refresh() {
+            rectangle.setFill(BandPaint.laneHighlight(bands.stream().anyMatch(band -> band.hovered),
+                    bands.stream().anyMatch(band -> band.selected)));
+        }
+    }
+
     private static final class ZoomState {
         private double zoom = 1.0;
     }
@@ -660,7 +704,7 @@ public final class InteractiveGelViewer {
         private final Rectangle hitBox;
         private final Rectangle band;
         private final Rectangle halo;
-        private final Rectangle laneHighlight;
+        private final LaneHighlight laneHighlight;
         private final List<GelBand> bands;
         private final double intensity;
         private final String popupText;
@@ -672,12 +716,14 @@ public final class InteractiveGelViewer {
         private boolean searchMatch = true;
         private boolean searching;
         private boolean colored;
+        private Popup popup;
+        private ContextMenu menu;
 
         private BandNode(Group group,
                          Rectangle hitBox,
                          Rectangle band,
                          Rectangle halo,
-                         Rectangle laneHighlight,
+                         LaneHighlight laneHighlight,
                          List<GelBand> bands,
                          double intensity,
                          String popupText,
@@ -694,7 +740,24 @@ public final class InteractiveGelViewer {
             this.rect = rect;
             this.bandColor = bandColor;
             this.searchText = GelText.searchText(bands);
+            if (laneHighlight != null) {
+                laneHighlight.bands.add(this);
+            }
             updateVisual();
+        }
+
+        private Popup popup() {
+            if (popup == null) {
+                popup = createMetadataPopup(popupText);
+            }
+            return popup;
+        }
+
+        private ContextMenu menu() {
+            if (menu == null) {
+                menu = createContextMenu(this);
+            }
+            return menu;
         }
 
         private void installSelectionHandler(GelSelection<BandNode> selection, Label selectedLabel) {
@@ -712,7 +775,7 @@ public final class InteractiveGelViewer {
             BandPaint.State state = BandPaint.State.of(hovered, selected, searching, searchMatch, colored, bandColor, intensity);
             group.setOpacity(state.opacity());
             if (laneHighlight != null) {
-                laneHighlight.setFill(state.laneFill());
+                laneHighlight.refresh();
             }
             band.setFill(state.bandFill());
             band.setStroke(state.stroke());

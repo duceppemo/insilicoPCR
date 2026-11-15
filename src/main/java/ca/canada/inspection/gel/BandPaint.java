@@ -42,34 +42,46 @@ final class BandPaint {
     }
 
     /**
+     * The highlight behind a lane of the interactive viewer, from all of its bands: a lane with a
+     * selected band stays highlighted while another of its bands is hovered and left.
+     *
+     * @param anyHovered  whether one of the lane's bands is under the pointer
+     * @param anySelected whether one of the lane's bands is selected
+     */
+    static Color laneHighlight(boolean anyHovered, boolean anySelected) {
+        if (anySelected) {
+            return Color.rgb(30, 144, 255, 0.18);
+        }
+        return anyHovered ? Color.rgb(30, 144, 255, 0.10) : Color.TRANSPARENT;
+    }
+
+    /**
      * How a band of the interactive viewer looks in its current state.
      *
      * @param opacity     opacity of the whole band (bands that do not match a search fade)
-     * @param laneFill    fill of the lane highlight behind the band
      * @param bandFill    fill of the band
      * @param stroke      outline of the band, or {@code null} for none
      * @param strokeWidth width of the outline; unused without an outline
      * @param halo        fill of the halo around the band
      */
-    record State(double opacity, Color laneFill, Color bandFill, Color stroke, double strokeWidth, Color halo) {
+    record State(double opacity, Color bandFill, Color stroke, double strokeWidth, Color halo) {
 
         /** Selection wins over hover, which wins over a search match. */
         static State of(boolean hovered, boolean selected, boolean searching, boolean searchMatch,
                         boolean colored, Color bandColor, double intensity) {
-            Color laneFill = hovered || selected ? Color.rgb(30, 144, 255, selected ? 0.18 : 0.10) : Color.TRANSPARENT;
             Color color = colored ? bandColor : BAND;
             Color bandFill = body(color, intensity);
             double opacity = searchMatch ? 1.0 : 0.18;
             if (selected) {
-                return new State(opacity, laneFill, bandFill, SELECTED, 2.0, Color.rgb(255, 140, 0, 0.28));
+                return new State(opacity, bandFill, SELECTED, 2.0, Color.rgb(255, 140, 0, 0.28));
             }
             if (hovered) {
-                return new State(opacity, laneFill, bandFill, HOVER, 1.25, Color.rgb(30, 144, 255, 0.25));
+                return new State(opacity, bandFill, HOVER, 1.25, Color.rgb(30, 144, 255, 0.25));
             }
             if (searching && searchMatch) {
-                return new State(opacity, laneFill, bandFill, SEARCH_MATCH, 1.25, Color.rgb(60, 180, 75, 0.20));
+                return new State(opacity, bandFill, SEARCH_MATCH, 1.25, Color.rgb(60, 180, 75, 0.20));
             }
-            return new State(opacity, laneFill, bandFill, null, 0, BandPaint.halo(color, intensity));
+            return new State(opacity, bandFill, null, 0, BandPaint.halo(color, intensity));
         }
     }
 }

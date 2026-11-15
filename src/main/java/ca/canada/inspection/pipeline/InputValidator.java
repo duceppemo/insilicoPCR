@@ -16,9 +16,12 @@ public final class InputValidator {
         if (inputFile == null || outDir == null || primerFile == null) {
             return "Please enter an input file, a reference file, and an output file";
         }
-        if ((!Files.isDirectory(inputFile) && !SequenceFileUtils.looksLikeSequenceFile(inputFile))
-                || !SequenceFileUtils.looksLikeSequenceFile(primerFile)) {
-            return "Input and primer files must be in fasta format (or fastq for input)";
+        if (!Files.isDirectory(inputFile) && !SequenceFileUtils.looksLikeSequenceFile(inputFile)) {
+            return "The input must be a FASTA or FASTQ file, or a folder of them";
+        }
+        // The primer file is what the run can read, whatever its name, as on the command line.
+        if (!Files.isRegularFile(primerFile)) {
+            return "Primer file does not exist or is not a regular file: " + primerFile;
         }
         try {
             PrimerService.read(primerFile);

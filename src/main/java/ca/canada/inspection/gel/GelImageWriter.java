@@ -18,6 +18,9 @@ public final class GelImageWriter {
     /** JavaFX cannot be restarted after Platform.exit, so exporting is once per JVM. */
     private static final AtomicBoolean TOOLKIT_SHUT_DOWN = new AtomicBoolean(false);
 
+    private static final String NO_GRAPHICS =
+            "Warning: could not render the synthetic gel image (a graphical environment is required): ";
+
     private GelImageWriter() {
     }
 
@@ -40,12 +43,17 @@ public final class GelImageWriter {
                 startedHere = true;
             } catch (IllegalStateException alreadyRunning) {
                 // Toolkit already initialized (e.g. running inside the GUI); reuse it.
+            } catch (RuntimeException | NoClassDefFoundError | UnsatisfiedLinkError e) {
+                warning.accept(NO_GRAPHICS + rootMessage(e));
+                return;
             }
             Path written = SyntheticGelImage.exportPng(consolidatedReport, outputFile, sampleNames);
             info.accept("Synthetic gel image written to " + written);
-        } catch (RuntimeException | NoClassDefFoundError | UnsatisfiedLinkError e) {
-            warning.accept("Warning: could not render the synthetic gel image (a graphical environment is required): "
-                    + rootMessage(e));
+        } catch (NoClassDefFoundError | UnsatisfiedLinkError e) {
+            warning.accept(NO_GRAPHICS + rootMessage(e));
+        } catch (RuntimeException e) {
+            // Not the graphical environment: a full disk, a folder that cannot be written...
+            warning.accept("Warning: could not write the synthetic gel image: " + rootMessage(e));
         } finally {
             if (startedHere) {
                 Platform.exit();

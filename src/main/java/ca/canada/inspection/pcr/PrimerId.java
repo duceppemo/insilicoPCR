@@ -9,7 +9,7 @@ import java.util.TreeMap;
  * A primer ID read by the naming convention {@code <assay>-F}, {@code <assay>-R} or
  * {@code <assay>-P}: the assay is everything before the last dash, and the letter after it
  * is the primer's role. What follows the letter is kept in the ID only, as for the
- * {@code _1}, {@code _2} of a degenerate primer's expanded sequences ({@code assay-F_1}).
+ * {@code _0}, {@code _1} of a degenerate primer's expanded sequences ({@code assay-F_1}).
  * The one place that rule is written.
  */
 public record PrimerId(String assay, Role role) {

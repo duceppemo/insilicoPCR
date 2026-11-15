@@ -101,6 +101,10 @@ Each degenerate oligo is searched as every sequence it stands for, up to 65,536 
 
 The run also stops on a record without a sequence (`Primer toxA-P has no sequence in the primer file ...`) and on an ID used twice (`Primer ID toxB-F appears twice ...`; give each its own ID, such as `toxB-F_1`, `toxB-F_2`). Before 0.15.2 both were silent: a probe without a sequence turned its qPCR assay into a PCR assay reported on its primers alone, and of two records with one ID only the last was searched.
 
+The sequences of a degenerate primer are named by its ID followed by `_0`, `_1`, and so on, so no other primer of the file may have one of those IDs (`X-F_1` beside a degenerate `X-F`): the run stops with `Primer X-F is degenerate: its sequences are named X-F_0 to ...`. It also stops on a file with no primer, or with a sequence before its first `>` line. Before 0.15.2 the first replaced a sequence of the degenerate primer, and the others left the run with no primer to search, without a word.
+
+The primer file may have any name, and may be gzipped (`primers.fasta.gz`), in the application as on the command line. Before 0.15.2 the application refused a primer file not named like a FASTA file (`primers.txt`), and accepted a gzipped one that the run then could not read.
+
 ## Recommended naming
 
 Use simple names that make the assay clear:

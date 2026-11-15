@@ -37,8 +37,9 @@ public final class SyntheticGelImage {
      */
     public static Path exportPng(Path consolidatedReport, Path outputFile, Collection<String> sampleNames) {
         LinkedHashMap<String, List<GelBand>> sampleBands = GelReportReader.read(consolidatedReport, sampleNames);
-        if (sampleBands.values().stream().allMatch(List::isEmpty)) {
-            throw new IllegalStateException("No amplicons were found in consolidated report: " + consolidatedReport);
+        // A run without a product is drawn with empty lanes, as the gel window draws it.
+        if (sampleBands.isEmpty()) {
+            throw new IllegalStateException("No sample to draw in consolidated report: " + consolidatedReport);
         }
 
         CountDownLatch done = new CountDownLatch(1);

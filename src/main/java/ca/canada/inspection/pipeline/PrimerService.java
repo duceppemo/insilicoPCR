@@ -77,7 +77,8 @@ public final class PrimerService {
         Map<String, String> fasta = new LinkedHashMap<>();
         Map<String, String> descriptions = new LinkedHashMap<>();
 
-        try (BufferedReader reader = Files.newBufferedReader(file, StandardCharsets.UTF_8)) {
+        // Gzipped or not, as the window's file chooser offers both.
+        try (BufferedReader reader = SequenceFileUtils.openMaybeGzip(file)) {
             String currentId = null;
             StringBuilder sequence = new StringBuilder();
             String line;
@@ -105,6 +106,10 @@ public final class PrimerService {
         } catch (IOException e) {
             throw new PipelineException("Could not parse primer FASTA file: " + file, e);
         }
+        if (fasta.isEmpty()) {
+            throw new PipelineException("The primer file " + file + " has no primer: it must be FASTA, each primer"
+                    + " a line starting with > and its ID, then its sequence");
+        }
         descriptions.keySet().retainAll(fasta.keySet());
         fasta.keySet().forEach(PrimerService::validatePrimerId);
         checkAssaysComplete(fasta.keySet(), file);
@@ -118,6 +123,11 @@ public final class PrimerService {
 
     private static void putFastaEntry(Map<String, String> fasta, String id, StringBuilder sequence, Path file) {
         if (id == null) {
+            if (!sequence.isEmpty()) {
+                // Without a header, these bases have no ID: they would not be searched.
+                throw new PipelineException("The primer file " + file + " has a sequence before its first"
+                        + " header line (a line starting with > and the primer ID)");
+            }
             return;
         }
         if (sequence.isEmpty()) {
@@ -140,7 +150,14 @@ public final class PrimerService {
                 expandedPrimers.put(id, sequence);
             } else {
                 for (int i = 0; i < expanded.size(); i++) {
-                    expandedPrimers.put(id + "_" + i, expanded.get(i));
+                    String variant = id + "_" + i;
+                    if (primers.containsKey(variant) || expandedPrimers.containsKey(variant)) {
+                        // One would silently replace the other, and its products be missed.
+                        throw new PipelineException("Primer " + id + " is degenerate: its sequences are named "
+                                + id + "_0 to " + id + "_" + (expanded.size() - 1) + ", and " + variant
+                                + " is also the ID of a primer; give that primer another ID");
+                    }
+                    expandedPrimers.put(variant, expanded.get(i));
                 }
             }
         }

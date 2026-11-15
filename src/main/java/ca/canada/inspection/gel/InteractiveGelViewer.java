@@ -74,7 +74,7 @@ public final class InteractiveGelViewer {
 
         LinkedHashMap<String, List<GelBand>> lanes = GelReportReader.read(consolidatedReport, sampleNames);
         if (lanes.isEmpty()) {
-            throw new IllegalStateException("No amplicons were found in consolidated report: " + consolidatedReport);
+            throw new IllegalStateException("No sample to draw in consolidated report: " + consolidatedReport);
         }
         GelPages pages = new GelPages(List.copyOf(lanes.keySet()), SAMPLES_PER_GEL);
         // One colour per gene for the whole run, so a gene keeps its colour from page to page.
@@ -379,11 +379,7 @@ public final class InteractiveGelViewer {
                 return;
             }
             if (!event.isControlDown() && !event.isShiftDown()) {
-                for (BandNode selectedBand : List.copyOf(selectedBands)) {
-                    selectedBand.selected = false;
-                    selectedBand.updateVisual();
-                }
-                selectedBands.clear();
+                clearSelection(selectedBands);
             }
             for (BandNode band : bands) {
                 if (band.searchMatch && box.intersects(band.hitBox.getBoundsInParent())) {
@@ -563,8 +559,9 @@ public final class InteractiveGelViewer {
                 event.consume();
             } else if (event.isControlDown() && event.getCode() == KeyCode.A
                     && !(scene.getFocusOwner() instanceof javafx.scene.control.TextInputControl)) {
-                // Ctrl+A in the search box selects its text, not every band.
-                selectedBands.clear();
+                // Ctrl+A in the search box selects its text, not every band. Bands selected
+                // before that no longer match the search are let go, not left highlighted.
+                clearSelection(selectedBands);
                 for (BandNode band : bands.get()) {
                     if (band.searchMatch) {
                         band.selected = true;
@@ -576,11 +573,7 @@ public final class InteractiveGelViewer {
                 event.consume();
             } else if (event.getCode() == KeyCode.ESCAPE) {
                 searchField.clear();
-                for (BandNode selectedBand : List.copyOf(selectedBands)) {
-                    selectedBand.selected = false;
-                    selectedBand.updateVisual();
-                }
-                selectedBands.clear();
+                clearSelection(selectedBands);
                 updateSelectedLabel(selectedBands, selectedLabel);
                 event.consume();
             }
@@ -754,11 +747,7 @@ public final class InteractiveGelViewer {
                     return;
                 }
                 if (!event.isControlDown() && !event.isShiftDown()) {
-                    for (BandNode selectedBand : List.copyOf(selectedBands)) {
-                        selectedBand.selected = false;
-                        selectedBand.updateVisual();
-                    }
-                    selectedBands.clear();
+                    clearSelection(selectedBands);
                 }
                 selected = !selected;
                 if (selected) {
@@ -801,6 +790,15 @@ public final class InteractiveGelViewer {
         private String detailText() {
             return GelText.details(popupText, bands);
         }
+    }
+
+    /** Lets go of every selected band. */
+    private static void clearSelection(Set<BandNode> selectedBands) {
+        for (BandNode band : selectedBands) {
+            band.selected = false;
+            band.updateVisual();
+        }
+        selectedBands.clear();
     }
 
     private static void updateSelectedLabel(Set<BandNode> selectedBands, Label selectedLabel) {

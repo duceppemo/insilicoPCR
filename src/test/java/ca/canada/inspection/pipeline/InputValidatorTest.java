@@ -49,8 +49,26 @@ class InputValidatorTest {
     void nonFastaInputIsReported() throws IOException {
         Path notFasta = Files.writeString(dir.resolve("notes.fasta"), "this is not fasta\n");
         Path primers = primers();
-        assertTrue(InputValidator.validate(notFasta, dir, primers).contains("fasta format"));
-        assertTrue(InputValidator.validate(primers, dir, notFasta).contains("fasta format"));
+        assertEquals("The input must be a FASTA or FASTQ file, or a folder of them",
+                InputValidator.validate(notFasta, dir, primers));
+        assertTrue(InputValidator.validate(primers, dir, notFasta).contains("has a sequence before its first header"));
+    }
+
+    @Test
+    void thePrimerFileIsWhatTheRunReadsWhateverItsName() throws IOException {
+        // As on the command line: primers.txt is read; a gzipped file is read too.
+        Path input = Files.writeString(dir.resolve("genome.fasta"), ">c1\nACGT\n");
+        String panel = ">a-F\nACGTACGTACGT\n>a-R\nTTTTGGGGCCCC\n";
+        Path text = Files.writeString(dir.resolve("primers.txt"), panel);
+        Path gzipped = dir.resolve("primers.fasta.gz");
+        try (var out = new java.util.zip.GZIPOutputStream(Files.newOutputStream(gzipped))) {
+            out.write(panel.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        }
+        assertEquals("", InputValidator.validate(input, dir.resolve("out"), text));
+        assertEquals("", InputValidator.validate(input, dir.resolve("out"), gzipped));
+        assertEquals(2, PrimerService.read(gzipped).sequences().size());
+        assertTrue(InputValidator.validate(input, dir.resolve("out"), dir.resolve("none.fasta"))
+                .startsWith("Primer file does not exist"));
     }
 
     @Test

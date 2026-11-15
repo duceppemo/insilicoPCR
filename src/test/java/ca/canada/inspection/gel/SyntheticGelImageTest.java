@@ -40,12 +40,23 @@ class SyntheticGelImageTest {
     }
 
     @Test
-    void reportWithoutAmpliconsIsRejectedBeforeDrawing() throws IOException {
+    void reportWithoutASampleIsRejectedBeforeDrawing() throws IOException {
         Path report = report();
         IllegalStateException e = assertThrows(IllegalStateException.class,
-                () -> SyntheticGelImage.exportPng(report, dir.resolve("gel.png"), List.of("negCtrl")));
-        assertTrue(e.getMessage().startsWith("No amplicons were found"));
+                () -> SyntheticGelImage.exportPng(report, dir.resolve("gel.png"), List.of()));
+        assertTrue(e.getMessage().startsWith("No sample to draw"));
         assertFalse(Files.exists(dir.resolve("gel.png")));
+    }
+
+    @Test
+    void aRunWithoutAProductIsDrawnWithEmptyLanes() throws IOException {
+        // As the gel window draws it: a negative run is a result, not a failure to draw.
+        assumeTrue(hasDisplay(), "no display");
+        startToolkit();
+
+        Path png = dir.resolve("empty.png");
+        assertEquals(png, SyntheticGelImage.exportPng(report(), png, List.of("negCtrl", "isolate_01")));
+        assertTrue(ImageIO.read(png.toFile()).getWidth() > 0);
     }
 
     @Test

@@ -40,6 +40,22 @@ record BbtoolsCommands(String javaCommand, Path bbtoolsJar, int childMemoryGiB, 
      */
     static final String OUT_OF_MEMORY_LINE = "This program ran out of memory.";
 
+    /**
+     * A BBTools command and the folder it runs in: the folder of the file it writes, which every
+     * file argument is relative to. BBTools reads a comma in a file argument as a list of files,
+     * so an absolute path through a folder with a comma in its name broke the command; the
+     * relative paths leave out the folders the output and the input share, as #56 did for BLAST.
+     */
+    record Command(Path directory, List<String> arguments) {
+        Command {
+            arguments = List.copyOf(arguments);
+        }
+
+        void run(RunMonitor monitor, String program) {
+            ExternalProgram.run(monitor, directory, arguments, program);
+        }
+    }
+
     /** Commands for the bundled BBTools, each child with this heap and these threads. */
     static BbtoolsCommands of(RuntimeDependencies dependencies, int childMemoryGiB, int threads) {
         return new BbtoolsCommands(dependencies.javaCommand(), dependencies.bbtoolsJar(), childMemoryGiB, threads);
@@ -148,28 +164,27 @@ record BbtoolsCommands(String javaCommand, Path bbtoolsJar, int childMemoryGiB, 
      * First pass: keep reads sharing a k-mer with any primer, allowing
      * {@code hdist} mismatches so primers with tolerated mismatches still bait.
      */
-    List<String> firstBait(Path primerDatabase, List<Path> reads, Path output, int kLength, int hdist) {
-        List<String> command = bbduk(primerDatabase, reads, output, hdist);
-        command.add("k=" + kLength);
-        return command;
+    Command firstBait(Path primerDatabase, List<Path> reads, Path output, int kLength, int hdist) {
+        Command command = bbduk(primerDatabase, reads, output, hdist);
+        return withOption(command, "k=" + kLength);
     }
 
     /**
      * Merges overlapping first-pass pairs so a read-level search can find amplicons
      * longer than one read (up to the fragment length).
      */
-    List<String> mergePairs(Path interleavedPairs, Path merged, Path unmerged) {
-        return new ArrayList<>(List.of(
-                javaCommand, "-ea", "-Xmx" + childMemoryGiB + "g", EXIT_ON_OUT_OF_MEMORY,
-                "-cp", bbtoolsJar.toString(), "jgi.BBMerge",
-                "in=" + interleavedPairs,
+    Command mergePairs(Path interleavedPairs, Path merged, Path unmerged) {
+        Path directory = directoryOf(merged);
+        List<String> arguments = start("jgi.BBMerge");
+        arguments.addAll(List.of(
+                "in=" + argument(directory, interleavedPairs),
                 "interleaved=t",
-                "out=" + merged,
-                "outu=" + unmerged,
+                "out=" + argument(directory, merged),
+                "outu=" + argument(directory, unmerged),
                 "overwrite=t",
                 SAME_ORDER,
-                "threads=" + threads
-        ));
+                "threads=" + threads));
+        return new Command(directory, arguments);
     }
 
     /**
@@ -178,7 +193,7 @@ record BbtoolsCommands(String javaCommand, Path bbtoolsJar, int childMemoryGiB, 
      * the k-mer table by ~hdist^k-fold (tens of billions of entries at hdist=2 on a
      * large match set) and exhausts the child heap.
      */
-    List<String> secondBait(Path firstPassMatches, List<Path> reads, Path output) {
+    Command secondBait(Path firstPassMatches, List<Path> reads, Path output) {
         return bbduk(firstPassMatches, reads, output, 0);
     }
 
@@ -188,23 +203,20 @@ record BbtoolsCommands(String javaCommand, Path bbtoolsJar, int childMemoryGiB, 
      * hold them all: far from the primers they thin out, and the reads of a second copy
      * of a repeat that say where the repeat ends are among those missing.
      */
-    List<String> recruit(Path candidates, List<Path> reads, Path output, int k) {
-        List<String> command = bbduk(candidates, reads, output, 0);
-        command.add("k=" + k);
-        return command;
+    Command recruit(Path candidates, List<Path> reads, Path output, int k) {
+        return withOption(bbduk(candidates, reads, output, 0), "k=" + k);
     }
 
-    List<String> assemble(Path reads, Path output, TadpoleOptions tadpole) {
-        List<String> command = new ArrayList<>(List.of(
-                javaCommand, "-ea", "-Xmx" + childMemoryGiB + "g", EXIT_ON_OUT_OF_MEMORY,
-                "-cp", bbtoolsJar.toString(), "assemble.Tadpole",
-                "in=" + reads,
-                "out=" + output,
+    Command assemble(Path reads, Path output, TadpoleOptions tadpole) {
+        Path directory = directoryOf(output);
+        List<String> arguments = start("assemble.Tadpole");
+        arguments.addAll(List.of(
+                "in=" + argument(directory, reads),
+                "out=" + argument(directory, output),
                 "overwrite=t",
-                "threads=" + threads
-        ));
-        command.addAll(tadpole.arguments());
-        return command;
+                "threads=" + threads));
+        arguments.addAll(tadpole.arguments());
+        return new Command(directory, arguments);
     }
 
     /**
@@ -213,49 +225,86 @@ record BbtoolsCommands(String javaCommand, Path bbtoolsJar, int childMemoryGiB, 
      * ({@code branchmult=1}): Tadpole's defaults stop there, which is what breaks the
      * mini-assembly inside a multi-copy locus, where near-balanced variants are the rule.
      */
-    List<String> extend(Path seeds, Path reads, Path output, int k, int reach) {
-        return new ArrayList<>(List.of(
-                javaCommand, "-ea", "-Xmx" + childMemoryGiB + "g", EXIT_ON_OUT_OF_MEMORY,
-                "-cp", bbtoolsJar.toString(), "assemble.Tadpole",
-                "in=" + seeds,
-                "out=" + output,
+    Command extend(Path seeds, Path reads, Path output, int k, int reach) {
+        Path directory = directoryOf(output);
+        List<String> arguments = start("assemble.Tadpole");
+        arguments.addAll(List.of(
+                "in=" + argument(directory, seeds),
+                "out=" + argument(directory, output),
                 "mode=extend",
                 "el=" + reach,
                 "er=" + reach,
-                "extra=" + reads,
+                "extra=" + argument(directory, reads),
                 "k=" + k,
                 "branchmult1=1",
                 "branchmult2=1",
                 "mincountextend=2",
                 "overwrite=t",
-                "threads=" + threads
-        ));
+                "threads=" + threads));
+        return new Command(directory, arguments);
     }
 
-    private List<String> bbduk(Path ref, List<Path> reads, Path output, int hdist) {
+    /** The Java runtime running {@code program} of the BBTools jar. */
+    private List<String> start(String program) {
+        return new ArrayList<>(List.of(javaCommand, "-ea", "-Xmx" + childMemoryGiB + "g", EXIT_ON_OUT_OF_MEMORY,
+                "-cp", bbtoolsJar.toString(), program));
+    }
+
+    private static Command withOption(Command command, String option) {
+        List<String> arguments = new ArrayList<>(command.arguments());
+        arguments.add(option);
+        return new Command(command.directory(), arguments);
+    }
+
+    /** The folder a command writing {@code output} runs in. */
+    private static Path directoryOf(Path output) {
+        return output.toAbsolutePath().normalize().getParent();
+    }
+
+    /**
+     * {@code file} as an argument of a command running in {@code directory}: relative to it, or
+     * absolute on another Windows drive.
+     *
+     * @throws PipelineException when it still has a comma, which BBTools would split it at
+     */
+    static String argument(Path directory, Path file) {
+        Path absolute = file.toAbsolutePath().normalize();
+        String argument;
+        try {
+            argument = directory.relativize(absolute).toString();
+        } catch (IllegalArgumentException otherRoot) {
+            argument = absolute.toString();
+        }
+        if (argument.contains(",")) {
+            throw new PipelineException("BBTools reads a comma in a file name as a list of files, and cannot read "
+                    + absolute + ": remove the comma from the name of the file or of its folder");
+        }
+        return argument;
+    }
+
+    private Command bbduk(Path ref, List<Path> reads, Path output, int hdist) {
         if (reads.isEmpty() || reads.size() > 2) {
             throw new IllegalArgumentException("Expected one or two read files, got " + reads.size());
         }
-        List<String> command = new ArrayList<>(List.of(
-                javaCommand, "-ea", "-Xmx" + childMemoryGiB + "g", EXIT_ON_OUT_OF_MEMORY,
-                "-cp", bbtoolsJar.toString(), "jgi.BBDuk",
-                "ref=" + ref,
+        Path directory = directoryOf(output);
+        List<String> arguments = start("jgi.BBDuk");
+        arguments.addAll(List.of(
+                "ref=" + argument(directory, ref),
                 "hdist=" + hdist,
                 "threads=" + threads,
                 "overwrite=t",
-                SAME_ORDER
-        ));
+                SAME_ORDER));
         if (reads.size() == 2) {
-            command.add("in1=" + reads.get(0));
-            command.add("in2=" + reads.get(1));
-            command.add("interleaved=t");
+            arguments.add("in1=" + argument(directory, reads.get(0)));
+            arguments.add("in2=" + argument(directory, reads.get(1)));
+            arguments.add("interleaved=t");
         } else {
             // Single-end reads: told so, or BBDuk takes consecutive reads for the mates of a pair
             // (it then stops on an odd count, and bait each matching read's unrelated neighbour).
-            command.add("in=" + reads.getFirst());
-            command.add("interleaved=f");
+            arguments.add("in=" + argument(directory, reads.getFirst()));
+            arguments.add("interleaved=f");
         }
-        command.add("outm=" + output);
-        return command;
+        arguments.add("outm=" + argument(directory, output));
+        return new Command(directory, arguments);
     }
 }

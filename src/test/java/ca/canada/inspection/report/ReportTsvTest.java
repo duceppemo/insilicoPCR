@@ -117,6 +117,33 @@ class ReportTsvTest {
     }
 
     @Test
+    void aHeaderlessLineWithALocationButNoSizeIsNotAReport() throws IOException {
+        Path noSize = Files.writeString(dir.resolve("no_size.tsv"), "S\tits\t11-444\tlong\tcontig_1\n");
+        java.io.UncheckedIOException error = org.junit.jupiter.api.Assertions.assertThrows(
+                java.io.UncheckedIOException.class, () -> ReportTsv.read(noSize));
+        assertEquals("Not a consolidated report: " + noSize, error.getMessage());
+    }
+
+    @Test
+    void anEmptyFileHasNoRowsAndAMissingOneIsAnError() throws IOException {
+        assertEquals(List.of(), ReportTsv.read(Files.writeString(dir.resolve("empty.tsv"), "")));
+
+        Path missing = dir.resolve("missing.tsv");
+        java.io.UncheckedIOException error = org.junit.jupiter.api.Assertions.assertThrows(
+                java.io.UncheckedIOException.class, () -> ReportTsv.read(missing));
+        assertEquals("Unable to read consolidated report: " + missing, error.getMessage());
+    }
+
+    @Test
+    void aHeaderRepeatedByConcatenatedReportsIsSkipped() throws IOException {
+        String header = String.join("\t", ReportColumn.FIRST.stream().map(ReportColumn::header).toList());
+        String product = "S\tits\t11-444\t434\tcontig_1\t\tits-F\tits-R\t0\t0\t0\t0\t+";
+        Path joined = Files.writeString(dir.resolve("joined.tsv"),
+                header + "\n" + product + "\n" + header + "\n" + product.replace("S\t", "T\t") + "\n");
+        assertEquals(List.of("S", "T"), ReportTsv.read(joined).stream().map(ReportRow::sample).toList());
+    }
+
+    @Test
     void aReportSavedInTheWindowsEncodingReads() throws IOException {
         // Excel's "Text (Tab delimited)": an accented letter is one byte, not UTF-8.
         String text = String.join("\t", ReportColumn.FIRST.stream().map(ReportColumn::header).toList()) + "\n"

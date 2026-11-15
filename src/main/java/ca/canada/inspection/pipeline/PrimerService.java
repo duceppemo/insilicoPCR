@@ -90,7 +90,7 @@ public final class PrimerService {
                 if (line.startsWith(">")) {
                     putFastaEntry(fasta, currentId, sequence, file);
                     currentId = SequenceFileUtils.fastaId(line);
-                    if (fasta.containsKey(currentId) || descriptions.containsKey(currentId)) {
+                    if (descriptions.containsKey(currentId)) {
                         // Silently keeping one of the two would miss the other's products.
                         throw new PipelineException("Primer ID " + currentId + " appears twice in the primer file "
                                 + file + "; give each primer its own ID (" + currentId + "_1, " + currentId + "_2)");

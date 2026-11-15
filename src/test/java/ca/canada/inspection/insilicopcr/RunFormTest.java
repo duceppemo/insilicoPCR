@@ -53,4 +53,12 @@ class RunFormTest {
                 new RunForm(null, dir, dir, 1, 0, "1e5", AmpliconSettings.DEFAULTS, FastqSettings.DEFAULTS).toConfig());
         assertEquals("Please enter an input file, a reference file, and an output file", invalid.message());
     }
+
+    @Test
+    void theInputFolderAsTheOutputFolderIsAMessage() throws IOException {
+        Path primers = Files.writeString(dir.resolve("primers.fasta"), ">a-F\nACGTACGT\n>a-R\nACGTACGT\n");
+        RunForm.Outcome.Invalid invalid = assertInstanceOf(RunForm.Outcome.Invalid.class,
+                new RunForm(dir, dir, primers, 1, 0, "1e5", AmpliconSettings.DEFAULTS, FastqSettings.DEFAULTS).toConfig());
+        assertEquals("The output folder must not be the input folder: " + dir, invalid.message());
+    }
 }

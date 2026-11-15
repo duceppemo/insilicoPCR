@@ -296,6 +296,22 @@ class HtmlReportTest {
         assertEquals(Path.of("report(12).html"), HtmlReport.pathFor(Path.of("report(12).tsv")));
     }
 
+    @Test
+    void aCellShowsTwoSizesAndHintsAtMore() throws IOException {
+        Path tsv = Files.writeString(dir.resolve("report.tsv"), String.join("\n", HEADER,
+                row("two", "plain", 300, "c1", ""), row("two", "plain", 200, "c1", ""),
+                row("three", "plain", 300, "c1", ""), row("three", "plain", 100, "c1", ""),
+                row("three", "plain", 200, "c1", "")) + "\n");
+
+        String page = Files.readString(write(tsv, List.of("two", "three"), Set.of(), panel(PRIMERS, SIZES),
+                List.of(), DETAILS));
+
+        // Smallest first; a third size is a "…", and every size is in the cell's hover text, in report order.
+        assertTrue(page.contains(">200/300</button>"), "two sizes");
+        assertTrue(page.contains(">100…</button>"), "three sizes");
+        assertTrue(page.contains("title=\"three · plain: Amplified&#10;300 bp&#10;100 bp&#10;200 bp\""), "hover text");
+    }
+
     private static int count(String text, String part) {
         int count = 0;
         for (int at = text.indexOf(part); at >= 0; at = text.indexOf(part, at + 1)) {

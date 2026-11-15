@@ -134,6 +134,13 @@ jobs:
           chmod +x scripts/dev/verify-runtime-layout.sh
           scripts/dev/verify-runtime-layout.sh
 
+      - name: Run unit tests
+        shell: pwsh
+        run: |
+          # Paths, line ends and file names behave otherwise on Windows: the tests run there too.
+          # Coverage is uploaded from the Linux job.
+          .\mvnw.cmd -B test "-Djacoco.skip=true"
+
       - name: Build Windows portable ZIP
         shell: pwsh
         run: |

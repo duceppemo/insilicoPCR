@@ -70,7 +70,7 @@ class SettingsRecordsTest {
 
     @Test
     void typedPathsAreParsedOrCleared() {
-        assertEquals(java.nio.file.Path.of("/data/reads"), PathFieldBinder.toPath("  /data/reads "));
+        assertEquals(java.nio.file.Path.of("/data/reads").toAbsolutePath(), PathFieldBinder.toPath("  /data/reads "));
         assertEquals(java.nio.file.Path.of(System.getProperty("user.home"), "out"), PathFieldBinder.toPath("~/out"));
         assertEquals(java.nio.file.Path.of(System.getProperty("user.home")), PathFieldBinder.toPath("~"));
         assertEquals(java.nio.file.Path.of("rel", "dir").toAbsolutePath().normalize(), PathFieldBinder.toPath("rel/./dir"));

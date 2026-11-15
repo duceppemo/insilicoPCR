@@ -277,6 +277,8 @@
   mismatches may bait no read; neither is named in the output.
 - Tests: the HTML report's script is tested in a real browser (headless Chrome,
   where one is installed, as on the CI's Linux machines).
+- Tests: the Windows release job runs the tests before building its ZIP; until
+  now they ran on Linux only.
 - Tests: CI runs the tests under a virtual display, so those that draw the gel
   run there too; the application's form-to-run step (`RunForm`) is tested
   without the window; a test keeps each package importing only from the

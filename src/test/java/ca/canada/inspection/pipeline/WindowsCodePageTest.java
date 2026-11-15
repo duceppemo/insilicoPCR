@@ -27,4 +27,17 @@ class WindowsCodePageTest {
         assertDoesNotThrow(() -> WindowsCodePage.check(Charset.forName("UTF-8"), List.of(chinese)),
                 "the UTF-8 system locale holds every letter");
     }
+
+    @Test
+    void thePrimerFileIsNotGivenToAnyProgram() {
+        // insilicoPCR reads the primer file and writes primer_tmp.fasta into the output folder for
+        // makeblastdb: a primer file in a folder the code page cannot name runs all the same.
+        ca.canada.inspection.model.Sample sample = new ca.canada.inspection.model.Sample("s");
+        sample.addFile(Path.of("in", "s.fasta"));
+
+        List<Path> paths = WindowsCodePage.givenToPrograms(Path.of("out"), Path.of("app"), List.of(sample));
+
+        assertTrue(paths.containsAll(List.of(Path.of("out"), Path.of("app"), Path.of("in", "s.fasta"))), paths.toString());
+        assertDoesNotThrow(() -> WindowsCodePage.check(Charset.forName("windows-1252"), paths));
+    }
 }

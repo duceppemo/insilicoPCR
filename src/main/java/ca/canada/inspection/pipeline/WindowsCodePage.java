@@ -33,12 +33,21 @@ final class WindowsCodePage {
 
     /** Checks the paths a run gives its programs, on Windows only. */
     static void check(PipelineConfig config, RuntimeDependencies dependencies, Collection<Sample> samples) {
-        if (!AppPaths.isWindows()) {
-            return;
+        if (AppPaths.isWindows()) {
+            check(system(), givenToPrograms(config.output(), dependencies.appRoot(), samples));
         }
-        List<Path> paths = new ArrayList<>(List.of(config.output(), config.primers(), dependencies.appRoot()));
+    }
+
+    /**
+     * The paths a run gives its programs: the output folder (the primer database, the BLAST reports, the
+     * BBTools files), the installation (the BBTools jar) and the samples' files. Not the primer file, which
+     * insilicoPCR reads itself and writes to the output folder for makeblastdb: a primer file in a folder
+     * the code page cannot name is no reason to refuse a run.
+     */
+    static List<Path> givenToPrograms(Path output, Path appRoot, Collection<Sample> samples) {
+        List<Path> paths = new ArrayList<>(List.of(output, appRoot));
         samples.forEach(sample -> paths.addAll(sample.files()));
-        check(system(), paths);
+        return paths;
     }
 
     /** @throws PipelineException naming the first of {@code paths} that {@code codePage} cannot hold */

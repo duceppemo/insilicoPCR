@@ -175,7 +175,7 @@ public final class SequenceFileUtils {
     private static BufferedReader withoutByteOrderMark(BufferedReader reader) throws IOException {
         try {
             reader.mark(1);
-            if (reader.read() != '﻿') {
+            if (reader.read() != '\uFEFF') {
                 reader.reset();
             }
             return reader;

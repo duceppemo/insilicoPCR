@@ -61,7 +61,8 @@
   path** gives it, cleared the field; the quotes are now dropped.
 - Application on Windows: a path with a letter outside the computer's code page
   (`数据`, `Δ`) failed at makeblastdb with "exit code 2"; the run now stops
-  before any program, naming the path and the letter. The programs' output in
+  before any program, naming the path and the letter (the output folder, an
+  input file; a primer file there runs, as insilicoPCR reads it itself). The programs' output in
   the window and in `log.txt` is read in the code page they print in: a folder
   such as `Résultats` showed as `R�sultats`.
 - Gel viewer: the window of a gel of one or two lanes was narrower than its

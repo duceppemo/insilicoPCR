@@ -58,3 +58,7 @@ qodana.sarif.json
 !runtime/linux/blast/bin/*
 !runtime/windows/blast/bin/
 !runtime/windows/blast/bin/*
+
+# Windows test harness (scripts/wintest/run-windows-tests.ps1)
+scripts/wintest/work/
+scripts/wintest/results/

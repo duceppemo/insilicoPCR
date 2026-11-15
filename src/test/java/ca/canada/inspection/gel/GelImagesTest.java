@@ -49,10 +49,12 @@ class GelImagesTest {
     }
 
     @Test
-    void pageFileNamesAreNumberedFromOne() {
-        assertEquals("synthetic_gel_page_001.png", GelImages.pageFileName(0, "png"));
-        assertEquals("synthetic_gel_page_124.pdf", GelImages.pageFileName(123, "pdf"));
-        assertEquals("synthetic_gel_page_1000.svg", GelImages.pageFileName(999, "svg"));
+    void pageFilesAreNumberedFromOneOnlyWhenThereAreSeveral() {
+        // The names --gel writes and the gel window offers.
+        Path output = Path.of("out", "synthetic_gel_report.png");
+        assertEquals(output, GelImages.pageOutput(output, 0, 1));
+        assertEquals(Path.of("out", "synthetic_gel_report_page_001.png"), GelImages.pageOutput(output, 0, 3));
+        assertEquals(Path.of("out", "synthetic_gel_report_page_1000.png"), GelImages.pageOutput(output, 999, 1000));
     }
 
     @Test

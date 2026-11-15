@@ -7,7 +7,8 @@ import java.util.TreeMap;
 
 /**
  * One band to draw in a sample lane: the amplicons it stands for, where it sits and how strong
- * it looks. The viewer and the PNG image place bands slightly differently, hence one factory each.
+ * it looks. The gel window and every picture of a gel (the {@code --gel} image, the window's
+ * saved PNG, SVG and PDF) place their bands with the one factory, {@link #of}.
  *
  * @param lane      lane index; lane 0 is the ladder
  * @param laneX     left edge of the lane
@@ -28,49 +29,35 @@ record LaneBand(int lane, double laneX, String gene, List<GelBand> bands, double
     }
 
     /**
-     * Bands of the interactive viewer: amplicons of a lane that round to the same size form one
-     * band, smaller bands look stronger, and each lane and band gets a small fixed variation.
+     * The bands of a lane. Amplicons that round to the same size form one band, as they would run
+     * together on a gel; with {@code byGene}, those of different genes are drawn as one band per
+     * gene, 3 px apart, so that no gene colour is hidden. Smaller bands look stronger, and each lane
+     * and band gets a small fixed variation, the same in every picture of the gel.
      */
-    static List<LaneBand> window(GelLayout layout, int lane, String sampleName, List<GelBand> laneBands,
-                                 double baseBandHeight) {
+    static List<LaneBand> of(GelLayout layout, int lane, String sampleName, List<GelBand> laneBands,
+                             double baseBandHeight, boolean byGene) {
         List<LaneBand> result = new ArrayList<>();
         double laneX = layout.laneX(lane);
-        for (Map.Entry<Integer, List<GelBand>> entry : new TreeMap<>(GelReportReader.groupByRoundedSize(laneBands)).entrySet()) {
-            int roundedSize = entry.getKey();
-            List<GelBand> bands = entry.getValue();
-            double laneVariation = GelScale.deterministicRange(sampleName, 0.90, 1.10);
-            double verticalJitter = GelScale.deterministicRange(sampleName + ':' + roundedSize, -0.45, 0.45);
-            double intensity = Math.min(1.0, GelScale.sizeIntensity(roundedSize, bands.size()) * laneVariation);
-            double centerY = belowTheWells(layout, layout.bandY(roundedSize) + verticalJitter);
-            result.add(new LaneBand(lane, laneX, GelText.primaryGene(bands), bands, centerY, intensity,
-                    BandRect.inLane(laneX, centerY, layout.laneWidth(), baseBandHeight + (intensity * 1.2))));
-        }
-        return result;
-    }
-
-    /**
-     * Bands of the PNG image: amplicons that round to the same size but come from different
-     * genes are drawn as one band per gene, 3 px apart, so that no gene colour is hidden.
-     */
-    static List<LaneBand> image(GelLayout layout, int lane, String sampleName, List<GelBand> laneBands,
-                                double baseBandHeight) {
-        List<LaneBand> result = new ArrayList<>();
-        double laneX = layout.laneX(lane);
-        for (Map.Entry<Integer, List<GelBand>> sizeEntry : GelReportReader.groupByRoundedSize(laneBands).entrySet()) {
+        double laneVariation = GelScale.deterministicRange(sampleName, 0.90, 1.10);
+        for (Map.Entry<Integer, List<GelBand>> sizeEntry
+                : new TreeMap<>(GelReportReader.groupByRoundedSize(laneBands)).entrySet()) {
             int size = sizeEntry.getKey();
             double verticalJitter = GelScale.deterministicRange(sampleName + ':' + size, -0.45, 0.45);
-            Map<String, List<GelBand>> byGene = new TreeMap<>();
-            for (GelBand band : sizeEntry.getValue()) {
-                byGene.computeIfAbsent(band.geneName(), ignored -> new ArrayList<>()).add(band);
+            Map<String, List<GelBand>> groups = new TreeMap<>();
+            if (byGene) {
+                sizeEntry.getValue().forEach(band ->
+                        groups.computeIfAbsent(band.geneName(), ignored -> new ArrayList<>()).add(band));
+            } else {
+                groups.put(GelText.primaryGene(sizeEntry.getValue()), sizeEntry.getValue());
             }
-            int geneIndex = 0;
-            for (Map.Entry<String, List<GelBand>> geneEntry : byGene.entrySet()) {
-                double geneOffset = (geneIndex - (byGene.size() - 1) / 2.0) * 3.0;
-                double intensity = GelColors.bandIntensity(geneEntry.getValue().size());
-                double centerY = belowTheWells(layout, layout.bandY(size) + verticalJitter + geneOffset);
-                result.add(new LaneBand(lane, laneX, geneEntry.getKey(), geneEntry.getValue(), centerY, intensity,
+            int index = 0;
+            for (Map.Entry<String, List<GelBand>> group : groups.entrySet()) {
+                double offset = (index - (groups.size() - 1) / 2.0) * 3.0;
+                double intensity = Math.min(1.0, GelScale.sizeIntensity(size, group.getValue().size()) * laneVariation);
+                double centerY = belowTheWells(layout, layout.bandY(size) + verticalJitter + offset);
+                result.add(new LaneBand(lane, laneX, group.getKey(), group.getValue(), centerY, intensity,
                         BandRect.inLane(laneX, centerY, layout.laneWidth(), baseBandHeight + (intensity * 1.2))));
-                geneIndex++;
+                index++;
             }
         }
         return result;

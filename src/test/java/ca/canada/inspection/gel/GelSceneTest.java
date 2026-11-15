@@ -19,9 +19,9 @@ class GelSceneTest {
     void aSceneHoldsTheGelLadderBandsAndLabels() {
         List<String> samples = List.of("s1", "s2");
         GelLayout layout = GelLayout.window(1000, 700, samples);
-        List<LaneBand> bands = LaneBand.window(layout, 1, "s1", List.of(new GelBand("s1", "toxA", 312)), 2.0);
+        List<LaneBand> bands = LaneBand.of(layout, 1, "s1", List.of(new GelBand("s1", "toxA", 312)), 2.0, false);
 
-        GelScene scene = GelScene.of(layout, samples, bands, band -> GENE, GelScene.LADDER_FONT_SIZE);
+        GelScene scene = GelScene.of(layout, samples, bands, band -> GENE, GelScene.LADDER_FONT_SIZE, java.util.Map.of());
 
         assertEquals(layout.width(), scene.width());
         GelScene.Box gel = scene.background().get(1);

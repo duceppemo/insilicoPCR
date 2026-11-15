@@ -203,8 +203,8 @@ class EndToEndTest {
 
         assertTrue(RunFailure.isForTheUser(error));
         assertTrue(RunFailure.lines(error).stream().anyMatch(line -> line.contains(
-                "Tadpole ran out of memory on sample big with -Xmx4g, all it could have. Give insilicoPCR more"
-                        + " memory with Java's -Xmx option")), RunFailure.lines(error).toString());
+                "Tadpole ran out of memory on sample big with -Xmx4g, all it could have: three quarters of the memory"
+                        + " insilicoPCR leaves free on this computer")), RunFailure.lines(error).toString());
         assertTrue(monitor.warnings.isEmpty(), monitor.warnings.toString());
     }
 

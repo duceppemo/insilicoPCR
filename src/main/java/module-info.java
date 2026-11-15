@@ -1,6 +1,8 @@
 module ca.canada.inspection.insilicopcr {
     requires javafx.controls;
     requires java.desktop;
+    // The computer's memory, which sizes the BBTools programs' (ChildJavaMemory).
+    requires jdk.management;
 
     requires org.apache.commons.cli;
 

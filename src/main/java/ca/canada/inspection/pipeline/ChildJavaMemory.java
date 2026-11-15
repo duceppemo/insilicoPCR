@@ -1,13 +1,19 @@
 package ca.canada.inspection.pipeline;
 
+import java.lang.management.ManagementFactory;
+
 /**
- * Heap of the BBTools child processes. The children of a run share half of this
- * program's heap: one child alone gets all of it (up to {@value #MAX_CHILD_GIB} GiB),
- * and samples processed at once each get their share.
+ * Heap of the BBTools child processes. The children of a run share the memory this program
+ * leaves free on the computer (three quarters of it, the rest for the system and the
+ * children's own needs beyond their heap), and at least half of this program's heap: one child
+ * alone gets all of it (up to {@value #MAX_CHILD_GIB} GiB), and samples processed at once each
+ * get their share.
  */
 public final class ChildJavaMemory {
     private static final long BYTES_PER_GIB = 1024L * 1024L * 1024L;
     private static final int DEFAULT_BUDGET_GIB = 4;
+    /** Share of the memory this program leaves free that its children may take. */
+    static final double FREE_MEMORY_SHARE = 0.75;
     /** More heap than this does not help one BBTools process. */
     static final int MAX_CHILD_GIB = 64;
     /**
@@ -21,11 +27,32 @@ public final class ChildJavaMemory {
 
     /** Heap, in GiB, that the child processes running at once may use between them. */
     public static int budgetGiB() {
-        long maxMemory = Runtime.getRuntime().maxMemory();
-        if (maxMemory <= 0 || maxMemory == Long.MAX_VALUE) {
+        return budgetGiB(physicalMemoryBytes(), Runtime.getRuntime().maxMemory());
+    }
+
+    /**
+     * The budget on a computer of {@code physicalBytes} (0 when unknown), this program having a
+     * heap of {@code ownHeapBytes}: three quarters of what it leaves free, and at least half of its
+     * heap, rounded to a GiB. Before 0.15.2, half of its heap only, rounded down: with Java's default
+     * heap (a quarter of the computer's memory), BBTools got 2 GB of a 16 GB computer.
+     */
+    static int budgetGiB(long physicalBytes, long ownHeapBytes) {
+        long ownHeap = ownHeapBytes <= 0 || ownHeapBytes == Long.MAX_VALUE ? 0 : ownHeapBytes;
+        double halfHeap = ownHeap / 2.0 / BYTES_PER_GIB;
+        double free = physicalBytes > ownHeap ? (physicalBytes - ownHeap) * FREE_MEMORY_SHARE / BYTES_PER_GIB : 0;
+        double budget = Math.max(halfHeap, free);
+        if (budget <= 0) {
             return DEFAULT_BUDGET_GIB;
         }
-        return Math.toIntExact(Math.clamp(maxMemory / 2 / BYTES_PER_GIB, 1L, Integer.MAX_VALUE));
+        return Math.toIntExact(Math.clamp(Math.round(budget), 1L, Integer.MAX_VALUE));
+    }
+
+    /** The computer's memory (a container's limit inside one), or 0 when the system does not say. */
+    private static long physicalMemoryBytes() {
+        if (ManagementFactory.getOperatingSystemMXBean() instanceof com.sun.management.OperatingSystemMXBean os) {
+            return os.getTotalMemorySize();
+        }
+        return 0;
     }
 
     /** Heap of a child that runs alone. */

@@ -92,7 +92,7 @@ Three classes outside these packages take part in every run as well:
 
 ## Synthetic gel (`ca.canada.inspection.gel`)
 
-The two gel viewers (`InteractiveGelViewer`, `PaginatedGelViewer`) and the `--gel` image (`GelImageWriter`, in `gel` with the rest of the JavaFX drawing) share plain classes that need no window and have unit tests:
+The gel viewer (`InteractiveGelViewer`, one gel of up to 100 samples at a time, with a page bar for larger runs) and the `--gel` image (`GelImageWriter`, in `gel` with the rest of the JavaFX drawing) share plain classes that need no window and have unit tests:
 
 | Class | Responsibility |
 |---|---|
@@ -103,7 +103,7 @@ The two gel viewers (`InteractiveGelViewer`, `PaginatedGelViewer`) and the `--ge
 | `GelText` | Text about the amplicons of a band: tooltips, details, selection and search |
 | `GelPages` | Splitting the lanes of a large run into pages of samples |
 | `GelScene` | What a gel picture is made of (gel, lanes, ladder, bands, labels), whatever draws it |
-| `GelNodes` | A `GelScene` as JavaFX nodes, for both viewers |
+| `GelNodes` | A `GelScene` as JavaFX nodes, for the viewer |
 | `GelSvg` | A `GelScene` as an SVG document |
 | `GelImages` | PNG and PDF files of the gel, their default names, snapshots of the viewer |
 | `SyntheticGelImage` | The `--gel` PNG: a `GelScene` drawn on a canvas, without a window |

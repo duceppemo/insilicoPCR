@@ -1,7 +1,7 @@
 package ca.canada.inspection.insilicopcr;
 
 import ca.canada.inspection.util.Version;
-import ca.canada.inspection.gel.PaginatedGelViewer;
+import ca.canada.inspection.gel.InteractiveGelViewer;
 import ca.canada.inspection.pcr.AmpliconOptions;
 import ca.canada.inspection.insilicopcr.ui.AmpliconSettingsDialog;
 import ca.canada.inspection.insilicopcr.ui.AmpliconSettingsDialog.AmpliconSettings;
@@ -461,7 +461,7 @@ public class MainRun extends Application {
 
     private void displayGelImage() {
         try {
-            PaginatedGelViewer.show(scene, finishedRun().report(), finishedRun().samples());
+            InteractiveGelViewer.show(scene, finishedRun().report(), finishedRun().samples());
         } catch (Exception e) {
             showError("Unable to create gel image:\n" + e.getMessage());
         }
@@ -501,7 +501,7 @@ public class MainRun extends Application {
 
         try {
             PreviousRun run = PreviousRun.open(selected.toPath());
-            PaginatedGelViewer.show(scene, run.report(), run.samples());
+            InteractiveGelViewer.show(scene, run.report(), run.samples());
         } catch (Exception e) {
             showError("Unable to open previous run:\n" + e.getMessage());
         }
@@ -520,7 +520,7 @@ public class MainRun extends Application {
         }
 
         try {
-            PaginatedGelViewer.show(scene, selected.toPath(), List.of());
+            InteractiveGelViewer.show(scene, selected.toPath(), List.of());
         } catch (Exception e) {
             showError("Unable to open report TSV:\n" + e.getMessage());
         }

@@ -7,7 +7,7 @@ import java.util.TreeMap;
 
 /**
  * One band to draw in a sample lane: the amplicons it stands for, where it sits and how strong
- * it looks. The three gel pictures place bands slightly differently, hence one factory each.
+ * it looks. The viewer and the PNG image place bands slightly differently, hence one factory each.
  *
  * @param lane      lane index; lane 0 is the ladder
  * @param laneX     left edge of the lane
@@ -72,20 +72,6 @@ record LaneBand(int lane, double laneX, String gene, List<GelBand> bands, double
                         BandRect.inLane(laneX, centerY, layout.laneWidth(), baseBandHeight + (intensity * 1.2))));
                 geneIndex++;
             }
-        }
-        return result;
-    }
-
-    /** Bands of a paginated-viewer page: one per rounded size, no variation, height 2 + intensity. */
-    static List<LaneBand> page(GelLayout layout, int lane, List<GelBand> laneBands) {
-        List<LaneBand> result = new ArrayList<>();
-        double laneX = layout.laneX(lane);
-        for (Map.Entry<Integer, List<GelBand>> entry : new TreeMap<>(GelReportReader.groupByRoundedSize(laneBands)).entrySet()) {
-            List<GelBand> bands = entry.getValue();
-            double centerY = layout.bandY(entry.getKey());
-            double intensity = GelColors.bandIntensity(bands.size());
-            result.add(new LaneBand(lane, laneX, GelText.primaryGene(bands), bands, centerY, intensity,
-                    BandRect.inLane(laneX, centerY, layout.laneWidth(), 2.0 + intensity)));
         }
         return result;
     }

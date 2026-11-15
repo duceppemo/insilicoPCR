@@ -1,5 +1,6 @@
 package ca.canada.inspection.gel;
 
+import ca.canada.inspection.report.ConsolidatedReport;
 import javafx.scene.Node;
 import javafx.scene.SnapshotParameters;
 import javafx.scene.image.WritableImage;
@@ -33,8 +34,7 @@ final class GelImages {
         if (outputDir == null) {
             outputDir = Path.of(".");
         }
-        String baseName = consolidatedReport.getFileName().toString()
-                .replaceFirst("\\.tsv$", "")
+        String baseName = ConsolidatedReport.baseName(consolidatedReport)
                 .replaceAll("[^A-Za-z0-9._()-]+", "_");
         return outputDir.resolve("synthetic_gel_" + baseName + ".png");
     }

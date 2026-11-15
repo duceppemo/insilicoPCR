@@ -98,6 +98,19 @@ public final class ConsolidatedReport {
     /** The names {@link #write} gives its reports: {@code report.tsv}, then {@code report(1).tsv} and on. */
     private static final Pattern REPORT_NAME = Pattern.compile("report(\\(\\d+\\))?\\.tsv");
 
+    /** The name of {@code report} without {@code .tsv}: {@code report(1)} for {@code report(1).tsv}. */
+    public static String baseName(Path report) {
+        return report.getFileName().toString().replaceFirst("\\.tsv$", "");
+    }
+
+    /**
+     * A file that belongs to {@code report}, next to it: its base name and {@code suffix}
+     * ({@code report(1).html}, {@code report(1)_fastq_diagnostics.tsv}).
+     */
+    public static Path sibling(Path report, String suffix) {
+        return report.resolveSibling(baseName(report) + suffix);
+    }
+
     /** Whether {@code file} is named as {@link #write} names a consolidated report. */
     public static boolean isReportFile(Path file) {
         return REPORT_NAME.matcher(file.getFileName().toString()).matches();

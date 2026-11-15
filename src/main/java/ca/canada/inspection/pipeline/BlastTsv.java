@@ -1,5 +1,6 @@
 package ca.canada.inspection.pipeline;
 
+import ca.canada.inspection.pcr.BlastField;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -10,13 +11,27 @@ import java.nio.file.StandardCopyOption;
 import java.util.List;
 import java.util.Objects;
 
-/** BLAST TSV constants and streaming-safe file helpers. */
+/** The BLAST TSV of a run: the search that writes it, its header, and streaming-safe file helpers. */
 final class BlastTsv {
-    static final String OUTFMT = "6 qseqid sseqid positive mismatch gaps evalue bitscore slen length qstart qend qseq sstart send sseq";
-    static final String HEADER = String.join("\t", List.of(
-            "qseqid", "sseqid", "positive", "mismatch", "gaps", "evalue",
-            "bitscore", "slen", "length", "qstart", "qend", "qseq", "sstart", "send", "sseq"
-    ));
+    static final String OUTFMT = BlastField.OUTFMT;
+    static final String HEADER = BlastField.HEADER;
+
+    /**
+     * The {@code blastn} command searching {@code query} for the primers of {@code database},
+     * writing their hits to {@code out} in this TSV ({@link BlastField}); the one search of a
+     * run, for contigs, reads and extended reads alike.
+     */
+    static List<String> blastn(Path blastn, Path query, Path database, double evalue, int threads, Path out) {
+        return List.of(blastn.toString(),
+                "-task", "blastn-short",
+                "-query", query.toString(),
+                "-db", database.toString(),
+                "-evalue", Double.toString(evalue),
+                "-num_alignments", "1000000",
+                "-num_threads", String.valueOf(threads),
+                "-outfmt", OUTFMT,
+                "-out", out.toString());
+    }
 
     private BlastTsv() {
     }

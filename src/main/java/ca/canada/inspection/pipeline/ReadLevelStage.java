@@ -164,16 +164,8 @@ public final class ReadLevelStage {
 
     /** Searches {@code fasta} for the primers with blastn, as contigs are searched. */
     static void runBlast(Settings settings, int blastThreads, Path fasta, Path hitsFile) {
-        ExternalProgram.run(settings.monitor(), null, List.of(
-                settings.blastn().toString(),
-                "-task", "blastn-short",
-                "-query", fasta.toString(),
-                "-db", settings.primerDatabase().toString(),
-                "-evalue", Double.toString(settings.evalue()),
-                "-num_alignments", "1000000",
-                "-num_threads", String.valueOf(blastThreads),
-                "-outfmt", BlastTsv.OUTFMT,
-                "-out", hitsFile.toString()), "blastn");
+        ExternalProgram.run(settings.monitor(), null, BlastTsv.blastn(settings.blastn(), fasta,
+                settings.primerDatabase(), settings.evalue(), blastThreads, hitsFile), "blastn");
     }
 
     /**

@@ -218,7 +218,7 @@ public final class HtmlReport {
 
     /** The HTML page of a consolidated report: {@code report(1).html} for {@code report(1).tsv}. */
     public static Path pathFor(Path reportTsv) {
-        return reportTsv.resolveSibling(reportTsv.getFileName().toString().replaceFirst("\\.tsv$", "") + ".html");
+        return ConsolidatedReport.sibling(reportTsv, ".html");
     }
 
     /** The amplicon settings of a run as "Run details" entries. */

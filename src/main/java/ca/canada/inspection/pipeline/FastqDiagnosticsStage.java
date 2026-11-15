@@ -10,6 +10,7 @@ import ca.canada.inspection.pcr.PrimerPanel;
 import ca.canada.inspection.pcr.ReadExtensionCaller;
 import ca.canada.inspection.pcr.ReadLevelCaller.ReadEvidence;
 import ca.canada.inspection.pcr.ReadLevelCaller;
+import ca.canada.inspection.report.ConsolidatedReport;
 import ca.canada.inspection.report.FastqDiagnosticsReport;
 import ca.canada.inspection.util.SequenceFileUtils;
 
@@ -177,8 +178,7 @@ public final class FastqDiagnosticsStage {
                         .thenComparing(Finding::sample)
                         .thenComparing(Finding::assay))
                 .toList();
-        String baseName = consolidatedReport.getFileName().toString().replaceFirst("\\.tsv$", "");
-        Path file = consolidatedReport.resolveSibling(baseName + "_fastq_diagnostics.tsv");
+        Path file = ConsolidatedReport.sibling(consolidatedReport, "_fastq_diagnostics.tsv");
         FastqDiagnosticsReport.write(file, ordered);
         return new Result(file, ordered, List.copyOf(notes));
     }

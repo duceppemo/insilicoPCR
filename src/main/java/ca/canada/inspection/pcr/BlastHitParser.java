@@ -26,7 +26,7 @@ import java.util.function.Function;
  */
 public final class BlastHitParser {
 
-    private static final int EXPECTED_FIELDS = 15;
+    private static final int EXPECTED_FIELDS = BlastField.values().length;
 
     /**
      * Probe bases that may lie beyond the end of the template (a contig or read
@@ -68,7 +68,7 @@ public final class BlastHitParser {
             return Optional.empty();
         }
 
-        String sseqid = fields[1];
+        String sseqid = BlastField.SSEQID.of(fields);
         String primerSeq = primers.sequence(sseqid);
         if (primerSeq == null) {
             return Optional.empty();
@@ -77,23 +77,27 @@ public final class BlastHitParser {
         try {
             return Optional.of(new BlastResult(
                     sampleName,
-                    fields[0],                      // qseqid (contig)
-                    sseqid,                         // primer ID
-                    Integer.parseInt(fields[3]),    // mismatch
-                    Integer.parseInt(fields[4]),    // gaps
-                    Integer.parseInt(fields[9]),    // qstart
-                    Integer.parseInt(fields[10]),   // qend
-                    Integer.parseInt(fields[12]),   // sstart
-                    Integer.parseInt(fields[13]),   // send
-                    Integer.parseInt(fields[7]),    // slen
-                    Integer.parseInt(fields[8]),    // alignment length
-                    fields[11],                     // aligned query sequence
-                    fields[14],                     // aligned subject sequence
+                    BlastField.QSEQID.of(fields),   // the contig (or read)
+                    sseqid,                         // the oligo
+                    number(BlastField.MISMATCH, fields),
+                    number(BlastField.GAPS, fields),
+                    number(BlastField.QSTART, fields),
+                    number(BlastField.QEND, fields),
+                    number(BlastField.SSTART, fields),
+                    number(BlastField.SEND, fields),
+                    number(BlastField.SLEN, fields),
+                    number(BlastField.LENGTH, fields), // alignment length
+                    BlastField.QSEQ.of(fields),     // aligned query sequence
+                    BlastField.SSEQ.of(fields),     // aligned subject sequence
                     primerSeq
             ));
         } catch (NumberFormatException e) {
             return Optional.empty();
         }
+    }
+
+    private static int number(BlastField field, String[] fields) {
+        return Integer.parseInt(field.of(fields));
     }
 
     /** Applies the acceptance rules to an already-parsed hit. */

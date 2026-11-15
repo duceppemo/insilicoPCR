@@ -43,6 +43,12 @@
 
 ### Changed
 
+- Code: the columns of the BLAST TSV are one list (`pcr.BlastField`) for the
+  `-outfmt` given to blastn, the header and the parser, which read them by
+  position; blastn is run from one command line (`BlastTsv.blastn`) for
+  contigs and reads; and the files named after a report (its HTML page, its
+  FASTQ diagnostics, its gel image) take their name from one rule
+  (`ConsolidatedReport.sibling`).
 - Code: a report row says what its call was made on (`ReportRow.Source`: the
   assembly, reads with their support, or extended reads with their seeds) as
   data, and the HTML report shows the rows the run made instead of reading

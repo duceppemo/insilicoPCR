@@ -27,7 +27,7 @@ Do not commit generated release output, Maven output, IDE output, JavaFX SDK fol
 ## Updating BBMap or BLAST
 
 1. Replace the files under the relevant `runtime/` folders.
-2. Run `scripts/dev/verify-runtime-layout.sh`.
+2. Run `REQUIRE_BINARIES=true scripts/dev/verify-runtime-layout.sh`, from the repository root (without `REQUIRE_BINARIES=true` it only checks that the `runtime/` folders exist).
 3. Run the platform packaging script locally.
 4. Confirm that the generated ZIP contains the expected layout.
 5. Commit the runtime tool update together with a note in the changelog.

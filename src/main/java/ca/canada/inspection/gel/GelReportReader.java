@@ -1,6 +1,7 @@
 package ca.canada.inspection.gel;
 
 import ca.canada.inspection.pcr.ReportRow;
+import ca.canada.inspection.report.ReportColumn;
 import ca.canada.inspection.report.ReportTsv;
 
 import java.nio.file.Files;
@@ -30,7 +31,9 @@ public final class GelReportReader {
         LinkedHashMap<String, List<GelBand>> lanes = new LinkedHashMap<>();
         boolean keepEmptySampleLanes = sampleNames != null && !sampleNames.isEmpty();
         if (sampleNames != null) {
+            // Named as report.tsv names them: a tab or line break in a name is a space there.
             sampleNames.stream()
+                    .map(ReportColumn::cell)
                     .sorted()
                     .forEach(sampleName -> lanes.put(sampleName, new ArrayList<>()));
         }

@@ -33,7 +33,7 @@ DNA polymerase extends from the primer 3' end, so mismatches there matter far mo
 | Mismatch 1–2 bases from the terminus | 2 |
 | Mismatch 3 or more bases from the terminus | 1 |
 | The broken pair involves a primer G or C within the last 3 bases | +1 |
-| Insertion or deletion | +1 |
+| Insertion or deletion (only where BLAST places one: see below) | +1 |
 
 The sum must not exceed `--3p-penalty` (default **0**: a perfect 3' window is required).
 
@@ -45,9 +45,11 @@ Worked examples (with a window of 5):
 | A/T mismatch 4 bases from the terminus | 1 | no — needs `--3p-penalty 1` |
 | A/T mismatch on the terminal base | 3 | no — needs `--3p-penalty 3` |
 | G/C mismatch on the terminal base | 4 | no — needs `--3p-penalty 4` |
-| 1-base deletion 2 bases from the terminus (A/T) | 3 | no — needs `--3p-penalty 3` |
+| 1-base deletion in the template 2 bases from the terminus (A/T) | 7 (3 mismatches: 2 + 2 + 3) | no — needs `-m 3 --3p-penalty 7` |
 
 Remember that any tolerated 3' imperfection also consumes the total budget, so rescuing a terminal mismatch needs both, e.g. `-m 1 --3p-penalty 4`.
+
+**Indels near a primer end.** BLAST (`blastn-short`) keeps a gap in an alignment only when about 8 matching bases follow it, so it never places an indel within about 7 bases of either end of a primer: it trims the alignment there instead. Near the 3' end, the trimmed bases are then compared with the template base for base, and an indel shows as one mismatch for every base it shifts, in `-m` and in the 3' penalty (the deletion above: 3 mismatches, penalty 7). Near the 5' end, the bases left out count against `--5p-truncation` (a 1-base deletion at the 7th base from the 5' end leaves 7 out, more than the default 5). An indel further in is placed by BLAST and counts once in `-m`; the "+1 for an indel" of the table applies there, which with the default window of 5 is never inside it.
 
 ### Probes are different
 
@@ -64,7 +66,7 @@ An accepted forward hit and an accepted reverse hit are reported as an amplicon 
 
 1. **Same contig.** Both primers hit the same input sequence.
 2. **Opposite strands, convergent.** One primer anneals to the plus strand and extends rightward; the other anneals to the minus strand and extends leftward — and they must face each other. Divergent (back-to-back) and same-strand pairs never amplify and are rejected. The assay may legitimately sit on either strand of your genome: `Strand` in the report shows `+` when the forward primer matched the plus strand, `-` when the assay matched the reverse strand.
-3. **Product size limits.** The product (5' end of one primer to the 5' end of the other, inclusive) must be at least `--min-length` (default 0) and at most `--max-length` (default **5000 bp**). Both primers count in full, including 5' bases left unaligned within `--5p-truncation` and bases that lie beyond a contig end, so a product on a contig that stops inside a primer is sized as on a complete template (`AmpliconSize` can then exceed the span given in `GenomeLocation`). This suppresses "phantom" products from primer sites that are tens of kilobases — or megabases — apart, which would never amplify in a real reaction. Set `-l 0` to disable the cap (e.g., for long-range PCR assessments).
+3. **Product size limits.** The product (5' end of one primer to the 5' end of the other, inclusive) must be at least `--min-length` (default 0) and at most `--max-length` (default **5000 bp**). Both primers count in full, including 5' bases left unaligned within `--5p-truncation` and bases that lie beyond a contig end, so a product on a contig that stops inside a primer is sized as on a complete template: at the contig's start, `AmpliconSize` then exceeds the span of `GenomeLocation`, which starts at base 1; at its end, `GenomeLocation` runs past the contig's last base. (An indel that BLAST places inside a primer site changes `AmpliconSize` by its length, as it would the real product.) This suppresses "phantom" products from primer sites that are tens of kilobases — or megabases — apart, which would never amplify in a real reaction. Set `-l 0` to disable the cap (e.g., for long-range PCR assessments).
 4. **Probe assays only: probe inside the product.** For an assay that defines a `-P` probe, a row is reported only if an accepted probe hit lies entirely within the amplicon. Probe-less assays in the same primer file are reported on their primer pair alone (per-assay decision; mixing both kinds in one run is supported since 0.8.0).
 
 ## Typical settings
@@ -75,8 +77,8 @@ An accepted forward hit and an accepted reverse hit are reported as an amplicon 
 | Tolerate one internal mismatch, perfect 3' end | `-m 1` |
 | Also tolerate one distal (positions 4–5) 3'-window mismatch | `-m 1 --3p-penalty 1` |
 | Inclusivity screening across divergent genomes | `-m 2 --3p-penalty 3` |
-| Long-range PCR | `-l 20000` (or `-l 0` for no limit) |
-| qPCR amplicon size sanity check | `-l 300 --min-length 50` |
+| Long-range PCR | `-l 20000` (or `-l 0` for no limit; FASTQ read extension still reaches 5000 bases each way then) |
+| Check product sizes (qPCR or PCR) | declare them in the primer file (`size=`, `other=`, see [Primer FASTA format](Primer-FASTA-Format)): every product is still reported, labelled by its size |
 
 ## Degenerate primers
 

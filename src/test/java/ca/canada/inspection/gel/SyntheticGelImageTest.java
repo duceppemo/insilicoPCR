@@ -101,7 +101,7 @@ class SyntheticGelImageTest {
         List<String> named = List.of("isolate_01", "isolate_02", "negCtrl");
         LinkedHashMap<String, List<GelBand>> lanes = GelReportReader.read(report, named);
         Map<String, Color> colors = GelColors.assignGeneColors(lanes);
-        GelLayout layout = GelLayout.image(lanes.keySet(), GelLayout.legendWidth(colors.keySet()));
+        GelLayout layout = GelLayout.image(lanes.keySet(), GelLayout.legendWidth(colors.keySet()), colors.size());
 
         BufferedImage image = ImageIO.read(png.toFile());
         assertEquals((int) Math.ceil(layout.width()), image.getWidth());

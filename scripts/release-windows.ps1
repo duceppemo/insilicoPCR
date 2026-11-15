@@ -86,15 +86,17 @@ if (Test-Path "docs\runtime-layout.md") { Copy-Item "docs\runtime-layout.md" (Jo
 
 @"
 @echo off
-set DIR=%~dp0
-set JAVA=%DIR%runtime\windows\jdk\bin\java.exe
-
-if not exist "%JAVA%" (
-  echo Could not find bundled Java runtime at: %JAVA%
-  exit /b 1
-)
-
+rem setlocal keeps DIR and JAVA out of the caller's session. No ( ) block expands %JAVA%: a folder
+rem name holding a parenthesis ("... (1)", "Program Files (x86)") would end the block early.
+setlocal
+set "DIR=%~dp0"
+set "JAVA=%DIR%runtime\windows\jdk\bin\java.exe"
+if not exist "%JAVA%" goto nojava
 "%JAVA%" -p "%DIR%lib;%DIR%insilicoPCR.jar" -m ca.canada.inspection.insilicopcr/ca.canada.inspection.dispatchpcr.Dispatcher %*
+exit /b %ERRORLEVEL%
+:nojava
+echo Could not find bundled Java runtime at: %JAVA%
+exit /b 1
 "@ | Set-Content -Encoding ASCII (Join-Path $StageDir "run-insilicoPCR.bat")
 
 $Archive = Join-Path $ReleaseDir "insilicoPCR-$Version-windows-x64.zip"

@@ -77,8 +77,9 @@ public record PreviousRun(Path report, List<String> samples) {
 
     /**
      * The report of a run folder whose log was written before 0.15.1: the newest consolidated
-     * report no newer than the log, which that run wrote last. A newer one is from a run that
-     * did not finish (it wrote no log), maybe cut short.
+     * report no newer than the log, which that run wrote last (a newer one is from a run that did
+     * not finish, maybe cut short). A folder copied without its dates has its files dated by the
+     * copy, in any order: when no report is that old, the newest report.
      */
     static Path latestReport(Path runDirectory, Path qaLog) {
         Path reportDir = runDirectory.resolve(PipelineDirectories.CONSOLIDATED);
@@ -88,11 +89,10 @@ public record PreviousRun(Path report, List<String> samples) {
         // A little slack for file systems that keep modification times coarsely.
         long notAfter = lastModifiedMillis(qaLog) + 2_000;
         try (Stream<Path> reports = Files.list(reportDir)) {
-            return reports
-                    .filter(Files::isRegularFile)
-                    .filter(ConsolidatedReport::isReportFile)
-                    .filter(report -> lastModifiedMillis(report) <= notAfter)
-                    .max(Comparator.comparingLong(PreviousRun::lastModifiedMillis))
+            List<Path> all = reports.filter(Files::isRegularFile).filter(ConsolidatedReport::isReportFile).toList();
+            Comparator<Path> byDate = Comparator.comparingLong(PreviousRun::lastModifiedMillis);
+            return all.stream().filter(report -> lastModifiedMillis(report) <= notAfter).max(byDate)
+                    .or(() -> all.stream().max(byDate))
                     .orElseThrow(() -> new PipelineException("No consolidated report found in " + reportDir));
         } catch (IOException e) {
             throw new PipelineException("Unable to list the consolidated reports in " + reportDir, e);

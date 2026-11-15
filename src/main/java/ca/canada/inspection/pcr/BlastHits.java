@@ -54,7 +54,7 @@ public final class BlastHits {
             return "";
         }
         return "Warning: " + missing.size() + " sequences with a trimmed primer or probe hit were not found in "
-                + searched + " (e.g. " + missing.stream().sorted().findFirst().orElseThrow()
+                + searched + " (e.g. " + java.util.Collections.min(missing)
                 + "); the trimmed bases of their hits are not compared.";
     }
 }

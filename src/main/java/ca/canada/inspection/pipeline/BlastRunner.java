@@ -39,9 +39,8 @@ public final class BlastRunner {
         Path blastOutput = blastTsv.getParent();
 
         try (BlastQuery blastQuery = BlastQuery.of(query, blastOutput)) {
-            ExternalProgram.run(context.monitor(), null, BlastTsv.blastn(context.dependencies().blastn(),
-                    blastQuery.path(), context.directories().primerDatabase(), context.config().evalue(), 1, blastTsv),
-                    "blastn");
+            BlastTsv.runBlastn(context.monitor(), context.dependencies().blastn(), blastQuery.path(),
+                    context.directories().primerDatabase(), context.config().evalue(), 1, blastTsv);
         } catch (IOException e) {
             throw new PipelineException("Unable to prepare the BLAST query for " + query, e);
         }

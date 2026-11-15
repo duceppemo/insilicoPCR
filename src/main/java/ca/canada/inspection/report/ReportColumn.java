@@ -79,7 +79,7 @@ public enum ReportColumn {
      * Text as one TSV cell: a tab or a line break (a FASTA header's description may hold one)
      * would start another column or row, so each becomes a space.
      */
-    private static String cell(String text) {
+    public static String cell(String text) {
         return text.replace('\t', ' ').replace('\r', ' ').replace('\n', ' ');
     }
 }

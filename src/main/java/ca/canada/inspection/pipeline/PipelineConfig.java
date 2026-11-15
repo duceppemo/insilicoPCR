@@ -37,6 +37,10 @@ public record PipelineConfig(
         if (!(evalue > 0.0)) {
             throw new IllegalArgumentException("evalue must be > 0");
         }
+        if (output.equals(input)) {
+            // The run writes primer_tmp.fasta there before it lists the input: it would be a sample.
+            throw new IllegalArgumentException("The output folder must not be the input folder: " + output);
+        }
     }
 
     /** The blastn e-value both front-ends start from, as the application's field shows it. */

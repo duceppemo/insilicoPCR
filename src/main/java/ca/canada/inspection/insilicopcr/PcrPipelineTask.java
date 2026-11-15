@@ -57,7 +57,7 @@ final class PcrPipelineTask extends Task<RunResult> {
             }
             return result;
         } catch (RuntimeException | Error e) {
-            if (isCancelled()) {
+            if (isCancelled() && stoppedByTheCancel(e)) {
                 append("\nRun cancelled\n");
             } else {
                 // The console gets the stack trace of a failure.
@@ -68,6 +68,20 @@ final class PcrPipelineTask extends Task<RunResult> {
         } finally {
             writeRunLog();
         }
+    }
+
+    /**
+     * Whether {@code error} is the cancel itself (a stopped step, an interrupted wait), not a
+     * failure that happened to come after it: that one keeps its stack trace.
+     */
+    private static boolean stoppedByTheCancel(Throwable error) {
+        for (Throwable link = error; link != null; link = link.getCause()) {
+            if (link instanceof java.util.concurrent.CancellationException || link instanceof InterruptedException
+                    || link instanceof java.nio.channels.ClosedByInterruptException) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** The message of a failure the user can act on; the stack trace of anything else (a bug). */

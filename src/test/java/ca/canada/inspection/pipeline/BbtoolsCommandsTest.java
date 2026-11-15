@@ -156,4 +156,18 @@ class BbtoolsCommandsTest {
                 + " program."), message);
         assertFalse(message.contains("-Xmx option"), message);
     }
+
+    @Test
+    void singleEndReadsAreNotTakenForInterleavedPairs() {
+        // With interleaved=t, BBDuk took consecutive reads for mates: an odd count stopped it,
+        // and each matching read brought its unrelated neighbour along.
+        List<String> single = commands.firstBait(Path.of("primers.fasta"), List.of(Path.of("s.fastq.gz")),
+                Path.of("out.fq.gz"), 18, 0);
+        assertTrue(single.contains("in=s.fastq.gz"));
+        assertTrue(single.contains("interleaved=f"), single.toString());
+        assertTrue(!single.contains("interleaved=t"), single.toString());
+
+        List<String> pairs = commands.firstBait(Path.of("primers.fasta"), paired, Path.of("out.fq.gz"), 18, 0);
+        assertTrue(pairs.contains("interleaved=t"), "two files: mates stay together");
+    }
 }

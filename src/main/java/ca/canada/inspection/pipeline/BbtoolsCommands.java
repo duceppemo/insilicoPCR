@@ -243,14 +243,17 @@ record BbtoolsCommands(String javaCommand, Path bbtoolsJar, int childMemoryGiB, 
                 "hdist=" + hdist,
                 "threads=" + threads,
                 "overwrite=t",
-                SAME_ORDER,
-                "interleaved=t"
+                SAME_ORDER
         ));
         if (reads.size() == 2) {
             command.add("in1=" + reads.get(0));
             command.add("in2=" + reads.get(1));
+            command.add("interleaved=t");
         } else {
+            // Single-end reads: told so, or BBDuk takes consecutive reads for the mates of a pair
+            // (it then stops on an odd count, and bait each matching read's unrelated neighbour).
             command.add("in=" + reads.getFirst());
+            command.add("interleaved=f");
         }
         command.add("outm=" + output);
         return command;

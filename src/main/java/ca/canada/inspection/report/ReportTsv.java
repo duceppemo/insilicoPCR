@@ -3,9 +3,10 @@ package ca.canada.inspection.report;
 import ca.canada.inspection.pcr.ReadExtensionCaller;
 import ca.canada.inspection.pcr.ReadLevelCaller;
 import ca.canada.inspection.pcr.ReportRow;
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.nio.charset.CharacterCodingException;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -29,41 +30,62 @@ public final class ReportTsv {
     private ReportTsv() {
     }
 
+    /**
+     * The rows of {@code report}.
+     *
+     * @throws UncheckedIOException when the file cannot be read, or is not a consolidated report
+     *                              (such as a BLAST TSV of {@code detailed_report}, whose numbers
+     *                              would otherwise read as products)
+     */
     public static List<ReportRow> read(Path report) {
+        List<String> lines = lines(report);
         List<ReportRow> rows = new ArrayList<>();
-        try (BufferedReader reader = Files.newBufferedReader(report, StandardCharsets.UTF_8)) {
-            String headerLine = reader.readLine();
-            if (headerLine == null) {
-                return rows;
+        if (lines.isEmpty()) {
+            return rows;
+        }
+        // A spreadsheet may save the file with a byte order mark before the first name.
+        String headerLine = lines.getFirst().startsWith("\uFEFF") ? lines.getFirst().substring(1) : lines.getFirst();
+        List<String> header = List.of(headerLine.split("\t", -1));
+        boolean hasHeader = header.contains(ReportColumn.SIZE.header());
+        Map<String, Integer> columns = new HashMap<>();
+        List<String> names = hasHeader ? header : ReportColumn.FIRST.stream().map(ReportColumn::header).toList();
+        for (int i = 0; i < names.size(); i++) {
+            columns.putIfAbsent(names.get(i), i);
+        }
+        if (!hasHeader) {
+            // Without a header, the first line must be a product: a location and a size.
+            Fields first = new Fields(columns, headerLine.split("\t", -1));
+            if (!first.text(ReportColumn.LOCATION).matches("\\d+-\\d+") || first.number(ReportColumn.SIZE) == null) {
+                throw new UncheckedIOException("Not a consolidated report: " + report, new IOException(
+                        "its first line has no " + ReportColumn.SIZE.header() + " column and is not a product"));
             }
-            // A spreadsheet may save the file with a byte order mark before the first name.
-            headerLine = headerLine.startsWith("\uFEFF") ? headerLine.substring(1) : headerLine;
-            List<String> header = List.of(headerLine.split("\t", -1));
-            boolean hasHeader = header.contains(ReportColumn.SIZE.header());
-            Map<String, Integer> columns = new HashMap<>();
-            List<String> names = hasHeader ? header : ReportColumn.FIRST.stream().map(ReportColumn::header).toList();
-            for (int i = 0; i < names.size(); i++) {
-                columns.putIfAbsent(names.get(i), i);
-            }
-            if (!hasHeader) {
-                ReportRow first = row(new Fields(columns, headerLine.split("\t", -1)));
-                if (first != null) {
-                    rows.add(first);
+            rows.add(row(first));
+        }
+        for (String line : lines.subList(1, lines.size())) {
+            if (!line.isBlank() && !(hasHeader && line.equals(headerLine))) {
+                ReportRow row = row(new Fields(columns, line.split("\t", -1)));
+                if (row != null) {
+                    rows.add(row);
                 }
             }
-            String line;
-            while ((line = reader.readLine()) != null) {
-                if (!line.isBlank() && !(hasHeader && line.equals(headerLine))) {
-                    ReportRow row = row(new Fields(columns, line.split("\t", -1)));
-                    if (row != null) {
-                        rows.add(row);
-                    }
-                }
+        }
+        return rows;
+    }
+
+    /**
+     * The lines of a report: UTF-8, as the run writes it, or the Windows encoding a spreadsheet
+     * may save it in ("Text (Tab delimited)" in Excel), whose accented letters are not UTF-8.
+     */
+    private static List<String> lines(Path report) {
+        try {
+            try {
+                return Files.readAllLines(report, StandardCharsets.UTF_8);
+            } catch (CharacterCodingException notUtf8) {
+                return Files.readAllLines(report, Charset.forName("windows-1252"));
             }
         } catch (IOException e) {
             throw new UncheckedIOException("Unable to read consolidated report: " + report, e);
         }
-        return rows;
     }
 
     private static ReportRow row(Fields fields) {

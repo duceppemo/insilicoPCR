@@ -8,7 +8,7 @@ Within those rules, a few cases make the report say less than a real PCR would. 
 
 ## Assemblies (FASTA)
 
-**1. Fragmented assembly** (`Primers at contig ends`). A product is called on one contig only. When the assembly breaks between the two primers, they bind on different contigs and no product is reported. Since 0.15.0, when an assay has no product but its primers point off the ends of two contigs, or off both ends of one (a circular plasmid or chromosome cut at its origin), and joining them would give a product within `--max-length`, the run says so: a `Warning:` line in the log and in `QAlog.txt` with the smallest such product, and the sample's cell marked in the HTML report. Use a more complete assembly, or run the reads.
+**1. Fragmented assembly** (`Primers at contig ends`). A product is called on one contig only. When the assembly breaks between the two primers, they bind on different contigs and no product is reported. Since 0.15.0, when an assay has no product but its primers point off the ends of two contigs, or off both ends of one (a circular plasmid or chromosome cut at its origin), and joining them would give a product within `--max-length`, the run says so: a `Warning:` line in the log, a `Primers at contig ends:` line in `QAlog.txt`, each with the smallest such product, and the sample's cell marked in the HTML report. Use a more complete assembly, or run the reads.
 
 ## Reads (FASTQ)
 

@@ -42,24 +42,27 @@ record GelPages(List<String> sampleNames, int samplesPerGel) {
                 + " (" + sampleNames.get(start) + " ... " + sampleNames.get(end - 1) + ")";
     }
 
-    /** Samples whose name, or one of whose genes or amplicon sizes, contains {@code query}. */
+    /**
+     * The bands of every page that {@code query} matches, as the viewer matches them on the page
+     * it shows: a band (the amplicons of a lane that run together) matches when its sample name,
+     * genes and sizes hold the query ({@link GelText#searchText}). A lane without a band matches
+     * nothing, as on the page.
+     */
     Search find(Map<String, List<GelBand>> lanes, String query) {
-        if (query == null || query.isBlank()) {
+        String normalized = GelText.normalizeQuery(query);
+        if (normalized.isBlank()) {
             return new Search(-1, 0);
         }
-        String normalized = GelText.normalizeQuery(query);
         int first = -1;
         int count = 0;
         for (int i = 0; i < sampleNames.size(); i++) {
-            String sampleName = sampleNames.get(i);
-            boolean matches = sampleName.toLowerCase().contains(normalized)
-                    || lanes.getOrDefault(sampleName, List.of()).stream().anyMatch(b ->
-                    b.geneName().toLowerCase().contains(normalized)
-                            || Integer.toString(b.ampliconSize()).contains(normalized));
-            if (matches) {
-                count++;
-                if (first < 0) {
-                    first = i / samplesPerGel;
+            for (List<GelBand> band : GelReportReader.groupByRoundedSize(
+                    lanes.getOrDefault(sampleNames.get(i), List.of())).values()) {
+                if (GelText.searchText(band).contains(normalized)) {
+                    count++;
+                    if (first < 0) {
+                        first = i / samplesPerGel;
+                    }
                 }
             }
         }

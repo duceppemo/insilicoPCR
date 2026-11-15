@@ -27,11 +27,13 @@ record GelLayout(double gelLeft,
         double visibleWidth = Math.max(sceneWidth, 800);
         double visibleHeight = Math.max(sceneHeight, 500);
         double gelHeight = Math.max(540, visibleHeight * 1.10);
-        double labelAreaHeight = Math.max(150, Math.min(360, GelScale.laneLabelWidth(sampleNames) * 0.72 + 36));
+        double longestLabelWidth = GelScale.laneLabelWidth(sampleNames);
+        double labelAreaHeight = labelAreaHeight(longestLabelWidth);
         double laneWidth = Math.max(74, (visibleWidth - LEFT_LABEL_WIDTH - RIGHT_INSET) / Math.max(laneCount, 11));
         double gelWidth = laneWidth * laneCount;
         double gelBottom = TOP_INSET + gelHeight;
-        double width = Math.max(visibleWidth, LEFT_LABEL_WIDTH + gelWidth + RIGHT_INSET);
+        // Room for the slanted name of the last lane, which reaches past the gel's right edge.
+        double width = Math.max(visibleWidth, LEFT_LABEL_WIDTH + gelWidth + rightMargin(longestLabelWidth, laneWidth));
         double height = gelBottom + labelAreaHeight;
         return new GelLayout(LEFT_LABEL_WIDTH, TOP_INSET, gelWidth, gelHeight, laneWidth, width, height,
                 gelBottom + LABEL_OFFSET);
@@ -42,20 +44,36 @@ record GelLayout(double gelLeft,
      * picture that hugs the gel, leaving room for the slanted label of the last lane and for a
      * legend of {@code legendWidth} to the right of the gel.
      */
-    static GelLayout image(Collection<String> sampleNames, double legendWidth) {
+    static GelLayout image(Collection<String> sampleNames, double legendWidth, int legendRows) {
         int laneCount = sampleNames.size() + 1;
         double gelHeight = 560;
         double longestLabelWidth = GelScale.laneLabelWidth(sampleNames);
-        double labelAreaHeight = Math.max(150, Math.min(360, longestLabelWidth * 0.72 + 36));
+        double labelAreaHeight = labelAreaHeight(longestLabelWidth);
         double laneWidth = 110;
         double gelWidth = laneWidth * laneCount;
         double gelBottom = TOP_INSET + gelHeight;
         double legendX = LEFT_LABEL_WIDTH + gelWidth + 20;
-        double width = LEFT_LABEL_WIDTH + gelWidth + Math.max(RIGHT_INSET, longestLabelWidth * 0.72 - laneWidth / 2);
+        double width = LEFT_LABEL_WIDTH + gelWidth + rightMargin(longestLabelWidth, laneWidth);
         width = Math.max(width, legendX + legendWidth + 12);
-        double height = gelBottom + labelAreaHeight;
+        // Tall enough for the legend too, however many genes it lists.
+        double height = Math.max(gelBottom + labelAreaHeight, TOP_INSET + legendHeight(legendRows) + 12);
         return new GelLayout(LEFT_LABEL_WIDTH, TOP_INSET, gelWidth, gelHeight, laneWidth, width, height,
                 gelBottom + LABEL_OFFSET);
+    }
+
+    /** Height of the slanted lane names under the gel: long names are not cut. */
+    private static double labelAreaHeight(double longestLabelWidth) {
+        return Math.max(150, longestLabelWidth * 0.72 + 36);
+    }
+
+    /** Space right of the gel for the last lane's slanted name. */
+    private static double rightMargin(double longestLabelWidth, double laneWidth) {
+        return Math.max(RIGHT_INSET, longestLabelWidth * 0.72 - laneWidth / 2 + RIGHT_INSET);
+    }
+
+    /** Height of the gene legend drawn beside the PNG image, for {@code rows} genes. */
+    static double legendHeight(int rows) {
+        return rows == 0 ? 0 : 32 + rows * 20.0;
     }
 
     /** Width of the gene legend drawn beside the PNG image; 0 when there is no gene. */

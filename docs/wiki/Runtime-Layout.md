@@ -32,7 +32,8 @@ Keeping known-good runtime assets in the repository makes release packaging repr
 Run:
 
 ```bash
-scripts/dev/verify-runtime-layout.sh
+# From the repository root; without REQUIRE_BINARIES=true it only checks that the runtime/ folders exist.
+REQUIRE_BINARIES=true scripts/dev/verify-runtime-layout.sh
 ```
 
 The release scripts fail if required runtime assets are missing.

@@ -25,12 +25,23 @@ public final class GelColors {
         return Math.min(1.0, 0.45 + Math.max(0, bandCount - 1) * 0.12);
     }
 
+    /**
+     * The colour of the {@code index}-th gene: the palette's, then further hues spread by the golden
+     * angle, so that genes past the tenth do not share a colour (and a legend entry) with another.
+     */
+    static Color color(int index) {
+        if (index < PALETTE.length) {
+            return PALETTE[index];
+        }
+        return Color.hsb((index * 137.508) % 360, 0.65, 0.80);
+    }
+
     /** Assigns a stable palette color to each gene, in first-appearance order across lanes. */
     public static Map<String, Color> assignGeneColors(Map<String, List<GelBand>> lanes) {
         Map<String, Color> colors = new LinkedHashMap<>();
         for (List<GelBand> bands : lanes.values()) {
             for (GelBand band : bands) {
-                colors.computeIfAbsent(band.geneName(), gene -> PALETTE[colors.size() % PALETTE.length]);
+                colors.computeIfAbsent(band.geneName(), gene -> color(colors.size()));
             }
         }
         return colors;

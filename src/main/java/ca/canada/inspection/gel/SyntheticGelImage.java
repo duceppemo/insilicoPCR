@@ -69,7 +69,8 @@ public final class SyntheticGelImage {
 
     private static Canvas draw(LinkedHashMap<String, List<GelBand>> sampleBands) {
         Map<String, Color> geneColors = GelColors.assignGeneColors(sampleBands);
-        GelLayout layout = GelLayout.image(sampleBands.keySet(), GelLayout.legendWidth(geneColors.keySet()));
+        GelLayout layout = GelLayout.image(sampleBands.keySet(), GelLayout.legendWidth(geneColors.keySet()),
+                geneColors.size());
         // Amplicons of one size from different genes are drawn apart, so no gene colour is hidden.
         List<LaneBand> bands = new ArrayList<>();
         int lane = 1;
@@ -126,7 +127,7 @@ public final class SyntheticGelImage {
         }
         double rowHeight = 20;
         double width = GelLayout.legendWidth(geneColors.keySet()) - 8;
-        double height = 32 + geneColors.size() * rowHeight;
+        double height = GelLayout.legendHeight(geneColors.size());
 
         gc.setFill(Color.rgb(255, 255, 255, 0.95));
         gc.fillRect(x, y, width, height);

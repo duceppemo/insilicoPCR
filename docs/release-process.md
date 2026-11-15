@@ -12,7 +12,7 @@ Generated release output, Maven output, JavaFX SDK folders, and JDK/JRE folders 
 
 1. Check out the repository with Git LFS enabled.
 2. Install JDK 26 with `actions/setup-java`.
-3. Validate that bundled BBMap and BLAST are present with `scripts/dev/verify-runtime-layout.sh`.
+3. Check the runtime folders with `scripts/dev/verify-runtime-layout.sh`; the bundled BBMap and BLAST+ are checked after packaging.
 4. Build with Maven.
 5. Copy the current CI JDK into the staged portable runtime.
 6. Create platform ZIP and SHA256 files.
@@ -20,7 +20,7 @@ Generated release output, Maven output, JavaFX SDK folders, and JDK/JRE folders 
 
 ## Local runtime validation
 
-Run `scripts/dev/verify-runtime-layout.sh`.
+Run `REQUIRE_BINARIES=true scripts/dev/verify-runtime-layout.sh`, from the repository root (without `REQUIRE_BINARIES=true` it only checks that the `runtime/` folders exist).
 
 ## Runtime validation
 

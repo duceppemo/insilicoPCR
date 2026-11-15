@@ -101,7 +101,7 @@ usage: java -jar insilicoPCR.jar -i <input> -o <output> -p <primers> [-t
 | Option | Default | Meaning |
 |---|---|---|
 | `-t`, `--threads` | available processors | Number of worker threads |
-| `-m`, `--mismatches` | `0` | Allowed mismatches + indels per primer; 3' bases that do not pair with the template count against the budget |
+| `-m`, `--mismatches` | `0` | Allowed mismatches + indels per primer; 3' bases that do not pair with the template count against the budget (an indel within about 7 bases of a primer's 3' end counts once per base it shifts: see [Amplicon Calling](Amplicon-Calling#weighted-3-end-check---3p-window---3p-penalty)) |
 | `--probe-mismatches` | same as `-m` | Allowed mismatches + indels per hydrolysis probe (probes bind hotter and tolerate more) |
 | `-e`, `--evalue` | `1e5` | BLASTN e-value; deliberately permissive, see [BLAST e-value](Amplicon-Calling#blast-e-value) |
 | `-l`, `--max-length` | `5000` | Maximum amplicon length in bp; `0` disables the limit |
@@ -174,6 +174,8 @@ See [Amplicon Calling](Amplicon-Calling) for exactly how the mismatch budget, th
   -o results/ \
   -l 0
 ```
+
+In FASTQ mode, the read extension still extends reads by at most 5000 bases each way with `-l 0`; a longer product is found only if the mini-assembly or a read holds it.
 
 ## Notes
 

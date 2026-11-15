@@ -55,7 +55,12 @@ jobs:
         shell: bash
         run: |
           chmod +x mvnw
-          ./mvnw --batch-mode test
+          # A virtual display, so the tests that draw the gel (JavaFX) run instead of being skipped.
+          if command -v xvfb-run > /dev/null; then
+            xvfb-run -a ./mvnw --batch-mode test
+          else
+            ./mvnw --batch-mode test
+          fi
           test -f target/site/jacoco/jacoco.xml || { echo "JaCoCo report missing"; exit 1; }
 
       - name: Upload coverage to Codecov

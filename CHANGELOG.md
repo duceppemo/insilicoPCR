@@ -50,6 +50,12 @@
 
 ### Changed
 
+- Tests: CI runs the tests under a virtual display, so those that draw the gel
+  run there too; the application's form-to-run step (`RunForm`) is tested
+  without the window; a test keeps each package importing only from the
+  layers below it; and the read-level search's shortcuts that left out the
+  check of which locus a read comes from are test fixtures now
+  (`TestEvidence`), so the code a run uses always checks it.
 - Code: what a sample shows for an assay (target size, other product, seen in
   too few reads, not checkable from reads, ...) is decided in
   `pcr.AssayVerdict`, tested apart from the HTML report, which only draws it.

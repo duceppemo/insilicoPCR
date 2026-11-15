@@ -83,7 +83,7 @@ class FastqDiagnosticsTest {
             reads.addBlastResult("assay-R", TestHits.minusHit("assay-R", read, 61));
             reads.addBlastResult("assay-P", TestHits.plusHit("assay-P", read, 35));
         }
-        return ReadLevelCaller.evaluate(reads, lengths, PRIMERS, DEFAULTS);
+        return TestEvidence.evaluate(reads, lengths, PRIMERS, DEFAULTS);
     }
 
     @Test

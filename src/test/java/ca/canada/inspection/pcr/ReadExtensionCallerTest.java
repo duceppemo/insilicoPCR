@@ -72,7 +72,7 @@ class ReadExtensionCallerTest {
         reads.addBlastResult("long-R", TestHits.minusHit("long-R", "read_1", 61));
         reads.addBlastResult("long-F", TestHits.plusHit("long-F", "read_2", 11));
         reads.addBlastResult("long-R", TestHits.minusHit("long-R", "read_3", 61));
-        ReadEvidence evidence = ReadLevelCaller.evaluate(reads, Map.of("read_1", 101, "read_2", 101, "read_3", 101),
+        ReadEvidence evidence = TestEvidence.evaluate(reads, Map.of("read_1", 101, "read_2", 101, "read_3", 101),
                 PRIMERS, DEFAULTS);
         assertFalse(evidence.products("long").getFirst().isReportable());
 
@@ -144,7 +144,7 @@ class ReadExtensionCallerTest {
         reads.addBlastResult("long-R", TestHits.minusHit("long-R", "read_1", 61));
         reads.addBlastResult("long-F", TestHits.plusHit("long-F", "read_2", 11));
         reads.addBlastResult("long-R", TestHits.minusHit("long-R", "read_3", 61));
-        ReadEvidence evidence = ReadLevelCaller.evaluate(reads, Map.of("read_1", 101, "read_2", 101, "read_3", 101),
+        ReadEvidence evidence = TestEvidence.evaluate(reads, Map.of("read_1", 101, "read_2", 101, "read_3", 101),
                 PRIMERS, DEFAULTS);
         ExpectedSizes target70 = ExpectedSizes.fromHeaders(Map.of("long-F", "size=70"));
 

@@ -2,13 +2,11 @@ package ca.canada.inspection.insilicopcr;
 
 import ca.canada.inspection.util.Version;
 import ca.canada.inspection.gel.InteractiveGelViewer;
-import ca.canada.inspection.pcr.AmpliconOptions;
 import ca.canada.inspection.insilicopcr.ui.AmpliconSettingsDialog;
 import ca.canada.inspection.insilicopcr.ui.AmpliconSettingsDialog.AmpliconSettings;
 import ca.canada.inspection.insilicopcr.ui.FastqSettingsDialog;
 import ca.canada.inspection.insilicopcr.ui.FastqSettingsDialog.FastqSettings;
 import ca.canada.inspection.insilicopcr.ui.PathFieldBinder;
-import ca.canada.inspection.pipeline.InputValidator;
 import ca.canada.inspection.pipeline.PipelineConfig;
 import ca.canada.inspection.pipeline.PreviousRun;
 import ca.canada.inspection.pipeline.RunResult;
@@ -330,27 +328,16 @@ public class MainRun extends Application {
         if (currentlyRunning.get()) {
             return; // the button is disabled while running; ignore a stray second trigger
         }
-        var validationMessage = InputValidator.validate(inputFile, outDir, primerFile);
-        if (!validationMessage.isBlank()) {
-            alertText.setText(validationMessage);
+        // Every typed value is checked BEFORE any UI state changes, so a bad entry cannot leave the
+        // window stuck in the "running" state.
+        RunForm.Outcome outcome = new RunForm(inputFile, outDir, primerFile,
+                threadField.getSelectionModel().getSelectedItem(), mismatchField.getSelectionModel().getSelectedItem(),
+                evalueField.getText(), ampliconSettings, fastqSettings).toConfig();
+        if (outcome instanceof RunForm.Outcome.Invalid invalid) {
+            alertText.setText(invalid.message());
             return;
         }
-
-        // Validate every typed value BEFORE touching any UI state, so a bad entry
-        // cannot leave the window stuck in the "running" state.
-        double evalue;
-        try {
-            evalue = Double.parseDouble(evalueField.getText().trim());
-            if (!(evalue > 0.0)) {
-                throw new NumberFormatException();
-            }
-        } catch (NumberFormatException e) {
-            alertText.setText("E-value must be a number greater than 0, e.g. 1e5.");
-            return;
-        }
-
-        // The Amplicon settings dialog only accepts valid values, so this cannot fail.
-        AmpliconOptions ampliconOptions = ampliconSettings.toOptions(mismatchField.getSelectionModel().getSelectedItem());
+        var config = ((RunForm.Outcome.Run) outcome).config();
 
         alertText.setText("");
         outputField.clear();
@@ -364,16 +351,6 @@ public class MainRun extends Application {
         blastProgress.setProgress(ProgressBar.INDETERMINATE_PROGRESS);
 
         lastResult = null;
-        // The window has its own gel viewer, and checks every read as the command line does
-        // by default.
-        var config = PipelineConfig.builder(inputFile, outDir, primerFile)
-                .threads(threadField.getSelectionModel().getSelectedItem())
-                .evalue(evalue)
-                .ampliconOptions(ampliconOptions)
-                .tadpole(fastqSettings.tadpole())
-                .readMinFraction(fastqSettings.readMinFraction())
-                .readExtension(fastqSettings.readExtension())
-                .build();
 
         runningTask = new PcrPipelineTask(config, outputField, blastProgress);
         mainProgress.progressProperty().bind(runningTask.progressProperty());

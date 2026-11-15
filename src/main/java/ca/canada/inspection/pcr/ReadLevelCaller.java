@@ -235,34 +235,6 @@ public final class ReadLevelCaller {
     }
 
     /**
-     * As {@link #evaluate(Sample, Map, Map, PrimerPanel, AmpliconOptions, double, ReadSequences)} with every
-     * read its own fragment, the default support fraction and no read sequences.
-     *
-     * @param reads       pseudo-sample whose "contigs" are the baited reads: accepted
-     *                    primer hits attached, read descriptions as contig descriptions
-     * @param readLengths read lengths keyed by read ID
-     */
-    public static ReadEvidence evaluate(Sample reads, Map<String, Integer> readLengths,
-                                        PrimerPanel primers, AmpliconOptions options) {
-        return evaluate(reads, readLengths, Map.of(), primers, options, DEFAULT_MIN_SUPPORT_FRACTION,
-                ReadSequences.NONE);
-    }
-
-    /** As the full {@code evaluate} with every read its own fragment and no read sequences. */
-    public static ReadEvidence evaluate(Sample reads, Map<String, Integer> readLengths,
-                                        PrimerPanel primers, AmpliconOptions options,
-                                        double minSupportFraction) {
-        return evaluate(reads, readLengths, Map.of(), primers, options, minSupportFraction, ReadSequences.NONE);
-    }
-
-    /** As the full {@code evaluate} with no read sequences. */
-    public static ReadEvidence evaluate(Sample reads, Map<String, Integer> readLengths,
-                                        Map<String, String> fragments, PrimerPanel primers,
-                                        AmpliconOptions options, double minSupportFraction) {
-        return evaluate(reads, readLengths, fragments, primers, options, minSupportFraction, ReadSequences.NONE);
-    }
-
-    /**
      * @param fragments          read ID to fragment ID for unmerged mates of one pair, which
      *                           then count once as supporting or informative evidence; reads
      *                           not listed are their own fragment

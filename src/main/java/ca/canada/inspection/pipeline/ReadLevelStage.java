@@ -150,10 +150,9 @@ public final class ReadLevelStage {
                 if (!header.startsWith(">") || sequence == null) {
                     throw new PipelineException("Malformed baited reads FASTA: " + fasta + " near: " + header);
                 }
-                int space = header.indexOf(' ');
-                String id = header.substring(1, space < 0 ? header.length() : space);
+                String id = SequenceFileUtils.fastaId(header);
                 if (readIds.contains(id)) {
-                    records.put(id, new ReadRecord(space < 0 ? "" : header.substring(space + 1), sequence));
+                    records.put(id, new ReadRecord(SequenceFileUtils.fastaDescription(header), sequence));
                 }
             }
         } catch (IOException e) {

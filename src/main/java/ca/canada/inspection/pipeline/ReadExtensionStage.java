@@ -286,7 +286,7 @@ public final class ReadExtensionStage {
             String line;
             while ((line = reader.readLine()) != null) {
                 if (line.startsWith(">")) {
-                    String id = line.substring(1).trim().split("\\s+", 2)[0];
+                    String id = SequenceFileUtils.fastaId(line);
                     current = ids.contains(id) ? found.computeIfAbsent(id, ignored -> new StringBuilder()) : null;
                 } else if (current != null) {
                     current.append(line.strip());

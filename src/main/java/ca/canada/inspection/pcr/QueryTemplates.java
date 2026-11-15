@@ -1,9 +1,9 @@
 package ca.canada.inspection.pcr;
 
 import ca.canada.inspection.model.BlastResult;
+import ca.canada.inspection.util.FastaScanner;
 import ca.canada.inspection.util.SequenceFileUtils;
 
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Path;
@@ -28,7 +28,7 @@ import java.util.function.Function;
 public final class QueryTemplates implements Function<BlastResult, TrimmedEnds.Template>, AutoCloseable {
 
     private final List<Path> files;
-    private Scanner scanner;
+    private FastaScanner scanner;
     /** The header the scanner stopped at after the current record: the next record to look at. */
     private String pendingHeader;
     private String currentId;
@@ -39,7 +39,7 @@ public final class QueryTemplates implements Function<BlastResult, TrimmedEnds.T
 
     public QueryTemplates(List<Path> fastaFiles) {
         this.files = List.copyOf(fastaFiles);
-        this.scanner = new Scanner(files);
+        this.scanner = new FastaScanner(files);
     }
 
     @Override
@@ -84,7 +84,7 @@ public final class QueryTemplates implements Function<BlastResult, TrimmedEnds.T
         while (header != null) {
             if (SequenceFileUtils.fastaId(header).equals(id)) {
                 PackedBases bases = new PackedBases();
-                pendingHeader = scanner.nextHeader(bases);
+                pendingHeader = scanner.nextHeader(base -> bases.append((char) base));
                 currentId = id;
                 current = new TrimmedEnds.Template(1, bases, bases.length());
                 return true;
@@ -96,108 +96,19 @@ public final class QueryTemplates implements Function<BlastResult, TrimmedEnds.T
 
     private void restart() throws IOException {
         close();
-        scanner = new Scanner(files);
+        scanner = new FastaScanner(files);
         pendingHeader = null;
     }
 
     private Set<String> indexIds() throws IOException {
         Set<String> ids = new HashSet<>();
-        try (Scanner all = new Scanner(files)) {
+        try (FastaScanner all = new FastaScanner(files)) {
             String header;
             while ((header = all.nextHeader(null)) != null) {
                 ids.add(SequenceFileUtils.fastaId(header));
             }
         }
         return ids;
-    }
-
-    /**
-     * Reads FASTA files one after the other, a block of characters at a time. Lines are
-     * never built: a contig written on a single line, hundreds of millions of characters
-     * long, is read like a wrapped one.
-     */
-    private static final class Scanner implements AutoCloseable {
-        private final List<Path> files;
-        private int fileIndex = -1;
-        private BufferedReader reader;
-        private final char[] block = new char[1 << 16];
-        private int filled;
-        private int next;
-        private boolean atLineStart = true;
-
-        Scanner(List<Path> files) {
-            this.files = files;
-        }
-
-        /**
-         * Reads on to the next header line and returns it, {@code >} included, or
-         * {@code null} after the last record. The sequence passed on the way is added to
-         * {@code sequence} without its line ends and blanks, or skipped when it is
-         * {@code null}.
-         */
-        String nextHeader(PackedBases sequence) throws IOException {
-            int c;
-            while ((c = read()) >= 0) {
-                if (c == '\n' || c == '\r') {
-                    atLineStart = true;
-                } else if (atLineStart && c == '>') {
-                    return headerLine();
-                } else {
-                    atLineStart = false;
-                    if (sequence != null && !Character.isWhitespace(c)) {
-                        sequence.append((char) c);
-                    }
-                }
-            }
-            return null;
-        }
-
-        /** The rest of a header line whose {@code >} was just read. */
-        private String headerLine() throws IOException {
-            StringBuilder header = new StringBuilder(">");
-            int file = fileIndex;
-            int c;
-            while ((c = read()) >= 0 && c != '\n' && c != '\r') {
-                if (fileIndex != file) {
-                    // The file ended without a line end: this character starts the next file.
-                    next--;
-                    break;
-                }
-                header.append((char) c);
-            }
-            atLineStart = true;
-            return header.toString();
-        }
-
-        /** The next character across the files, or -1 after the last one. A new file starts a new line. */
-        private int read() throws IOException {
-            while (next >= filled) {
-                if (reader == null) {
-                    if (fileIndex + 1 >= files.size()) {
-                        return -1;
-                    }
-                    fileIndex++;
-                    reader = SequenceFileUtils.openMaybeGzip(files.get(fileIndex));
-                    atLineStart = true;
-                }
-                filled = reader.read(block);
-                next = 0;
-                if (filled <= 0) {
-                    filled = 0;
-                    reader.close();
-                    reader = null;
-                }
-            }
-            return block[next++];
-        }
-
-        @Override
-        public void close() throws IOException {
-            if (reader != null) {
-                reader.close();
-                reader = null;
-            }
-        }
     }
 
     @Override

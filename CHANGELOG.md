@@ -43,6 +43,10 @@
 
 ### Changed
 
+- Code: assemblies are read without building lines (`util.FastaScanner`, which
+  the trimmed-end check already used), also to load contig descriptions and
+  lengths, which read a contig written on one line as one string; the ID and
+  description of a FASTA header are read by one rule everywhere.
 - Code: the columns of the BLAST TSV are one list (`pcr.BlastField`) for the
   `-outfmt` given to blastn, the header and the parser, which read them by
   position; blastn is run from one command line (`BlastTsv.blastn`) for

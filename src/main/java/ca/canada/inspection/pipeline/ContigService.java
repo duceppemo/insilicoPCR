@@ -1,9 +1,9 @@
 package ca.canada.inspection.pipeline;
 
 import ca.canada.inspection.model.Sample;
+import ca.canada.inspection.util.FastaScanner;
 import ca.canada.inspection.util.SequenceFileUtils;
 
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
@@ -25,42 +25,15 @@ final class ContigService {
         }
     }
 
+    /** Adds the contigs of {@code fasta} (ID and description) to {@code sample}, reading headers only. */
     private static void addContigsFromFasta(Sample sample, Path fasta) {
-        if (fasta == null) {
-            throw new PipelineException("Sample has no FASTA/assembly file for contig loading: " + sample.getName());
-        }
-        try (BufferedReader reader = SequenceFileUtils.openMaybeGzip(fasta)) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                if (!line.startsWith(">")) {
-                    continue;
-                }
-                ContigHeader header = parseContigHeader(line.substring(1));
-                sample.addContig(header.id(), header.description());
+        try (FastaScanner scanner = new FastaScanner(List.of(fasta))) {
+            String header;
+            while ((header = scanner.nextHeader(null)) != null) {
+                sample.addContig(SequenceFileUtils.fastaId(header), SequenceFileUtils.fastaDescription(header));
             }
         } catch (IOException e) {
             throw new PipelineException("Could not parse contigs from: " + fasta, e);
         }
-    }
-
-    private static ContigHeader parseContigHeader(String rawHeader) {
-        String trimmed = rawHeader.trim();
-        int firstWhitespace = findFirstWhitespace(trimmed);
-        if (firstWhitespace < 0) {
-            return new ContigHeader(trimmed, "");
-        }
-        return new ContigHeader(trimmed.substring(0, firstWhitespace), trimmed.substring(firstWhitespace + 1).trim());
-    }
-
-    private static int findFirstWhitespace(String value) {
-        for (int i = 0; i < value.length(); i++) {
-            if (Character.isWhitespace(value.charAt(i))) {
-                return i;
-            }
-        }
-        return -1;
-    }
-
-    private record ContigHeader(String id, String description) {
     }
 }

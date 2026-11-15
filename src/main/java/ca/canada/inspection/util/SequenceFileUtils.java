@@ -173,30 +173,30 @@ public final class SequenceFileUtils {
         return -1;
     }
 
-    /** Sequence lengths of a FASTA file keyed by ID (header up to the first whitespace, as BLAST reports it). */
+    /** The description of a FASTA header line: what follows its ID, trimmed; empty without one. */
+    public static String fastaDescription(String headerLine) {
+        String header = headerLine.substring(1).strip();
+        int space = firstWhitespace(header);
+        return space < 0 ? "" : header.substring(space + 1).strip();
+    }
+
+    /**
+     * Sequence lengths of a FASTA file keyed by ID ({@link #fastaId}, as BLAST reports it), read
+     * without building lines ({@link FastaScanner}).
+     */
     public static Map<String, Integer> sequenceLengths(Path fasta) {
         Map<String, Integer> lengths = new HashMap<>();
-        try (BufferedReader reader = openMaybeGzip(fasta)) {
-            String id = null;
-            int length = 0;
-            String line;
-            while ((line = reader.readLine()) != null) {
-                if (line.startsWith(">")) {
-                    if (id != null) {
-                        lengths.put(id, length);
-                    }
-                    String header = line.substring(1).trim();
-                    id = header.split("\\s+", 2)[0];
-                    length = 0;
-                } else {
-                    length += line.strip().length();
-                }
-            }
-            if (id != null) {
-                lengths.put(id, length);
+        int[] length = new int[1];
+        try (FastaScanner scanner = new FastaScanner(List.of(fasta))) {
+            String header = scanner.nextHeader(null);
+            while (header != null) {
+                length[0] = 0;
+                String next = scanner.nextHeader(base -> length[0]++);
+                lengths.put(fastaId(header), length[0]);
+                header = next;
             }
         } catch (IOException e) {
-            throw new UncheckedIOException("Unable to read contigs: " + fasta, e);
+            throw new UncheckedIOException("Unable to read sequence lengths from: " + fasta, e);
         }
         return lengths;
     }

@@ -27,7 +27,7 @@ Curated BBMap and BLAST+ runtime assets are intentionally part of the repository
 
 ```bash
 ./mvnw clean package
-scripts/dev/verify-runtime-layout.sh
+REQUIRE_BINARIES=true scripts/dev/verify-runtime-layout.sh   # from the repository root
 ```
 
 ## Pull request focus

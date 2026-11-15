@@ -28,16 +28,16 @@ public final class FastqDiagnosticsReport {
             writer.newLine();
             for (Finding finding : findings) {
                 writer.write(String.join("\t",
-                        finding.sample(),
-                        finding.assay(),
+                        ReportColumn.cell(finding.sample()),
+                        ReportColumn.cell(finding.assay()),
                         finding.status().name(),
                         finding.assembly().name(),
                         String.valueOf(finding.readsWithOligo().forward()),
                         String.valueOf(finding.readsWithOligo().reverse()),
                         String.valueOf(finding.readsWithOligo().probe()),
                         String.valueOf(finding.checkableLength()),
-                        finding.readDetail().replace('\t', ' '),
-                        finding.assemblyDetail().replace('\t', ' ')));
+                        ReportColumn.cell(finding.readDetail()),
+                        ReportColumn.cell(finding.assemblyDetail())));
                 writer.newLine();
             }
         } catch (IOException e) {

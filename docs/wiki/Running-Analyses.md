@@ -9,7 +9,7 @@ Supported sequence inputs include:
 - assemblies: `.fasta`, `.fa`, `.fna`, `.ffn`, `.fsa`, plain or (since 0.12.1) gzipped
 - reads: `.fastq`, `.fq`, plain or gzipped (`.fastq.gz`, `.fq.gz`)
 
-The input can be a single file or a directory containing multiple sequence files. Gzipped assemblies (`.fasta.gz`, `.fna.gz` and so on) are read since 0.12.1; with earlier releases, decompress them first.
+The input can be a single file or a directory containing multiple sequence files. The output folder must not be the input folder (the run writes files there, which would be read as samples); paths may contain spaces (before 0.15.2, an output folder whose path had a space stopped every run at `makeblastdb`). FASTQ input may be a read pair or single-end reads (before 0.15.2, single-end reads were taken for interleaved pairs: a file with an odd number of reads stopped the run in BBDuk, and with an even number each baited read brought its unrelated neighbour along). Gzipped assemblies (`.fasta.gz`, `.fna.gz` and so on) are read since 0.12.1; with earlier releases, decompress them first.
 
 ## Sample names
 
@@ -111,6 +111,7 @@ Every GUI setting has a command-line equivalent; see [Command-line Interface](Co
 | `detailed_report/<sample>/` | Raw BLAST hits per sample and, for FASTQ input, the baited reads and mini-assembly |
 | `QAlog.txt` | Version, inputs, the samples analysed, the report written and the settings that decide calls; written when a run finishes |
 | `primer_tmp.fasta*` | The primers as a BLAST database; the application deletes it no longer, since 0.14.0 |
+| `synthetic_gel_report.png` | With `--gel` only: the synthetic gel, in the output folder itself, named after the report (`synthetic_gel_report(1).png` for `report(1).tsv`) |
 | `log.txt` | Application only: what the window showed of each run, added at the end of the run, also one that failed or was stopped |
 
 A run into a folder that already holds a report writes `report(1).tsv` and `report(1).html`, and so on. See [Reports](Reports).

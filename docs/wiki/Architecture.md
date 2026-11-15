@@ -16,7 +16,7 @@ One dispatcher starts the desktop GUI when it is given no arguments and the comm
 | Pipeline | `ca.canada.inspection.pipeline.InSilicoPcrPipeline` |
 | Analysis core | `ca.canada.inspection.pcr` |
 
-The dispatcher starts the GUI when no command-line arguments are provided. When CLI arguments are present, `CliConfig` reads them into a `PipelineConfig` and runs the pipeline with it. The defaults of a run and the checks of its settings are in one place, `PipelineConfig.builder`, which the command line, the application and the tests all start from.
+The dispatcher starts the GUI when no command-line arguments are provided. When CLI arguments are present, `CliConfig` reads them into a `PipelineConfig`, and the dispatcher runs the pipeline with it (exit code 0 done, 1 failed, 2 wrong command line). The defaults of a run and the checks of its settings are in one place, `PipelineConfig.builder`, which the command line, the application and the tests all start from.
 
 ## Packages
 
@@ -47,7 +47,7 @@ The GUI runs the same pipeline: `insilicopcr.PcrPipelineTask` runs `InSilicoPcrP
 | Reads | `FastqProcessor`, `BbtoolsCommands`, `ChildJavaMemory` | FASTQ samples: two rounds of BBDuk baiting, Tadpole mini-assembly, BBMerge of baited pairs |
 | BLAST database, BLAST | `BlastDatabaseBuilder`, `BlastRunner`, `ContigService`, `pcr.BlastReports` | `makeblastdb` on the primers; `blastn` of every sample, one thread each, several samples at a time; the accepted hits attached to their samples |
 | Read search, read extension | `ReadLevelStage`, `ReadExtensionStage` | FASTQ samples: amplicons called on the baited reads; reads extended for products longer than a read |
-| Reports | `ReportGenerator`, `QaLogWriter` | Writes `report.tsv`, the FASTQ diagnostics, the HTML report, the `--gel` image and, last, `QAlog.txt`; returns the `RunResult`; runs no program |
+| Reports | `ReportGenerator`, `FastqDiagnosticsStage`, `QaLogWriter` | Writes `report.tsv`, the FASTQ diagnostics, the HTML report, the `--gel` image and, last, `QAlog.txt`; returns the `RunResult`; runs no program |
 
 Samples are processed several at a time by `ParallelStageRunner`, on daemon threads, which stops starting new samples once one has failed, or once the run is cancelled. For the BBTools steps, `ChildJavaMemory.share` splits the threads and the memory between the samples running at once: half of insilicoPCR's heap in all, at least 4 GB and at most 64 GB per program. A BBTools program that runs out of memory stops in one of two ways: with exit code 3, from `-XX:+ExitOnOutOfMemoryError`, when the Java runtime runs out of heap; or with exit code 1 after printing `This program ran out of memory.`, when one of its k-mer tables, sized from the heap, is full (Tadpole on a large sample, with heap to spare). `ExternalProgram` reads the programs' error output, passing it on, to recognise that line (`ProgramFailedException.saidOutOfMemory`). `FastqProcessor` sets such a sample aside and, after the others, runs it again alone with everything, from the step that ran out. The user-facing behaviour is on [Threads and memory in FASTQ mode](Command-line-Interface#threads-and-memory-in-fastq-mode).
 
@@ -60,7 +60,9 @@ The pipeline delegates the scientific decisions to one JavaFX-free package:
 | `PrimerId` | The primer naming rule (`<assay>-F`, `-R`, `-P`): reads an ID into its assay and role, and groups a run's primers by assay |
 | `PrimerPanel` | The primers of a run, read once by `PrimerService`: each oligo's sequence (degenerate ones expanded), the assays they form, which have a probe, and the product sizes the file declares; passed to every step that needs the primers |
 | `AmpliconOptions` | Immutable knobs: mismatch budget, 3' window/penalty, 5' truncation allowance, product size limits |
-| `BlastHitParser` | Parses BLAST TSV lines and applies the hit acceptance rules (mismatch budget, 3'-end coverage, weighted 3' penalty; probes exempt from 3' rules; trimmed probe ends and primer 3' ends compared with the template by `TrimmedEnds`, the template read alongside the report by `QueryTemplates`) |
+| `BlastField` | The columns of the BLAST TSV, in order: the `-outfmt` blastn is given, the header and the parser's fields |
+| `BlastHits` | The one reader of a BLAST TSV into a sample (contigs, baited reads, extended reads), with the warning for trimmed hits whose sequence is missing from the searched file |
+| `BlastHitParser` | Parses one BLAST TSV line and applies the hit acceptance rules (mismatch budget, 3'-end coverage, weighted 3' penalty; probes exempt from 3' rules; trimmed probe ends and primer 3' ends compared with the template by `TrimmedEnds`, the template read alongside the report by `QueryTemplates`) |
 | `BlastReports` | Where each sample's BLAST report is (`detailed_report/<sample>/<sample>.tsv`, named after the sample, not its file); reads the run's samples' reports and attaches their accepted hits |
 | `AmpliconCaller` | Pairs forward/reverse hits: same contig, opposite strands, convergent orientation, size limits |
 | `TrimmedEnds` | Compares the oligo bases BLAST trimmed off the ends of an alignment with the template: probe ends and primer 3' ends count only where they do not pair |
@@ -72,14 +74,16 @@ The pipeline delegates the scientific decisions to one JavaFX-free package:
 | `PairSupport` | FASTQ mode: checks a product found on extended reads against the sample's read pairs (every window inside enough fragments; no repeat longer than the window), so that a wrong turn through a repeat is not reported |
 | `FastqDiagnostics` | FASTQ mode: explains assays the mini-assembly did not report though their oligos are in the reads |
 | `ExpectedSizes` | Product sizes declared in primer FASTA headers (`size=`, `other=`); labels report rows `target` / `other` / `unexpected` and never filters |
+| `AssayVerdict` | What a sample shows for an assay (target size, other product, seen in too few reads, primers at contig ends, ...), with why; the HTML report draws it |
+| `SplitAcrossContigs` | Assemblies: assays without a product whose primers point off the ends of two contigs (or both ends of one), with the smallest product joining them would give |
 
 The files are written and read by `ca.canada.inspection.report`:
 
 | Class | Responsibility |
 |---|---|
 | `ConsolidatedReport` | Writes `report.tsv` (standard and qPCR modes) from `Products` and the rows called from reads |
-| `ReportTsv` | Reads a `report.tsv` back into `ReportRow`s, by column name, for the HTML report, the gel and a past run opened in the application |
-| `HtmlReport` | Writes the self-contained HTML report from the consolidated TSV: sample-by-assay grid, per-assay summary, amplicon table; its style and script are the resources `report.css` and `report.js` |
+| `ReportTsv` | Reads a `report.tsv` back into `ReportRow`s, by column name, for the gel and a past run opened in the application (refusing a file that is not a report) |
+| `HtmlReport` | Writes the self-contained HTML report from the run's `ReportRow`s (the verdict of each sample and assay from `pcr.AssayVerdict`): sample-by-assay grid, per-assay summary, amplicon table; its style and script are the resources `report.css` and `report.js` |
 | `FastqDiagnosticsReport` | Writes `report_fastq_diagnostics.tsv` from the `FastqDiagnostics` findings |
 
 Three classes outside these packages take part in every run as well:
@@ -125,7 +129,7 @@ External programs: BBTools, BLAST+ (ExternalProgram, ParallelStageRunner)
    ↓
 Analysis core (pcr): hit filtering, amplicon calling, read-level calls
    ↓
-Reports (pcr) and synthetic gel (gel)
+Reports (report) and synthetic gel (gel)
 ```
 
 ## Design goals

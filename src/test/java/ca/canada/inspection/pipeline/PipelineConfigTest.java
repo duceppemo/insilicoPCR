@@ -51,4 +51,13 @@ class PipelineConfigTest {
         assertThrows(IllegalArgumentException.class,
                 () -> PipelineConfig.builder(IN, OUT, PRIMERS).readMinFraction(1.5).build());
     }
+
+    @Test
+    void theOutputFolderMustNotBeTheInputFolder() {
+        // The primer database written there would be listed as a sample.
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> PipelineConfig.builder(IN, IN, PRIMERS).build());
+        assertEquals("The output folder must not be the input folder: " + IN.toAbsolutePath().normalize(),
+                error.getMessage());
+    }
 }

@@ -149,7 +149,7 @@ public class MainRun extends Application {
 
     private void addPrimerControls(Stage stage, GridPane pane, TextField primerField) {
         addPrompt(pane, "Input a primer reference file in fasta format", 2, 7, 20, 2);
-        primerField.setTooltip(new Tooltip("Please refer to the custom_primer_guide.txt for instructions on how to create a valid primer file"));
+        primerField.setTooltip(new Tooltip("A FASTA of primers named <assay>-F, <assay>-R and, for qPCR, <assay>-P; see Primer FASTA Format in the wiki"));
         primerField.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
         primerField.setEditable(true);
         pane.add(primerField, 2, 9, 28, 2);
@@ -163,7 +163,7 @@ public class MainRun extends Application {
     }
 
     private void addOutputControls(Stage stage, GridPane pane, TextField outputDirField) {
-        addPrompt(pane, "Output directory. Path MUST NOT contain spaces", 2, 12, 20, 2);
+        addPrompt(pane, "Output directory", 2, 12, 20, 2);
         outputDirField.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
         outputDirField.setEditable(true);
         pane.add(outputDirField, 2, 14, 28, 2);

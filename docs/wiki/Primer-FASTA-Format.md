@@ -97,6 +97,10 @@ Supported bases include:
 
 Sequences should not include spaces, fluorophore names, quencher names, or non-IUPAC sequence characters. If a probe has labels such as FAM or BHQ1, remove those labels and keep only the nucleotide sequence.
 
+Each degenerate oligo is searched as every sequence it stands for, up to 65,536 (eight `N`). A more degenerate one stops the run with `Primer <ID> is too degenerate`; an inosine written as `N` counts as four bases.
+
+The run also stops on a record without a sequence (`Primer toxA-P has no sequence in the primer file ...`) and on an ID used twice (`Primer ID toxB-F appears twice ...`; give each its own ID, such as `toxB-F_1`, `toxB-F_2`). Before 0.15.2 both were silent: a probe without a sequence turned its qPCR assay into a PCR assay reported on its primers alone, and of two records with one ID only the last was searched.
+
 ## Recommended naming
 
 Use simple names that make the assay clear:

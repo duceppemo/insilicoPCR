@@ -88,15 +88,20 @@ public final class PrimerService {
                     continue;
                 }
                 if (line.startsWith(">")) {
-                    putFastaEntry(fasta, currentId, sequence);
+                    putFastaEntry(fasta, currentId, sequence, file);
                     currentId = SequenceFileUtils.fastaId(line);
+                    if (descriptions.containsKey(currentId)) {
+                        // Silently keeping one of the two would miss the other's products.
+                        throw new PipelineException("Primer ID " + currentId + " appears twice in the primer file "
+                                + file + "; give each primer its own ID (" + currentId + "_1, " + currentId + "_2)");
+                    }
                     descriptions.put(currentId, SequenceFileUtils.fastaDescription(line));
                     sequence.setLength(0);
                 } else {
                     sequence.append(line);
                 }
             }
-            putFastaEntry(fasta, currentId, sequence);
+            putFastaEntry(fasta, currentId, sequence, file);
         } catch (IOException e) {
             throw new PipelineException("Could not parse primer FASTA file: " + file, e);
         }
@@ -111,10 +116,16 @@ public final class PrimerService {
         }
     }
 
-    private static void putFastaEntry(Map<String, String> fasta, String id, StringBuilder sequence) {
-        if (id != null && !sequence.isEmpty()) {
-            fasta.put(id, sequence.toString());
+    private static void putFastaEntry(Map<String, String> fasta, String id, StringBuilder sequence, Path file) {
+        if (id == null) {
+            return;
         }
+        if (sequence.isEmpty()) {
+            // Left out, a probe without a sequence would turn its qPCR assay into a plain PCR
+            // assay, reported on its primers alone.
+            throw new PipelineException("Primer " + id + " has no sequence in the primer file " + file);
+        }
+        fasta.put(id, sequence.toString());
     }
 
     private static Map<String, String> expandPrimers(Map<String, String> primers) {
@@ -123,7 +134,7 @@ public final class PrimerService {
             String id = entry.getKey();
             validatePrimerId(id);
             String sequence = normalizePrimerSequence(id, entry.getValue());
-            List<String> expanded = expandDegenerateBases(sequence);
+            List<String> expanded = expandDegenerateBases(id, sequence);
 
             if (expanded.size() == 1 && expanded.getFirst().equals(sequence)) {
                 expandedPrimers.put(id, sequence);
@@ -176,7 +187,24 @@ public final class PrimerService {
         return normalized;
     }
 
-    private static List<String> expandDegenerateBases(String sequence) {
+    /**
+     * Most variants one degenerate oligo may expand to: 4^8, eight N. More would make a BLAST
+     * database of millions of oligos (a long run that may run out of memory), not a search.
+     */
+    static final long MAX_VARIANTS = 65_536;
+
+    private static List<String> expandDegenerateBases(String id, String sequence) {
+        long variants = 1;
+        for (char base : sequence.toCharArray()) {
+            char[] replacements = DEGENERATE_BASES.get(base);
+            if (replacements != null) {
+                variants *= replacements.length;
+                if (variants > MAX_VARIANTS) {
+                    throw new PipelineException("Primer " + id + " is too degenerate: it stands for more than "
+                            + MAX_VARIANTS + " sequences (inosine written as N counts as four bases)");
+                }
+            }
+        }
         ArrayList<String> expanded = new ArrayList<>();
         expandDegenerateBases(sequence.toCharArray(), 0, expanded);
         return expanded;

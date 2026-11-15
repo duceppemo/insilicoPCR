@@ -105,4 +105,50 @@ class ReportTsvTest {
         assertEquals(extended.source(), ReportTsv.source(extended.contigDescription()));
         assertEquals(ReportRow.Source.ASSEMBLY, ReportTsv.source("len=9000 cov=12"));
     }
+
+    @Test
+    void aBlastReportIsNotReadAsProducts() throws IOException {
+        // Next to report.tsv in the output folder; its numbers would read as products of 0 bp.
+        Path blast = Files.writeString(dir.resolve("isolate_03.tsv"),
+                "isolate_03_contig1\tstxQ-R\t20\t0\t0\t1e-05\t40.1\t20\t20\t101\t120\tACGT\t1\t20\tACGT\n");
+        java.io.UncheckedIOException error = org.junit.jupiter.api.Assertions.assertThrows(
+                java.io.UncheckedIOException.class, () -> ReportTsv.read(blast));
+        assertEquals("Not a consolidated report: " + blast, error.getMessage());
+    }
+
+    @Test
+    void aHeaderlessLineWithALocationButNoSizeIsNotAReport() throws IOException {
+        Path noSize = Files.writeString(dir.resolve("no_size.tsv"), "S\tits\t11-444\tlong\tcontig_1\n");
+        java.io.UncheckedIOException error = org.junit.jupiter.api.Assertions.assertThrows(
+                java.io.UncheckedIOException.class, () -> ReportTsv.read(noSize));
+        assertEquals("Not a consolidated report: " + noSize, error.getMessage());
+    }
+
+    @Test
+    void anEmptyFileHasNoRowsAndAMissingOneIsAnError() throws IOException {
+        assertEquals(List.of(), ReportTsv.read(Files.writeString(dir.resolve("empty.tsv"), "")));
+
+        Path missing = dir.resolve("missing.tsv");
+        java.io.UncheckedIOException error = org.junit.jupiter.api.Assertions.assertThrows(
+                java.io.UncheckedIOException.class, () -> ReportTsv.read(missing));
+        assertEquals("Unable to read consolidated report: " + missing, error.getMessage());
+    }
+
+    @Test
+    void aHeaderRepeatedByConcatenatedReportsIsSkipped() throws IOException {
+        String header = String.join("\t", ReportColumn.FIRST.stream().map(ReportColumn::header).toList());
+        String product = "S\tits\t11-444\t434\tcontig_1\t\tits-F\tits-R\t0\t0\t0\t0\t+";
+        Path joined = Files.writeString(dir.resolve("joined.tsv"),
+                header + "\n" + product + "\n" + header + "\n" + product.replace("S\t", "T\t") + "\n");
+        assertEquals(List.of("S", "T"), ReportTsv.read(joined).stream().map(ReportRow::sample).toList());
+    }
+
+    @Test
+    void aReportSavedInTheWindowsEncodingReads() throws IOException {
+        // Excel's "Text (Tab delimited)": an accented letter is one byte, not UTF-8.
+        String text = String.join("\t", ReportColumn.FIRST.stream().map(ReportColumn::header).toList()) + "\n"
+                + "S\tits\t11-444\t434\tcontig_1\tsouche résistante\tits-F\tits-R\t0\t0\t0\t0\t+\n";
+        Path report = Files.write(dir.resolve("excel.tsv"), text.getBytes(java.nio.charset.Charset.forName("windows-1252")));
+        assertEquals("souche résistante", ReportTsv.read(report).getFirst().contigDescription());
+    }
 }

@@ -17,15 +17,26 @@ final class BlastTsv {
     static final String HEADER = BlastField.HEADER;
 
     /**
-     * The {@code blastn} command searching {@code query} for the primers of {@code database},
-     * writing their hits to {@code out} in this TSV ({@link BlastField}); the one search of a
-     * run, for contigs, reads and extended reads alike.
+     * Searches {@code query} for the primers of {@code database} with {@code blastn}, writing their
+     * hits to {@code out} in this TSV ({@link BlastField}): the one search of a run, for contigs,
+     * reads and extended reads alike.
+     *
+     * <p>BLAST+ splits a database path at its spaces itself (an output folder such as
+     * {@code C:\Users\Jane Doe\run} would fail), so blastn runs in the database's folder and is
+     * given its bare name.</p>
      */
-    static List<String> blastn(Path blastn, Path query, Path database, double evalue, int threads, Path out) {
+    static void runBlastn(RunMonitor monitor, Path blastn, Path query, Path database, double evalue, int threads,
+                          Path out) {
+        ExternalProgram.run(monitor, database.toAbsolutePath().getParent(),
+                blastn(blastn, query.toAbsolutePath(), database.getFileName().toString(), evalue, threads,
+                        out.toAbsolutePath()), "blastn");
+    }
+
+    static List<String> blastn(Path blastn, Path query, String database, double evalue, int threads, Path out) {
         return List.of(blastn.toString(),
                 "-task", "blastn-short",
                 "-query", query.toString(),
-                "-db", database.toString(),
+                "-db", database,
                 "-evalue", Double.toString(evalue),
                 "-num_alignments", "1000000",
                 "-num_threads", String.valueOf(threads),

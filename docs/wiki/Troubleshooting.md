@@ -56,7 +56,7 @@ If a tool is reported missing:
 - keep the `runtime/` folder beside the launcher
 - do not move files out of the release folder
 
-BBMerge, used in FASTQ mode for paired reads, also needs `runtime/common/bbmap/networks/bbmerge.bbnet.gz`. In a source checkout, `scripts/dev/verify-runtime-layout.sh` lists anything missing.
+BBMerge, used in FASTQ mode for paired reads, also needs `runtime/common/bbmap/networks/bbmerge.bbnet.gz`. In a source checkout, `REQUIRE_BINARIES=true scripts/dev/verify-runtime-layout.sh`, run from the repository root, lists anything missing.
 
 ## FASTQ run fails with `truncated or corrupt input`
 

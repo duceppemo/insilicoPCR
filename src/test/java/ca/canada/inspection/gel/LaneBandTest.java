@@ -10,7 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class LaneBandTest {
 
-    private static final GelLayout LAYOUT = GelLayout.image(List.of("s1", "s2"), 0);
+    private static final GelLayout LAYOUT = GelLayout.image(List.of("s1", "s2"), 0, 0);
 
     /** Bands of one lane, largest first, as {@link GelReportReader} returns them. */
     private static final List<GelBand> LANE = List.of(

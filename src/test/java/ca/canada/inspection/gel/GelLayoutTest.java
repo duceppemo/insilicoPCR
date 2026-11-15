@@ -48,17 +48,28 @@ class GelLayoutTest {
     }
 
     @Test
-    void longSampleNamesGrowTheLabelAreaUpToALimit() {
+    void longSampleNamesGrowTheLabelAreaSoNoNameIsCut() {
         String name40 = "x".repeat(40);
         GelLayout medium = GelLayout.window(800, 500, List.of(name40));
         assertEquals(40 * 6.2 * 0.72 + 36, medium.height() - medium.gelBottom(), 1e-9);
+        // There was a 360 px limit, which cut names longer than about 85 characters.
         GelLayout longest = GelLayout.window(800, 500, List.of("x".repeat(200)));
-        assertEquals(360, longest.height() - longest.gelBottom(), 1e-9);
+        assertEquals(200 * 6.2 * 0.72 + 36, longest.height() - longest.gelBottom(), 1e-9);
+    }
+
+    @Test
+    void theViewersPictureLeavesRoomForTheLastSlantedName() {
+        // 15 lanes fill the window: the last name, slanted, reaches past the gel's right edge.
+        List<String> names = new java.util.ArrayList<>(samples(14));
+        names.add("S14_" + "long".repeat(8));
+        GelLayout layout = GelLayout.window(1000, 600, names);
+        double labelReach = layout.laneCenterX(names.size()) + GelScale.laneLabelWidth(names) * 0.72;
+        assertTrue(layout.width() >= labelReach, layout.width() + " < " + labelReach);
     }
 
     @Test
     void imageLayoutHasFixedLanesAndHugsTheGel() {
-        GelLayout layout = GelLayout.image(samples(2), 0);
+        GelLayout layout = GelLayout.image(samples(2), 0, 0);
         assertEquals(110, layout.laneWidth(), 1e-9);
         assertEquals(560, layout.gelHeight(), 1e-9);
         assertEquals(330, layout.gelWidth(), 1e-9);
@@ -70,13 +81,16 @@ class GelLayoutTest {
 
     @Test
     void imageLayoutMakesRoomForTheLegendAndTheLastSlantedLabel() {
-        GelLayout withLegend = GelLayout.image(samples(2), 130);
+        GelLayout withLegend = GelLayout.image(samples(2), 130, 0);
         assertEquals(82 + 330 + 20, withLegend.legendX(), 1e-9);
         assertEquals(82 + 330 + 20 + 130 + 12, withLegend.width(), 1e-9);
 
         String name = "y".repeat(60);
-        GelLayout longLabel = GelLayout.image(List.of(name), 0);
-        assertEquals(82 + 220 + (60 * 6.2 * 0.72 - 55), longLabel.width(), 1e-9);
+        GelLayout longLabel = GelLayout.image(List.of(name), 0, 0);
+        assertEquals(82 + 220 + (60 * 6.2 * 0.72 - 55) + 18, longLabel.width(), 1e-9);
+
+        // A legend of 40 genes is taller than the gel and its labels: the picture is too.
+        assertEquals(18 + (32 + 40 * 20) + 12, GelLayout.image(samples(2), 130, 40).height(), 1e-9);
     }
 
     @Test
@@ -88,7 +102,7 @@ class GelLayoutTest {
 
     @Test
     void laneAndBandCoordinates() {
-        GelLayout layout = GelLayout.image(samples(3), 0);
+        GelLayout layout = GelLayout.image(samples(3), 0, 0);
         assertEquals(82, layout.laneX(0), 1e-9);
         assertEquals(82 + 2 * 110, layout.laneX(2), 1e-9);
         assertEquals(82 + 55, layout.laneCenterX(0), 1e-9);

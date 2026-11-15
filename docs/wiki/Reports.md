@@ -9,7 +9,7 @@ insilicoPCR produces report files that summarize primer hits, predicted amplicon
 - consolidated TSV report (`consolidated_report/report.tsv`)
 - HTML report (`consolidated_report/report.html`): the same results as a page to read; see [HTML report](#html-report)
 - FASTQ-mode diagnostics (`consolidated_report/report_fastq_diagnostics.tsv`), when any input is FASTQ
-- synthetic gel images rendered from the consolidated report
+- with `--gel`, the synthetic gel as `synthetic_gel_report.png` in the output folder (`synthetic_gel_report(1).png` for `report(1).tsv`); in the application, from its gel viewer
 
 If a `report.tsv` already exists in the output folder, a new run writes `report(1).tsv`, `report(2).tsv`, and so on instead of overwriting it.
 
@@ -194,7 +194,7 @@ of its primers**, the reads themselves are therefore extended (which assays exac
 1. Up to 150 reads carrying the forward primer and up to 150 carrying the reverse primer are taken as seeds,
    spread evenly over the input (all variants of a degenerate primer count as one primer).
 2. Tadpole extends each seed both ways through the k-mers (k = 31) of all the baited reads, by up to the maximum
-   amplicon length (`-l`), and at a branch always follows the better-supported path.
+   amplicon length (`-l`; 5000 bases with `-l 0`), and at a branch always follows the better-supported path.
 3. The extended reads are searched like contigs: same hit filters, amplicon rules and probe requirement.
 4. A product must be held by at least **2 extended reads seeded from the forward primer and at least 2 seeded
    from the reverse primer**. Sizes within 10 bp of each other are one product, taken at its most frequent

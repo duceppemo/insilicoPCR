@@ -41,7 +41,7 @@ record LaneBand(int lane, double laneX, String gene, List<GelBand> bands, double
             double laneVariation = GelScale.deterministicRange(sampleName, 0.90, 1.10);
             double verticalJitter = GelScale.deterministicRange(sampleName + ':' + roundedSize, -0.45, 0.45);
             double intensity = Math.min(1.0, GelScale.sizeIntensity(roundedSize, bands.size()) * laneVariation);
-            double centerY = layout.bandY(roundedSize) + verticalJitter;
+            double centerY = belowTheWells(layout, layout.bandY(roundedSize) + verticalJitter);
             result.add(new LaneBand(lane, laneX, GelText.primaryGene(bands), bands, centerY, intensity,
                     BandRect.inLane(laneX, centerY, layout.laneWidth(), baseBandHeight + (intensity * 1.2))));
         }
@@ -67,13 +67,21 @@ record LaneBand(int lane, double laneX, String gene, List<GelBand> bands, double
             for (Map.Entry<String, List<GelBand>> geneEntry : byGene.entrySet()) {
                 double geneOffset = (geneIndex - (byGene.size() - 1) / 2.0) * 3.0;
                 double intensity = GelColors.bandIntensity(geneEntry.getValue().size());
-                double centerY = layout.bandY(size) + verticalJitter + geneOffset;
+                double centerY = belowTheWells(layout, layout.bandY(size) + verticalJitter + geneOffset);
                 result.add(new LaneBand(lane, laneX, geneEntry.getKey(), geneEntry.getValue(), centerY, intensity,
                         BandRect.inLane(laneX, centerY, layout.laneWidth(), baseBandHeight + (intensity * 1.2))));
                 geneIndex++;
             }
         }
         return result;
+    }
+
+    /**
+     * A band no higher than just below the wells: the scale ends at 25 kb, and a larger product
+     * (with {@code --max-length 0}) sat on the gel's top border, hidden under it.
+     */
+    private static double belowTheWells(GelLayout layout, double centerY) {
+        return Math.max(layout.gelTop() + 8, centerY);
     }
 
     /** Hover text of the band. */

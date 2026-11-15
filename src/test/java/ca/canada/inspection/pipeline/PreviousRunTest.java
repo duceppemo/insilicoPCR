@@ -154,4 +154,17 @@ class PreviousRunTest {
         assertEquals(elsewhere, PreviousRun.open(output).report());
         assertEquals(List.of(), PreviousRun.open(output).samples());
     }
+
+    @Test
+    void aCopiedRunFolderOfBefore0151StillOpens() throws IOException {
+        // Copied without its dates: the log is dated before its report, which is still the run's.
+        Path run = Files.createDirectories(dir.resolve("copied"));
+        Path log = Files.writeString(run.resolve("QAlog.txt"), "In Silico PCR version: 0.15.0\nInput File(s) :\n"
+                + "/gone/T.fasta\n");
+        Files.setLastModifiedTime(log, FileTime.from(Instant.now().minusSeconds(600)));
+        Path report = Files.writeString(Files.createDirectories(run.resolve("consolidated_report")).resolve("report.tsv"),
+                "Sample\n");
+
+        assertEquals(report, PreviousRun.open(run).report());
+    }
 }

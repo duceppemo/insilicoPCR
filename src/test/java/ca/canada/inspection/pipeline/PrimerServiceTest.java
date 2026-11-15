@@ -162,4 +162,30 @@ class PrimerServiceTest {
 
         assertTrue(error.getMessage().endsWith("naming convention: assay_R"), error.getMessage());
     }
+
+    @org.junit.jupiter.api.Test
+    void aPrimerFileThatWouldChangeResultsSilentlyIsRejected() throws java.io.IOException {
+        java.nio.file.Path emptyProbe = java.nio.file.Files.writeString(dir.resolve("probe.fasta"),
+                ">toxA-F\nACGTACGTACGT\n>toxA-R\nTTTTGGGGCCCC\n>toxA-P\n");
+        // Left out, the probe-less assay would be reported on its primers alone.
+        assertEquals("Primer toxA-P has no sequence in the primer file " + emptyProbe,
+                org.junit.jupiter.api.Assertions.assertThrows(PipelineException.class,
+                        () -> PrimerService.read(emptyProbe)).getMessage());
+
+        java.nio.file.Path twice = java.nio.file.Files.writeString(dir.resolve("twice.fasta"),
+                ">toxB-F\nAAAAAAAAAAAA\n>toxB-F\nGGGGGGGGGGGG\n>toxB-R\nCCCCCCCCCCCC\n");
+        assertEquals("Primer ID toxB-F appears twice in the primer file " + twice
+                        + "; give each primer its own ID (toxB-F_1, toxB-F_2)",
+                org.junit.jupiter.api.Assertions.assertThrows(PipelineException.class,
+                        () -> PrimerService.read(twice)).getMessage());
+
+        java.nio.file.Path degenerate = java.nio.file.Files.writeString(dir.resolve("n.fasta"),
+                ">wide-F\nACGTNNNNNNNNNACGT\n>wide-R\nACGTACGTACGT\n");
+        java.nio.file.Path out = dir.resolve("out3");
+        var config = PipelineConfig.builder(degenerate, out, degenerate).build();
+        var error = org.junit.jupiter.api.Assertions.assertThrows(PipelineException.class,
+                () -> PrimerService.loadAndPrepare(config, PipelineDirectories.create(out)));
+        org.junit.jupiter.api.Assertions.assertTrue(error.getMessage().startsWith("Primer wide-F is too degenerate"),
+                error.getMessage());
+    }
 }

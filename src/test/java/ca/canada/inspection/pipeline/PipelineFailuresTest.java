@@ -76,4 +76,18 @@ class PipelineFailuresTest {
         assertTrue(error.getMessage().startsWith("Missing BBMap runtime: "), error.getMessage());
         assertTrue(RunFailure.isForTheUser(error));
     }
+
+    @Test
+    void aPrimerDatabaseCountsAsWrittenOnlyWithItsFilesOfThisRun() throws IOException {
+        Path database = directory.resolve("out space").resolve("primer_tmp.fasta");
+        Files.createDirectories(database.getParent());
+        long started = System.currentTimeMillis();
+        assertTrue(!BlastDatabaseBuilder.written(database, started), "no files");
+        for (String extension : List.of(".nin", ".nsq", ".nhr")) {
+            Files.writeString(database.resolveSibling("primer_tmp.fasta" + extension), "x");
+        }
+        assertTrue(BlastDatabaseBuilder.written(database, started));
+        // Files left by an earlier run do not count.
+        assertTrue(!BlastDatabaseBuilder.written(database, started + 60_000));
+    }
 }

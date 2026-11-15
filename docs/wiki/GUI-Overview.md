@@ -4,7 +4,7 @@ The graphical interface is intended for interactive analysis and result review.
 
 ![The insilicoPCR window after a run](https://raw.githubusercontent.com/duceppemo/insilicoPCR/master/docs/assets/gui/main-window.png)
 
-The window of version 0.11.0 after a run on a folder of five FASTA files: the three path fields with their **Select** buttons, the run parameters on the right, the two settings buttons, the log, and the action buttons along the bottom.
+The window of version 0.15.2 after a run on a folder of five FASTA files: the three path fields with their **Select** buttons, the run parameters on the right, the two settings buttons, the log, and the action buttons along the bottom.
 
 ## Main workflow
 
@@ -46,7 +46,7 @@ On Linux, starting the launcher from a terminal is recommended because startup m
 |---|---|
 | **View Gel Image** | Shows the synthetic gel of the last run of this window, whatever the output field holds by then: the report that run wrote, with a lane for every sample it analysed, with or without a band, as `--gel` draws it (before 0.15.1, the newest report in the folder, and lanes for the samples with a band only) |
 | **View HTML Report** | Opens the [HTML report](Reports#html-report) of the last run of this window in your web browser. Enabled once a run has finished; the report of an earlier run is `consolidated_report/report.html` in its output folder |
-| **Open Previous Run** | Asks for an earlier run's output folder and shows the gel of the last run that finished there: the report and the samples its `QAlog.txt` names, one lane per sample, even if the inputs have since been moved or other files added to their folder. For a run before 0.15.1, whose log names neither, the newest report in the folder and the samples worked out from the logged input list |
+| **Open Previous Run** | Asks for an earlier run's output folder and shows the gel of the last run that finished there: the report and the samples its `QAlog.txt` names, one lane per sample, even if the inputs have since been moved or other files added to their folder. For a run before 0.15.1, whose log names neither: the newest report no newer than its `QAlog.txt` (the newest report when none is, as in a copy that lost its dates), and the samples worked out from the logged input list |
 | **Open Report TSV** | Asks for any consolidated report `.tsv` and shows it as a gel; lanes are only the samples the report has rows for |
 
 ## Synthetic gel viewer

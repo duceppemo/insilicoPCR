@@ -4,12 +4,62 @@
 
 ### Fixed
 
+- An output folder whose path holds a space (`C:\Users\Jane Doe\run`, `/data/my
+  results`) stopped every run at `makeblastdb`: BLAST+ splits database paths at
+  their spaces itself. The BLAST programs now run in the output folder and are
+  given the database by its name; the application's "Path MUST NOT contain
+  spaces" warning is gone. There, makeblastdb still prints an error from a check
+  of its own, followed by a `Note:` that the database is complete; the run goes on.
+- FASTQ mode: single-end reads (one FASTQ file) were given to BBDuk as
+  interleaved pairs. A file with an odd number of reads stopped the run
+  (`Incomplete interleaved FASTQ pair`), and with an even number each baited
+  read brought its unrelated neighbour into the mini-assembly. They are read as
+  single reads now.
+- Every run on Linux made the bundled BLAST+ executable (`chmod +x`), and
+  stopped when that failed: a user who does not own a shared installation
+  (`/opt/insilicoPCR`) could not run it. It is now done only when needed, and a
+  failure is a warning.
+- Primer file: a record without a sequence was left out, so a probe written
+  without one turned its qPCR assay into a PCR assay, reported on its primers
+  alone; and of two records with one ID, only the last was searched. Both now
+  stop the run with a message, as does a primer too degenerate to search (more
+  than 65,536 sequences).
+- The output folder may no longer be the input folder: the primer database the
+  run writes there was analysed as a sample.
+- Application, gel viewer:
+  - **Save PNG** and **Save PDF** saved a cropped or shrunken picture when the gel
+    was zoomed; they save the whole gel at its own size.
+  - A save that failed (a folder that cannot be written to, a full disk) said
+    nothing; it is a message, and a save that works says where it went.
+  - The last lane's slanted name was cut at the right edge of saved pictures,
+    and names longer than about 85 characters at the bottom.
+  - Ctrl+A in the search box selected every band instead of the text.
+  - Searching across gels counted samples by name and lanes without a band,
+    unlike the search on the gel shown: they match the same way now.
+  - Bands of products longer than 25 kb (`--max-length 0`) were drawn under the
+    gel's top border; they sit just below the wells.
+- `--gel` image: a gene legend of more than about 33 assays was cut off, and
+  beyond 10 assays genes shared colours (and legend entries); every gene has a
+  colour of its own and the picture is tall enough for the legend.
+- **Open Report TSV** read a BLAST TSV of `detailed_report` as a report and drew
+  a gel of meaningless 0 bp bands; it now says the file is not a report. A
+  report saved by Excel as "Text (Tab delimited)" with an accented letter did
+  not open; it does.
+- A tab in a sample's file name split its lane in two on the gel, and shifted
+  the columns of the FASTQ diagnostics TSV.
+- Application: a failure during a run stopped from the window was shown as
+  "Run cancelled" without its stack trace, even when it was a fault of the
+  program; only the stop itself is shown so now.
+- Windows: the launcher failed in a folder whose name holds a parenthesis (a
+  second download, `... (1)`, or `Program Files (x86)`). The release check now
+  runs the launchers users run, into a folder with a space in its path, and
+  checks that the program reports the version of its ZIP.
 - Application: a run of more than 100 samples opened another gel viewer, without
   band selection, the band menu or selection by dragging, which drew its
   bands with other spacing and strength, so the same report looked different
   at 100 and at 101 samples. There is one viewer now: it shows 100 samples a
-  gel, with **Previous gel** / **Next gel** (Page Up / Page Down) for more, and
-  every gel has all the tools; a search that finds nothing on the gel shown
+  gel, with **Previous gel** / **Next gel** (Page Up / Page Down; on a gel of one
+  page they scroll it) for more, and every gel has all the tools; a search that finds nothing on the gel shown
   turns to the first gel with a match.
 - The warning that trimmed primer or probe hits lay on sequences missing from the
   searched file (their trimmed bases then go uncompared) went to the console
@@ -33,7 +83,7 @@
 - **Open Previous Run** on a folder whose `QAlog.txt` was written before
   0.15.1 took the newest report in the folder, which could be one a later,
   unfinished run had left; it now takes the newest report no newer than the
-  log.
+  log, or the newest report when none is (a folder copied without its dates).
 - Application: closing the window while the read extension ran on the last
   FASTQ sample did not stop the run: the stopped program read as a failed
   one, the read extension went on to the next step, and the stopped run

@@ -43,13 +43,17 @@ record RunForm(Path input, Path output, Path primers, int threads, int mismatche
         }
         // The window checks every read, as the command line does by default; it has its own gel
         // viewer, so no --gel picture. The settings dialogs only accept valid values.
-        return new Outcome.Run(PipelineConfig.builder(input, output, primers)
-                .threads(threads)
-                .evalue(evalue)
-                .ampliconOptions(amplicon.toOptions(mismatches))
-                .tadpole(fastq.tadpole())
-                .readMinFraction(fastq.readMinFraction())
-                .readExtension(fastq.readExtension())
-                .build());
+        try {
+            return new Outcome.Run(PipelineConfig.builder(input, output, primers)
+                    .threads(threads)
+                    .evalue(evalue)
+                    .ampliconOptions(amplicon.toOptions(mismatches))
+                    .tadpole(fastq.tadpole())
+                    .readMinFraction(fastq.readMinFraction())
+                    .readExtension(fastq.readExtension())
+                    .build());
+        } catch (IllegalArgumentException e) {
+            return new Outcome.Invalid(e.getMessage());
+        }
     }
 }

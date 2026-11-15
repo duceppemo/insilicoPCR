@@ -124,7 +124,10 @@ public class Sample {
 	public synchronized List<BlastResult> hitsOf(Collection<String> oligoIds) {
 		List<BlastResult> hits = new ArrayList<>();
 		for (String id : oligoIds) {
-			hits.addAll(blastResults.getOrDefault(id, new ArrayList<>()));
+			List<BlastResult> ofId = blastResults.get(id);
+			if (ofId != null) {
+				hits.addAll(ofId);
+			}
 		}
 		return hits;
 	}

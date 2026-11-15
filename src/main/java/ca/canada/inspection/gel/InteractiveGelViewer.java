@@ -9,6 +9,7 @@ import javafx.scene.Group;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
@@ -157,8 +158,7 @@ public final class InteractiveGelViewer {
         });
 
         Set<BandNode> selectedBands = new HashSet<>();
-        Runnable search = () -> {
-            SearchResult result = applySearch(current.view.bands(), searchField.getText());
+        java.util.function.Consumer<SearchResult> showSearch = result -> {
             matchLabel.setText(result.searching() ? GelText.matches(result.matchCount()) : "");
             if (result.firstMatch() != null) {
                 scrollToBand(scrollPane, zoomGroup, result.firstMatch());
@@ -181,7 +181,7 @@ public final class InteractiveGelViewer {
                 bandNode.updateVisual();
             }
             installBoxSelection(gelPane, current.view.bands(), selectedBands, selectedLabel);
-            search.run();
+            showSearch.accept(applySearch(current.view.bands(), searchField.getText()));
             pageLabel.setText("Gel " + (current.page + 1) + " of " + pages.totalPages() + " · "
                     + pages.rangeText(current.page));
             previousPage.setDisable(current.page == 0);
@@ -213,7 +213,7 @@ public final class InteractiveGelViewer {
                     return;
                 }
             }
-            search.run();
+            showSearch.accept(result);
         });
         clearSearchButton.setOnAction(event -> searchField.clear());
         colorByGene.selectedProperty().addListener((observable, oldValue, selected) -> {
@@ -240,7 +240,8 @@ public final class InteractiveGelViewer {
         stage.setTitle("Synthetic Gel - " + consolidatedReport.getFileName());
         Scene scene = new Scene(root, windowWidth, windowHeight);
         installKeyboardShortcuts(scene, searchField, selectedBands, selectedLabel, () -> current.view.bands(),
-                zoomIn, zoomOut, zoomReset, savePng, saveSvg, savePdf, goPrevious, goNext);
+                zoomIn, zoomOut, zoomReset, savePng, saveSvg, savePdf, paged ? goPrevious : null,
+                paged ? goNext : null);
         stage.setScene(scene);
         stage.setMinWidth(Math.min(900, windowWidth));
         stage.setMinHeight(Math.min(650, windowHeight));
@@ -553,13 +554,16 @@ public final class InteractiveGelViewer {
             } else if (event.isControlDown() && (event.getCode() == KeyCode.MINUS || event.getCode() == KeyCode.SUBTRACT)) {
                 zoomOut.run();
                 event.consume();
-            } else if (event.getCode() == KeyCode.PAGE_UP) {
+            } else if (previousPage != null && event.getCode() == KeyCode.PAGE_UP) {
+                // Only with more than one gel: otherwise Page Up/Down scroll the gel.
                 previousPage.run();
                 event.consume();
-            } else if (event.getCode() == KeyCode.PAGE_DOWN) {
+            } else if (nextPage != null && event.getCode() == KeyCode.PAGE_DOWN) {
                 nextPage.run();
                 event.consume();
-            } else if (event.isControlDown() && event.getCode() == KeyCode.A) {
+            } else if (event.isControlDown() && event.getCode() == KeyCode.A
+                    && !(scene.getFocusOwner() instanceof javafx.scene.control.TextInputControl)) {
+                // Ctrl+A in the search box selects its text, not every band.
                 selectedBands.clear();
                 for (BandNode band : bands.get()) {
                     if (band.searchMatch) {
@@ -626,12 +630,30 @@ public final class InteractiveGelViewer {
         }
     }
 
-    private static void savePaneAsPng(Pane pane, Path outputFile) {
+    /** Something written to a file, which may fail. */
+    @FunctionalInterface
+    private interface FileWrite {
+        void to(Path file) throws IOException;
+    }
+
+    /**
+     * Writes {@code what} to {@code outputFile} and says so; a failure (a folder that cannot be
+     * written to, a full disk) is a message, not a silent trace on the console.
+     */
+    private static void save(String what, Path outputFile, FileWrite write) {
         try {
-            GelImages.writePng(GelImages.snapshot(pane, pane.getPrefWidth(), pane.getPrefHeight(), false), outputFile);
-        } catch (IOException e) {
-            throw new UncheckedIOException("Unable to save synthetic gel image: " + outputFile, e);
+            write.to(outputFile);
+            showInfo(what + " saved", "Saved the synthetic gel " + what + " to:\n" + outputFile.toAbsolutePath());
+        } catch (IOException | RuntimeException e) {
+            Alert alert = new Alert(Alert.AlertType.ERROR, "Could not save the synthetic gel " + what + " to "
+                    + outputFile.toAbsolutePath() + ":\n" + e.getMessage(), ButtonType.OK);
+            alert.setHeaderText(null);
+            alert.showAndWait();
         }
+    }
+
+    private static void savePaneAsPng(Pane pane, Path outputFile) {
+        save("PNG", outputFile, file -> GelImages.writePng(unzoomedSnapshot(pane, false), file));
     }
 
     private static void saveSvg(GelView gelView, Path outputFile) {
@@ -640,19 +662,24 @@ public final class InteractiveGelViewer {
         GelScene scene = GelScene.of(gelView.layout(), gelView.laneNames(), gelView.laneBands(),
                 band -> colorByGene ? gelView.geneColors().getOrDefault(band.gene(), Color.BLACK) : BandPaint.BAND,
                 GelScene.LADDER_FONT_SIZE);
-        try {
-            GelImages.writeText(GelSvg.of(scene), outputFile);
-        } catch (IOException e) {
-            throw new UncheckedIOException("Unable to save synthetic gel SVG: " + outputFile, e);
-        }
+        save("SVG", outputFile, file -> GelImages.writeText(GelSvg.of(scene), file));
     }
 
     private static void savePdf(Pane pane, Path outputFile) {
+        save("PDF", outputFile, file -> GelImages.writePdf(unzoomedSnapshot(pane, true), file));
+    }
+
+    /** The whole gel at its own size, whatever the zoom on screen (a zoomed snapshot was cropped or shrunk). */
+    private static java.awt.image.BufferedImage unzoomedSnapshot(Pane pane, boolean whiteBackground) {
+        double scaleX = pane.getScaleX();
+        double scaleY = pane.getScaleY();
+        pane.setScaleX(1.0);
+        pane.setScaleY(1.0);
         try {
-            GelImages.writePdf(GelImages.snapshot(pane, pane.getPrefWidth(), pane.getPrefHeight(), true), outputFile);
-            showInfo("PDF saved", "Saved synthetic gel PDF to:\n" + outputFile.toAbsolutePath());
-        } catch (IOException e) {
-            throw new UncheckedIOException("Unable to save synthetic gel PDF: " + outputFile, e);
+            return GelImages.snapshot(pane, pane.getPrefWidth(), pane.getPrefHeight(), whiteBackground);
+        } finally {
+            pane.setScaleX(scaleX);
+            pane.setScaleY(scaleY);
         }
     }
 

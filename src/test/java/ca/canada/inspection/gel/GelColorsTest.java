@@ -25,13 +25,14 @@ class GelColorsTest {
     }
 
     @Test
-    void paletteWrapsAroundForManyGenes() {
+    void genesPastThePaletteGetColoursOfTheirOwn() {
         Map<String, List<GelBand>> lanes = new LinkedHashMap<>();
         for (int i = 0; i < GelColors.PALETTE.length + 2; i++) {
             lanes.put("s" + i, List.of(new GelBand("s" + i, "gene" + i, 100)));
         }
         Map<String, Color> colors = GelColors.assignGeneColors(lanes);
-        assertEquals(GelColors.PALETTE[0], colors.get("gene" + GelColors.PALETTE.length));
+        // They shared the palette's colours, and so a legend entry, with earlier genes.
+        assertEquals(colors.size(), new java.util.HashSet<>(colors.values()).size());
     }
 
     @Test

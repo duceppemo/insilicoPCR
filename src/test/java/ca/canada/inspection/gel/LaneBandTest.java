@@ -98,21 +98,8 @@ class LaneBandTest {
     }
 
     @Test
-    void pageBandsSitExactlyOnTheScale() {
-        List<LaneBand> bands = LaneBand.page(LAYOUT, 1, LANE);
-        assertEquals(2, bands.size());
-        LaneBand small = bands.getFirst();
-        assertEquals(LAYOUT.bandY(300), small.centerY(), 0.0);
-        assertEquals(GelColors.bandIntensity(3), small.intensity(), 1e-12);
-        assertEquals(2.0 + GelColors.bandIntensity(3), small.rect().height(), 1e-12);
-        assertEquals("toxA", small.gene());
-        assertEquals(GelText.tooltip(small.bands()), small.tooltip());
-    }
-
-    @Test
     void emptyLanesHaveNoBands() {
         assertTrue(LaneBand.window(LAYOUT, 1, "s1", List.of(), 2.0).isEmpty());
         assertTrue(LaneBand.image(LAYOUT, 1, "s1", List.of(), 2.0).isEmpty());
-        assertTrue(LaneBand.page(LAYOUT, 1, List.of()).isEmpty());
     }
 }

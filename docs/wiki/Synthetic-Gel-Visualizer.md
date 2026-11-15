@@ -34,6 +34,8 @@ After a GUI run finishes, use the gel viewer button in the application.
 
 The application can also open previous run folders or consolidated report TSV files when available.
 
+A run of more than 100 samples is shown 100 samples (one gel) at a time: **Previous gel** and **Next gel** (or Page Up and Page Down) turn the pages, and a search that finds nothing on the gel shown turns to the first gel with a match. Every gel has the same tools: band selection, search, colour by gene, zoom and saving (the current gel, as `synthetic_gel_report_page_002.png` and so on). Before 0.15.2, such a run opened a simpler viewer, without selection or the band menu, that drew its bands differently.
+
 Opening the viewer writes nothing. **Save PNG...**, **Save SVG...** and **Save PDF...** offer `synthetic_gel_<report>.png` (`.svg`, `.pdf`) in the run's output folder, the name `--gel` writes (`synthetic_gel_report(1).png` for `report(1).tsv`). Before 0.15.1 the viewer saved a PNG under that name each time it opened, replacing a `--gel` picture, and could not open a run in a folder it could not write to.
 
 ## Interpretation

@@ -18,10 +18,10 @@ class GelSceneTest {
     @Test
     void aSceneHoldsTheGelLadderBandsAndLabels() {
         List<String> samples = List.of("s1", "s2");
-        GelLayout layout = GelLayout.page(1000, 700, samples);
-        List<LaneBand> bands = LaneBand.page(layout, 1, List.of(new GelBand("s1", "toxA", 312)));
+        GelLayout layout = GelLayout.window(1000, 700, samples);
+        List<LaneBand> bands = LaneBand.window(layout, 1, "s1", List.of(new GelBand("s1", "toxA", 312)), 2.0);
 
-        GelScene scene = GelScene.of(layout, samples, bands, band -> GENE, GelLayout.PAGE_LABEL_FONT_SIZE);
+        GelScene scene = GelScene.of(layout, samples, bands, band -> GENE, GelScene.LADDER_FONT_SIZE);
 
         assertEquals(layout.width(), scene.width());
         GelScene.Box gel = scene.background().get(1);
@@ -42,7 +42,7 @@ class GelSceneTest {
 
         assertEquals(List.of("Ladder", "s1", "s2"), scene.laneLabels().stream().map(GelScene.Label::text).toList());
         assertEquals(GelScene.Anchor.SLANTED, scene.laneLabels().getLast().anchor());
-        assertEquals(GelLayout.PAGE_LABEL_FONT_SIZE, scene.laneLabels().getLast().fontSize());
+        assertEquals(GelScene.LADDER_FONT_SIZE, scene.laneLabels().getLast().fontSize());
         assertNull(scene.border().fill());
         assertEquals(3.0, scene.border().strokeWidth());
     }

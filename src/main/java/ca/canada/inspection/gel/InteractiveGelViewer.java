@@ -52,12 +52,20 @@ import java.util.Set;
 public final class InteractiveGelViewer {
     private static final double BAND_HOVER_TARGET_HEIGHT = 14.0;
     private static final double BAND_HEIGHT = 2.0;
+    /** Lanes on one gel; a run of more samples is shown a gel (a page) at a time. */
+    public static final int SAMPLES_PER_GEL = 100;
     private static final double MIN_ZOOM = 0.45;
     private static final double MAX_ZOOM = 3.0;
 
     private InteractiveGelViewer() {
     }
 
+    /**
+     * Opens the gel of {@code consolidatedReport}: one lane per sample of {@code sampleNames} (with or
+     * without a band; only the samples with a band when it is empty), {@link #SAMPLES_PER_GEL} lanes a
+     * page. Every page has the same tools: selection, search (which turns to the first page with a
+     * match), colour by gene, zoom and saving.
+     */
     public static void show(Scene ownerScene, Path consolidatedReport, Collection<String> sampleNames) {
         if (ownerScene == null) {
             throw new IllegalArgumentException("Unable to draw synthetic gel because the application scene is not available.");
@@ -67,24 +75,28 @@ public final class InteractiveGelViewer {
         if (lanes.isEmpty()) {
             throw new IllegalStateException("No amplicons were found in consolidated report: " + consolidatedReport);
         }
-
-        GelView gelView = buildGel(ownerScene, lanes);
-        Pane gelPane = gelView.pane();
-        Group zoomGroup = new Group(gelPane);
+        GelPages pages = new GelPages(List.copyOf(lanes.keySet()), SAMPLES_PER_GEL);
+        // One colour per gene for the whole run, so a gene keeps its colour from page to page.
+        Map<String, Color> geneColors = GelColors.assignGeneColors(lanes);
+        Current current = new Current();
         // Only offered as the name to save under: opening the viewer writes nothing, so it opens
         // on a folder that cannot be written to and leaves the --gel picture as it is.
         Path automaticOutput = GelImages.defaultOutput(consolidatedReport);
+        java.util.function.Supplier<Path> pageOutput = () -> pages.totalPages() == 1 ? automaticOutput
+                : automaticOutput.resolveSibling(automaticOutput.getFileName().toString()
+                        .replaceFirst("\\.png$", String.format("_page_%03d.png", current.page + 1)));
 
+        Group zoomGroup = new Group();
         Button savePngButton = new Button("Save PNG...");
-        Runnable savePng = () -> chooseAndSavePng(gelPane, automaticOutput);
+        Runnable savePng = () -> chooseAndSavePng(current.view.pane(), pageOutput.get());
         savePngButton.setOnAction(event -> savePng.run());
 
         Button saveSvgButton = new Button("Save SVG...");
-        Runnable saveSvg = () -> chooseAndSaveSvg(gelView, automaticOutput);
+        Runnable saveSvg = () -> chooseAndSaveSvg(current.view, pageOutput.get());
         saveSvgButton.setOnAction(event -> saveSvg.run());
 
         Button savePdfButton = new Button("Save PDF...");
-        Runnable savePdf = () -> chooseAndSavePdf(gelView, automaticOutput);
+        Runnable savePdf = () -> chooseAndSavePdf(current.view, pageOutput.get());
         savePdfButton.setOnAction(event -> savePdf.run());
 
         Button zoomOutButton = new Button("−");
@@ -104,20 +116,31 @@ public final class InteractiveGelViewer {
         toolbar.setPadding(new Insets(8));
         HBox.setHgrow(searchField, Priority.ALWAYS);
 
+        // The page bar, shown only for a run of more samples than one gel holds.
+        Button previousPage = new Button("◀ Previous gel");
+        Button nextPage = new Button("Next gel ▶");
+        Label pageLabel = new Label();
+        HBox pageBar = new HBox(8, previousPage, pageLabel, nextPage);
+        pageBar.setAlignment(Pos.CENTER_LEFT);
+        pageBar.setPadding(new Insets(0, 8, 8, 8));
+        boolean paged = pages.totalPages() > 1;
+        pageBar.setVisible(paged);
+        pageBar.setManaged(paged);
+
         ScrollPane scrollPane = new ScrollPane(zoomGroup);
         scrollPane.setFitToHeight(false);
         scrollPane.setFitToWidth(false);
         scrollPane.setPannable(true);
 
-        VBox legend = GelNodes.legend(gelView.geneColors());
+        VBox legend = GelNodes.legend(geneColors);
         legend.setVisible(false);
         legend.setManaged(false);
 
         ZoomState zoomState = new ZoomState();
         Runnable refreshZoomButton = () -> zoomResetButton.setText(Math.round(zoomState.zoom * 100) + "%");
-        Runnable zoomIn = () -> setZoom(gelPane, zoomState, zoomState.zoom * 1.15, refreshZoomButton);
-        Runnable zoomOut = () -> setZoom(gelPane, zoomState, zoomState.zoom / 1.15, refreshZoomButton);
-        Runnable zoomReset = () -> setZoom(gelPane, zoomState, 1.0, refreshZoomButton);
+        Runnable zoomIn = () -> setZoom(current.view.pane(), zoomState, zoomState.zoom * 1.15, refreshZoomButton);
+        Runnable zoomOut = () -> setZoom(current.view.pane(), zoomState, zoomState.zoom / 1.15, refreshZoomButton);
+        Runnable zoomReset = () -> setZoom(current.view.pane(), zoomState, 1.0, refreshZoomButton);
 
         zoomInButton.setOnAction(event -> zoomIn.run());
         zoomOutButton.setOnAction(event -> zoomOut.run());
@@ -134,52 +157,106 @@ public final class InteractiveGelViewer {
         });
 
         Set<BandNode> selectedBands = new HashSet<>();
-        for (BandNode bandNode : gelView.bands()) {
-            bandNode.installSelectionHandler(selectedBands, selectedLabel);
-        }
-        installBoxSelection(gelPane, gelView.bands(), selectedBands, selectedLabel);
-
-        searchField.textProperty().addListener((observable, oldValue, newValue) -> {
-            SearchResult result = applySearch(gelView.bands(), newValue);
+        Runnable search = () -> {
+            SearchResult result = applySearch(current.view.bands(), searchField.getText());
             matchLabel.setText(result.searching() ? GelText.matches(result.matchCount()) : "");
             if (result.firstMatch() != null) {
                 scrollToBand(scrollPane, zoomGroup, result.firstMatch());
             }
+        };
+        // Draws page current.page: its gel, with the run's tools wired to its bands.
+        Runnable render = () -> {
+            LinkedHashMap<String, List<GelBand>> pageLanes = new LinkedHashMap<>();
+            pages.samples(current.page).forEach(name -> pageLanes.put(name, lanes.get(name)));
+            current.view = buildGel(ownerScene, pageLanes, geneColors);
+            Pane gelPane = current.view.pane();
+            gelPane.setScaleX(zoomState.zoom);
+            gelPane.setScaleY(zoomState.zoom);
+            zoomGroup.getChildren().setAll(gelPane);
+            selectedBands.clear();
+            updateSelectedLabel(selectedBands, selectedLabel);
+            for (BandNode bandNode : current.view.bands()) {
+                bandNode.installSelectionHandler(selectedBands, selectedLabel);
+                bandNode.colorByGene = colorByGene.isSelected();
+                bandNode.updateVisual();
+            }
+            installBoxSelection(gelPane, current.view.bands(), selectedBands, selectedLabel);
+            search.run();
+            pageLabel.setText("Gel " + (current.page + 1) + " of " + pages.totalPages() + " · "
+                    + pages.rangeText(current.page));
+            previousPage.setDisable(current.page == 0);
+            nextPage.setDisable(current.page >= pages.totalPages() - 1);
+        };
+        Runnable goPrevious = () -> {
+            if (current.page > 0) {
+                current.page--;
+                render.run();
+            }
+        };
+        Runnable goNext = () -> {
+            if (current.page < pages.totalPages() - 1) {
+                current.page++;
+                render.run();
+            }
+        };
+        previousPage.setOnAction(event -> goPrevious.run());
+        nextPage.setOnAction(event -> goNext.run());
+
+        searchField.textProperty().addListener((observable, oldValue, newValue) -> {
+            SearchResult result = applySearch(current.view.bands(), newValue);
+            if (paged && result.searching() && result.matchCount() == 0) {
+                // Nothing on this gel: turn to the first one with a match, if any.
+                GelPages.Search found = pages.find(lanes, newValue);
+                if (found.pageIndex() >= 0 && found.pageIndex() != current.page) {
+                    current.page = found.pageIndex();
+                    render.run();
+                    return;
+                }
+            }
+            search.run();
         });
         clearSearchButton.setOnAction(event -> searchField.clear());
         colorByGene.selectedProperty().addListener((observable, oldValue, selected) -> {
             legend.setVisible(selected);
             legend.setManaged(selected);
-            for (BandNode bandNode : gelView.bands()) {
+            for (BandNode bandNode : current.view.bands()) {
                 bandNode.colorByGene = selected;
                 bandNode.updateVisual();
             }
         });
 
+        render.run();
         BorderPane root = new BorderPane(scrollPane);
-        root.setTop(toolbar);
+        root.setTop(new VBox(toolbar, pageBar));
         root.setRight(legend);
 
         var screenBounds = Screen.getPrimary().getVisualBounds();
-        double preferredWidth = gelPane.getPrefWidth() + 32;
-        double preferredHeight = gelPane.getPrefHeight() + 88;
+        double preferredWidth = current.view.pane().getPrefWidth() + 32;
+        double preferredHeight = current.view.pane().getPrefHeight() + 88;
         double windowWidth = Math.min(preferredWidth, Math.max(900, screenBounds.getWidth() - 80));
         double windowHeight = Math.min(preferredHeight, Math.max(700, screenBounds.getHeight() - 80));
 
         Stage stage = new Stage();
         stage.setTitle("Synthetic Gel - " + consolidatedReport.getFileName());
         Scene scene = new Scene(root, windowWidth, windowHeight);
-        installKeyboardShortcuts(scene, searchField, selectedBands, selectedLabel, gelView.bands(), zoomIn, zoomOut, zoomReset, savePng, saveSvg, savePdf);
+        installKeyboardShortcuts(scene, searchField, selectedBands, selectedLabel, () -> current.view.bands(),
+                zoomIn, zoomOut, zoomReset, savePng, saveSvg, savePdf, goPrevious, goNext);
         stage.setScene(scene);
         stage.setMinWidth(Math.min(900, windowWidth));
         stage.setMinHeight(Math.min(650, windowHeight));
         stage.show();
     }
 
-    private static GelView buildGel(Scene ownerScene, LinkedHashMap<String, List<GelBand>> lanes) {
+    /** The page on show and its gel. */
+    private static final class Current {
+        private int page;
+        private GelView view;
+    }
+
+    private static GelView buildGel(Scene ownerScene, LinkedHashMap<String, List<GelBand>> lanes,
+                                    Map<String, Color> geneColors) {
         GelLayout layout = GelLayout.window(ownerScene.getWidth(), ownerScene.getHeight(), lanes.keySet());
         List<String> laneNames = List.copyOf(lanes.keySet());
-        Map<String, Color> geneColors = GelColors.assignGeneColors(lanes);
         List<LaneBand> laneBands = new ArrayList<>();
         // Behind each sample lane, a highlight shown while one of its bands is hovered or selected.
         List<Rectangle> laneHighlights = new ArrayList<>();
@@ -444,13 +521,15 @@ public final class InteractiveGelViewer {
                                                  TextField searchField,
                                                  Set<BandNode> selectedBands,
                                                  Label selectedLabel,
-                                                 List<BandNode> bands,
+                                                 java.util.function.Supplier<List<BandNode>> bands,
                                                  Runnable zoomIn,
                                                  Runnable zoomOut,
                                                  Runnable zoomReset,
                                                  Runnable savePng,
                                                  Runnable saveSvg,
-                                                 Runnable savePdf) {
+                                                 Runnable savePdf,
+                                                 Runnable previousPage,
+                                                 Runnable nextPage) {
         scene.addEventFilter(KeyEvent.KEY_PRESSED, event -> {
             if (event.isControlDown() && event.isShiftDown() && event.getCode() == KeyCode.S) {
                 saveSvg.run();
@@ -474,9 +553,15 @@ public final class InteractiveGelViewer {
             } else if (event.isControlDown() && (event.getCode() == KeyCode.MINUS || event.getCode() == KeyCode.SUBTRACT)) {
                 zoomOut.run();
                 event.consume();
+            } else if (event.getCode() == KeyCode.PAGE_UP) {
+                previousPage.run();
+                event.consume();
+            } else if (event.getCode() == KeyCode.PAGE_DOWN) {
+                nextPage.run();
+                event.consume();
             } else if (event.isControlDown() && event.getCode() == KeyCode.A) {
                 selectedBands.clear();
-                for (BandNode band : bands) {
+                for (BandNode band : bands.get()) {
                     if (band.searchMatch) {
                         band.selected = true;
                         band.updateVisual();

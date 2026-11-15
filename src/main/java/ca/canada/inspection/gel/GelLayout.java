@@ -1,7 +1,6 @@
 package ca.canada.inspection.gel;
 
 import java.util.Collection;
-import java.util.List;
 
 /**
  * Geometry of a synthetic gel picture: where the gel sits, how wide a lane is, the size of the
@@ -21,9 +20,6 @@ record GelLayout(double gelLeft,
     private static final double RIGHT_INSET = 18;
     private static final double LABEL_OFFSET = 34;
 
-    static final double PAGE_LABEL_FONT_SIZE = 14.0;
-    private static final double PAGE_LABEL_START_OFFSET = 48.0;
-    private static final double PAGE_LABEL_MARGIN = 56.0;
 
     /** Layout of the interactive viewer, sized to fill a window of the given size. */
     static GelLayout window(double sceneWidth, double sceneHeight, Collection<String> sampleNames) {
@@ -60,24 +56,6 @@ record GelLayout(double gelLeft,
         double height = gelBottom + labelAreaHeight;
         return new GelLayout(LEFT_LABEL_WIDTH, TOP_INSET, gelWidth, gelHeight, laneWidth, width, height,
                 gelBottom + LABEL_OFFSET);
-    }
-
-    /** Layout of one page of the paginated viewer, whose lane labels use a larger font. */
-    static GelLayout page(double sceneWidth, double sceneHeight, List<String> sampleNames) {
-        int laneCount = sampleNames.size() + 1;
-        double labelWidth = Math.max("Ladder".length(), sampleNames.stream().mapToInt(String::length).max().orElse(10))
-                * PAGE_LABEL_FONT_SIZE * 0.62;
-        double labelFootprint = (labelWidth + PAGE_LABEL_FONT_SIZE) / Math.sqrt(2.0);
-        double rightInset = Math.max(64, labelFootprint + PAGE_LABEL_MARGIN);
-        double labelAreaHeight = PAGE_LABEL_START_OFFSET + labelFootprint + PAGE_LABEL_MARGIN;
-        double laneWidth = Math.max(74, (Math.max(sceneWidth, 800) - LEFT_LABEL_WIDTH - rightInset) / Math.max(laneCount, 11));
-        double gelHeight = Math.max(540, Math.max(sceneHeight, 500) * 1.10);
-        double gelWidth = laneWidth * laneCount;
-        double gelBottom = TOP_INSET + gelHeight;
-        double width = Math.max(900, LEFT_LABEL_WIDTH + gelWidth + rightInset);
-        double height = gelBottom + labelAreaHeight;
-        return new GelLayout(LEFT_LABEL_WIDTH, TOP_INSET, gelWidth, gelHeight, laneWidth, width, height,
-                gelBottom + PAGE_LABEL_START_OFFSET);
     }
 
     /** Width of the gene legend drawn beside the PNG image; 0 when there is no gene. */

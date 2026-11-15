@@ -4,6 +4,13 @@
 
 ### Fixed
 
+- Application: a run of more than 100 samples opened another gel viewer, without
+  band selection, the band menu or selection by dragging, which drew its
+  bands with other spacing and strength, so the same report looked different
+  at 100 and at 101 samples. There is one viewer now: it shows 100 samples a
+  gel, with **Previous gel** / **Next gel** (Page Up / Page Down) for more, and
+  every gel has all the tools; a search that finds nothing on the gel shown
+  turns to the first gel with a match.
 - The warning that trimmed primer or probe hits lay on sequences missing from the
   searched file (their trimmed bases then go uncompared) went to the console
   only, so the application's window and `log.txt` never showed it, and was

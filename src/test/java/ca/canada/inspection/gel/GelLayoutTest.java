@@ -80,43 +80,6 @@ class GelLayoutTest {
     }
 
     @Test
-    void pageLayoutLeavesRoomForLargeSlantedLabels() {
-        GelLayout layout = GelLayout.page(800, 500, List.of("abc"));
-        double labelWidth = 6 * 14.0 * 0.62;
-        double footprint = (labelWidth + 14.0) / Math.sqrt(2.0);
-        assertEquals(74, layout.laneWidth(), 1e-9);
-        assertEquals(148, layout.gelWidth(), 1e-9);
-        assertEquals(550, layout.gelHeight(), 1e-9);
-        assertEquals(900, layout.width(), 1e-9);
-        assertEquals(18 + 550 + 48 + footprint + 56, layout.height(), 1e-9);
-        assertEquals(18 + 550 + 48, layout.labelY(), 1e-9);
-    }
-
-    @Test
-    void pageLayoutUsesTheWindowSizeAndKeepsTheLabelFootprintOnTheRight() {
-        GelLayout wide = GelLayout.page(2000, 900, samples(3));
-        double rightInset = (6 * 14.0 * 0.62 + 14.0) / Math.sqrt(2.0) + 56;
-        assertEquals((2000 - 82 - rightInset) / 11.0, wide.laneWidth(), 1e-9);
-        assertEquals(990, wide.gelHeight(), 1e-9);
-        assertEquals(900, wide.width(), 1e-9);
-
-        GelLayout manyLanes = GelLayout.page(800, 500, samples(30));
-        assertEquals(82 + 74 * 31 + rightInset, manyLanes.width(), 1e-9);
-
-        String name = "z".repeat(30);
-        GelLayout longNames = GelLayout.page(2000, 900, List.of(name));
-        double footprint = (30 * 14.0 * 0.62 + 14.0) / Math.sqrt(2.0);
-        assertEquals((2000 - 82 - (footprint + 56)) / 11.0, longNames.laneWidth(), 1e-9);
-    }
-
-    @Test
-    void pageLayoutOfAnEmptyPageAssumesTenCharacterNames() {
-        GelLayout layout = GelLayout.page(800, 500, List.of());
-        double footprint = (10 * 14.0 * 0.62 + 14.0) / Math.sqrt(2.0);
-        assertEquals(18 + 550 + 48 + footprint + 56, layout.height(), 1e-9);
-    }
-
-    @Test
     void legendWidthDependsOnTheLongestGeneName() {
         assertEquals(0, GelLayout.legendWidth(List.of()), 1e-9);
         assertEquals(130, GelLayout.legendWidth(List.of("toxA", "stxQ")), 1e-9);

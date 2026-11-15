@@ -1,6 +1,7 @@
 package ca.canada.inspection.pipeline;
 
 import ca.canada.inspection.model.Sample;
+import ca.canada.inspection.util.InputCheck;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -11,7 +12,10 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Writes {@code QAlog.txt}, the record of a finished run: how it was run, on which files,
@@ -62,6 +66,9 @@ final class QaLogWriter {
             for (Sample sample : context.samples().values()) {
                 writeLine(writer, SAMPLE_PREFIX + sample.getName());
             }
+            for (String line : RunSettings.lines(context.config(), context.hasFastqSamples())) {
+                writeLine(writer, line);
+            }
             for (String line : extraLines) {
                 writeLine(writer, line);
             }
@@ -96,5 +103,23 @@ final class QaLogWriter {
     private static void writeLine(BufferedWriter writer, String line) throws IOException {
         writer.write(line);
         writer.newLine();
+    }
+
+    /** What QAlog.txt says about the input that was left out; empty when nothing was. */
+    static List<String> inputIssueLines(List<InputCheck.Issue> issues) {
+        if (issues.isEmpty()) {
+            return List.of();
+        }
+        Map<String, List<String>> bySample = new LinkedHashMap<>();
+        issues.forEach(issue -> bySample.computeIfAbsent(issue.sample(), ignored -> new ArrayList<>())
+                .add(issue.describe()));
+        List<String> lines = new ArrayList<>();
+        lines.add("Input not analysed: a file of these samples is faulty, and nothing was run on them.");
+        bySample.forEach((sample, problems) -> {
+            lines.add(QaLogInputs.NOT_ANALYSED_PREFIX + sample);
+            problems.forEach(problem -> lines.add("  " + problem));
+        });
+        lines.add("");
+        return lines;
     }
 }

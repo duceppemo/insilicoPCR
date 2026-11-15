@@ -33,8 +33,13 @@ public final class AmpliconSettingsDialog {
 
         /** Full amplicon options with the main window's primer mismatches. */
         public AmpliconOptions toOptions(int mismatches) {
-            return new AmpliconOptions(mismatches, probeMismatches == null ? mismatches : probeMismatches,
-                    threePrimeWindow, threePrimePenalty, fivePrimeTruncation, minLength, maxLength);
+            AmpliconOptions.Builder options = AmpliconOptions.builder().mismatches(mismatches)
+                    .threePrimeWindow(threePrimeWindow).threePrimePenalty(threePrimePenalty)
+                    .fivePrimeTruncation(fivePrimeTruncation).minLength(minLength).maxLength(maxLength);
+            if (probeMismatches != null) {
+                options.probeMismatches(probeMismatches);
+            }
+            return options.build();
         }
     }
 

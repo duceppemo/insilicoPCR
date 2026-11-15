@@ -64,8 +64,9 @@ class PreviousRunTest {
         // In the run's order, each sample's files as the sample holds them (read 1 first).
         assertEquals(List.of(reads.resolve("zeta_R1.fastq.gz").toString(), reads.resolve("zeta_R2.fastq.gz").toString(),
                         reads.resolve("alpha.fasta").toString(), "", "Sample analysed: zeta",
-                        "Sample analysed: alpha", "FASTQ mode Tadpole settings: k=31"),
-                lines.subList(inputs + 1, lines.size()));
+                        "Sample analysed: alpha", "Settings:"),
+                lines.subList(inputs + 1, inputs + 8));
+        assertEquals("FASTQ mode Tadpole settings: k=31", lines.getLast());
         // An application before 0.15.1 reads the input list up to the blank line.
         assertEquals(3, QaLogInputs.read(output.resolve("QAlog.txt")).size());
     }

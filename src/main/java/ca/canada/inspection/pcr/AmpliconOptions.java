@@ -24,6 +24,7 @@ public record AmpliconOptions(
         int minAmpliconLength,
         int maxAmpliconLength
 ) {
+    public static final int DEFAULT_MISMATCHES = 0;
     public static final int DEFAULT_THREE_PRIME_WINDOW = 5;
     public static final int DEFAULT_THREE_PRIME_PENALTY = 0;
     /**
@@ -52,15 +53,69 @@ public record AmpliconOptions(
 
     /** Default options with the given number of allowed total mismatches. */
     public static AmpliconOptions withMismatches(int maxTotalMismatches) {
-        return new AmpliconOptions(
-                maxTotalMismatches,
-                maxTotalMismatches,
-                DEFAULT_THREE_PRIME_WINDOW,
-                DEFAULT_THREE_PRIME_PENALTY,
-                DEFAULT_FIVE_PRIME_TRUNCATION,
-                DEFAULT_MIN_AMPLICON_LENGTH,
-                DEFAULT_MAX_AMPLICON_LENGTH
-        );
+        return builder().mismatches(maxTotalMismatches).build();
+    }
+
+    /** Options starting from the defaults, each set by name: seven ints by position are easily swapped. */
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    /** The one place the defaults are applied, for the command line and the application alike. */
+    public static final class Builder {
+        private int mismatches = DEFAULT_MISMATCHES;
+        private Integer probeMismatches;
+        private int threePrimeWindow = DEFAULT_THREE_PRIME_WINDOW;
+        private int threePrimePenalty = DEFAULT_THREE_PRIME_PENALTY;
+        private int fivePrimeTruncation = DEFAULT_FIVE_PRIME_TRUNCATION;
+        private int minLength = DEFAULT_MIN_AMPLICON_LENGTH;
+        private int maxLength = DEFAULT_MAX_AMPLICON_LENGTH;
+
+        private Builder() {
+        }
+
+        public Builder mismatches(int mismatches) {
+            this.mismatches = mismatches;
+            return this;
+        }
+
+        /** Default: the primers' mismatches. */
+        public Builder probeMismatches(int probeMismatches) {
+            this.probeMismatches = probeMismatches;
+            return this;
+        }
+
+        public Builder threePrimeWindow(int threePrimeWindow) {
+            this.threePrimeWindow = threePrimeWindow;
+            return this;
+        }
+
+        public Builder threePrimePenalty(int threePrimePenalty) {
+            this.threePrimePenalty = threePrimePenalty;
+            return this;
+        }
+
+        public Builder fivePrimeTruncation(int fivePrimeTruncation) {
+            this.fivePrimeTruncation = fivePrimeTruncation;
+            return this;
+        }
+
+        public Builder minLength(int minLength) {
+            this.minLength = minLength;
+            return this;
+        }
+
+        /** 0: no limit. */
+        public Builder maxLength(int maxLength) {
+            this.maxLength = maxLength;
+            return this;
+        }
+
+        /** @throws IllegalArgumentException for a negative value, or a minimum above the maximum */
+        public AmpliconOptions build() {
+            return new AmpliconOptions(mismatches, probeMismatches == null ? mismatches : probeMismatches,
+                    threePrimeWindow, threePrimePenalty, fivePrimeTruncation, minLength, maxLength);
+        }
     }
 
     private static void requireNonNegative(int value, String label) {

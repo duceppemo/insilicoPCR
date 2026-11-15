@@ -5,7 +5,6 @@ import ca.canada.inspection.pcr.AmpliconOptions;
 import ca.canada.inspection.pcr.FastqDiagnostics.Finding;
 import ca.canada.inspection.pcr.FastqDiagnostics.Status;
 import ca.canada.inspection.pcr.FastqDiagnostics;
-import ca.canada.inspection.pcr.PairSupport;
 import ca.canada.inspection.pcr.PrimerPanel;
 import ca.canada.inspection.pcr.ReadExtensionCaller;
 import ca.canada.inspection.pcr.ReadLevelCaller.ReadEvidence;
@@ -64,29 +63,12 @@ public final class FastqDiagnosticsStage {
         }
 
         /** Lines for QAlog.txt. */
-        public List<String> qaLogLines(TadpoleOptions tadpole, double readMinFraction,
-                                       ReadExtensionCaller.Mode readExtension) {
+        public List<String> qaLogLines() {
             List<String> lines = new ArrayList<>();
             if (file == null) {
                 return lines;
             }
-            lines.add("FASTQ mode Tadpole settings: " + String.join(" ", tadpole.arguments()));
-            lines.add("FASTQ mode read-level calls need at least " + ReadLevelCaller.MIN_SUPPORTING_READS
-                    + " reads or read pairs and " + Math.round(100 * readMinFraction) + "% of informative reads"
-                    + " (--read-min-fraction " + readMinFraction + ")");
-            lines.add(readExtension == ReadExtensionCaller.Mode.OFF
-                    ? "FASTQ mode read extension: off (--read-extension off)"
-                    : "FASTQ mode read extension: " + readExtension + " (--read-extension " + readExtension
-                    + "); for " + readExtension.description() + ", when reads carry both primers, up to "
-                    + ReadExtensionCaller.MAX_SEEDS_PER_PRIMER + " reads per primer are extended through the baited"
-                    + " reads (Tadpole mode=extend k=" + ReadExtensionCaller.K
-                    + " branchmult1=1 branchmult2=1 mincountextend=2); a product needs at least "
-                    + ReadExtensionCaller.MIN_CLOSING_READS_PER_SIDE + " extended reads seeded from each primer, and"
-                    + " read pairs holding each of its windows (the largest window of " + PairSupport.MIN_WINDOW + ", "
-                    + (PairSupport.MIN_WINDOW + PairSupport.WINDOW_STEP) + ", ... bases whose median is held by "
-                    + PairSupport.MIN_MEDIAN_FRAGMENTS + " pairs; none held by fewer than "
-                    + PairSupport.MIN_WINDOW_FRAGMENTS + " or " + Math.round(100 * PairSupport.MIN_WINDOW_SHARE)
-                    + "% of the median), and no repeat that long with another copy in the sample");
+            // The FASTQ settings are among the run's settings, above (RunSettings).
             lines.add("FASTQ mode diagnostics: " + file);
             List<Finding> called = withStatus(Status.CALLED_FROM_READS);
             if (!called.isEmpty()) {

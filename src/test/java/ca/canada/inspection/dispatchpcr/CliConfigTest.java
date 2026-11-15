@@ -56,6 +56,26 @@ class CliConfigTest {
         assertEquals(PipelineConfig.DEFAULT_EVALUE, config.evalue());
         assertTrue(config.threads() >= 1);
         assertFalse(config.gel());
+        // The command line sets only what it is given: its defaults are the application's.
+        PipelineConfig builderDefaults = PipelineConfig.builder(input, dir.resolve("out"), primers).build();
+        assertEquals(builderDefaults.ampliconOptions(), options);
+        assertEquals(builderDefaults.inputCheck(), config.inputCheck());
+        assertEquals(builderDefaults.tadpole(), config.tadpole());
+    }
+
+    @Test
+    void probeMismatchesFollowTheMismatchesUnlessGiven() throws Exception {
+        assertEquals(2, parse("-m", "2").ampliconOptions().maxProbeMismatches());
+        assertEquals(3, parse("-m", "2", "--probe-mismatches", "3").ampliconOptions().maxProbeMismatches());
+        assertEquals(InputCheck.Depth.QUICK, parse("--input-check", "quick").inputCheck());
+    }
+
+    @Test
+    void theHelpShowsTheDefaultsInForce() {
+        String help = Dispatcher.options().getOption("max-length").getDescription()
+                + Dispatcher.options().getOption("input-check").getDescription();
+        assertTrue(help.contains("default: " + AmpliconOptions.DEFAULT_MAX_AMPLICON_LENGTH), help);
+        assertTrue(help.endsWith("default: " + PipelineConfig.DEFAULT_INPUT_CHECK.option()), help);
     }
 
     @Test

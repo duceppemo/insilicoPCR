@@ -1,6 +1,5 @@
 package ca.canada.inspection.report;
 
-import ca.canada.inspection.pcr.AmpliconOptions;
 import ca.canada.inspection.pcr.AssayVerdict;
 import ca.canada.inspection.pcr.ExpectedSizes;
 import ca.canada.inspection.pcr.FastqDiagnostics.Finding;
@@ -198,7 +197,7 @@ public final class HtmlReport {
      * @param primers      the run's primers: they give the assays, the primer lengths (so the page
      *                     says how many bases of each primer pair) and the declared product sizes
      * @param findings     FASTQ-mode diagnostics; may be empty
-     * @param runDetails   label and value pairs listed under "Run details", in order
+     * @param runDetails   when and by which version the run was made, and its settings
      * @param inputIssues  files that could not be analysed; their samples are listed apart, as
      *                     neither positive nor negative
      * @param splits       assays without a product whose product could span a break in the assembly
@@ -206,7 +205,7 @@ public final class HtmlReport {
      */
     public static Path write(Path reportTsv, List<ReportRow> rows, Collection<String> sampleNames,
                              Set<String> fastqSamples,
-                             PrimerPanel primers, List<Finding> findings, Map<String, String> runDetails,
+                             PrimerPanel primers, List<Finding> findings, RunDetails runDetails,
                              List<InputCheck.Issue> inputIssues, List<SplitAcrossContigs.Split> splits) {
         Path html = pathFor(reportTsv);
         ExpectedSizes sizes = primers.expectedSizes();
@@ -224,18 +223,6 @@ public final class HtmlReport {
     /** The HTML page of a consolidated report: {@code report(1).html} for {@code report(1).tsv}. */
     public static Path pathFor(Path reportTsv) {
         return ConsolidatedReport.sibling(reportTsv, ".html");
-    }
-
-    /** The amplicon settings of a run as "Run details" entries. */
-    public static Map<String, String> settings(AmpliconOptions options) {
-        Map<String, String> details = new LinkedHashMap<>();
-        details.put("Primer mismatches (-m)", String.valueOf(options.maxTotalMismatches()));
-        details.put("Probe mismatches", String.valueOf(options.maxProbeMismatches()));
-        details.put("3' window / max penalty", options.threePrimeWindow() + " / " + options.maxThreePrimePenalty());
-        details.put("5' truncation allowed", String.valueOf(options.maxFivePrimeTruncation()));
-        details.put("Product length", options.minAmpliconLength() + " to "
-                + (options.maxAmpliconLength() > 0 ? options.maxAmpliconLength() + " bp" : "no limit"));
-        return details;
     }
 
     static List<Product> products(List<ReportRow> rows, PrimerPanel primers) {
@@ -261,13 +248,13 @@ public final class HtmlReport {
 
     static String render(String reportName, List<Product> products, Collection<String> sampleNames,
                          Set<String> fastqSamples, List<String> assays, ExpectedSizes sizes,
-                         List<Finding> findings, Map<String, String> runDetails) {
+                         List<Finding> findings, RunDetails runDetails) {
         return render(reportName, products, sampleNames, fastqSamples, assays, sizes, findings, runDetails, List.of());
     }
 
     static String render(String reportName, List<Product> products, Collection<String> sampleNames,
                          Set<String> fastqSamples, List<String> assays, ExpectedSizes sizes,
-                         List<Finding> findings, Map<String, String> runDetails,
+                         List<Finding> findings, RunDetails runDetails,
                          List<InputCheck.Issue> inputIssues) {
         return render(reportName, products, sampleNames, fastqSamples, assays, sizes, findings, runDetails, inputIssues,
                 List.of());
@@ -275,7 +262,7 @@ public final class HtmlReport {
 
     static String render(String reportName, List<Product> products, Collection<String> sampleNames,
                          Set<String> fastqSamples, List<String> assays, ExpectedSizes sizes,
-                         List<Finding> findings, Map<String, String> runDetails,
+                         List<Finding> findings, RunDetails runDetails,
                          List<InputCheck.Issue> inputIssues, List<SplitAcrossContigs.Split> splits) {
         Set<String> samples = new TreeSet<>(sampleNames);
         Set<String> assayOrder = new TreeSet<>(assays);
@@ -332,15 +319,8 @@ public final class HtmlReport {
         return html.toString();
     }
 
-    private static List<String> headline(Map<String, String> runDetails, String reportName) {
-        List<String> parts = new ArrayList<>();
-        for (String label : List.of("Date", "insilicoPCR version")) {
-            if (runDetails.containsKey(label)) {
-                parts.add(label.equals("Date") ? runDetails.get(label) : "version " + runDetails.get(label));
-            }
-        }
-        parts.add(reportName);
-        return parts;
+    private static List<String> headline(RunDetails runDetails, String reportName) {
+        return List.of(runDetails.date(), "version " + runDetails.version(), reportName);
     }
 
     private static void tiles(StringBuilder html, int samples, int assays, int products, Map<State, Integer> totals,
@@ -697,11 +677,15 @@ public final class HtmlReport {
         html.append("</tbody></table></div>\n</section>\n");
     }
 
-    private static void detailSection(StringBuilder html, Map<String, String> runDetails, String reportName,
+    private static void detailSection(StringBuilder html, RunDetails runDetails, String reportName,
                                       boolean anyDeclared) {
         html.append("<section>\n<h2>Run details</h2>\n<dl class=\"details\">\n");
-        runDetails.forEach((label, value) -> html.append("<dt>").append(escape(label)).append("</dt><dd>")
-                .append(escape(value)).append("</dd>\n"));
+        List<RunDetails.Setting> entries = new ArrayList<>();
+        entries.add(new RunDetails.Setting("Date", runDetails.date()));
+        entries.add(new RunDetails.Setting("insilicoPCR version", runDetails.version()));
+        entries.addAll(runDetails.settings());
+        entries.forEach(entry -> html.append("<dt>").append(escape(entry.label())).append("</dt><dd>")
+                .append(escape(entry.value())).append("</dd>\n"));
         html.append("</dl>\n<p class=\"hint\">This page shows the rows of <code>").append(escape(reportName))
                 .append("</code>, in the same folder. insilicoPCR reports every product a PCR would amplify, whatever")
                 .append(" its size; ").append(anyDeclared

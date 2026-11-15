@@ -39,6 +39,11 @@ record BbtoolsCommands(String javaCommand, Path bbtoolsJar, int childMemoryGiB, 
      * large sample stops this way with heap to spare.
      */
     static final String OUT_OF_MEMORY_LINE = "This program ran out of memory.";
+    /**
+     * How the read extension's Tadpole follows the reads: at a branch, always the better-supported
+     * path ({@code branchmult=1}); a base is added when at least two reads hold it.
+     */
+    static final List<String> EXTEND_OPTIONS = List.of("branchmult1=1", "branchmult2=1", "mincountextend=2");
 
     /**
      * A BBTools command and the folder it runs in: the folder of the file it writes, which every
@@ -235,12 +240,9 @@ record BbtoolsCommands(String javaCommand, Path bbtoolsJar, int childMemoryGiB, 
                 "el=" + reach,
                 "er=" + reach,
                 "extra=" + argument(directory, reads),
-                "k=" + k,
-                "branchmult1=1",
-                "branchmult2=1",
-                "mincountextend=2",
-                "overwrite=t",
-                "threads=" + threads));
+                "k=" + k));
+        arguments.addAll(EXTEND_OPTIONS);
+        arguments.addAll(List.of("overwrite=t", "threads=" + threads));
         return new Command(directory, arguments);
     }
 

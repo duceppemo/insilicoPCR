@@ -71,7 +71,7 @@ class QaLogInputsTest {
     @Test
     void samplesLeftOutForAFaultyFileAreReadBackFromTheLog() throws IOException {
         // Their files are in the input list, but they are not samples without a product.
-        List<String> section = RunDetails.inputIssueLines(List.of(
+        List<String> section = QaLogWriter.inputIssueLines(List.of(
                 new InputCheck.Issue("failed", List.of("failed_R1.fastq.gz"), "the file holds no read", "the file is empty"),
                 new InputCheck.Issue("failed", List.of("failed_R2.fastq.gz"), "the file holds no read", "the file is empty"),
                 new InputCheck.Issue("cut short", List.of("cut short.fastq"), "the file is incomplete",
@@ -96,7 +96,7 @@ class QaLogInputsTest {
     void aLogWithoutFaultyInputNamesNoSample() throws IOException {
         Path log = Files.writeString(dir.resolve("QAlog.txt"), HEADER);
 
-        assertEquals(List.of(), RunDetails.inputIssueLines(List.of()));
+        assertEquals(List.of(), QaLogWriter.inputIssueLines(List.of()));
         assertEquals(java.util.Set.of(), QaLogInputs.samplesNotAnalysed(log));
     }
 }

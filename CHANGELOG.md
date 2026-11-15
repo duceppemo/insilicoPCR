@@ -10,6 +10,11 @@
   given the database by its name; the application's "Path MUST NOT contain
   spaces" warning is gone. There, makeblastdb still prints an error from a check
   of its own, followed by a `Note:` that the database is complete; the run goes on.
+- The BLAST e-value of a run was recorded nowhere, and each record of a run
+  left out some of its settings: `QAlog.txt` its mismatch, 3'/5' and length
+  rules, the HTML report its e-value, threads and Tadpole settings. They now
+  list the same settings, each with its command-line option, and the run's log
+  lists them at its start.
 - FASTQ mode: an output folder whose path holds a comma (`results, run 2`)
   stopped the run at Tadpole: BBTools reads a comma in a file name as a list of
   files. The BBTools programs now run in the sample's folder and are given their

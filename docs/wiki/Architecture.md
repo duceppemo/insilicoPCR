@@ -16,7 +16,7 @@ One dispatcher starts the desktop GUI when it is given no arguments and the comm
 | Pipeline | `ca.canada.inspection.pipeline.InSilicoPcrPipeline` |
 | Analysis core | `ca.canada.inspection.pcr` |
 
-The dispatcher starts the GUI when no command-line arguments are provided. When CLI arguments are present, `CliConfig` reads them into a `PipelineConfig`, and the dispatcher runs the pipeline with it (exit code 0 done, 1 failed, 2 wrong command line). The defaults of a run and the checks of its settings are in one place, `PipelineConfig.builder`, which the command line, the application and the tests all start from.
+The dispatcher starts the GUI when no command-line arguments are provided. When CLI arguments are present, `CliConfig` reads them into a `PipelineConfig`, and the dispatcher runs the pipeline with it (exit code 0 done, 1 failed, 2 wrong command line). The defaults of a run and the checks of its settings are in one place, `PipelineConfig.builder` (with `AmpliconOptions.builder` for the amplicon rules), which the command line, the application and the tests all start from; the command line sets only the options it is given, and its help reads the defaults from the same constants. `RunSettings` describes a run's settings once, each with its command-line option, for the run's log, `QAlog.txt` and the HTML report's **Run details** (a `report.RunDetails`).
 
 ## Packages
 
@@ -44,7 +44,7 @@ The GUI runs the same pipeline: `insilicopcr.PcrPipelineTask` runs `InSilicoPcrP
 | Dependencies | `RuntimeDependencies` | Find the bundled tools |
 | Primers | `PrimerService` | Read the primer FASTA (every assay needs `-F` and `-R`), expand degenerate bases, write `primer_tmp.fasta`; first, so that a mistake there is found before the input is read |
 | Input check | `util.InputCheck` | Find the samples and check their files |
-| Reads | `FastqProcessor`, `BbtoolsCommands`, `ChildJavaMemory` | FASTQ samples: two rounds of BBDuk baiting, Tadpole mini-assembly, BBMerge of baited pairs |
+| Reads | `FastqProcessor`, `BbtoolsCommands`, `ChildJavaMemory` | FASTQ samples: two rounds of BBDuk baiting, Tadpole mini-assembly, BBMerge of baited pairs. Each BBTools command runs in the folder of the file it writes and names its files relative to it (`BbtoolsCommands.Command`): BBTools reads a comma in a file argument as a list of files |
 | BLAST database, BLAST | `BlastDatabaseBuilder`, `BlastRunner`, `ContigService`, `pcr.BlastReports` | `makeblastdb` on the primers; `blastn` of every sample, one thread each, several samples at a time; the accepted hits attached to their samples |
 | Read search, read extension | `ReadLevelStage`, `ReadExtensionStage` | FASTQ samples: amplicons called on the baited reads; reads extended for products longer than a read |
 | Reports | `ReportGenerator`, `FastqDiagnosticsStage`, `QaLogWriter` | Writes `report.tsv`, the FASTQ diagnostics, the HTML report, the `--gel` image and, last, `QAlog.txt`; returns the `RunResult`; runs no program |

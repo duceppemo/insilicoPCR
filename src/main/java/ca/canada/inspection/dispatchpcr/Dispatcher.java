@@ -1,6 +1,7 @@
 package ca.canada.inspection.dispatchpcr;
 
 import ca.canada.inspection.insilicopcr.MainRun;
+import ca.canada.inspection.pcr.AmpliconOptions;
 import ca.canada.inspection.pcr.ReadExtensionCaller;
 import ca.canada.inspection.pcr.ReadLevelCaller;
 import ca.canada.inspection.pipeline.InSilicoPcrPipeline;
@@ -87,25 +88,31 @@ public final class Dispatcher {
         options.addOption(Option.builder("t").longOpt("threads").hasArg().argName("n")
                 .desc("Number of worker threads; default: available processors").build());
         options.addOption(Option.builder("m").longOpt("mismatches").hasArg().argName("n")
-                .desc("Allowed mismatches+indels per primer (3' bases that do not pair with the template count); default: 0").build());
+                .desc("Allowed mismatches+indels per primer (3' bases that do not pair with the template count); default: "
+                        + AmpliconOptions.DEFAULT_MISMATCHES).build());
         options.addOption(Option.builder("e").longOpt("evalue").hasArg().argName("value")
                 .desc("blastn e-value; deliberately permissive, since primer hits are filtered by the mismatch and 3'/5' rules instead, and lowering it (e.g. to 1e-5) drops valid hits; default: "
                         + PipelineConfig.DEFAULT_EVALUE_TEXT).build());
         options.addOption(Option.builder("l").longOpt("max-length").hasArg().argName("bp")
-                .desc("Maximum amplicon length in bp, 0 = unlimited; default: 5000").build());
+                .desc("Maximum amplicon length in bp, 0 = unlimited; default: "
+                        + AmpliconOptions.DEFAULT_MAX_AMPLICON_LENGTH).build());
         options.addOption(Option.builder().longOpt("min-length").hasArg().argName("bp")
-                .desc("Minimum amplicon length in bp; default: 0").build());
+                .desc("Minimum amplicon length in bp; default: " + AmpliconOptions.DEFAULT_MIN_AMPLICON_LENGTH)
+                .build());
         options.addOption(Option.builder().longOpt("3p-window").hasArg().argName("n")
-                .desc("Bases at the primer 3' end checked with the weighted 3' penalty; default: 5").build());
+                .desc("Bases at the primer 3' end checked with the weighted 3' penalty; default: "
+                        + AmpliconOptions.DEFAULT_THREE_PRIME_WINDOW).build());
         options.addOption(Option.builder().longOpt("3p-penalty").hasArg().argName("score")
                 .desc("Maximum weighted 3'-end penalty (mismatch: 3 at terminus, 2 at -1/-2, 1 beyond;"
-                        + " +1 if a G/C pair is broken near the terminus; +1 for indels); default: 0").build());
+                        + " +1 if a G/C pair is broken near the terminus; +1 for indels); default: "
+                        + AmpliconOptions.DEFAULT_THREE_PRIME_PENALTY).build());
         options.addOption(Option.builder().longOpt("probe-mismatches").hasArg().argName("n")
                 .desc("Allowed mismatches+indels per hydrolysis probe; probes bind hotter than primers"
                         + " and tolerate roughly one more mismatch; default: same as -m").build());
         options.addOption(Option.builder().longOpt("5p-truncation").hasArg().argName("n")
                 .desc("Maximum primer bases allowed to be unaligned at the harmless 5' end"
-                        + " (one 5'-proximal mismatch makes BLAST trim the whole tail); default: 5").build());
+                        + " (one 5'-proximal mismatch makes BLAST trim the whole tail); default: "
+                        + AmpliconOptions.DEFAULT_FIVE_PRIME_TRUNCATION).build());
         options.addOption(Option.builder().longOpt("tadpole-k").hasArg().argName("n")
                 .desc("FASTQ mode: Tadpole k-mer length; default: " + TadpoleOptions.DEFAULT_K).build());
         options.addOption(Option.builder().longOpt("tadpole-min-seed").hasArg().argName("n")
@@ -132,7 +139,8 @@ public final class Dispatcher {
                 .desc("How the input files are checked before the run. full: every read of every FASTQ file"
                         + " is read, and the two files of a pair must hold the same number of reads. quick: the"
                         + " first read only, faster on large files but blind to a file cut short. A sample with"
-                        + " a faulty file is left out with a warning and the others are run; default: full").build());
+                        + " a faulty file is left out with a warning and the others are run; default: "
+                        + PipelineConfig.DEFAULT_INPUT_CHECK.option()).build());
         options.addOption(Option.builder("g").longOpt("gel").desc("Also write the synthetic gel image as PNG"
                 + " (requires a graphical environment)").build());
         options.addOption(Option.builder("h").longOpt("help").desc("Print help and usage").build());

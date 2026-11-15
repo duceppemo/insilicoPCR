@@ -4,7 +4,7 @@ insilicoPCR produces report files that summarize primer hits, predicted amplicon
 
 ## Report types
 
-- runtime and quality logs (`QAlog.txt`)
+- runtime and quality logs (`QAlog.txt`): the version, the input files and samples, every setting that decides the results (each with its command-line option: mismatches, 3'/5' rules, product length, BLAST e-value, threads, input check, and the FASTQ settings when there are reads), then what the run found worth a note. The run's log lists the same settings at its start, and the HTML report under **Run details** (the e-value, threads, input check and Tadpole settings since 0.15.2)
 - detailed per-sample BLAST hit tables (`detailed_report/<sample>/<sample>.tsv`)
 - consolidated TSV report (`consolidated_report/report.tsv`)
 - HTML report (`consolidated_report/report.html`): the same results as a page to read; see [HTML report](#html-report)
@@ -36,7 +36,7 @@ for that assay. The genomes, the primer file and the report of this run are in t
 | All amplicons | Every row of the TSV, with a filter box |
 | Read-level evidence | FASTQ input only: products called from reads (whole or extended) and products seen in too few reads to be reported |
 | Primers at contig ends | FASTA input only (since 0.15.0): assays with no product whose primers point off the ends of two contigs, or both ends of one, with the smallest product joining them would give. See [Limitations](Limitations#assemblies-fasta) |
-| Run details | Version, date, input, primer file and the amplicon settings used |
+| Run details | Version, date, input, primer file, and every setting that decides the results, as in `QAlog.txt` |
 
 The outcome of a sample for an assay uses the [product sizes declared in the primer file](Primer-FASTA-Format#declaring-product-sizes-optional), when there are any:
 

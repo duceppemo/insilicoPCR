@@ -42,6 +42,11 @@ public final class InputCheck {
         /** The first record only: catches empty files and files of the wrong kind. */
         QUICK;
 
+        /** As written on the command line: {@code full} or {@code quick}. */
+        public String option() {
+            return name().toLowerCase(Locale.ROOT);
+        }
+
         public static Depth parse(String value) {
             return switch (value.toLowerCase(Locale.ROOT)) {
                 case "full" -> FULL;

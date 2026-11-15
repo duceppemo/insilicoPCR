@@ -43,11 +43,14 @@ class HtmlReportTest {
     }
 
     private static Path write(Path tsv, List<String> samples, Set<String> fastqSamples, PrimerPanel primers,
-                              List<Finding> findings, Map<String, String> details) {
+                              List<Finding> findings, RunDetails details) {
         // As a run gives them, the rows made from the report's text (their source read back from it).
         return HtmlReport.write(tsv, ReportTsv.read(tsv), samples, fastqSamples, primers, findings, details,
                 List.of(), List.of());
     }
+
+    /** A run's details, where a test is not about them. */
+    private static final RunDetails DETAILS = new RunDetails("2026-11-10 12:00", "9.9.9", List.of());
 
     @TempDir
     Path dir;
@@ -142,7 +145,7 @@ class HtmlReportTest {
 
         Path tsv = Files.write(dir.resolve("report.tsv"), List.of(HEADER));
         String page = Files.readString(write(tsv, List.of("S"), Set.of("S"), panel(PRIMERS, SIZES),
-                List.of(withheld), Map.of()));
+                List.of(withheld), DETAILS));
         assertTrue(page.contains("class=\"chip unconfirmed\""));
         assertTrue(page.contains("not confirmed by read pairs, not reported"), "its own summary tile");
         assertTrue(page.contains("<span class=\"chip inconclusive\">?</span> not reported"), "listed with the reads");
@@ -162,7 +165,7 @@ class HtmlReportTest {
                 new ReadsWithOligo(19, 7, 0), 144, "gave no product held by at least 2 extended reads seeded from each primer", "");
 
         String page = Files.readString(write(tsv, List.of("long", "short"), Set.of("long", "short"),
-                panel(PRIMERS, SIZES), List.of(called, notClosed), Map.of("Read extension (FASTQ)", "on")));
+                panel(PRIMERS, SIZES), List.of(called, notClosed), DETAILS));
 
         assertTrue(page.contains("434 bp (target), from extended reads"), "the grid tooltip says where it comes from");
         assertTrue(page.contains("<span class=\"tag\">reads</span> extended (142 of 150 forward-seeded, 145 of 150"
@@ -173,7 +176,6 @@ class HtmlReportTest {
                 + " extending the reads"));
         assertFalse(page.contains("class=\"chip unchecked\""),
                 "nothing is left as not checkable once the reads were extended");
-        assertTrue(page.contains("<dt>Read extension (FASTQ)</dt><dd>on</dd>"));
     }
 
     @Test
@@ -184,10 +186,8 @@ class HtmlReportTest {
                 row("fromReads", "its", 575, "read_7", "FASTQ read-level call: complete amplicon in 15 of 24"
                         + " informative read(s) (63%), not in the mini-assembly; representative read r7"),
                 row("pos", "plain", 200, "contig_3", "")));
-        Map<String, String> details = new LinkedHashMap<>();
-        details.put("Date", "2026-11-10 12:00");
-        details.put("insilicoPCR version", "9.9.9");
-        details.putAll(HtmlReport.settings(AmpliconOptions.withMismatches(1)));
+        RunDetails details = new RunDetails("2026-11-10 12:00", "9.9.9",
+                List.of(new RunDetails.Setting("Primer mismatches (-m)", "1")));
 
         Path html = write(tsv, List.of("pos", "fromReads", "neg <b>&\"x\""), Set.of("fromReads"),
                 panel(PRIMERS, SIZES), List.of(), details);
@@ -234,7 +234,7 @@ class HtmlReportTest {
         PrimerPanel primers = PrimerPanel.of(Map.of("its-F", "ACGTACGTACGTACGTA", "its-R", "ACGTACGTACGTACGTA"));
 
         String page = Files.readString(write(tsv, List.of("weak", "mixed", "clean"), Set.of(),
-                PrimerPanel.of(primers.sequences(), SIZES), List.of(), Map.of()));
+                PrimerPanel.of(primers.sequences(), SIZES), List.of(), DETAILS));
 
         String mark = "<span class=\"part\" aria-label=\"A primer binds only partly (5′ bases unpaired)\">\u25d0</span>";
         assertEquals(1, count(page, mark), "only the cell whose every target product is weakly bound is marked");
@@ -256,7 +256,7 @@ class HtmlReportTest {
         Path tsv = Files.write(dir.resolve("report.tsv"), List.of(HEADER, row("a", "its", 434, "c1", "")));
 
         String page = Files.readString(write(tsv, List.of("a"), Set.of(), panel(PRIMERS, SIZES), List.of(),
-                Map.of()));
+                DETAILS));
 
         assertFalse(page.contains("class=\"part\""));
         assertFalse(page.contains("A primer binds only partly"));
@@ -267,7 +267,7 @@ class HtmlReportTest {
         Path tsv = Files.write(dir.resolve("report.tsv"), List.of(HEADER, row("a", "plain", 200, "c1", "")));
 
         String page = Files.readString(write(tsv, List.of("a", "b"), Set.of(), panel(List.of("plain-F", "plain-R"),
-                ExpectedSizes.NONE), List.of(), Map.of()));
+                ExpectedSizes.NONE), List.of(), DETAILS));
 
         assertTrue(page.contains("<span class=\"n\">1</span> of 2 samples amplified"));
         assertFalse(page.contains("<th>Size check</th>"));
@@ -280,7 +280,7 @@ class HtmlReportTest {
         Path tsv = Files.write(dir.resolve("report.tsv"), List.of(HEADER));
 
         String page = Files.readString(write(tsv, List.of("a", "b"), Set.of(), panel(PRIMERS, SIZES),
-                List.of(finding(Status.WEAK_READ_SUPPORT, 500)), Map.of()));
+                List.of(finding(Status.WEAK_READ_SUPPORT, 500)), DETAILS));
 
         assertEquals(2, count(page, "<tr data-sample="));
         assertTrue(page.contains("No amplicon was reported."));
@@ -314,7 +314,7 @@ class HtmlReportTest {
                         "the two files of the pair hold different numbers of reads", "3 and 2"));
 
         String page = Files.readString(HtmlReport.write(tsv, ReportTsv.read(tsv), List.of("a"), Set.of(), panel(List.of("its-F", "its-R"), SIZES),
-                List.of(), Map.of(), issues, List.of()));
+                List.of(), DETAILS, issues, List.of()));
 
         assertTrue(page.contains("<h2>Input not analysed</h2>"));
         assertTrue(page.contains("<span class=\"n\">2</span><span class=\"l\">samples not analysed: faulty input files</span>"),
@@ -331,7 +331,7 @@ class HtmlReportTest {
         Path tsv = Files.write(dir.resolve("report.tsv"), List.of(HEADER, row("a", "its", 434, "c1", "")));
 
         String page = Files.readString(write(tsv, List.of("a"), Set.of(), panel(PRIMERS, SIZES), List.of(),
-                Map.of()));
+                DETAILS));
 
         assertFalse(page.contains("Input not analysed"));
         assertFalse(page.contains("not analysed: faulty"));

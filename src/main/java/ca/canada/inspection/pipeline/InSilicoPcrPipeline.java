@@ -55,6 +55,7 @@ public final class InSilicoPcrPipeline {
         PipelineContext context = new PipelineContext(config, dependencies, directories, sampleMap, primers,
                 ChildJavaMemory.budgetGiB(), checked.issues(), monitor);
         logRuntime(context);
+        RunSettings.lines(config, context.hasFastqSamples()).forEach(monitor::info);
         done(Step.INPUT_CHECK);
 
         // FASTQ samples: baited and assembled into a mini-assembly, searched like an assembly.

@@ -91,4 +91,6 @@ details .names { margin-top: 6px; }
 .details dt { color: var(--ink-2); } .details dd { margin: 0; overflow-wrap: anywhere; }
 [hidden] { display: none !important; }
 @media print { body { background: #fff; } .tools { display: none; } .scroll { overflow: visible; border: 0; }
+  /* A printout shows every row, whatever the filters left on screen: the count saying so is not printed. */
+  #rows tbody tr[hidden], #grid tbody tr[hidden] { display: table-row !important; }
   thead th, .grid tbody th { position: static; } section { break-inside: avoid-page; } }

@@ -110,6 +110,18 @@
   size (an integer overflow).
 - FASTQ diagnostics: when the reads carry only the probe of an assay, the detail
   said the forward primer alone was missing; it names both.
+- HTML report:
+  - The amplicon filter matched across two cells: with samples S1 to S15 and
+    an assay 16S, a search for S11 also showed S1's 16S row ("S1" and "16S"
+    read as "s116s"). It matches within a cell.
+  - A printout after a filter or a click on a cell left out the rows they hid,
+    without saying so; it shows every row.
+  - A click on a cell just after typing in the filter was undone when the
+    filter ran; the browser's Back button now returns from a cell's rows to
+    them all; the sample filter ignores blanks around what is typed; "1
+    amplicon".
+  - A screen reader announces a grid cell as its sample, assay and outcome, the
+    marks beside it, and the count of rows shown when it changes.
 - Command line: an input with no FASTA or FASTQ file at all (an empty folder, a
   mistyped `-i`) ended with empty reports and exit code 0, which a workflow
   manager took for success; it stops with exit code 1. Arguments the command
@@ -255,6 +267,8 @@
   products of one primer alone (at an inverted repeat) or of two assays'
   primers are not called, and in FASTQ mode a primer site with an indel or 5'
   mismatches may bait no read; neither is named in the output.
+- Tests: the HTML report's script is tested in a real browser (headless Chrome,
+  where one is installed, as on the CI's Linux machines).
 - Tests: CI runs the tests under a virtual display, so those that draw the gel
   run there too; the application's form-to-run step (`RunForm`) is tested
   without the window; a test keeps each package importing only from the

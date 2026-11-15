@@ -17,7 +17,9 @@ If a `report.tsv` already exists in the output folder, a new run writes `report(
 
 Every run writes `report.html` next to `report.tsv` (`report(1).html` next to `report(1).tsv`, and so on). It
 is one self-contained file: open it in any browser, offline, or send it to a colleague. It follows the
-browser's light or dark theme and prints. It shows exactly the rows of the TSV and hides none.
+browser's light or dark theme and prints. It shows exactly the rows of the TSV and hides none; a printout shows
+every row, whatever the filter boxes or a click on a cell left on screen (before 0.15.2 it left out the rows they
+hid, without saying so). After a click on a cell, the browser's Back button shows every row again.
 
 ![HTML report of five samples and two assays](https://raw.githubusercontent.com/duceppemo/insilicoPCR/master/docs/assets/report/html-report.png)
 

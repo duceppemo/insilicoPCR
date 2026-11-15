@@ -26,8 +26,21 @@ final class QaLogWriter {
     private static final DateTimeFormatter QA_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss");
 
     /** Starts the line naming the run's consolidated report, relative to the output folder. */
-    /** The log's name in the output folder, which marks a finished run. */
+    /** The log of a folder's first run, which marks a finished run; the others are {@link #fileFor}. */
     static final String FILE_NAME = "QAlog.txt";
+
+    /** The logs a run folder may hold: {@code QAlog.txt}, {@code QAlog(1).txt} and on. */
+    static final java.util.regex.Pattern FILE_PATTERN = java.util.regex.Pattern.compile("QAlog(?:\\((\\d+)\\))?\\.txt");
+
+    /**
+     * The log of the run that wrote {@code report}: {@code QAlog.txt} for {@code report.tsv},
+     * {@code QAlog(1).txt} for {@code report(1).tsv}. Each report keeps its own record: a second
+     * run into a folder replaced the first one's, and the first report could no longer be reopened.
+     */
+    static String fileFor(Path report) {
+        String base = ca.canada.inspection.report.ConsolidatedReport.baseName(report);
+        return "QAlog" + (base.startsWith("report") ? base.substring("report".length()) : "") + ".txt";
+    }
     static final String REPORT_PREFIX = "Consolidated report: ";
     /** Starts each line naming a sample the run analysed (one gel lane each). */
     static final String SAMPLE_PREFIX = "Sample analysed: ";
@@ -36,17 +49,17 @@ final class QaLogWriter {
     }
 
     /**
-     * Writes {@code QAlog.txt} in the output folder, replacing any earlier one.
+     * Writes the log of the run that wrote {@code report} in the output folder ({@link #fileFor}).
      *
      * @param report     the consolidated report the run wrote
      * @param extraLines run-specific lines appended at the end (input issues, FASTQ-mode diagnostics)
      */
     static void write(PipelineContext context, String version, Path report, List<String> extraLines) {
         Path output = context.directories().output();
-        Path qLog = output.resolve(FILE_NAME);
+        Path qLog = output.resolve(fileFor(report));
         // Written beside it, then moved over it: a write that stops partway (a full disk, the
         // program ending) leaves the last finished run's log whole, not half of this one.
-        Path written = output.resolve(FILE_NAME + ".part");
+        Path written = qLog.resolveSibling(qLog.getFileName() + ".part");
         try (BufferedWriter writer = Files.newBufferedWriter(written, StandardCharsets.UTF_8)) {
             writeLine(writer, "In Silico PCR version: " + version);
             writeLine(writer, "Date run: " + QA_DATE_FORMAT.format(LocalDateTime.now()));

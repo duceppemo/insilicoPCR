@@ -17,19 +17,17 @@ public final class BlastRunner {
                 sample -> blast(context, sample), context.monitor()::blastProgress);
     }
 
-    /** The FASTA file searched for {@code sample}: its assembly, or the mini-assembly of its reads. */
+    /** The FASTA file searched for {@code sample} ({@link Sample#searchedFasta}): one, always. */
     private static Path query(Sample sample) {
-        if (sample.isFastq()) {
-            if (sample.getAssemblyFile() == null) {
-                throw new PipelineException("FASTQ sample has no assembly file: " + sample.getName());
-            }
-            return sample.getAssemblyFile();
+        List<Path> searched = sample.searchedFasta();
+        if (sample.isFastq() && searched.isEmpty()) {
+            throw new PipelineException("FASTQ sample has no assembly file: " + sample.getName());
         }
         // The input check leaves out a FASTA sample of more than one file.
-        if (sample.files().size() != 1) {
-            throw new IllegalStateException("FASTA sample " + sample.getName() + " is not one file: " + sample.files());
+        if (searched.size() != 1) {
+            throw new IllegalStateException("Sample " + sample.getName() + " is not one FASTA file: " + searched);
         }
-        return sample.files().getFirst();
+        return searched.getFirst();
     }
 
     private static void blast(PipelineContext context, Sample sample) {

@@ -45,7 +45,7 @@ class IoFailureTest {
         sample.setName("s");
 
         RuntimeException error = assertThrows(RuntimeException.class, () -> BlastReports.attachHits(
-                dir, Map.of("s", sample), PrimerPanel.EMPTY, AmpliconOptions.withMismatches(0)));
+                dir, Map.of("s", sample), PrimerPanel.EMPTY, AmpliconOptions.withMismatches(0), warning -> {}));
 
         assertTrue(RunFailure.isForTheUser(error), error.toString());
         assertEquals("Error: Unable to read BLAST report: " + dir.resolve("s").resolve("s.tsv"),

@@ -6,6 +6,7 @@ import ca.canada.inspection.util.SequenceFileUtils;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.List;
 
 /** Loads contig descriptions from FASTA headers into each sample. */
 final class ContigService {
@@ -14,12 +15,12 @@ final class ContigService {
 
     static void load(PipelineContext context) {
         for (Sample sample : context.samples().values()) {
-            if (sample.isFastq()) {
-                addContigsFromFasta(sample, sample.getAssemblyFile());
-            } else {
-                for (Path file : sample.files()) {
-                    addContigsFromFasta(sample, file);
-                }
+            List<Path> searched = sample.searchedFasta();
+            if (searched.isEmpty()) {
+                throw new PipelineException("Sample has no FASTA/assembly file for contig loading: " + sample.getName());
+            }
+            for (Path file : searched) {
+                addContigsFromFasta(sample, file);
             }
         }
     }

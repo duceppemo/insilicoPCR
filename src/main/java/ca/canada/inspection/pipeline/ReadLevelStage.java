@@ -2,6 +2,7 @@ package ca.canada.inspection.pipeline;
 
 import ca.canada.inspection.model.Sample;
 import ca.canada.inspection.pcr.AmpliconOptions;
+import ca.canada.inspection.pcr.BlastHits;
 import ca.canada.inspection.pcr.BlastHitParser;
 import ca.canada.inspection.pcr.PrimerPanel;
 import ca.canada.inspection.pcr.ReadLevelCaller;
@@ -20,6 +21,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -98,7 +100,8 @@ public final class ReadLevelStage {
         }
         runBlast(settings, blastThreads, fasta, hitsFile);
         BlastTsv.prependHeader(hitsFile);
-        return callFromHits(name, hitsFile, fasta, reads, primers, options, settings.minSupportFraction());
+        return callFromHits(name, hitsFile, fasta, reads, primers, options, settings.minSupportFraction(),
+                settings.monitor()::warning);
     }
 
     /**
@@ -109,25 +112,14 @@ public final class ReadLevelStage {
      */
     static ReadEvidence callFromHits(String name, Path hitsFile, Path fasta, ReadSet reads,
                                      PrimerPanel primers, AmpliconOptions options,
-                                     double minSupportFraction) {
+                                     double minSupportFraction, Consumer<String> warning) {
         Sample readSample = new Sample();
         readSample.setName(name);
-        readSample.setFileType(Sample.FileType.READS);
         reads.descriptions().forEach(readSample::addContig);
-        // Trimmed hit ends are compared with the reads (see TrimmedEnds), read
-        // alongside the hits one read at a time.
-        try (BufferedReader reader = Files.newBufferedReader(hitsFile, StandardCharsets.UTF_8);
-             QueryTemplates templates = new QueryTemplates(List.of(fasta))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                if (line.isBlank() || line.startsWith("qseqid")) {
-                    continue;
-                }
-                BlastHitParser.parse(line, name, primers, options, templates)
-                        .ifPresent(hit -> readSample.addBlastResult(hit.subjectID(), hit));
-            }
-        } catch (IOException e) {
-            throw new PipelineException("Could not parse read-level BLAST output: " + hitsFile, e);
+        String missing = BlastHits.missingWarning(BlastHits.read(hitsFile, List.of(fasta), readSample, primers, options),
+                List.of(fasta));
+        if (!missing.isEmpty()) {
+            warning.accept(missing);
         }
         return ReadLevelCaller.evaluate(readSample, reads.lengths(), reads.fragments(), primers, options,
                 minSupportFraction, readIds -> readSequences(fasta, readIds));

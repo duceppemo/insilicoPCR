@@ -227,7 +227,6 @@ class ReadExtensionCallerTest {
     private static Sample extended() {
         Sample sample = new Sample();
         sample.setName("S");
-        sample.setFileType(Sample.FileType.READS);
         return sample;
     }
 

@@ -2,6 +2,7 @@ package ca.canada.inspection.pipeline;
 
 import ca.canada.inspection.model.Sample;
 import ca.canada.inspection.pcr.AmpliconOptions;
+import ca.canada.inspection.pcr.BlastHits;
 import ca.canada.inspection.pcr.BlastHitParser;
 import ca.canada.inspection.pcr.PairSupport;
 import ca.canada.inspection.pcr.PrimerPanel;
@@ -30,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.function.Consumer;
 import java.util.concurrent.CancellationException;
 
 /**
@@ -161,7 +163,8 @@ public final class ReadExtensionStage {
         BlastTsv.prependHeader(hitsFile);
 
         Map<String, Outcome> sampleOutcomes = checkAgainstReadPairs(settings, ReadExtensionCaller.evaluate(
-                extendedSample(name, hitsFile, extendedFile, lengths, primers, options), lengths, seeds, primers, options, reach,
+                extendedSample(name, hitsFile, extendedFile, lengths, primers, options,
+                        settings.search().monitor()::warning), lengths, seeds, primers, options, reach,
                 known),
                 extendedFile, sampleDir, sample);
         outcomes.put(name, sampleOutcomes);
@@ -333,23 +336,14 @@ public final class ReadExtensionStage {
      *                     compared with it (see TrimmedEnds), as for contigs and reads
      */
     static Sample extendedSample(String name, Path hitsFile, Path extendedFile, Map<String, Integer> lengths,
-                                 PrimerPanel primers, AmpliconOptions options) {
+                                 PrimerPanel primers, AmpliconOptions options, Consumer<String> warning) {
         Sample extended = new Sample();
         extended.setName(name);
-        extended.setFileType(Sample.FileType.READS);
         lengths.keySet().forEach(id -> extended.addContig(id, ""));
-        try (BufferedReader reader = Files.newBufferedReader(hitsFile, StandardCharsets.UTF_8);
-             QueryTemplates templates = new QueryTemplates(List.of(extendedFile))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                if (line.isBlank() || line.startsWith("qseqid")) {
-                    continue;
-                }
-                BlastHitParser.parse(line, name, primers, options, templates)
-                        .ifPresent(hit -> extended.addBlastResult(hit.subjectID(), hit));
-            }
-        } catch (IOException e) {
-            throw new PipelineException("Could not parse the BLAST output of the extended reads: " + hitsFile, e);
+        String missing = BlastHits.missingWarning(
+                BlastHits.read(hitsFile, List.of(extendedFile), extended, primers, options), List.of(extendedFile));
+        if (!missing.isEmpty()) {
+            warning.accept(missing);
         }
         return extended;
     }

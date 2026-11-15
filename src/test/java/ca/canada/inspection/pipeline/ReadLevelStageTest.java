@@ -92,7 +92,7 @@ class ReadLevelStageTest {
         ReadLevelStage.ReadSet set = ReadLevelStage.writeReadsFasta(List.of(reads), false, fasta);
 
         ReadCall call = ReadLevelStage.callFromHits("S", hitsFile, fasta, set,
-                PrimerPanel.of(Map.of("assay-F", primer, "assay-R", primer)), AmpliconOptions.withMismatches(0), 0.3)
+                PrimerPanel.of(Map.of("assay-F", primer, "assay-R", primer)), AmpliconOptions.withMismatches(0), 0.3, warning -> {})
                 .products("assay").getFirst();
 
         assertEquals(2, call.supportingReads());

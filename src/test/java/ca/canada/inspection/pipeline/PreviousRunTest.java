@@ -56,9 +56,10 @@ class PreviousRunTest {
     void theLogNamesTheReportTheSamplesAndTheirFilesOnly() throws IOException {
         finishedRun();
 
-        List<String> lines = Files.readAllLines(output.resolve("QAlog.txt"));
+        // The log of the run that wrote report(1).tsv.
+        List<String> lines = Files.readAllLines(output.resolve("QAlog(1).txt"));
         assertTrue(lines.contains("Consolidated report: consolidated_report/report(1).tsv"), lines.toString());
-        assertTrue(!Files.exists(output.resolve("QAlog.txt.part")), "written beside, then moved over QAlog.txt");
+        assertTrue(!Files.exists(output.resolve("QAlog(1).txt.part")), "written beside, then moved over the log");
         int inputs = lines.indexOf("Input File(s) :");
         // In the run's order, each sample's files as the sample holds them (read 1 first).
         assertEquals(List.of(reads.resolve("zeta_R1.fastq.gz").toString(), reads.resolve("zeta_R2.fastq.gz").toString(),
@@ -67,7 +68,7 @@ class PreviousRunTest {
                 lines.subList(inputs + 1, inputs + 8));
         assertEquals("FASTQ mode Tadpole settings: k=31", lines.getLast());
         // An application before 0.15.1 reads the input list up to the blank line.
-        assertEquals(3, QaLogInputs.read(output.resolve("QAlog.txt")).size());
+        assertEquals(3, QaLogInputs.read(output.resolve("QAlog(1).txt")).size());
     }
 
     @Test
@@ -166,5 +167,20 @@ class PreviousRunTest {
                 "Sample\n");
 
         assertEquals(report, PreviousRun.open(run).report());
+    }
+
+    @Test
+    void eachRunOfAFolderKeepsItsOwnLogAndTheLatestIsReopened() throws IOException {
+        // A first run wrote report.tsv and QAlog.txt; a second, report(1).tsv and QAlog(1).txt.
+        Path second = finishedRun();
+        Path first = second.resolveSibling("report.tsv");
+        Files.writeString(first, "Sample\tGene\n");
+        QaLogWriter.write(TestContexts.writingTo(output, Map.of("beta", sample("beta", "beta.fasta"))), "0.0.0",
+                first, List.of());
+
+        assertTrue(Files.readString(output.resolve("QAlog.txt")).contains("Consolidated report: consolidated_report/report.tsv"));
+        assertTrue(Files.readString(output.resolve("QAlog(1).txt")).contains("report(1).tsv"));
+        assertEquals(second, PreviousRun.open(output).report());
+        assertEquals("QAlog(10).txt", QaLogWriter.fileFor(Path.of("report(10).tsv")));
     }
 }

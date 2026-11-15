@@ -53,6 +53,10 @@
   alignments to check, no wrong verdict.
 - Docs: how many bases after a primer tell whether a read comes from the
   product's locus (`Reports`) now says what the code does.
+- A second run into an output folder replaced its `QAlog.txt`, which then named
+  only the new report: the first report kept no record of its run and could no
+  longer be reopened. Each report now has its own log (`QAlog(1).txt` beside
+  `report(1).tsv`), and **Open Previous Run** opens the latest.
 - Command line: an input with no FASTA or FASTQ file at all (an empty folder, a
   mistyped `-i`) ended with empty reports and exit code 0, which a workflow
   manager took for success; it stops with exit code 1. Arguments the command

@@ -115,4 +115,4 @@ Every GUI setting has a command-line equivalent; see [Command-line Interface](Co
 | `synthetic_gel_report.png` | With `--gel` only: the synthetic gel, in the output folder itself, named after the report (`synthetic_gel_report(1).png` for `report(1).tsv`) |
 | `log.txt` | Application only: what the window showed of each run, added at the end of the run, also one that failed or was stopped |
 
-A run into a folder that already holds a report writes `report(1).tsv` and `report(1).html`, and so on. See [Reports](Reports).
+A run into a folder that already holds a report writes `report(1).tsv`, `report(1).html` and its log `QAlog(1).txt`, and so on: each report keeps the log of the run that wrote it, and **Open Previous Run** opens the latest (before 0.15.2, the second run replaced `QAlog.txt`, and the first report could no longer be reopened). The files under `detailed_report/` are those of the latest run: a sample analysed again has its files replaced. See [Reports](Reports).

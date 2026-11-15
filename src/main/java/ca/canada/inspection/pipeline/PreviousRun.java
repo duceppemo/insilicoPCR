@@ -31,8 +31,12 @@ public record PreviousRun(Path report, List<String> samples) {
         samples = List.copyOf(samples);
     }
 
+    /**
+     * The latest finished run of {@code runDirectory}: the one whose log has the highest number
+     * ({@code QAlog(2).txt} after {@code QAlog(1).txt} after {@code QAlog.txt}), as its report has.
+     */
     public static PreviousRun open(Path runDirectory) {
-        Path qaLog = runDirectory.resolve(QaLogWriter.FILE_NAME);
+        Path qaLog = latestLog(runDirectory);
         if (!Files.isRegularFile(qaLog)) {
             throw new PipelineException("QAlog.txt not found in " + runDirectory
                     + ": not the output folder of a finished run");
@@ -52,6 +56,29 @@ public record PreviousRun(Path report, List<String> samples) {
             throw new PipelineException("The report of the run in " + runDirectory + " is missing: " + report);
         }
         return new PreviousRun(report, valueOf(lines, QaLogWriter.SAMPLE_PREFIX));
+    }
+
+    /** The log with the highest number in {@code runDirectory}; {@code QAlog.txt} when there is none. */
+    static Path latestLog(Path runDirectory) {
+        Path latest = runDirectory.resolve(QaLogWriter.FILE_NAME);
+        int highest = -1;
+        if (Files.isDirectory(runDirectory)) {
+            try (Stream<Path> files = Files.list(runDirectory)) {
+                for (Path file : files.toList()) {
+                    java.util.regex.Matcher name = QaLogWriter.FILE_PATTERN.matcher(file.getFileName().toString());
+                    if (name.matches() && Files.isRegularFile(file)) {
+                        int number = name.group(1) == null ? 0 : Integer.parseInt(name.group(1));
+                        if (number > highest) {
+                            highest = number;
+                            latest = file;
+                        }
+                    }
+                }
+            } catch (IOException | NumberFormatException e) {
+                throw new PipelineException("Unable to list the logs in " + runDirectory, e);
+            }
+        }
+        return latest;
     }
 
     private static List<String> valueOf(List<String> lines, String prefix) {

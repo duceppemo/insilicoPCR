@@ -47,11 +47,11 @@ echo "== version"
 REPORTED="$(launch_version | tr -d '\r')"
 echo "$REPORTED"
 [[ "$REPORTED" == "insilicoPCR "* ]] || { echo "FAIL: the launcher did not report a version" >&2; exit 1; }
-# A release ZIP is named for its version, which the program must report. CI names the ZIPs of
-# untagged builds with a placeholder, so they are not compared.
+# A ZIP is named for its version, which the program must report: a release for its tag, any other
+# build for the version in pom.xml. Only a manual CI run may give its ZIPs a name of its own.
 ZIP_VERSION="$(basename "$ZIP" | sed -n 's/^insilicoPCR-\(.*\)-\(linux\|windows\)-x64\.zip$/\1/p')"
-if [[ -n "${GITHUB_ACTIONS:-}" && "${GITHUB_REF_TYPE:-}" != "tag" ]]; then
-  echo "(untagged CI build: its ZIP name is a placeholder, the version is not compared)"
+if [[ "${GITHUB_EVENT_NAME:-}" == "workflow_dispatch" ]]; then
+  echo "(manual CI build: its ZIP may be named otherwise, the version is not compared)"
 elif [[ -n "$ZIP_VERSION" && "$REPORTED" != "insilicoPCR $ZIP_VERSION" ]]; then
   echo "FAIL: $ZIP is version $ZIP_VERSION, but the program reports: $REPORTED" >&2
   exit 1

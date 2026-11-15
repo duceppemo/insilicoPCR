@@ -8,9 +8,9 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version for manual release artifact names, e.g. 0.0.1-manual'
+        description: 'Version the ZIPs are named for; blank: the version in pom.xml'
         required: false
-        default: '0.0.1-manual'
+        default: ''
 
 permissions:
   contents: write
@@ -37,12 +37,14 @@ jobs:
         id: version
         shell: bash
         run: |
+          # A tag names its release; a manual run may name its build; otherwise the ZIPs carry the
+          # version in pom.xml, which the program reports.
           if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
             echo "value=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
-          elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" && -n "${{ inputs.version }}" ]]; then
             echo "value=${{ inputs.version }}" >> "$GITHUB_OUTPUT"
           else
-            echo "value=0.8.0" >> "$GITHUB_OUTPUT"
+            echo "value=$(sed -n 's:.*<version>\(.*\)</version>.*:\1:p' pom.xml | head -1)" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Validate source runtime layout
@@ -120,12 +122,13 @@ jobs:
         id: version
         shell: pwsh
         run: |
+          # As in the Linux job: the tag, a manual run's version, or the version in pom.xml.
           if ($env:GITHUB_REF_TYPE -eq 'tag') {
             "value=$($env:GITHUB_REF_NAME -replace '^v','')" >> $env:GITHUB_OUTPUT
-          } elseif ('${{ github.event_name }}' -eq 'workflow_dispatch') {
+          } elseif ('${{ github.event_name }}' -eq 'workflow_dispatch' -and '${{ inputs.version }}') {
             "value=${{ inputs.version }}" >> $env:GITHUB_OUTPUT
           } else {
-            "value=0.8.0" >> $env:GITHUB_OUTPUT
+            "value=$(([xml](Get-Content pom.xml)).project.version)" >> $env:GITHUB_OUTPUT
           }
 
       - name: Validate source runtime layout
@@ -165,16 +168,74 @@ jobs:
             release/*windows-x64.zip.sha256
           if-no-files-found: error
 
+  windows-harness:
+    name: Windows test harness
+    # The Windows ZIP of this build, through the situations a Windows user meets (install and data
+    # folders with spaces, accents and symbols, long paths, files from Windows tools, reruns, two runs
+    # into one folder, a run killed from Task Manager): scripts/wintest/run-windows-tests.ps1.
+    needs: [ windows-zip ]
+    runs-on: windows-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Download the Windows ZIP
+        uses: actions/download-artifact@v8
+        with:
+          name: insilicoPCR-windows-x64
+          path: build
+
+      - name: Run the harness (Windows PowerShell)
+        shell: powershell
+        run: |
+          $zip = (Get-ChildItem build -Filter '*windows-x64.zip' | Select-Object -First 1).FullName
+          .\scripts\wintest\run-windows-tests.ps1 -Zip $zip
+          exit $LASTEXITCODE
+
+      - name: Show the cases that did not pass
+        if: always()
+        shell: powershell
+        run: |
+          $r = 'scripts\wintest\results'
+          if (-not (Test-Path "$r\summary.tsv")) { exit 0 }
+          Get-Content "$r\environment.txt"
+          Write-Host '===== summary ====='
+          Get-Content "$r\summary.tsv"
+          foreach ($row in Import-Csv -Delimiter "`t" "$r\summary.tsv") {
+            if ($row.status -in 'FAIL', 'INFO') {
+              $d = Join-Path $r $row.case
+              if (Test-Path $d) {
+                Write-Host "===== $($row.case) [$($row.status)] ====="
+                Get-ChildItem $d -File | ForEach-Object {
+                  Write-Host "--- $($_.Name)"
+                  Get-Content $_.FullName -TotalCount 120
+                }
+              }
+            }
+          }
+
+      - name: Upload the results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: wintest-results
+          path: scripts/wintest/results
+          if-no-files-found: ignore
+
   publish-github-release:
     name: Publish GitHub Release
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [ linux-zip, windows-zip ]
+    needs: [ linux-zip, windows-zip, windows-harness ]
     runs-on: ubuntu-latest
 
     steps:
       - name: Download release artifacts
         uses: actions/download-artifact@v8
         with:
+          # The two ZIPs, not the harness results.
+          pattern: insilicoPCR-*
           path: dist
           merge-multiple: true
 

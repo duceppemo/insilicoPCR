@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- CI: the ZIPs of builds that are not a release (pull requests, pushes to
+  `master`) are named for the version in `pom.xml`, not for a placeholder
+  0.8.0, and the smoke test checks that the program reports it.
+- CI: the Windows ZIP of every build, pull requests included, goes through a
+  Windows test harness (`scripts/wintest/run-windows-tests.ps1`, about 70
+  cases: install and data folders with spaces, accents, symbols and letters
+  outside the code page, long paths, files from Windows tools, reruns, two runs
+  into one folder, a run killed from Task Manager); a release is published only
+  once it passes. Its results are the build's `wintest-results` artifact.
+
 ## 0.15.2 (2026-11-15)
 
 ### Added

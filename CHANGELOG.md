@@ -28,10 +28,33 @@
   lists them at its start.
 - FASTQ mode: an output folder whose path holds a comma (`results, run 2`)
   stopped the run at Tadpole: BBTools reads a comma in a file name as a list of
-  files. The BBTools programs now run in the sample's folder and are given their
-  files by paths relative to it, as the BLAST programs are. A comma that is left
-  (in the name of a read file, or of a folder holding the reads but not the
-  output) stops the run with a message naming the file to rename.
+  files. The BBTools programs now run in the sample's folder, and a file whose
+  path has a comma is given by its path relative to that folder, worked out from
+  the folders as they are on disk (an output folder reached through a symbolic
+  link, as `/scratch` often is, works too). A comma that is left (in the name of
+  a read file, or of a folder holding the reads but not the output) stops the
+  run with a message naming the file to rename. A program that fails is named
+  with the folder it ran in, to run it again by hand.
+- Command line: an input with no FASTA or FASTQ file at all (an empty folder, a
+  mistyped `-i`) ended with empty reports and exit code 0, which a workflow
+  manager took for success; it stops with exit code 1. Arguments the command
+  line does not expect are refused (exit code 2): `-i reads/*.fastq.gz`,
+  expanded by the shell, gave `-i` its first file and silently left the others
+  out.
+- The BLAST hit files of a run (`<sample>.tsv`, `*.blast.txt`) were readable by
+  their owner only, unlike the other files; colleagues sharing the output folder
+  could not open them.
+- An output folder that is the input folder through a symbolic link was not
+  refused, and the run analysed its own primer database as a sample.
+- An e-value of `Infinity` (or `1e999`) was accepted, and the run failed at
+  blastn, after the FASTQ steps. It is refused at once.
+- A file or folder name with an accented letter could not be opened under a
+  non-UTF-8 locale (`LANG=C`: cron jobs, batch schedulers, containers), with a
+  stack trace in one case. The Linux launcher switches to UTF-8 itself, and the
+  error is a message saying to.
+- An error from a file the system refused (a folder that cannot be written to)
+  gave the file without the reason; it says `permission denied`, or whatever
+  the reason is.
 - Cancelling a run waited for the work under way in a step that handles several
   samples at once (writing a sample's baited reads, for one) to finish; that work
   is stopped now.

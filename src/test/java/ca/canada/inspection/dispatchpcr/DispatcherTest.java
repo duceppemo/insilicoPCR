@@ -101,4 +101,29 @@ class DispatcherTest {
         assertTrue(err().startsWith("Error: "), err());
         assertFalse(err().contains("\tat "), "a stack trace: " + err());
     }
+
+    @Test
+    void argumentsLeftOverAreAWrongCommandLine() throws IOException {
+        // -i reads/*.fastq.gz, expanded by the shell: -i gets the first file, the others are left over.
+        Path primers = Files.writeString(directory.resolve("primers.fasta"), ">a-F\nACGT\n>a-R\nACGT\n");
+        Path first = Files.writeString(directory.resolve("a_R1.fastq"), "@r\nACGT\n+\nIIII\n");
+
+        assertEquals(2, run("-i", first.toString(), directory.resolve("a_R2.fastq").toString(),
+                "-o", directory.resolve("out").toString(), "-p", primers.toString()));
+        assertTrue(err().startsWith("Unexpected argument(s): " + directory.resolve("a_R2.fastq")), err());
+    }
+
+    @Test
+    void anInputWithoutASequenceFileIsAFailedRun() throws IOException {
+        // A mistyped -i must not end as a run that worked: a workflow manager reads exit code 0.
+        Path input = Files.createDirectories(directory.resolve("empty"));
+        Files.writeString(input.resolve("notes.txt"), "not a sequence");
+        Path primers = Files.writeString(directory.resolve("primers.fasta"),
+                ">a-F\nACGTACGTACGTACGTAC\n>a-R\nACGTACGTACGTACGTAC\n");
+
+        assertEquals(1, run("-i", input.toString(), "-o", directory.resolve("out").toString(),
+                "-p", primers.toString(), "-t", "1"));
+        assertTrue(err().contains("No FASTA or FASTQ file in " + input + ": nothing to analyse")
+                || err().contains("Missing"), err());
+    }
 }

@@ -78,6 +78,14 @@ class ExternalProgramTest {
         assertTrue(RunFailure.isForTheUser(error));
     }
 
+    @Test
+    void aFailedProgramSaysWhereItRan() {
+        // Its command may name files relative to that folder: run again by hand, from there.
+        PipelineException error = assertThrows(PipelineException.class, () -> ExternalProgram.run(new Recorder(),
+                directory, List.of(JAVA, "-XX:+NoSuchOptionAtAll"), "java"));
+        assertTrue(error.getMessage().endsWith(" (in " + directory + ")"), error.getMessage());
+    }
+
     /** The command that runs a one-class Java program with this {@code main} body. */
     private List<String> program(String name, String main) throws IOException {
         Path source = directory.resolve(name + ".java");

@@ -34,12 +34,32 @@ public record PipelineConfig(
         if (threads < 1) {
             throw new IllegalArgumentException("threads must be >= 1");
         }
-        if (!(evalue > 0.0)) {
-            throw new IllegalArgumentException("evalue must be > 0");
+        if (!validEvalue(evalue)) {
+            // Infinity (or 1e999, which reads as it) would only fail at blastn, hours into a run.
+            throw new IllegalArgumentException("evalue must be a number greater than 0, e.g. " + DEFAULT_EVALUE_TEXT
+                    + ", got: " + evalue);
         }
-        if (output.equals(input)) {
+        if (sameFolder(output, input)) {
             // The run writes primer_tmp.fasta there before it lists the input: it would be a sample.
             throw new IllegalArgumentException("The output folder must not be the input folder: " + output);
+        }
+    }
+
+    /** Whether blastn takes {@code evalue}: a finite number above 0. */
+    public static boolean validEvalue(double evalue) {
+        return evalue > 0.0 && Double.isFinite(evalue);
+    }
+
+    /** As written, or one folder reached by two paths (a symbolic link). */
+    private static boolean sameFolder(Path output, Path input) {
+        if (output.equals(input)) {
+            return true;
+        }
+        try {
+            return java.nio.file.Files.exists(output) && java.nio.file.Files.exists(input)
+                    && java.nio.file.Files.isSameFile(output, input);
+        } catch (java.io.IOException e) {
+            return false;
         }
     }
 

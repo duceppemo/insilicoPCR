@@ -71,8 +71,10 @@ final class ExternalProgram {
             boolean saidOutOfMemory = reading.get();
             stopIfCancelled(monitor, program);
             if (exit != 0) {
+                // Where it ran too: a command with a relative path is run again by hand from there.
                 throw new ProgramFailedException(program, exit, saidOutOfMemory,
-                        program + " failed with exit code " + exit + ": " + String.join(" ", command));
+                        program + " failed with exit code " + exit + ": " + String.join(" ", command)
+                                + (workingDirectory == null ? "" : " (in " + workingDirectory + ")"));
             }
         } catch (ExecutionException e) {
             if (e.getCause() instanceof RuntimeException unchecked) {

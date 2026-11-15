@@ -60,4 +60,25 @@ class PipelineConfigTest {
         assertEquals("The output folder must not be the input folder: " + IN.toAbsolutePath().normalize(),
                 error.getMessage());
     }
+
+    @Test
+    void anEvalueBlastnCannotTakeIsRejectedBeforeTheRun() {
+        // Infinity, and 1e999 which reads as it, only failed at blastn, hours into a FASTQ run.
+        for (double evalue : new double[]{Double.POSITIVE_INFINITY, Double.parseDouble("1e999"), Double.NaN}) {
+            assertThrows(IllegalArgumentException.class,
+                    () -> PipelineConfig.builder(IN, OUT, PRIMERS).evalue(evalue).build(), String.valueOf(evalue));
+        }
+        assertEquals(1e300, PipelineConfig.builder(IN, OUT, PRIMERS).evalue(1e300).build().evalue());
+    }
+
+    @Test
+    @org.junit.jupiter.api.condition.DisabledOnOs(org.junit.jupiter.api.condition.OS.WINDOWS)
+    void anOutputFolderThatIsTheInputFolderThroughALinkIsRejected(@org.junit.jupiter.api.io.TempDir Path dir)
+            throws java.io.IOException {
+        Path input = java.nio.file.Files.createDirectories(dir.resolve("genomes"));
+        Path link = java.nio.file.Files.createSymbolicLink(dir.resolve("glink"), input);
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> PipelineConfig.builder(input, link, PRIMERS).build());
+        assertTrue(error.getMessage().startsWith("The output folder must not be the input folder"));
+    }
 }

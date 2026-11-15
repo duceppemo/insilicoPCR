@@ -7,6 +7,7 @@ import ca.canada.inspection.pcr.ReadExtensionCaller;
 import ca.canada.inspection.pcr.ReadLevelCaller.ReadEvidence;
 import ca.canada.inspection.pipeline.RunMonitor.Step;
 import ca.canada.inspection.util.InputCheck;
+import ca.canada.inspection.util.SequenceFileUtils;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -50,6 +51,11 @@ public final class InSilicoPcrPipeline {
         monitor.info("Checking the input files (" + (config.inputCheck() == InputCheck.Depth.FULL
                 ? "every read; --input-check quick reads the first one only" : "first read only") + ")");
         InputCheck.Result checked = InputCheck.scan(config.input(), config.inputCheck(), config.threads());
+        if (checked.files() == 0) {
+            // Most likely a mistyped -i: a run of nothing would end as if it had worked (exit 0).
+            throw new PipelineException("No FASTA or FASTQ file in " + config.input() + ": nothing to analyse"
+                    + " (input files are named " + String.join(", ", SequenceFileUtils.ACCEPTED_EXTENSIONS) + ")");
+        }
         checked.warnings().forEach(line -> monitor.warning("Warning: " + line));
         Map<String, Sample> sampleMap = new LinkedHashMap<>(checked.samples());
         PipelineContext context = new PipelineContext(config, dependencies, directories, sampleMap, primers,

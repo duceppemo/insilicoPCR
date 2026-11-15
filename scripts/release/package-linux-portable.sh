@@ -85,6 +85,12 @@ if [[ ! -x "$JAVA" ]]; then
   exit 1
 fi
 
+# Java names files in the locale's encoding: under LANG=C (cron, batch schedulers, containers),
+# a file or folder name with an accented letter cannot be opened. Use UTF-8 when the locale does not.
+if [[ "$(locale charmap 2>/dev/null)" != "UTF-8" ]] && locale -a 2>/dev/null | grep -qiE '^c\.utf-?8$'; then
+  export LC_ALL=C.UTF-8
+fi
+
 exec "$JAVA" -p "$DIR/lib:$DIR/insilicoPCR.jar" -m ca.canada.inspection.insilicopcr/ca.canada.inspection.dispatchpcr.Dispatcher "$@"
 EOF
 

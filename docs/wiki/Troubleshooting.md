@@ -121,6 +121,18 @@ In the application, releases before 0.12.1 did not notice a failed `blastn` sear
 
 Up to 0.12.1 the application printed a Java stack trace in its output area when a run failed. Later releases print `Run failed` and an `Error:` line there for a failure you can act on (a tool that failed, a file that cannot be read or written), and keep the stack trace for anything else; the terminal the application was started from always gets the stack trace.
 
+## `Malformed input or input contains unmappable characters`
+
+A file or folder name has a letter outside ASCII (an accent) and the system locale is not UTF-8 (`LANG=C`, common in cron jobs, batch schedulers and containers): Java cannot name the file. The Linux launcher `run-insilicoPCR.sh` switches to UTF-8 itself since 0.15.2; when running the jar directly, set the locale first:
+
+```bash
+export LC_ALL=C.UTF-8
+```
+
+## A program fails and its command is in the error
+
+The error gives the command that failed and the folder it ran in, `(in <folder>)`; some of its file names are relative to that folder. To run it by hand, `cd` there first.
+
 ## A sample is missing from the report
 
 Since 0.13.0, look for `Warning:` lines at the start of the run and for the section **Input not analysed** at the top of the HTML report (also in `QAlog.txt`). A sample whose file is empty, damaged, cut short, malformed or not what its extension says is left out, with the file and the fault named, and the other samples are run. See [Input check](Running-Analyses#input-check).

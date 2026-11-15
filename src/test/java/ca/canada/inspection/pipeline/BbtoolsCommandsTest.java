@@ -12,6 +12,11 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class BbtoolsCommandsTest {
+    /** A file argument as the commands give it without a comma: its absolute path. */
+    private static String abs(String name) {
+        return Path.of(name).toAbsolutePath().normalize().toString();
+    }
+
     private final BbtoolsCommands commands = new BbtoolsCommands("java", Path.of("bbtools.jar"), 6, 4);
     private final List<Path> paired = List.of(Path.of("s_R1.fastq.gz"), Path.of("s_R2.fastq.gz"));
 
@@ -20,12 +25,12 @@ class BbtoolsCommandsTest {
         List<String> command = commands.firstBait(Path.of("primers.fasta"), paired, Path.of("out.fq.gz"), 17, 2).arguments();
 
         assertTrue(command.contains("jgi.BBDuk"));
-        assertTrue(command.contains("ref=primers.fasta"));
+        assertTrue(command.contains("ref=" + abs("primers.fasta")));
         assertTrue(command.contains("k=17"));
         assertTrue(command.contains("hdist=2"));
-        assertTrue(command.contains("in1=s_R1.fastq.gz"));
-        assertTrue(command.contains("in2=s_R2.fastq.gz"));
-        assertTrue(command.contains("outm=out.fq.gz"));
+        assertTrue(command.contains("in1=" + abs("s_R1.fastq.gz")));
+        assertTrue(command.contains("in2=" + abs("s_R2.fastq.gz")));
+        assertTrue(command.contains("outm=" + abs("out.fq.gz")));
         assertTrue(command.contains("overwrite=t"));
         assertTrue(command.contains("-Xmx6g"));
         assertTrue(command.contains("-XX:+ExitOnOutOfMemoryError"));
@@ -37,7 +42,7 @@ class BbtoolsCommandsTest {
     void secondBaitIsExactRegardlessOfMismatchBudget() {
         List<String> command = commands.secondBait(Path.of("first.fq.gz"), paired, Path.of("second.fq.gz")).arguments();
 
-        assertTrue(command.contains("ref=first.fq.gz"));
+        assertTrue(command.contains("ref=" + abs("first.fq.gz")));
         assertTrue(command.contains("hdist=0"));
         assertFalse(command.stream().anyMatch(argument -> argument.startsWith("k=")));
     }
@@ -47,7 +52,7 @@ class BbtoolsCommandsTest {
         List<String> command = commands.secondBait(Path.of("first.fq.gz"), List.of(Path.of("s.fastq.gz")),
                 Path.of("second.fq.gz")).arguments();
 
-        assertTrue(command.contains("in=s.fastq.gz"));
+        assertTrue(command.contains("in=" + abs("s.fastq.gz")));
         assertFalse(command.stream().anyMatch(argument -> argument.startsWith("in1=")));
     }
 
@@ -57,7 +62,7 @@ class BbtoolsCommandsTest {
                 new TadpoleOptions(25, 2, 1, 80)).arguments();
 
         assertEquals(List.of("java", "-ea", "-Xmx6g", "-XX:+ExitOnOutOfMemoryError", "-cp", "bbtools.jar", "assemble.Tadpole",
-                "in=second.fq.gz", "out=asm.fasta", "overwrite=t", "threads=4",
+                "in=" + abs("second.fq.gz"), "out=" + abs("asm.fasta"), "overwrite=t", "threads=4",
                 "k=25", "mincountseed=2", "mincov=1", "mincontig=80"), command);
     }
 
@@ -83,10 +88,10 @@ class BbtoolsCommandsTest {
         List<String> command = commands.recruit(Path.of("candidates.fasta"), paired, Path.of("reads.fq.gz"), 31).arguments();
 
         assertTrue(command.contains("jgi.BBDuk"));
-        assertTrue(command.contains("ref=candidates.fasta"));
-        assertTrue(command.contains("in1=s_R1.fastq.gz"));
-        assertTrue(command.contains("in2=s_R2.fastq.gz"));
-        assertTrue(command.contains("outm=reads.fq.gz"));
+        assertTrue(command.contains("ref=" + abs("candidates.fasta")));
+        assertTrue(command.contains("in1=" + abs("s_R1.fastq.gz")));
+        assertTrue(command.contains("in2=" + abs("s_R2.fastq.gz")));
+        assertTrue(command.contains("outm=" + abs("reads.fq.gz")));
         assertTrue(command.contains("interleaved=t"), "mates stay together");
         assertTrue(command.contains("hdist=0"));
         assertTrue(command.contains("k=31"));
@@ -98,7 +103,7 @@ class BbtoolsCommandsTest {
                 Path.of("extended.fasta"), 31, 2000).arguments();
 
         assertEquals(List.of("java", "-ea", "-Xmx6g", "-XX:+ExitOnOutOfMemoryError", "-cp", "bbtools.jar", "assemble.Tadpole",
-                "in=seeds.fasta", "out=extended.fasta", "mode=extend", "el=2000", "er=2000", "extra=second.fq.gz",
+                "in=" + abs("seeds.fasta"), "out=" + abs("extended.fasta"), "mode=extend", "el=2000", "er=2000", "extra=" + abs("second.fq.gz"),
                 "k=31", "branchmult1=1", "branchmult2=1", "mincountextend=2", "overwrite=t", "threads=4"), command);
     }
 
@@ -107,10 +112,10 @@ class BbtoolsCommandsTest {
         List<String> command = commands.mergePairs(Path.of("first.fq.gz"), Path.of("m.fq.gz"), Path.of("u.fq.gz")).arguments();
 
         assertTrue(command.contains("jgi.BBMerge"));
-        assertTrue(command.contains("in=first.fq.gz"));
+        assertTrue(command.contains("in=" + abs("first.fq.gz")));
         assertTrue(command.contains("interleaved=t"));
-        assertTrue(command.contains("out=m.fq.gz"));
-        assertTrue(command.contains("outu=u.fq.gz"));
+        assertTrue(command.contains("out=" + abs("m.fq.gz")));
+        assertTrue(command.contains("outu=" + abs("u.fq.gz")));
         assertTrue(command.contains("ordered=t"), "reads in the order they came, every run");
     }
 
@@ -146,7 +151,7 @@ class BbtoolsCommandsTest {
         // and each matching read brought its unrelated neighbour along.
         List<String> single = commands.firstBait(Path.of("primers.fasta"), List.of(Path.of("s.fastq.gz")),
                 Path.of("out.fq.gz"), 18, 0).arguments();
-        assertTrue(single.contains("in=s.fastq.gz"));
+        assertTrue(single.contains("in=" + abs("s.fastq.gz")));
         assertTrue(single.contains("interleaved=f"), single.toString());
         assertTrue(!single.contains("interleaved=t"), single.toString());
 
@@ -178,5 +183,28 @@ class BbtoolsCommandsTest {
         assertEquals("BBTools reads a comma in a file name as a list of files, and cannot read "
                 + reads.toAbsolutePath().normalize() + ": remove the comma from the name of the file or of its folder",
                 error.getMessage());
+    }
+
+    @Test
+    @org.junit.jupiter.api.condition.DisabledOnOs(org.junit.jupiter.api.condition.OS.WINDOWS)
+    void aCommaInAFolderReachedThroughALinkIsNamedFromTheRealFolders(@TempDir Path dir) throws java.io.IOException {
+        // /scratch as a link, the reads elsewhere: ".." is resolved from the real folder a program
+        // runs in, not from the link's path.
+        Path real = java.nio.file.Files.createDirectories(dir.resolve("real").resolve("deep"));
+        Path link = java.nio.file.Files.createSymbolicLink(dir.resolve("link, 1"), real);
+        Path sampleDir = java.nio.file.Files.createDirectories(link.resolve("out").resolve("s"));
+        Path reads = java.nio.file.Files.writeString(java.nio.file.Files.createDirectories(link.resolve("reads"))
+                .resolve("s.fastq"), "");
+
+        BbtoolsCommands.Command command = commands.secondBait(sampleDir.resolve("first.fq.gz"), List.of(reads),
+                sampleDir.resolve("second.fq.gz"));
+
+        String in = command.arguments().stream().filter(argument -> argument.startsWith("in=")).findFirst()
+                .orElseThrow().substring(3);
+        assertEquals(Path.of("..", "..", "reads", "s.fastq").toString(), in, "from the real folder, not the link");
+        String ref = command.arguments().stream().filter(argument -> argument.startsWith("ref=")).findFirst()
+                .orElseThrow().substring(4);
+        assertEquals("first.fq.gz", ref);
+        assertTrue(java.nio.file.Files.isSameFile(sampleDir.toRealPath().resolve(in), reads));
     }
 }

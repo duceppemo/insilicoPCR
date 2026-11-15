@@ -22,9 +22,10 @@ import java.util.Map;
 import java.util.TreeMap;
 
 /**
- * Turns the read-level evidence of FASTQ samples into report rows and into
- * {@code <report>_fastq_diagnostics.tsv} next to the consolidated report. Shared by
- * the command-line and GUI pipelines.
+ * Explains, from the read-level evidence of FASTQ samples, the assays the mini-assembly did not
+ * report ({@code <report>_fastq_diagnostics.tsv} next to the consolidated report, and lines for
+ * the run's log and {@code QAlog.txt}). The rows called from reads are made by
+ * {@link ReportGenerator}. Shared by the command-line and GUI pipelines.
  */
 public final class FastqDiagnosticsStage {
 

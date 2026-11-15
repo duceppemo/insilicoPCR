@@ -15,9 +15,6 @@ import java.util.TreeSet;
  */
 public final class PrimerPanel {
 
-    /** No primers: for code paths that need a panel and have none. */
-    public static final PrimerPanel EMPTY = of(Map.of());
-
     private final Map<String, String> sequences;
     private final Map<String, PrimerId.Assay> assays;
     private final Map<String, PrimerId.Assay> completeAssays;

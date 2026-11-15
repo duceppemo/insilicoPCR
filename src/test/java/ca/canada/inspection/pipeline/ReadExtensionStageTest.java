@@ -1,5 +1,6 @@
 package ca.canada.inspection.pipeline;
 
+import ca.canada.inspection.pcr.PrimerId;
 import ca.canada.inspection.pcr.PrimerPanel;
 import ca.canada.inspection.model.Sample;
 import ca.canada.inspection.util.SequenceFileUtils;
@@ -41,9 +42,9 @@ class ReadExtensionStageTest {
         Path reads = Files.writeString(dir.resolve("reads.fasta"),
                 ">read_0 a/1\nAAAA\n>read_1 a/2\nCCCC\n>read_2 b/1\nGGGG\n");
         // read_1 carries a primer of two assays: one copy each, judged for its own assay.
-        List<Seed> seeds = List.of(new Seed("extended_read_0", "read_1", "long", 'F'),
-                new Seed("extended_read_1", "read_2", "long", 'R'),
-                new Seed("extended_read_2", "read_1", "other", 'R'));
+        List<Seed> seeds = List.of(new Seed("extended_read_0", "read_1", "long", PrimerId.Role.FORWARD),
+                new Seed("extended_read_1", "read_2", "long", PrimerId.Role.REVERSE),
+                new Seed("extended_read_2", "read_1", "other", PrimerId.Role.REVERSE));
         Path seedsFile = dir.resolve("seeds.fasta");
 
         Map<String, BaitedReads.ReadRecord> used = ReadExtensionStage.writeSeeds(seeds, reads, seedsFile);
@@ -53,7 +54,7 @@ class ReadExtensionStageTest {
         assertEquals(Set.of("read_1", "read_2"), used.keySet());
         assertEquals("a/2", used.get("read_1").description());
         assertThrows(PipelineException.class, () -> ReadExtensionStage.writeSeeds(
-                List.of(new Seed("extended_read_0", "read_9", "long", 'F')), reads, seedsFile));
+                List.of(new Seed("extended_read_0", "read_9", "long", PrimerId.Role.FORWARD)), reads, seedsFile));
     }
 
     @Test
@@ -71,10 +72,10 @@ class ReadExtensionStageTest {
         }
         Path extended = Files.writeString(dir.resolve("S_extendedReads.fasta"), fasta.toString());
         Path hitsFile = Files.writeString(dir.resolve("S_extendedReads.blast.txt"), hits.toString());
-        List<Seed> seeds = List.of(new Seed("extended_read_0", "read_5", "long", 'F'),
-                new Seed("extended_read_1", "read_6", "long", 'F'),
-                new Seed("extended_read_2", "read_7", "long", 'R'),
-                new Seed("extended_read_3", "read_8", "long", 'R'));
+        List<Seed> seeds = List.of(new Seed("extended_read_0", "read_5", "long", PrimerId.Role.FORWARD),
+                new Seed("extended_read_1", "read_6", "long", PrimerId.Role.FORWARD),
+                new Seed("extended_read_2", "read_7", "long", PrimerId.Role.REVERSE),
+                new Seed("extended_read_3", "read_8", "long", PrimerId.Role.REVERSE));
         AmpliconOptions options = AmpliconOptions.withMismatches(0);
 
         Map<String, Integer> lengths = SequenceFileUtils.sequenceLengths(extended);

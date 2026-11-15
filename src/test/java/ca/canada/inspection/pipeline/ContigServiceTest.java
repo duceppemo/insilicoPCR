@@ -80,6 +80,6 @@ class ContigServiceTest {
     }
 
     private static PipelineContext contextOf(Map<String, Sample> samples) {
-        return new PipelineContext(null, null, null, samples, PrimerPanel.EMPTY, 1, List.of(), RunMonitor.CONSOLE);
+        return new PipelineContext(null, null, null, samples, PrimerPanel.of(Map.of()), 1, List.of(), RunMonitor.CONSOLE);
     }
 }

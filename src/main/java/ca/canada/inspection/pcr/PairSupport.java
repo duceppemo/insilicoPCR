@@ -198,7 +198,7 @@ public final class PairSupport {
                 entering.add(new int[sequence.length() + 1]);
                 leaving.add(new int[sequence.length() + 1]);
                 index(p, sequence, true);
-                index(p, reverseComplement(sequence), false);
+                index(p, Dna.reverseComplement(sequence), false);
             }
         }
 
@@ -369,7 +369,7 @@ public final class PairSupport {
 
         /** Base {@code position} of the product's plus strand, or of its reverse complement. */
         private static char strandBase(String sequence, boolean plus, int position) {
-            return plus ? sequence.charAt(position) : complement(sequence.charAt(sequence.length() - 1 - position));
+            return plus ? sequence.charAt(position) : Dna.complement(sequence.charAt(sequence.length() - 1 - position));
         }
 
         /** The verdict for product {@code index} from what was added so far. */
@@ -563,21 +563,4 @@ public final class PairSupport {
         return key & Integer.MAX_VALUE;
     }
 
-    private static char complement(char base) {
-        return switch (base) {
-            case 'A' -> 'T';
-            case 'C' -> 'G';
-            case 'G' -> 'C';
-            case 'T' -> 'A';
-            default -> 'N';
-        };
-    }
-
-    static String reverseComplement(String sequence) {
-        StringBuilder result = new StringBuilder(sequence.length());
-        for (int i = sequence.length() - 1; i >= 0; i--) {
-            result.append(complement(sequence.charAt(i)));
-        }
-        return result.toString();
-    }
 }

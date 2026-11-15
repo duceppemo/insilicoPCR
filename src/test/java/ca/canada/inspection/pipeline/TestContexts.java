@@ -19,7 +19,7 @@ final class TestContexts {
                 output.resolve("bbmap"), output.resolve("blast"), output.resolve("java")));
         PipelineDirectories directories = new PipelineDirectories(output, output.resolve("detailed_report"),
                 output.resolve(PipelineDirectories.CONSOLIDATED));
-        return new PipelineContext(config, dependencies, directories, samples, PrimerPanel.EMPTY, 1, List.of(),
+        return new PipelineContext(config, dependencies, directories, samples, PrimerPanel.of(Map.of()), 1, List.of(),
                 RunMonitor.CONSOLE);
     }
 }

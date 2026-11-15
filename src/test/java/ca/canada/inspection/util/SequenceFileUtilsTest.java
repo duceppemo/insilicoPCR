@@ -130,4 +130,18 @@ class SequenceFileUtilsTest {
         org.junit.jupiter.api.Assertions.assertEquals("c3", SequenceFileUtils.fastaId(">c3\tx"));
         org.junit.jupiter.api.Assertions.assertEquals("c4", SequenceFileUtils.fastaId(">c4"));
     }
+
+    @Test
+    void everyAcceptedExtensionIsReadByTypeAndLeftOutOfTheSampleName() {
+        // One list: an extension added to it is accepted, typed and stripped from the name alike.
+        assertEquals(SequenceFileUtils.ACCEPTED_EXTENSIONS.size(),
+                SequenceFileUtils.FASTA_EXTENSIONS.size() + SequenceFileUtils.FASTQ_EXTENSIONS.size());
+        for (String extension : SequenceFileUtils.ACCEPTED_EXTENSIONS) {
+            Path file = Path.of("iso" + extension.toUpperCase(java.util.Locale.ROOT));
+            assertEquals("iso", SequenceFileUtils.sampleName(file), extension);
+            org.junit.jupiter.api.Assertions.assertTrue(SequenceFileUtils.hasExtension(file,
+                    SequenceFileUtils.FASTA_EXTENSIONS) ^ SequenceFileUtils.hasExtension(file,
+                    SequenceFileUtils.FASTQ_EXTENSIONS), extension);
+        }
+    }
 }

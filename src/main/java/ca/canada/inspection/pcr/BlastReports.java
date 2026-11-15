@@ -27,7 +27,7 @@ public final class BlastReports {
         samples.forEach((sampleName, sample) -> {
             List<Path> searched = sample.searchedFasta().stream().filter(Files::isRegularFile).toList();
             String missing = BlastHits.missingWarning(
-                    BlastHits.read(reportOf.apply(sampleName), searched, sample.getName(), sample.hits(), primers, options),
+                    BlastHits.read(reportOf.apply(sampleName), searched, sample.hits(), primers, options),
                     searched);
             if (!missing.isEmpty()) {
                 warning.accept(missing);

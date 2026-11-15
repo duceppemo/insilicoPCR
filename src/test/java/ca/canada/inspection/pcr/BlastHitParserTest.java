@@ -32,9 +32,8 @@ class BlastHitParserTest {
     @Test
     void perfectHitIsAccepted() {
         String blastLine = line("assay-F", 0, 0, 20, 20, 101, 120, PRIMER_20, 1, 20, PRIMER_20);
-        Optional<BlastResult> hit = BlastHitParser.parse(blastLine, "sample1", PRIMERS, STRICT);
+        Optional<BlastResult> hit = BlastHitParser.parse(blastLine, PRIMERS, STRICT);
         assertTrue(hit.isPresent());
-        assertEquals("sample1", hit.get().name());
         assertEquals("assay-F", hit.get().subjectID());
         assertTrue(hit.get().isPlusStrand());
     }
@@ -42,7 +41,7 @@ class BlastHitParserTest {
     @Test
     void unknownPrimerIsIgnored() {
         String blastLine = line("other-F", 0, 0, 20, 20, 101, 120, PRIMER_20, 1, 20, PRIMER_20);
-        assertTrue(BlastHitParser.parse(blastLine, "sample1", PRIMERS, STRICT).isEmpty());
+        assertTrue(BlastHitParser.parse(blastLine, PRIMERS, STRICT).isEmpty());
     }
 
     @Test
@@ -50,7 +49,7 @@ class BlastHitParserTest {
         // Alignment covers primer 1..18: BLAST trimmed 2 bases at the 3' end.
         String aligned = PRIMER_20.substring(0, 18);
         String blastLine = line("assay-F", 0, 0, 20, 18, 101, 118, aligned, 1, 18, aligned);
-        assertTrue(BlastHitParser.parse(blastLine, "sample1", PRIMERS, RELAXED).isEmpty());
+        assertTrue(BlastHitParser.parse(blastLine, PRIMERS, RELAXED).isEmpty());
     }
 
     @Test
@@ -58,7 +57,7 @@ class BlastHitParserTest {
         // Alignment covers primer 3..20: 2 bases missing at the harmless 5' end.
         String aligned = PRIMER_20.substring(2);
         String blastLine = line("assay-F", 0, 0, 20, 18, 103, 120, aligned, 3, 20, aligned);
-        assertTrue(BlastHitParser.parse(blastLine, "sample1", PRIMERS, STRICT).isPresent());
+        assertTrue(BlastHitParser.parse(blastLine, PRIMERS, STRICT).isPresent());
     }
 
     @Test
@@ -68,8 +67,8 @@ class BlastHitParserTest {
         qseq.setCharAt(4, 'T' == qseq.charAt(4) ? 'A' : 'T');
         String blastLine = line("assay-F", 1, 0, 20, 20, 101, 120, qseq.toString(), 1, 20, PRIMER_20);
 
-        assertTrue(BlastHitParser.parse(blastLine, "sample1", PRIMERS, STRICT).isEmpty());
-        assertTrue(BlastHitParser.parse(blastLine, "sample1", PRIMERS,
+        assertTrue(BlastHitParser.parse(blastLine, PRIMERS, STRICT).isEmpty());
+        assertTrue(BlastHitParser.parse(blastLine, PRIMERS,
                 new AmpliconOptions(1, 1, 5, 0, 2, 0, 5000)).isPresent());
     }
 
@@ -81,9 +80,9 @@ class BlastHitParserTest {
         qseq.setCharAt(17, 'A');
         String blastLine = line("assay-F", 1, 0, 20, 20, 101, 120, qseq.toString(), 1, 20, PRIMER_20);
 
-        assertTrue(BlastHitParser.parse(blastLine, "sample1", PRIMERS, RELAXED).isEmpty());
+        assertTrue(BlastHitParser.parse(blastLine, PRIMERS, RELAXED).isEmpty());
         // Raising the 3' penalty allowance rescues it (G/C mismatch at distance 2 scores 2+1).
-        assertTrue(BlastHitParser.parse(blastLine, "sample1", PRIMERS,
+        assertTrue(BlastHitParser.parse(blastLine, PRIMERS,
                 new AmpliconOptions(1, 1, 5, 3, 2, 0, 5000)).isPresent());
     }
 
@@ -92,7 +91,7 @@ class BlastHitParserTest {
         // Probe truncated by 2 bases at its 3' side: fine, probes do not extend.
         String aligned = PRIMER_20.substring(0, 18);
         String blastLine = line("assay-P", 0, 0, 20, 18, 101, 118, aligned, 1, 18, aligned);
-        assertTrue(BlastHitParser.parse(blastLine, "sample1", PRIMERS, STRICT).isPresent());
+        assertTrue(BlastHitParser.parse(blastLine, PRIMERS, STRICT).isPresent());
     }
 
     @Test
@@ -101,7 +100,7 @@ class BlastHitParserTest {
         // allow it for a primer. Probes must cover nearly their whole length.
         String aligned = PRIMER_20.substring(0, 17);
         String blastLine = line("assay-P", 0, 0, 20, 17, 101, 117, aligned, 1, 17, aligned);
-        assertTrue(BlastHitParser.parse(blastLine, "sample1", PRIMERS, STRICT).isEmpty());
+        assertTrue(BlastHitParser.parse(blastLine, PRIMERS, STRICT).isEmpty());
     }
 
     @Test
@@ -113,16 +112,16 @@ class BlastHitParserTest {
 
         // Rejected when the probe budget is 0, accepted with --probe-mismatches 1
         // even though the primer budget (-m) stays 0.
-        assertTrue(BlastHitParser.parse(blastLine, "sample1", PRIMERS, STRICT).isEmpty());
+        assertTrue(BlastHitParser.parse(blastLine, PRIMERS, STRICT).isEmpty());
         AmpliconOptions probeTolerant = new AmpliconOptions(0, 1, 5, 0, 5, 0, 5000);
-        assertTrue(BlastHitParser.parse(blastLine, "sample1", PRIMERS, probeTolerant).isPresent());
+        assertTrue(BlastHitParser.parse(blastLine, PRIMERS, probeTolerant).isPresent());
     }
 
     @Test
     void malformedLinesAreIgnored() {
-        assertTrue(BlastHitParser.parse("too\tfew\tfields", "sample1", PRIMERS, STRICT).isEmpty());
+        assertTrue(BlastHitParser.parse("too\tfew\tfields", PRIMERS, STRICT).isEmpty());
         assertTrue(BlastHitParser.parse(
                 line("assay-F", 0, 0, 20, 20, 101, 120, PRIMER_20, 1, 20, PRIMER_20).replace("101", "abc"),
-                "sample1", PRIMERS, STRICT).isEmpty());
+                PRIMERS, STRICT).isEmpty());
     }
 }

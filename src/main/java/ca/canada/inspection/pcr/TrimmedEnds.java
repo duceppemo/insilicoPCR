@@ -105,7 +105,6 @@ public final class TrimmedEnds {
         String sseq = hit.sseq() == null ? null
                 : (extendLeft ? left.subject() : "") + hit.sseq() + (extendRight ? right.subject() : "");
         return new BlastResult(
-                hit.name(),
                 hit.queryID(),
                 hit.subjectID(),
                 hit.mismatch() + extraMismatches,
@@ -164,20 +163,11 @@ public final class TrimmedEnds {
 
     private static char oligoBaseInQueryOrientation(BlastResult hit, int oligoPosition, boolean plus) {
         char base = Character.toUpperCase(hit.primerSeq().charAt(oligoPosition - 1));
-        return plus ? base : complement(base);
+        return plus ? base : Dna.complement(base);
     }
 
     private static boolean pairs(char queryBase, char subjectBase) {
         return queryBase == subjectBase && "ACGT".indexOf(queryBase) >= 0;
     }
 
-    private static char complement(char base) {
-        return switch (base) {
-            case 'A' -> 'T';
-            case 'C' -> 'G';
-            case 'G' -> 'C';
-            case 'T' -> 'A';
-            default -> 'N';
-        };
-    }
 }

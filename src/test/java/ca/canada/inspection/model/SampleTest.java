@@ -13,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class SampleTest {
 
     private static BlastResult hit(String primerId) {
-        return new BlastResult("s", "contig", primerId, 0, 0, 1, 20, 1, 20, 20, 20, "ACGT", "ACGT", "ACGT");
+        return new BlastResult("contig", primerId, 0, 0, 1, 20, 1, 20, 20, 20, "ACGT", "ACGT", "ACGT");
     }
 
     @Test

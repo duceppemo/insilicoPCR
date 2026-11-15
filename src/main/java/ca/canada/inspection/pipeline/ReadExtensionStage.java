@@ -17,7 +17,6 @@ import ca.canada.inspection.util.FastaScanner;
 import ca.canada.inspection.util.FastqRecords;
 import ca.canada.inspection.util.SequenceFileUtils;
 
-import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -305,7 +304,7 @@ public final class ReadExtensionStage {
                     throw new PipelineException("read " + seed.read() + " is not in " + baitedReadsFasta.getFileName());
                 }
                 // The assay, the primer and the read it is seeded from, for whoever audits a call.
-                writer.write(">" + seed.id() + " " + seed.assay() + "-" + seed.role() + " " + seed.read());
+                writer.write(">" + seed.id() + " " + seed.assay() + "-" + seed.role().letter() + " " + seed.read());
                 writer.newLine();
                 writer.write(record.sequence());
                 writer.newLine();
@@ -327,7 +326,7 @@ public final class ReadExtensionStage {
         Hits extended = new Hits();
         lengths.keySet().forEach(id -> extended.describe(id, ""));
         String missing = BlastHits.missingWarning(
-                BlastHits.read(hitsFile, List.of(extendedFile), name, extended, primers, options), List.of(extendedFile));
+                BlastHits.read(hitsFile, List.of(extendedFile), extended, primers, options), List.of(extendedFile));
         if (!missing.isEmpty()) {
             warning.accept(missing);
         }

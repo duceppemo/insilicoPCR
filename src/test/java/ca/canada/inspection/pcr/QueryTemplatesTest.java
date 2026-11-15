@@ -21,7 +21,7 @@ class QueryTemplatesTest {
     Path dir;
 
     private static BlastResult on(String contig) {
-        return new BlastResult("s", contig, "a-F", 0, 0, 1, 4, 1, 4, 4, 4, "ACGT", "ACGT", "ACGT");
+        return new BlastResult(contig, "a-F", 0, 0, 1, 4, 1, 4, 4, 4, "ACGT", "ACGT", "ACGT");
     }
 
     private List<Path> files() throws IOException {

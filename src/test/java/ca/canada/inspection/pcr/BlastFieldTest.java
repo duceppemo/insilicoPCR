@@ -35,7 +35,7 @@ class BlastFieldTest {
         fields[BlastField.SEND.ordinal()] = "20";
         fields[BlastField.SSEQ.ordinal()] = TestHits.PRIMER_20;
 
-        var hit = BlastHitParser.parse(String.join("\t", fields), "S", PrimerPanel.of(Map.of("a-F", TestHits.PRIMER_20)),
+        var hit = BlastHitParser.parse(String.join("\t", fields), PrimerPanel.of(Map.of("a-F", TestHits.PRIMER_20)),
                 AmpliconOptions.withMismatches(0)).orElseThrow();
 
         assertEquals("contig_9", hit.queryID());

@@ -150,7 +150,7 @@ public final class FastqDiagnostics {
     }
 
     /**
-     * As {@link #assess(Sample, Map, AmpliconOptions, ReadEvidence, Map)}, taking into account what
+     * As {@link #assess(Sample, PrimerPanel, AmpliconOptions, ReadEvidence, Map)}, taking into account what
      * extending the reads showed.
      *
      * @param extension per assay the reads were extended for, the outcome; empty when the

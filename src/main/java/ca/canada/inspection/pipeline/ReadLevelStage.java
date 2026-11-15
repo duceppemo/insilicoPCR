@@ -7,22 +7,15 @@ import ca.canada.inspection.pcr.BlastHits;
 import ca.canada.inspection.pcr.PrimerPanel;
 import ca.canada.inspection.pcr.ReadLevelCaller;
 import ca.canada.inspection.pcr.ReadLevelCaller.ReadEvidence;
-import ca.canada.inspection.util.SequenceFileUtils;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 import java.util.Objects;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -112,7 +105,7 @@ public final class ReadLevelStage {
         Hits readHits = new Hits();
         reads.descriptions().forEach(readHits::describe);
         String missing = BlastHits.missingWarning(
-                BlastHits.read(hitsFile, List.of(fasta), name, readHits, primers, options), List.of(fasta));
+                BlastHits.read(hitsFile, List.of(fasta), readHits, primers, options), List.of(fasta));
         if (!missing.isEmpty()) {
             warning.accept(missing);
         }

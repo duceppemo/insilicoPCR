@@ -30,7 +30,7 @@ import java.util.Optional;
  * accepted when runtime/&lt;platform&gt;/jdk is absent.</p>
  */
 public final class AppPaths {
-    private static final String BBTOOLS_JAR = "bbtools.jar";
+    static final String BBTOOLS_JAR = "bbtools.jar";
 
     private AppPaths() {}
 

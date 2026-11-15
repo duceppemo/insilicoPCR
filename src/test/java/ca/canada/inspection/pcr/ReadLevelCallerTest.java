@@ -247,6 +247,36 @@ class ReadLevelCallerTest {
     }
 
     @Test
+    void aSecondCopyOfThePrimerOnAProductsReadDoesNotSetTheLocus() {
+        // The two reads holding the product carry the forward primer again after it (81-100),
+        // followed by the bases of the unrelated place. Only the primer that bounds the product
+        // tells what follows it at the locus: the 50 reads of the other place stay elsewhere.
+        Sample reads = reads();
+        Map<String, Integer> lengths = new HashMap<>();
+        Map<String, String> sequences = new HashMap<>();
+        for (int i = 1; i <= 52; i++) {
+            String read = "read_" + i;
+            reads.hits().add("assay-F", TestHits.plusHit("assay-F", read, 11));
+            if (i <= 2) {
+                reads.hits().add("assay-R", TestHits.minusHit("assay-R", read, 61));
+                reads.hits().add("assay-F", TestHits.plusHit("assay-F", read, 81));
+                String start = "A".repeat(10) + PRIMER_20 + FLANK + "C".repeat(20) + PRIMER_20 + OTHER;
+                sequences.put(read, start + "C".repeat(151 - start.length()));
+                lengths.put(read, 151);
+            } else {
+                sequences.put(read, read(OTHER));
+                lengths.put(read, 101);
+            }
+        }
+        ReadCall call = ReadLevelCaller.evaluate(reads.getName(), reads.hits(), lengths, Map.of(), PCR_PRIMERS,
+                DEFAULTS, ReadLevelCaller.DEFAULT_MIN_SUPPORT_FRACTION, ids -> sequences).products("assay").getFirst();
+
+        assertEquals(2, call.supportingReads());
+        assertEquals(50, call.elsewhereReads());
+        assertTrue(call.isReportable());
+    }
+
+    @Test
     void withoutReadSequencesEveryReadCarryingThePrimerIsInformative() {
         Sample reads = reads();
         Map<String, Integer> lengths = new HashMap<>();

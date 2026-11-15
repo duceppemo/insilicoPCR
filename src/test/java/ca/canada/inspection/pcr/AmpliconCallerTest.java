@@ -159,4 +159,16 @@ class AmpliconCallerTest {
         assertTrue(AmpliconCaller.call(forward, reverse, DEFAULTS).isEmpty());
     }
 
+    @Test
+    void aMinusStrandPrimerInsideThePlusStrandOneDoesNotAmplify() {
+        // Same start, but the minus-strand 10-mer (101..110) ends before the plus-strand 20-mer
+        // (101..120): its 3' end points out of the plus-strand primer, not toward its 3' end.
+        BlastResult forward = TestHits.plusHit("assay-F", "c", 101);
+        BlastResult inside = TestHits.minusHit("assay-R", "c", 101, "ACGTACGTAC", "ACGTACGTAC");
+        assertTrue(AmpliconCaller.call(forward, inside, DEFAULTS).isEmpty());
+
+        // Ending where the plus-strand primer ends, it does: the two primers overlap fully.
+        BlastResult sameEnd = TestHits.minusHit("assay-R", "c", 111, "ACGTACGTAC", "ACGTACGTAC");
+        assertEquals(20, AmpliconCaller.call(forward, sameEnd, DEFAULTS).orElseThrow().size());
+    }
 }

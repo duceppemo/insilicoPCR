@@ -37,8 +37,7 @@ class FastqDiagnosticsTest {
     Path tempDir;
 
     private static Sample fastqSample() {
-        Sample sample = new Sample();
-        sample.setName("reads");
+        Sample sample = new Sample("reads");
         sample.setFileType(Sample.FileType.FASTQ);
         return sample;
     }
@@ -381,8 +380,7 @@ class FastqDiagnosticsTest {
     }
 
     static Sample readsSample() {
-        Sample reads = new Sample();
-        reads.setName("reads");
+        Sample reads = new Sample("reads");
         return reads;
     }
 

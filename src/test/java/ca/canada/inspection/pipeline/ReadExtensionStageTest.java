@@ -78,8 +78,8 @@ class ReadExtensionStageTest {
         AmpliconOptions options = AmpliconOptions.withMismatches(0);
 
         Map<String, Integer> lengths = SequenceFileUtils.sequenceLengths(extended);
-        Sample sample = ReadExtensionStage.extendedSample("S", hitsFile, extended, lengths, PRIMERS, options, warning -> {});
-        Outcome outcome = ReadExtensionCaller.evaluate(sample, lengths, seeds, PRIMERS, options, 5000).get("long");
+        var extendedHits = ReadExtensionStage.extendedHits("S", hitsFile, extended, lengths, PRIMERS, options, warning -> {});
+        Outcome outcome = ReadExtensionCaller.evaluate("S", extendedHits, lengths, seeds, PRIMERS, options, 5000).get("long");
 
         assertEquals(1300, lengths.get("extended_read_0"));
         assertEquals(1074, outcome.closed().getFirst().size());
@@ -126,8 +126,7 @@ class ReadExtensionStageTest {
 
     @Test
     void rowsCalledByExtensionFollowTheReadLevelRowsOfASample() {
-        Sample sample = new Sample();
-        sample.setName("S");
+        Sample sample = new Sample("S");
         sample.setFileType(Sample.FileType.FASTQ);
         ReportRow row = TestRows.row("S", "long", 101, 1174, "extended_read_0", "FASTQ read-extension call");
         ReadExtensionStage.Result extension = new ReadExtensionStage.Result(Map.of(), Map.of("S", List.of(row)),

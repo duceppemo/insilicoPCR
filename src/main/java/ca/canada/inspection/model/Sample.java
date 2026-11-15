@@ -4,16 +4,16 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.function.Supplier;
+import java.util.Objects;
 
 /**
- * One sample of a run and what the run learns about it. The steps fill it in as they go: the
- * input check its files and type, FASTQ mode its assembly, the BLAST step its contigs and its
- * accepted hits. Its accessors return copies; it changes only through its own methods.
+ * One sample of a run and what the run learns about it. Its name is fixed when it is made; the
+ * steps fill in the rest as they go: the input check its files and type, FASTQ mode its
+ * assembly, the BLAST step its contigs and its accepted hits ({@link Hits}). Its accessors
+ * return copies; it changes only through its own methods.
  */
 public class Sample {
 
@@ -28,16 +28,17 @@ public class Sample {
 	}
 
 	private final ArrayList<Path> sampleFiles = new ArrayList<>();
-	private final HashMap<String, ArrayList<BlastResult>> blastResults = new HashMap<>();
-	private final HashMap<String, String> contigDict = new HashMap<>();
-	private String name;
+	private final Hits hits = new Hits();
+	private final String name;
 	private FileType fileType;
 	private Path assemblyFile;
-	/** Results worked out from the hits and contigs (the sample's products), until either changes. */
-	private final HashMap<Object, Object> derived = new HashMap<>();
+
+	/** A sample of this name, which names its files in the run's output folder and its rows in the reports. */
+	public Sample(String name) {
+		this.name = Objects.requireNonNull(name, "name");
+	}
 
 	public String getName() { return name; }
-	public void setName(String name) { this.name = name; }
 
 	/** The sample's files (one assembly, or the reads of one library), in name order; a copy. */
 	public List<Path> files() { return List.copyOf(sampleFiles); }
@@ -67,45 +68,24 @@ public class Sample {
 	public FileType getFileType() { return fileType; }
 	public void setFileType(FileType fileType) { this.fileType = fileType; }
 
+	/** The accepted hits on the sample's sequences, and their descriptions. */
+	public Hits hits() { return hits; }
+
 	/**
 	 * The accepted hits of each oligo, by oligo ID; a copy, in no particular order (the report
 	 * lists products in the primer file's order).
 	 */
-	public synchronized Map<String, List<BlastResult>> blastResults() {
-		HashMap<String, List<BlastResult>> copy = new HashMap<>();
-		blastResults.forEach((key, value) -> copy.put(key, List.copyOf(value)));
-		return Map.copyOf(copy);
-	}
+	public Map<String, List<BlastResult>> blastResults() { return hits.byOligo(); }
 
-	public synchronized void addBlastResult(String key, BlastResult result) {
-		blastResults.computeIfAbsent(key, ignored -> new ArrayList<>()).add(result);
-		derived.clear();
-	}
+	public void addBlastResult(String key, BlastResult result) { hits.add(key, result); }
 
 	public Path getAssemblyFile() { return assemblyFile; }
 	public void setAssemblyFile(Path assemblyFile) { this.assemblyFile = assemblyFile; }
 
-	public synchronized void addContig(String acc, String desc) {
-		contigDict.put(acc, desc);
-		derived.clear();
-	}
-
-	/**
-	 * What {@code compute} gives for {@code key}, worked out once while the sample's hits and
-	 * contigs stay as they are: several steps of a run ask for the same sample's products.
-	 */
-	@SuppressWarnings("unchecked")
-	public synchronized <T> T derived(Object key, Supplier<T> compute) {
-		Object value = derived.get(key);
-		if (value == null) {
-			value = compute.get();
-			derived.put(key, value);
-		}
-		return (T) value;
-	}
+	public void addContig(String acc, String desc) { hits.describe(acc, desc); }
 
 	/** Contig descriptions (the FASTA header after the ID), by contig ID; a copy. */
-	public synchronized Map<String, String> contigs() { return Map.copyOf(contigDict); }
+	public Map<String, String> contigs() { return hits.descriptions(); }
 
 	public boolean isFastq() { return fileType == FileType.FASTQ; }
 
@@ -121,14 +101,5 @@ public class Sample {
 	}
 
 	/** The accepted hits of {@code oligoIds}, in that order. */
-	public synchronized List<BlastResult> hitsOf(Collection<String> oligoIds) {
-		List<BlastResult> hits = new ArrayList<>();
-		for (String id : oligoIds) {
-			List<BlastResult> ofId = blastResults.get(id);
-			if (ofId != null) {
-				hits.addAll(ofId);
-			}
-		}
-		return hits;
-	}
+	public List<BlastResult> hitsOf(Collection<String> oligoIds) { return hits.of(oligoIds); }
 }

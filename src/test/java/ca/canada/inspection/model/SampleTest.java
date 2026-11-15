@@ -18,7 +18,7 @@ class SampleTest {
 
     @Test
     void filesStaySortedRegardlessOfInsertionOrder() {
-        Sample sample = new Sample();
+        Sample sample = new Sample("s");
         sample.addFile(Path.of("b_2.fastq"));
         sample.addFile(Path.of("a_1.fastq"));
         assertEquals(List.of(Path.of("a_1.fastq"), Path.of("b_2.fastq")), sample.files());
@@ -32,7 +32,7 @@ class SampleTest {
 
     @Test
     void publicViewsAreImmutableCopies() {
-        Sample sample = new Sample();
+        Sample sample = new Sample("s");
         sample.addBlastResult("assay-F", hit("assay-F"));
         sample.addContig("c1", "chromosome");
 
@@ -44,8 +44,7 @@ class SampleTest {
 
     @Test
     void whatTheRunLearnsIsKept() {
-        Sample sample = new Sample();
-        sample.setName("s1");
+        Sample sample = new Sample("s1");
         sample.setFileType(Sample.FileType.FASTQ);
         sample.addBlastResult("assay-F", hit("assay-F"));
         sample.addBlastResult("assay-F", hit("assay-F"));
@@ -63,22 +62,22 @@ class SampleTest {
 
     @Test
     void derivedValuesAreKeptUntilTheHitsOrContigsChange() {
-        Sample sample = new Sample();
+        Sample sample = new Sample("s");
         int[] computed = new int[1];
         java.util.function.Supplier<String> compute = () -> "products " + (++computed[0]);
 
-        assertEquals("products 1", sample.derived("key", compute));
-        assertEquals("products 1", sample.derived("key", compute), "worked out once");
+        assertEquals("products 1", sample.hits().derived("key", compute));
+        assertEquals("products 1", sample.hits().derived("key", compute), "worked out once");
         sample.addContig("c1", "len=10");
-        assertEquals("products 2", sample.derived("key", compute), "a new contig changes the products");
+        assertEquals("products 2", sample.hits().derived("key", compute), "a new contig changes the products");
         sample.addBlastResult("a-F", null);
-        assertEquals("products 3", sample.derived("key", compute), "so does a new hit");
-        assertEquals("products 4", sample.derived("other key", compute));
+        assertEquals("products 3", sample.hits().derived("key", compute), "so does a new hit");
+        assertEquals("products 4", sample.hits().derived("other key", compute));
     }
 
     @Test
     void theFirstFileOfAPairIsReadOneWhateverTheCase() {
-        Sample sample = new Sample();
+        Sample sample = new Sample("s");
         sample.addFile(Path.of("s_R2.fastq.gz"));
         sample.addFile(Path.of("s_r1.fastq.gz"));
         assertEquals(List.of(Path.of("s_r1.fastq.gz"), Path.of("s_R2.fastq.gz")), sample.files());

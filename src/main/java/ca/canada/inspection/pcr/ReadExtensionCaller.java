@@ -1,5 +1,6 @@
 package ca.canada.inspection.pcr;
 
+import ca.canada.inspection.model.Hits;
 import ca.canada.inspection.model.Sample;
 import ca.canada.inspection.pcr.ReadLevelCaller.ReadEvidence;
 
@@ -368,21 +369,22 @@ public final class ReadExtensionCaller {
      * @param reach    bases each seed was extended by at most, each way
      * @return one outcome per seeded assay, in assay order
      */
-    public static Map<String, Outcome> evaluate(Sample extended, Map<String, Integer> lengths, List<Seed> seeds,
-                                                PrimerPanel primers, AmpliconOptions options, int reach) {
-        return evaluate(extended, lengths, seeds, primers, options, reach, Map.of());
+    public static Map<String, Outcome> evaluate(String sampleName, Hits extended, Map<String, Integer> lengths,
+                                                List<Seed> seeds, PrimerPanel primers, AmpliconOptions options,
+                                                int reach) {
+        return evaluate(sampleName, extended, lengths, seeds, primers, options, reach, Map.of());
     }
 
     /**
-     * As {@link #evaluate(Sample, Map, List, Map, AmpliconOptions, int)}, knowing what the
+     * As {@link #evaluate(String, Hits, Map, List, PrimerPanel, AmpliconOptions, int)}, knowing what the
      * sample already reports.
      *
      * @param reported per assay, the amplicon sizes the sample already shows
      *                 ({@link #knownSizes}); a product called at one of them is not added
      */
-    public static Map<String, Outcome> evaluate(Sample extended, Map<String, Integer> lengths, List<Seed> seeds,
-                                                PrimerPanel primers, AmpliconOptions options, int reach,
-                                                Map<String, Set<Integer>> reported) {
+    public static Map<String, Outcome> evaluate(String sampleName, Hits extended, Map<String, Integer> lengths,
+                                                List<Seed> seeds, PrimerPanel primers, AmpliconOptions options,
+                                                int reach, Map<String, Set<Integer>> reported) {
         Map<String, Seed> seedById = new HashMap<>();
         Map<String, int[]> seedCounts = new TreeMap<>();
         for (Seed seed : seeds) {
@@ -391,9 +393,9 @@ public final class ReadExtensionCaller {
         }
 
         // A product must lie wholly on the extended read, primers included, as on a read.
-        Sample contained = ReadLevelCaller.withContainedHits(extended, lengths);
+        Hits contained = ReadLevelCaller.withContainedHits(extended, lengths);
         Map<String, List<ReportRow>> rowsByAssay = new HashMap<>();
-        for (ReportRow row : Products.of(contained, primers, options)) {
+        for (ReportRow row : Products.of(sampleName, contained, primers, options)) {
             Seed seed = seedById.get(row.contig());
             String assay = row.assay();
             // Only the assay the read was seeded for: a seed can wander through another assay's locus.

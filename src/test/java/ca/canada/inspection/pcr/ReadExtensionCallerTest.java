@@ -41,8 +41,7 @@ class ReadExtensionCallerTest {
     }
 
     private static Sample fastqSample() {
-        Sample sample = new Sample();
-        sample.setName("S");
+        Sample sample = new Sample("S");
         sample.setFileType(Sample.FileType.FASTQ);
         return sample;
     }
@@ -225,8 +224,7 @@ class ReadExtensionCallerTest {
     }
 
     private static Sample extended() {
-        Sample sample = new Sample();
-        sample.setName("S");
+        Sample sample = new Sample("S");
         return sample;
     }
 
@@ -243,7 +241,7 @@ class ReadExtensionCallerTest {
     }
 
     private static Outcome evaluate(Sample extended, List<Seed> seeds) {
-        return ReadExtensionCaller.evaluate(extended, lengths(seeds), seeds, PRIMERS, DEFAULTS, REACH).get("long");
+        return ReadExtensionCaller.evaluate(extended.getName(), extended.hits(), lengths(seeds), seeds, PRIMERS, DEFAULTS, REACH).get("long");
     }
 
     @Test
@@ -340,7 +338,7 @@ class ReadExtensionCallerTest {
             product(extended, "extended_read_" + i, 1903);
         }
 
-        Outcome outcome = ReadExtensionCaller.evaluate(extended, lengths(seeds), seeds, PRIMERS, DEFAULTS, REACH,
+        Outcome outcome = ReadExtensionCaller.evaluate(extended.getName(), extended.hits(), lengths(seeds), seeds, PRIMERS, DEFAULTS, REACH,
                 Map.of("long", Set.of(1900))).get("long");
 
         assertEquals(List.of(1074, 1903), outcome.closed().stream().map(Product::size).toList());
@@ -397,7 +395,7 @@ class ReadExtensionCallerTest {
             lengths.put(seed.id(), 1170); // product ends at 1174
         }
 
-        Outcome outcome = ReadExtensionCaller.evaluate(extended, lengths, seeds, PRIMERS, DEFAULTS, REACH).get("long");
+        Outcome outcome = ReadExtensionCaller.evaluate(extended.getName(), extended.hits(), lengths, seeds, PRIMERS, DEFAULTS, REACH).get("long");
 
         assertTrue(outcome.products().isEmpty());
     }
@@ -413,7 +411,7 @@ class ReadExtensionCallerTest {
             extended.addBlastResult("other-R", TestHits.minusHit("other-R", seed.id(), 601));
         }
 
-        Map<String, Outcome> outcomes = ReadExtensionCaller.evaluate(extended, lengths(seeds), seeds, primers,
+        Map<String, Outcome> outcomes = ReadExtensionCaller.evaluate(extended.getName(), extended.hits(), lengths(seeds), seeds, primers,
                 DEFAULTS, REACH);
 
         assertEquals(Set.of("long"), outcomes.keySet());
@@ -432,9 +430,9 @@ class ReadExtensionCallerTest {
             withProbe.addBlastResult("long-P", TestHits.plusHit("long-P", seed.id(), 500));
         }
 
-        assertTrue(ReadExtensionCaller.evaluate(withoutProbe, lengths(seeds), seeds, primers, DEFAULTS, REACH)
+        assertTrue(ReadExtensionCaller.evaluate(withoutProbe.getName(), withoutProbe.hits(), lengths(seeds), seeds, primers, DEFAULTS, REACH)
                 .get("long").products().isEmpty());
-        Product product = ReadExtensionCaller.evaluate(withProbe, lengths(seeds), seeds, primers, DEFAULTS, REACH)
+        Product product = ReadExtensionCaller.evaluate(withProbe.getName(), withProbe.hits(), lengths(seeds), seeds, primers, DEFAULTS, REACH)
                 .get("long").closed().getFirst();
         assertEquals("long-P", product.row().probeId());
     }

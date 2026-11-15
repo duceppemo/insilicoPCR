@@ -107,14 +107,13 @@ public final class BlastHitParser {
             // unaligned here are bases the template does not have (or that were not
             // looked up); trimmed bases the template has were already compared.
             int uncovered = hit.fivePrimeUncovered() + hit.threePrimeUncovered();
-            return hit.mismatch() + hit.gaps() <= options.maxProbeMismatches()
+            return hit.alignedMismatches() <= options.maxProbeMismatches()
                     && uncovered <= MAX_PROBE_END_UNCOVERED;
         }
 
         // Unaligned 3' bases left here could not be compared with the template (beyond
         // its end, or no template given): count them as mismatches, like aligned ones.
-        int effectiveMismatches = hit.mismatch() + hit.gaps() + hit.threePrimeUncovered();
-        if (effectiveMismatches > options.maxTotalMismatches()) {
+        if (hit.primerMismatches() > options.maxTotalMismatches()) {
             return false;
         }
         if (hit.fivePrimeUncovered() > options.maxFivePrimeTruncation()) {

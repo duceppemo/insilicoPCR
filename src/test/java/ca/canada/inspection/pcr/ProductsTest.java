@@ -27,8 +27,7 @@ class ProductsTest {
 
     @Test
     void variantsAreListedInPrimerFileOrderWhateverOrderTheHitsCameIn() {
-        Sample sample = new Sample();
-        sample.setName("S");
+        Sample sample = new Sample("S");
         for (int i = 12; i >= 1; i--) {
             sample.addBlastResult("toxA-F_" + i, plusHit("toxA-F_" + i, "c1", 101));
         }
@@ -43,8 +42,7 @@ class ProductsTest {
 
     @Test
     void aSamplesProductsAreWorkedOutOnceUntilItsHitsChange() {
-        Sample sample = new Sample();
-        sample.setName("S");
+        Sample sample = new Sample("S");
         sample.addBlastResult("toxA-F_1", plusHit("toxA-F_1", "c1", 101));
         sample.addBlastResult("toxA-R", minusHit("toxA-R", "c1", 581));
         PrimerPanel primers = degenerate();

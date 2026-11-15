@@ -30,7 +30,7 @@ public final class TestEvidence {
 
     public static ReadEvidence evaluate(Sample reads, Map<String, Integer> readLengths, Map<String, String> fragments,
                                         PrimerPanel primers, AmpliconOptions options, double minSupportFraction) {
-        return ReadLevelCaller.evaluate(reads, readLengths, fragments, primers, options, minSupportFraction,
+        return ReadLevelCaller.evaluate(reads.getName(), reads.hits(), readLengths, fragments, primers, options, minSupportFraction,
                 ReadSequences.NONE);
     }
 }

@@ -23,8 +23,7 @@ class SplitAcrossContigsTest {
     private static final Map<String, Integer> LENGTHS = Map.of("contig_1", 1000, "contig_2", 800, "plasmid", 3000);
 
     private static Sample genome(BlastResult... hits) {
-        Sample sample = new Sample();
-        sample.setName("genome");
+        Sample sample = new Sample("genome");
         sample.setFileType(Sample.FileType.FASTA);
         for (BlastResult hit : hits) {
             sample.addBlastResult(hit.subjectID(), hit);

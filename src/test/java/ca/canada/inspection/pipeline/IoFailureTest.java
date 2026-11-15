@@ -1,6 +1,7 @@
 package ca.canada.inspection.pipeline;
 
 import ca.canada.inspection.pcr.PrimerPanel;
+import ca.canada.inspection.pcr.Products;
 import ca.canada.inspection.model.Sample;
 import ca.canada.inspection.pcr.AmpliconOptions;
 import ca.canada.inspection.pcr.BlastReports;
@@ -28,11 +29,9 @@ class IoFailureTest {
     void aReportThatCannotBeWrittenIsAMessage() throws IOException {
         // The folder for the report is a file: as when the disk is full or the folder is read-only.
         Path notAFolder = Files.writeString(dir.resolve("consolidated_report"), "");
-        Sample sample = new Sample();
-        sample.setName("s");
+        Sample sample = new Sample("s");
 
-        RuntimeException error = assertThrows(RuntimeException.class, () -> ConsolidatedReport.write(notAFolder,
-                Map.of("s", sample), PrimerPanel.of(Map.of("a-F", "ACGT", "a-R", "ACGT")), AmpliconOptions.withMismatches(0)));
+        RuntimeException error = assertThrows(RuntimeException.class, () -> ConsolidatedReport.write(notAFolder, Products.ofRun(Map.of("s", sample), PrimerPanel.of(Map.of("a-F", "ACGT", "a-R", "ACGT")), AmpliconOptions.withMismatches(0), Map.of()), PrimerPanel.of(Map.of("a-F", "ACGT", "a-R", "ACGT"))));
 
         assertTrue(RunFailure.isForTheUser(error), error.toString());
         assertTrue(RunFailure.lines(error).getFirst().startsWith("Error: Unable to write consolidated report: "),
@@ -41,8 +40,7 @@ class IoFailureTest {
 
     @Test
     void aMissingBlastReportIsAMessage() {
-        Sample sample = new Sample();
-        sample.setName("s");
+        Sample sample = new Sample("s");
 
         RuntimeException error = assertThrows(RuntimeException.class, () -> BlastReports.attachHits(
                 name -> SampleFiles.of(dir, name).blastReport(), Map.of("s", sample), PrimerPanel.EMPTY, AmpliconOptions.withMismatches(0), warning -> {}));

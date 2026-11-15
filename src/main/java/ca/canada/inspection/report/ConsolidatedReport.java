@@ -1,7 +1,5 @@
 package ca.canada.inspection.report;
 
-import ca.canada.inspection.model.Sample;
-import ca.canada.inspection.pcr.AmpliconOptions;
 import ca.canada.inspection.pcr.ExpectedSizes;
 import ca.canada.inspection.pcr.PrimerPanel;
 import ca.canada.inspection.pcr.Products;
@@ -15,8 +13,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
 import java.util.regex.Pattern;
 
 /**
@@ -29,42 +25,13 @@ public final class ConsolidatedReport {
     }
 
     /**
-     * Writes {@code report.tsv} (or {@code report(n).tsv} when it already exists)
-     * into {@code consolidatedDir} and returns the file written.
+     * Writes {@code rows} as {@code report.tsv} (or {@code report(n).tsv} when it already exists)
+     * into {@code consolidatedDir} and returns the file written. The rows are the run's, in
+     * order ({@link Products#ofRun}); this only writes them. When the
+     * primer file declares product sizes, each row is labelled with what its size is for the
+     * assay (last column, {@link ExpectedSizes#COLUMN}); the label never removes a row.
      */
-    public static Path write(Path consolidatedDir, Map<String, Sample> samples,
-                             PrimerPanel primers, AmpliconOptions options) {
-        return write(consolidatedDir, samples, primers, options, Map.of());
-    }
-
-    /**
-     * As {@link #write(Path, Map, PrimerPanel, AmpliconOptions)}, appending {@code extraRows}
-     * (keyed by sample name) after each sample's own rows: the products FASTQ mode calls on
-     * reads rather than contigs. When the primer file declares product sizes, each row is
-     * labelled with what its size is for the assay (last column, {@link ExpectedSizes#COLUMN});
-     * the label never removes a row.
-     */
-    public static Path write(Path consolidatedDir, Map<String, Sample> samples,
-                             PrimerPanel primers, AmpliconOptions options,
-                             Map<String, List<ReportRow>> extraRows) {
-        return writeRows(consolidatedDir, samples, primers, options, extraRows).file();
-    }
-
-    /**
-     * A report written, and its rows as the run made them (for the HTML report, which shows
-     * exactly these without reading the file back).
-     */
-    public record Written(Path file, List<ReportRow> rows) {
-        public Written {
-            rows = List.copyOf(rows);
-        }
-    }
-
-    /** As {@link #write(Path, Map, PrimerPanel, AmpliconOptions, Map)}, with the rows written. */
-    public static Written writeRows(Path consolidatedDir, Map<String, Sample> samples,
-                                    PrimerPanel primers, AmpliconOptions options,
-                                    Map<String, List<ReportRow>> extraRows) {
-        List<ReportRow> written = new ArrayList<>();
+    public static Path write(Path consolidatedDir, List<ReportRow> rows, PrimerPanel primers) {
         ExpectedSizes expectedSizes = primers.expectedSizes();
         // The probe columns are present whenever at least one assay defines a probe.
         boolean probeColumns = primers.anyProbe();
@@ -75,24 +42,17 @@ public final class ConsolidatedReport {
         try (BufferedWriter writer = Files.newBufferedWriter(report, StandardCharsets.UTF_8)) {
             writer.write(header(probeColumns, sizeColumn));
             writer.newLine();
-            // TreeMap keeps samples in a stable, alphabetical order.
-            for (Map.Entry<String, Sample> sampleEntry : new TreeMap<>(samples).entrySet()) {
-                List<ReportRow> rows = new ArrayList<>(
-                        Products.of(sampleEntry.getKey(), sampleEntry.getValue(), primers, options));
-                rows.addAll(extraRows.getOrDefault(sampleEntry.getKey(), List.of()));
-                for (ReportRow row : rows) {
-                    written.add(row);
-                    writer.write(String.join("\t", columns.stream().map(column -> column.value(row)).toList()));
-                    if (sizeColumn) {
-                        writer.write("\t" + expectedSizes.labelText(row.assay(), row.size()));
-                    }
-                    writer.newLine();
+            for (ReportRow row : rows) {
+                writer.write(String.join("\t", columns.stream().map(column -> column.value(row)).toList()));
+                if (sizeColumn) {
+                    writer.write("\t" + expectedSizes.labelText(row.assay(), row.size()));
                 }
+                writer.newLine();
             }
         } catch (IOException e) {
             throw new UncheckedIOException("Unable to write consolidated report: " + report, e);
         }
-        return new Written(report, written);
+        return report;
     }
 
     /** The names {@link #write} gives its reports: {@code report.tsv}, then {@code report(1).tsv} and on. */

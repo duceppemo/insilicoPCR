@@ -64,6 +64,20 @@ public record BlastResult(
 		return slen - Math.max(sstart, send);
 	}
 
+	/** Mismatches and indels in the alignment: what a probe's budget ({@code --probe-mismatches}) counts. */
+	public int alignedMismatches() {
+		return mismatch + gaps;
+	}
+
+	/**
+	 * Mismatches as a primer's budget ({@code -m}) counts them, and as the report gives them: those
+	 * in the alignment, and the 3' bases left out of it, which do not pair with the template (or
+	 * lie beyond its end). The one place this count is written.
+	 */
+	public int primerMismatches() {
+		return alignedMismatches() + threePrimeUncovered();
+	}
+
 	/** Number of primer bases missing from the alignment on the primer's 5' side. */
 	public int fivePrimeUncovered() {
 		return Math.min(sstart, send) - 1;

@@ -1,6 +1,7 @@
 package ca.canada.inspection.pcr;
 
 import ca.canada.inspection.model.BlastResult;
+import ca.canada.inspection.model.Hits;
 import ca.canada.inspection.model.Sample;
 import ca.canada.inspection.pcr.AmpliconCaller.Amplicon;
 
@@ -26,21 +27,22 @@ public final class Products {
 
     /** The products of {@code sample}, in report order (by assay, then primer pair, then hit). */
     public static List<ReportRow> of(Sample sample, PrimerPanel primers, AmpliconOptions options) {
-        return of(sample.getName(), sample, primers, options);
+        return of(sample.getName(), sample.hits(), primers, options);
     }
 
     /**
-     * As {@link #of(Sample, PrimerPanel, AmpliconOptions)}, the rows naming the sample {@code sampleName}.
-     * Worked out once per sample, primer panel and options while the sample's hits stay as they are
-     * (the report, the FASTQ steps and the diagnostics all ask); the list cannot be changed.
+     * The products {@code hits} hold, the rows naming the sample {@code sampleName}: a sample's
+     * contigs, or the reads a FASTQ-mode search looks at. Worked out once per name, primer panel
+     * and options while the hits stay as they are (the report, the FASTQ steps and the
+     * diagnostics all ask); the list cannot be changed.
      */
-    public static List<ReportRow> of(String sampleName, Sample sample, PrimerPanel primers, AmpliconOptions options) {
-        return sample.derived(new Key(sampleName, primers, options), () -> {
+    public static List<ReportRow> of(String sampleName, Hits hits, PrimerPanel primers, AmpliconOptions options) {
+        return hits.derived(new Key(sampleName, primers, options), () -> {
             List<ReportRow> rows = new ArrayList<>();
             // Probe requirement is decided per assay from the primer FILE, so standard PCR and qPCR
             // assays can be mixed in one run: an assay whose probe is defined but never hits stays
             // negative, while a probe-less assay is reported on its primer pair alone.
-            find(rows::add, sampleName, sample, options, primers);
+            find(rows::add, sampleName, hits, options, primers);
             return List.copyOf(rows);
         });
     }
@@ -58,16 +60,31 @@ public final class Products {
         return sizes;
     }
 
-    private static void find(Consumer<ReportRow> rows, String sampleName, Sample sample,
+    /**
+     * The rows of a run's report, in its order: each sample's products, then its rows from
+     * {@code extraRows} (the products FASTQ mode calls on reads rather than contigs), samples
+     * in alphabetical order. What the report file, the HTML report and the gel show.
+     */
+    public static List<ReportRow> ofRun(Map<String, Sample> samples, PrimerPanel primers, AmpliconOptions options,
+                                        Map<String, List<ReportRow>> extraRows) {
+        List<ReportRow> rows = new ArrayList<>();
+        for (Sample sample : new TreeMap<>(samples).values()) {
+            rows.addAll(of(sample, primers, options));
+            rows.addAll(extraRows.getOrDefault(sample.getName(), List.of()));
+        }
+        return List.copyOf(rows);
+    }
+
+    private static void find(Consumer<ReportRow> rows, String sampleName, Hits sample,
                              AmpliconOptions options, PrimerPanel primers) {
-        Map<String, List<BlastResult>> blastResults = sample.blastResults();
+        Map<String, List<BlastResult>> blastResults = sample.byOligo();
         if (blastResults.isEmpty()) {
             return;
         }
 
         // Fetched once: both accessors copy, and a FASTQ sample searched at read level
         // has one "contig" per read.
-        Map<String, String> contigs = sample.contigs();
+        Map<String, String> contigs = sample.descriptions();
         HitIndex hits = new HitIndex(blastResults);
         // The panel's assays (by name) and their oligos (in primer-file order, the variants of a
         // degenerate oligo as expanded): the report lists products in this order on every run,
@@ -141,13 +158,8 @@ public final class Products {
     }
 
     private static ReportRow.Binding binding(String primer, BlastResult hit, AmpliconOptions options) {
-        return new ReportRow.Binding(primer, effectiveMismatches(hit), hit.threePrimeMismatches(options.threePrimeWindow()),
+        return new ReportRow.Binding(primer, hit.primerMismatches(), hit.threePrimeMismatches(options.threePrimeWindow()),
                 hit.fivePrimeUnpairedBases());
-    }
-
-    /** Mismatches as counted against the -m budget: substitutions, indels, and trimmed 3' bases. */
-    private static int effectiveMismatches(BlastResult hit) {
-        return hit.mismatch() + hit.gaps() + hit.threePrimeUncovered();
     }
 
     /** One row per probe hit within the amplicon; none when the probe does not bind there. */
@@ -162,7 +174,7 @@ public final class Products {
                     continue;
                 }
                 rows.accept(pair.withProbe(new ReportRow.Probe(probeId, probeStart, probeEnd,
-                        probeHit.mismatch() + probeHit.gaps())));
+                        probeHit.alignedMismatches())));
             }
         }
     }

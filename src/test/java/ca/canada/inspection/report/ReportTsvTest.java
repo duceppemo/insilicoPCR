@@ -4,6 +4,7 @@ import ca.canada.inspection.model.Sample;
 import ca.canada.inspection.pcr.AmpliconOptions;
 import ca.canada.inspection.pcr.ExpectedSizes;
 import ca.canada.inspection.pcr.PrimerPanel;
+import ca.canada.inspection.pcr.Products;
 import ca.canada.inspection.pcr.ReportRow;
 import ca.canada.inspection.pcr.TestRows;
 import org.junit.jupiter.api.Test;
@@ -25,8 +26,7 @@ class ReportTsvTest {
 
     @Test
     void rowsWrittenToAReportReadBackUnchanged() {
-        Sample sample = new Sample();
-        sample.setName("S");
+        Sample sample = new Sample("S");
         ReportRow withProbe = TestRows.of("S", "qpcr", 101, 220, 120, "contig_1,len=900", "a description",
                 "qpcr-F", "qpcr-R_1", 1, 0, 1, 0, '-', new ReportRow.Probe("qpcr-P", 140, 163, 2), 3, 0);
         ReportRow withoutProbe = TestRows.row("S", "plain", 11, 80, "read_7", "FASTQ read-level call: ...");
@@ -34,22 +34,17 @@ class ReportTsvTest {
         PrimerPanel primers = PrimerPanel.of(Map.of("qpcr-F", "ACGT", "qpcr-R", "ACGT", "qpcr-P", "ACGT",
                 "plain-F", "ACGT", "plain-R", "ACGT"));
 
-        Path report = ConsolidatedReport.write(dir, Map.of("S", sample),
-                PrimerPanel.of(primers.sequences(), ExpectedSizes.fromHeaders(Map.of("qpcr-F", "size=120"))),
-                AmpliconOptions.withMismatches(0), Map.of("S", List.of(withProbe, withoutProbe)));
+        Path report = ConsolidatedReport.write(dir, Products.ofRun(Map.of("S", sample), PrimerPanel.of(primers.sequences(), ExpectedSizes.fromHeaders(Map.of("qpcr-F", "size=120"))), AmpliconOptions.withMismatches(0), Map.of("S", List.of(withProbe, withoutProbe))), PrimerPanel.of(primers.sequences(), ExpectedSizes.fromHeaders(Map.of("qpcr-F", "size=120"))));
 
         assertEquals(List.of(withProbe, withoutProbe), ReportTsv.read(report));
     }
 
     @Test
     void aTabInADescriptionIsWrittenAsASpaceAndTheColumnsStayInPlace() {
-        Sample sample = new Sample();
-        sample.setName("S");
+        Sample sample = new Sample("S");
         ReportRow row = TestRows.row("S", "plain", 11, 80, "ctg1", "len=5000\tcov=12.3");
 
-        Path report = ConsolidatedReport.write(dir, Map.of("S", sample),
-                PrimerPanel.of(Map.of("plain-F", "ACGT", "plain-R", "ACGT")), AmpliconOptions.withMismatches(0),
-                Map.of("S", List.of(row)));
+        Path report = ConsolidatedReport.write(dir, Products.ofRun(Map.of("S", sample), PrimerPanel.of(Map.of("plain-F", "ACGT", "plain-R", "ACGT")), AmpliconOptions.withMismatches(0), Map.of("S", List.of(row))), PrimerPanel.of(Map.of("plain-F", "ACGT", "plain-R", "ACGT")));
 
         assertEquals(List.of(TestRows.row("S", "plain", 11, 80, "ctg1", "len=5000 cov=12.3")), ReportTsv.read(report));
     }

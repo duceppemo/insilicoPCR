@@ -3,6 +3,7 @@ package ca.canada.inspection.pipeline;
 import ca.canada.inspection.gel.GelImageWriter;
 import ca.canada.inspection.gel.SyntheticGelImage;
 import ca.canada.inspection.model.Sample;
+import ca.canada.inspection.pcr.Products;
 import ca.canada.inspection.pcr.ReadLevelCaller;
 import ca.canada.inspection.pcr.ReadLevelCaller.ReadEvidence;
 import ca.canada.inspection.pcr.ReportRow;
@@ -36,10 +37,10 @@ public final class ReportGenerator {
     public static RunResult write(PipelineContext context, Map<String, ReadEvidence> readEvidence,
                                   ReadExtensionStage.Result extension) {
         RunMonitor monitor = context.monitor();
-        ConsolidatedReport.Written written = ConsolidatedReport.writeRows(context.directories().consolidated(),
-                context.samples(), context.primers(), context.config().ampliconOptions(),
+        // The run's rows, made once: the report file, the HTML report and the gel all show these.
+        List<ReportRow> rows = Products.ofRun(context.samples(), context.primers(), context.config().ampliconOptions(),
                 extraRows(context, readEvidence, extension));
-        Path report = written.file();
+        Path report = ConsolidatedReport.write(context.directories().consolidated(), rows, context.primers());
         if (context.config().gel()) {
             GelImageWriter.write(report, SyntheticGelImage.defaultPng(report), context.samples().keySet(),
                     monitor::info, monitor::warning);
@@ -49,7 +50,7 @@ public final class ReportGenerator {
         diagnostics.logLines().forEach(monitor::warning);
         List<SplitAcrossContigs.Split> splits = assemblySplits(context);
         splits.forEach(split -> monitor.warning("Warning: " + split.message()));
-        Path html = HtmlReport.write(report, written.rows(), context.samples().keySet(), fastqSampleNames(context.samples()),
+        Path html = HtmlReport.write(report, rows, context.samples().keySet(), fastqSampleNames(context.samples()),
                 context.primers(), diagnostics.findings(),
                 RunSettings.details(Version.VERSION, context.config(), context.hasFastqSamples()),
                 context.inputIssues(), splits);

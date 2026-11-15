@@ -70,7 +70,8 @@ The most common reasons, in order:
 2. **3'-end mismatch.** By default the last 5 bases of each primer must match perfectly (the 3' bases BLAST trims off its alignment are compared with the template, and those that do not pair count as mismatches). Relax with `--3p-penalty` together with `-m` — see [Amplicon Calling](Amplicon-Calling).
 3. **Wrong orientation.** Primer pairs on the same strand, or pointing away from each other, are never reported because they cannot amplify.
 4. **The assembly breaks inside the product.** A product is called on one contig only. When the primers point off the ends of two contigs (or both ends of a circular one), the run warns (`Warning: sample ..., assay ...: no product, but the primers bind near the ends of two contigs ...`; `Primers at contig ends:` in `QAlog.txt` and in the HTML report) (since 0.15.0); see [Limitations](Limitations).
-5. **Probe assay without a probe hit.** An assay that defines a `-P` probe is reported only when an accepted probe hit lies inside the amplicon. Every probe mismatch counts against `--probe-mismatches` (default: same as `-m`, so 0), wherever it sits in the probe.
+5. **A known gap.** A product made by one primer alone (at an inverted repeat) or by primers of two assays is not called, and in FASTQ mode a primer site with an indel or 5' mismatches may bait no read; neither is named in the output. See [Limitations](Limitations#known-gaps).
+6. **Probe assay without a probe hit.** An assay that defines a `-P` probe is reported only when an accepted probe hit lies inside the amplicon. Every probe mismatch counts against `--probe-mismatches` (default: same as `-m`, so 0), wherever it sits in the probe.
 
 ## Why does the report show huge amplicons from old versions but not anymore?
 

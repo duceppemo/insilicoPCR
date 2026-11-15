@@ -28,4 +28,12 @@ With `--read-extension off`, products longer than a read or merged pair (about 5
 
 **6. Not simulated.** As above: no temperatures, no dimers or hairpins, no efficiency or yield, no multiplex competition. A product the rules accept may still fail in the tube, and the synthetic gel is drawn from the report, not from a simulated reaction ([Synthetic Gel Visualizer](Synthetic-Gel-Visualizer#limitations)).
 
+## Known gaps
+
+Two more cases make the report miss a product that a real PCR would give. Unlike the six above, **nothing in the output names them**: the assay simply shows no product. They are known and will be revisited; until then, keep them in mind when a negative matters.
+
+**Products made by one primer, or by primers of two assays.** A product is called from a forward and a reverse primer of the same assay only ([Amplicon Calling](Amplicon-Calling#stage-2-amplicon-calling)). In a real reaction, a primer that binds both strands where a sequence repeats inverted (on the plus strand at one place and on the minus strand at another, facing each other within `--max-length`) amplifies by itself, as a forward primer of one assay can with the reverse primer of another in a multiplex. Such products are neither reported nor flagged. They are most likely with degenerate primers and primers in repeated sequence; check those with a primer design tool, or search the primers against the genomes in pairs of your own choosing.
+
+**FASTQ: baiting is stricter than the search on an assembly.** The reads are first baited with BBDuk on k-mers as long as the shortest primer, allowing `-m` substitutions (`hdist`) but no insertion or deletion. A primer whose site in the reads holds an indel, or mismatches in its 5' bases (which `--5p-truncation` tolerates on an assembly, see [Amplicon Calling](Amplicon-Calling#total-mismatch-budget--m---mismatches-default-0)), may then bait no read at all: the same sample gives the product as an assembly and none as reads, and because no read carries the primer, `report_fastq_diagnostics.tsv` does not list the assay either. When such sites are expected (divergent strains, degenerate or tailed primers), run the assay on an assembly of the reads as well.
+
 See also [Why is an amplicon I expected missing from the report?](FAQ#why-is-an-amplicon-i-expected-missing-from-the-report) for products the rules reject on purpose (size limit, 3'-end mismatches, orientation, probe).

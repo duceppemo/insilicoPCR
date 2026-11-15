@@ -133,6 +133,8 @@ k-mer, then reads overlapping those), the baited reads are micro-assembled with 
 BLASTed against the resulting contigs. The mini-assembly can **omit the target region** or **break inside the
 amplicon**, so the forward and reverse primers land on different contigs. Recruitment only reaches about one
 fragment length beyond each primer, so amplicons longer than roughly two fragment lengths always end up split.
+Baiting itself allows substitutions only (`-m`) on k-mers as long as the shortest primer: a primer site with an
+indel or 5' mismatches may bait no read, a [known gap](Limitations#known-gaps) that the diagnostics do not list.
 
 ### Read-level calls
 

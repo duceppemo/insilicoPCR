@@ -100,6 +100,10 @@
 
 ### Changed
 
+- Docs: two known gaps are described on the Limitations page, to be revisited:
+  products of one primer alone (at an inverted repeat) or of two assays'
+  primers are not called, and in FASTQ mode a primer site with an indel or 5'
+  mismatches may bait no read; neither is named in the output.
 - Tests: CI runs the tests under a virtual display, so those that draw the gel
   run there too; the application's form-to-run step (`RunForm`) is tested
   without the window; a test keeps each package importing only from the

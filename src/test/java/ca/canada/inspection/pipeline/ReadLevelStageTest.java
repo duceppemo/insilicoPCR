@@ -40,7 +40,7 @@ class ReadLevelStageTest {
                 "@p1/1\nCCCC\n+\nIIII\n@p1/2\nGGGG\n+\nIIII\n@p2/1\nTTTT\n+\nIIII\n@p2/2\nACGT\n+\nIIII\n");
         Path fasta = dir.resolve("reads.fasta");
 
-        ReadLevelStage.ReadSet reads = ReadLevelStage.writeReadsFasta(List.of(merged, unmerged), true, fasta);
+        BaitedReads.ReadSet reads = BaitedReads.write(List.of(merged, unmerged), true, fasta);
 
         assertEquals(5, reads.lengths().size());
         assertEquals("m1", reads.descriptions().get("read_0"));
@@ -54,7 +54,7 @@ class ReadLevelStageTest {
     void singleEndReadsAreTheirOwnFragments() throws IOException {
         Path reads = Files.writeString(dir.resolve("s.fq"), "@a\nAAAA\n+\nIIII\n@b\nCCCC\n+\nIIII\n");
 
-        ReadLevelStage.ReadSet set = ReadLevelStage.writeReadsFasta(List.of(reads), false, dir.resolve("s.fasta"));
+        BaitedReads.ReadSet set = BaitedReads.write(List.of(reads), false, dir.resolve("s.fasta"));
 
         assertTrue(set.fragments().isEmpty());
         assertEquals(2, set.lengths().size());
@@ -66,7 +66,7 @@ class ReadLevelStageTest {
                 ">read_0 a/1\nAAAA\n>read_1 a/2\nCCCC\n>read_2\nGGGG\n");
 
         assertEquals(Map.of("read_0", "AAAA", "read_2", "GGGG"),
-                ReadLevelStage.readSequences(fasta, Set.of("read_0", "read_2", "read_9")));
+                BaitedReads.sequences(fasta, Set.of("read_0", "read_2", "read_9")));
     }
 
     @Test
@@ -90,7 +90,7 @@ class ReadLevelStageTest {
         Path reads = Files.writeString(dir.resolve("s.fq"), fastq.toString());
         Path fasta = dir.resolve("s.fasta");
         Path hitsFile = Files.writeString(dir.resolve("s.blast.txt"), BlastTsv.HEADER + "\n" + hits);
-        ReadLevelStage.ReadSet set = ReadLevelStage.writeReadsFasta(List.of(reads), false, fasta);
+        BaitedReads.ReadSet set = BaitedReads.write(List.of(reads), false, fasta);
 
         ReadCall call = ReadLevelStage.callFromHits("S", hitsFile, fasta, set,
                 PrimerPanel.of(Map.of("assay-F", primer, "assay-R", primer)), AmpliconOptions.withMismatches(0), 0.3, warning -> {})

@@ -1,11 +1,13 @@
 package ca.canada.inspection.pipeline;
 
+import java.nio.file.Path;
+import java.util.List;
 import java.util.function.Consumer;
 
 /**
- * Where a run reports what it does, and how it is stopped. The command line uses
- * {@link #CONSOLE}; the application sends everything to its window and stops the run
- * when the window closes.
+ * Where a run reports what it does, how it runs its external programs, and how it is stopped.
+ * The command line uses {@link #CONSOLE}; the application sends everything to its window and
+ * stops the run when the window closes.
  */
 public interface RunMonitor {
 
@@ -40,6 +42,17 @@ public interface RunMonitor {
      */
     default Consumer<String> programOutput() {
         return null;
+    }
+
+    /**
+     * Runs an external program ({@link ExternalProgram#run}): every program of a run is started
+     * here, so a test can stand in for one (a program that fails, or runs out of memory).
+     *
+     * @param directory where it runs, or {@code null} for the current directory
+     * @throws ProgramFailedException when it exits with an error
+     */
+    default void runProgram(Path directory, List<String> command, String program) {
+        ExternalProgram.run(this, directory, command, program);
     }
 
     /** Tracks the external programs so they can be killed; {@code null} when nothing kills them. */

@@ -57,7 +57,7 @@ record BbtoolsCommands(String javaCommand, Path bbtoolsJar, int childMemoryGiB, 
         }
 
         void run(RunMonitor monitor, String program) {
-            ExternalProgram.run(monitor, directory, arguments, program);
+            monitor.runProgram(directory, arguments, program);
         }
     }
 

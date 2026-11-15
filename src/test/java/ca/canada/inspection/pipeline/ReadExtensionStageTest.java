@@ -46,7 +46,7 @@ class ReadExtensionStageTest {
                 new Seed("extended_read_2", "read_1", "other", 'R'));
         Path seedsFile = dir.resolve("seeds.fasta");
 
-        Map<String, ReadLevelStage.ReadRecord> used = ReadExtensionStage.writeSeeds(seeds, reads, seedsFile);
+        Map<String, BaitedReads.ReadRecord> used = ReadExtensionStage.writeSeeds(seeds, reads, seedsFile);
 
         assertEquals(List.of(">extended_read_0 long-F read_1", "CCCC", ">extended_read_1 long-R read_2", "GGGG",
                 ">extended_read_2 other-R read_1", "CCCC"), Files.readAllLines(seedsFile));
@@ -186,5 +186,43 @@ class ReadExtensionStageTest {
         return String.join("\t", read, primerId, "20", "0", "0", "0.001", "40.1", "20", "20",
                 String.valueOf(qstart), String.valueOf(qend), PRIMER, String.valueOf(sstart), String.valueOf(send),
                 PRIMER) + "\n";
+    }
+
+    @Test
+    void anExtensionThatRunsOutOfMemoryIsANoteAndTheRunGoesOn() throws IOException {
+        // Tadpole stood in for: it stops for lack of memory, as with -XX:+ExitOnOutOfMemoryError.
+        List<String> started = new java.util.ArrayList<>();
+        RunMonitor monitor = new RunMonitor() {
+            @Override
+            public void runProgram(Path directory, List<String> command, String program) {
+                started.add(program);
+                throw new ProgramFailedException(program, BbtoolsCommands.OUT_OF_MEMORY_EXIT, false, program + " failed");
+            }
+
+            @Override
+            public void info(String message) {
+            }
+        };
+        Sample sample = new Sample("S");
+        sample.setFileType(Sample.FileType.FASTQ);
+        Path detailed = dir.resolve("detailed_report");
+        SampleFiles files = SampleFiles.of(detailed, "S");
+        Files.createDirectories(files.directory());
+        Files.writeString(files.doubleTargetMatches(), "");
+        Files.writeString(files.baitedReadsFasta(), ">read_0 a/1\nACGT\n>read_1 a/2\nTTTT\n");
+        // Both primers in the reads, no product yet: the assay is extended.
+        ReadEvidence evidence = new ReadEvidence(Map.of("long-F", Set.of("read_0"), "long-R", Set.of("read_1")),
+                Map.of(), Map.of());
+        ReadExtensionStage.Settings settings = new ReadExtensionStage.Settings(
+                new ReadLevelStage.Settings(Path.of("blastn"), Path.of("primer_tmp.fasta"), 1e5, 1, 0.3, monitor),
+                new BbtoolsCommands("java", Path.of("bbtools.jar"), 4, 1), ReadExtensionCaller.Mode.UNREPORTED);
+
+        ReadExtensionStage.Result result = ReadExtensionStage.run(settings, detailed, Map.of("S", sample), PRIMERS,
+                AmpliconOptions.withMismatches(0), Map.of("S", evidence));
+
+        assertEquals(List.of("Tadpole"), started);
+        assertEquals(List.of("read extension could not be run for sample S ("
+                + BbtoolsCommands.outOfMemoryMessage("Tadpole", "", 4) + ")"), result.notes());
+        assertTrue(result.rows().isEmpty());
     }
 }

@@ -50,6 +50,9 @@
 
 ### Changed
 
+- Code: what a sample shows for an assay (target size, other product, seen in
+  too few reads, not checkable from reads, ...) is decided in
+  `pcr.AssayVerdict`, tested apart from the HTML report, which only draws it.
 - Code: assemblies are read without building lines (`util.FastaScanner`, which
   the trimmed-end check already used), also to load contig descriptions and
   lengths, which read a contig written on one line as one string; the ID and

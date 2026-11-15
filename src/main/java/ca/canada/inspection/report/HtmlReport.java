@@ -1,6 +1,7 @@
 package ca.canada.inspection.report;
 
 import ca.canada.inspection.pcr.AmpliconOptions;
+import ca.canada.inspection.pcr.AssayVerdict;
 import ca.canada.inspection.pcr.ExpectedSizes;
 import ca.canada.inspection.pcr.FastqDiagnostics.Finding;
 import ca.canada.inspection.pcr.FastqDiagnostics.Status;
@@ -24,7 +25,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.OptionalInt;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
@@ -70,6 +70,11 @@ public final class HtmlReport {
         private final String label;
         private final String description;
         private final String glyph;
+
+        /** How the page shows {@code kind}: the verdict is decided in {@link AssayVerdict}. */
+        static State of(AssayVerdict.Kind kind) {
+            return valueOf(kind.name());
+        }
 
         State(String label, String description, String glyph) {
             this.label = label;
@@ -248,43 +253,10 @@ public final class HtmlReport {
     /** As {@link #cell(String, List, ExpectedSizes, Finding)}; {@code split} says where a product could span contigs. */
     static Cell cell(String assay, List<Product> products, ExpectedSizes sizes, Finding finding,
                      SplitAcrossContigs.Split split) {
-        if (!products.isEmpty()) {
-            State state;
-            if (products.stream().allMatch(product -> product.label() == null)) {
-                state = State.AMPLIFIED;
-            } else if (products.stream().anyMatch(product -> product.label() == ExpectedSizes.Label.TARGET)) {
-                state = State.TARGET;
-            } else if (products.stream().anyMatch(product -> product.label() == ExpectedSizes.Label.OTHER)) {
-                state = State.OTHER;
-            } else {
-                state = State.UNEXPECTED;
-            }
-            return new Cell(state, products, "");
-        }
-        if (split != null) {
-            return new Cell(State.ACROSS_ENDS, products, split.note() + " Check with a more complete assembly.");
-        }
-        if (finding != null && finding.status() == Status.WEAK_READ_SUPPORT) {
-            return new Cell(State.INCONCLUSIVE, products, "Not reported: " + finding.readDetail());
-        }
-        if (finding != null && (finding.status() == Status.EXTENSION_NOT_SUPPORTED_BY_PAIRS
-                || finding.status() == Status.EXTENSION_THROUGH_UNRESOLVED_REPEAT)) {
-            return new Cell(State.UNCONFIRMED, products, "Not reported: " + finding.readDetail());
-        }
-        if (finding != null && finding.status() == Status.NOT_CLOSED_BY_EXTENSION) {
-            // The reads were extended, so the product's length is no longer what hides it.
-            return new Cell(State.NONE, products, "Both primers are in the reads: " + finding.readDetail());
-        }
-        OptionalInt target = sizes.smallestTarget(assay);
-        if (finding != null && finding.status() == Status.NOT_IN_READS && target.isPresent()
-                && target.getAsInt() > finding.checkableLength()) {
-            // The declared product cannot fit in a read: its absence from reads proves nothing.
-            return new Cell(State.UNCHECKED, products, "Both primers are in the reads, but the mini-assembly"
-                    + " did not join them, and a product of the declared size (" + sizes.describe(assay)
-                    + ") is longer than any read could hold (" + finding.checkableLength()
-                    + " bp). Confirm on an assembly of the reads.");
-        }
-        return new Cell(State.NONE, products, "");
+        Set<ExpectedSizes.Label> labels = products.stream().map(Product::label).filter(java.util.Objects::nonNull)
+                .collect(Collectors.toSet());
+        AssayVerdict verdict = AssayVerdict.of(assay, products.size(), labels, sizes, finding, split);
+        return new Cell(State.of(verdict.kind()), products, verdict.note());
     }
 
     static String render(String reportName, List<Product> products, Collection<String> sampleNames,

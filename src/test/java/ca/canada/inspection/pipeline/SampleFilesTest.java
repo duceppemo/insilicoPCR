@@ -28,4 +28,20 @@ class SampleFilesTest {
         assertEquals(dir.resolve("s_extensionCandidates.fasta"), files.extensionCandidates());
         assertEquals(dir.resolve("s_extensionCandidateReads.fastq.gz"), files.candidateReads());
     }
+
+    @Test
+    void aSampleFolderIsMadeWithoutTheQueryCopyAKilledRunLeft(@org.junit.jupiter.api.io.TempDir Path dir)
+            throws java.io.IOException {
+        // A whole decompressed genome, deleted only by the search that wrote it.
+        PipelineDirectories directories = PipelineDirectories.create(dir);
+        Path folder = directories.sample("s").directory();
+        java.nio.file.Files.createDirectories(folder);
+        Path left = java.nio.file.Files.writeString(folder.resolve("blast_query_123.fasta"), ">c\nACGT\n");
+        Path kept = java.nio.file.Files.writeString(folder.resolve("s.tsv"), "");
+
+        directories.createSampleDirectory("s");
+
+        assertEquals(false, java.nio.file.Files.exists(left));
+        assertEquals(true, java.nio.file.Files.exists(kept));
+    }
 }

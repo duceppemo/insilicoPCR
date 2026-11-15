@@ -16,6 +16,10 @@ import java.util.zip.GZIPInputStream;
  * as long as the search; any other file is searched where it is.</p>
  */
 final class BlastQuery implements AutoCloseable {
+    private static final String PREFIX = "blast_query_";
+    /** The decompressed copies this class writes, as a file name pattern. */
+    static final String LEFT_BEHIND = PREFIX + "*.fasta";
+
     private final Path path;
     private final boolean temporary;
 
@@ -32,7 +36,7 @@ final class BlastQuery implements AutoCloseable {
         if (!fasta.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(".gz")) {
             return new BlastQuery(fasta, false);
         }
-        Path plain = Files.createTempFile(scratchDirectory, "blast_query_", ".fasta");
+        Path plain = Files.createTempFile(scratchDirectory, PREFIX, ".fasta");
         try (InputStream in = new GZIPInputStream(Files.newInputStream(fasta))) {
             Files.copy(in, plain, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {

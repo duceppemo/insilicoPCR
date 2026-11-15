@@ -52,8 +52,8 @@ final class PcrPipelineTask extends Task<RunResult> {
         try {
             RunResult result = new InSilicoPcrPipeline(config, new WindowMonitor()).run();
             if (isCancelled()) {
-                // Stopped after it wrote QAlog.txt: the run is finished, and its log says so.
-                append("\nThe run was stopped after it had finished: its reports and QAlog.txt are complete.\n");
+                // Stopped after it wrote its log: the run is finished, and its log says so.
+                append("\nThe run was stopped after it had finished: its reports and its log (QAlog) are complete.\n");
             }
             return result;
         } catch (RuntimeException | Error e) {

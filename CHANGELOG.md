@@ -81,6 +81,22 @@
   on this gel, 7 on all gels`). The save dialogs and their messages could open
   behind the gel window. In the window, a coloured band's lower edge was drawn
   from black, not from its colour as in a saved picture.
+- Two runs into one output folder at the same time (a workflow manager running
+  a job per sample into one folder) overwrote each other's primer database and
+  reports and failed at random, or searched each other's primers and reported
+  nothing. A run holds its output folder; a second one stops at once with
+  `Another run is using the output folder` (exit code 1).
+- Command line: a run killed (`kill`, a workflow manager stopping its job, Task
+  Manager) left its BBTools programs running and writing, with their memory;
+  they are stopped with it. A killed BLAST search's decompressed copy of an
+  assembly is removed by the next run into the folder.
+- A step that runs several samples at once reported a sample's failure only
+  once the samples before it in the list had finished (an hour of Tadpole);
+  it stops the others at the first failure, and reports that failure.
+- A report deleted from a folder made the next run take its name, a lower number
+  than an earlier run's, and **Open Previous Run** opened the earlier run; a new
+  report is numbered after the highest one. A run whose report was deleted is
+  passed over for the one before it, not an error.
 - Command line: an input with no FASTA or FASTQ file at all (an empty folder, a
   mistyped `-i`) ended with empty reports and exit code 0, which a workflow
   manager took for success; it stops with exit code 1. Arguments the command

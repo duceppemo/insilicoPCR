@@ -32,15 +32,35 @@ public record PreviousRun(Path report, List<String> samples) {
     }
 
     /**
-     * The latest finished run of {@code runDirectory}: the one whose log has the highest number
-     * ({@code QAlog(2).txt} after {@code QAlog(1).txt} after {@code QAlog.txt}), as its report has.
+     * The latest finished run of {@code runDirectory} whose report is still there: the one whose log
+     * has the highest number ({@code QAlog(2).txt} after {@code QAlog(1).txt} after {@code QAlog.txt}),
+     * as its report has, or the one before it when that report was deleted.
      */
     public static PreviousRun open(Path runDirectory) {
-        Path qaLog = latestLog(runDirectory);
-        if (!Files.isRegularFile(qaLog)) {
+        List<Path> logs = logsLatestFirst(runDirectory);
+        if (logs.isEmpty()) {
             throw new PipelineException("QAlog.txt not found in " + runDirectory
                     + ": not the output folder of a finished run");
         }
+        PipelineException latestMissing = null;
+        for (Path qaLog : logs) {
+            try {
+                return open(runDirectory, qaLog);
+            } catch (ReportMissing e) {
+                latestMissing = latestMissing == null ? e : latestMissing;
+            }
+        }
+        throw latestMissing;
+    }
+
+    /** A log whose report is no longer in the folder. */
+    private static final class ReportMissing extends PipelineException {
+        ReportMissing(Path runDirectory, Path report) {
+            super("The report of the run in " + runDirectory + " is missing: " + report);
+        }
+    }
+
+    private static PreviousRun open(Path runDirectory, Path qaLog) {
         List<String> lines;
         try {
             lines = Files.readAllLines(qaLog, StandardCharsets.UTF_8);
@@ -53,32 +73,27 @@ public record PreviousRun(Path report, List<String> samples) {
         }
         Path report = runDirectory.resolve(reportLine.get());
         if (!Files.isRegularFile(report)) {
-            throw new PipelineException("The report of the run in " + runDirectory + " is missing: " + report);
+            throw new ReportMissing(runDirectory, report);
         }
         return new PreviousRun(report, valueOf(lines, QaLogWriter.SAMPLE_PREFIX));
     }
 
-    /** The log with the highest number in {@code runDirectory}; {@code QAlog.txt} when there is none. */
-    static Path latestLog(Path runDirectory) {
-        Path latest = runDirectory.resolve(QaLogWriter.FILE_NAME);
-        int highest = -1;
+    /** The logs in {@code runDirectory}, the highest number first. */
+    static List<Path> logsLatestFirst(Path runDirectory) {
+        java.util.TreeMap<Integer, Path> logs = new java.util.TreeMap<>(Comparator.reverseOrder());
         if (Files.isDirectory(runDirectory)) {
             try (Stream<Path> files = Files.list(runDirectory)) {
                 for (Path file : files.toList()) {
                     java.util.regex.Matcher name = QaLogWriter.FILE_PATTERN.matcher(file.getFileName().toString());
                     if (name.matches() && Files.isRegularFile(file)) {
-                        int number = name.group(1) == null ? 0 : Integer.parseInt(name.group(1));
-                        if (number > highest) {
-                            highest = number;
-                            latest = file;
-                        }
+                        logs.put(name.group(1) == null ? 0 : Integer.parseInt(name.group(1)), file);
                     }
                 }
             } catch (IOException | NumberFormatException e) {
                 throw new PipelineException("Unable to list the logs in " + runDirectory, e);
             }
         }
-        return latest;
+        return List.copyOf(logs.values());
     }
 
     private static List<String> valueOf(List<String> lines, String prefix) {

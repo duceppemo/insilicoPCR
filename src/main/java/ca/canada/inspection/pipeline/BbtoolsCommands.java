@@ -188,6 +188,7 @@ record BbtoolsCommands(String javaCommand, Path bbtoolsJar, int childMemoryGiB, 
         List<String> arguments = new ArrayList<>(List.of(javaCommand, "-ea", "-Xmx" + childMemoryGiB + "g",
                 EXIT_ON_OUT_OF_MEMORY));
         if (BbtoolsLauncher.needed(bbtoolsJar)) {
+            BbtoolsLauncher.checkUsable(bbtoolsJar);
             arguments.addAll(List.of("-cp", launcherClassPath(), BbtoolsLauncher.class.getName(),
                     bbtoolsJar.toAbsolutePath().normalize().toString(), program));
         } else {

@@ -7,6 +7,7 @@ import java.nio.file.Path;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -230,6 +231,20 @@ class BbtoolsCommandsTest {
         assertTrue(url.startsWith("file:/"), url);
         assertFalse(url.contains("%"), url);
         assertTrue(url.endsWith("/Données Rémi/bbtools.jar"), url);
+    }
+
+    @Test
+    void aJarAtAPathWithAccentsAndAHashOrAPercentIsRefusedSayingWhy() {
+        // "D:\Données\C# tools": # ends a URL's path, and encoded, it makes BBTools garble the é.
+        for (String folder : List.of("Données C# tools", "Données 100%")) {
+            Path jar = Path.of(folder, "bbtools.jar");
+            PipelineException error = assertThrows(PipelineException.class, () -> new BbtoolsCommands("java", jar, 6, 4)
+                    .assemble(Path.of("in.fq.gz"), Path.of("out.fasta"), TadpoleOptions.DEFAULTS));
+            assertTrue(error.getMessage().contains("a letter outside ASCII and a # or a %"), error.getMessage());
+        }
+        // Without an accent, BBTools takes the jar from -cp: a # or a % is no trouble.
+        assertDoesNotThrow(() -> new BbtoolsCommands("java", Path.of("C# tools 100%", "bbtools.jar"), 6, 4)
+                .assemble(Path.of("in.fq.gz"), Path.of("out.fasta"), TadpoleOptions.DEFAULTS));
     }
 
     @Test

@@ -25,7 +25,7 @@ import java.util.TreeMap;
  * Explains, from the read-level evidence of FASTQ samples, the assays the mini-assembly did not
  * report ({@code <report>_fastq_diagnostics.tsv} next to the consolidated report, and lines for
  * the run's log and {@code QAlog.txt}). The rows called from reads are made by
- * {@link ReportGenerator}. Shared by the command-line and GUI pipelines.
+ * {@link ReportGenerator}. A step of {@link InSilicoPcrPipeline}.
  */
 public final class FastqDiagnosticsStage {
 

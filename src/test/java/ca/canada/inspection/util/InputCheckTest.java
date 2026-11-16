@@ -142,7 +142,7 @@ class InputCheckTest {
         assertEquals("half", issue.sample());
         assertEquals(List.of("half_R2.fastq"), issue.files());
         assertEquals("the file is incomplete", issue.problem());
-        assertEquals(List.of(issue.line(), "No sample of " + dir + " can be analysed."), result.warnings());
+        assertEquals(List.of(issue.line()), result.warnings());
     }
 
     @Test
@@ -262,6 +262,16 @@ class InputCheckTest {
             assertEquals(List.of("cut.fasta.gz: the file cannot be read (the gzip stream ends early: the file is incomplete)"),
                     result.issues().stream().map(Issue::describe).toList(), depth.toString());
         }
+    }
+
+    @Test
+    void namesWindowsCannotGiveAFolderAreNamed() {
+        assertEquals("the sample name ends with a space", InputCheck.windowsFolderProblem("Sample 1 "));
+        assertEquals("the sample name ends with a dot", InputCheck.windowsFolderProblem("iso."));
+        assertEquals("the sample name is one Windows keeps for a device", InputCheck.windowsFolderProblem("con"));
+        assertEquals("the sample name is one Windows keeps for a device", InputCheck.windowsFolderProblem("COM1.v2"));
+        assertEquals(null, InputCheck.windowsFolderProblem("console"));
+        assertEquals(null, InputCheck.windowsFolderProblem("Sample 1"));
     }
 
     @Test

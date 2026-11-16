@@ -3,7 +3,9 @@ package ca.canada.inspection.pipeline;
 import ca.canada.inspection.model.Sample;
 
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 
 /**
  * Windows' limit on the length of a path, checked before a run starts its programs.
@@ -17,15 +19,14 @@ import java.util.Collection;
 final class WindowsPathLimit {
     /** {@code MAX_PATH}: a path must be shorter. */
     static final int MAX_PATH = 260;
-    /** The longest name of a file the run writes for a sample, after the sample's name. */
-    static final String LONGEST_FASTQ_SUFFIX = "_extensionCandidateReads.fastq.gz";
-    /** The BLAST hits of an assembly, the one file a FASTA sample has. */
-    static final String FASTA_SUFFIX = ".tsv";
 
     private WindowsPathLimit() {
     }
 
-    /** Checks the paths of {@code samples} in {@code directories}, on Windows only. */
+    /**
+     * Checks the paths of {@code samples} in {@code directories}, on Windows only. With no sample, the
+     * output folder's own files: checked before the input files are read, which can take minutes.
+     */
     static void check(PipelineDirectories directories, Collection<Sample> samples) {
         if (AppPaths.isWindows()) {
             check(directories, samples, MAX_PATH);
@@ -39,11 +40,14 @@ final class WindowsPathLimit {
         String longest = directories.primerDatabase().toAbsolutePath() + ".nhr";
         for (Sample sample : samples) {
             SampleFiles files = directories.sample(sample.getName());
-            String name = sample.isFastq() ? sample.getName() + LONGEST_FASTQ_SUFFIX
-                    : longer(sample.getName() + FASTA_SUFFIX, BlastQuery.LONGEST_NAME);
-            String file = files.directory().toAbsolutePath().resolve(name).toString();
-            if (file.length() > longest.length()) {
-                longest = file;
+            // The files it writes, and the copy of an assembly blastn may be given (BlastQuery).
+            List<Path> written = new ArrayList<>(files.written(sample.isFastq()));
+            written.add(files.directory().resolve(BlastQuery.LONGEST_NAME));
+            for (Path path : written) {
+                String file = path.toAbsolutePath().toString();
+                if (file.length() > longest.length()) {
+                    longest = file;
+                }
             }
         }
         if (longest.length() >= limit) {
@@ -54,10 +58,6 @@ final class WindowsPathLimit {
                     + " is at least " + over + " characters shorter, such as one nearer the top of the drive, or give the"
                     + " sample's files a shorter name.");
         }
-    }
-
-    private static String longer(String a, String b) {
-        return b.length() > a.length() ? b : a;
     }
 
     /** Whether {@code path} is too long for a program on Windows. */

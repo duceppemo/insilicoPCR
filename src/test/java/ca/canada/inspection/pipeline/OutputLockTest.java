@@ -29,4 +29,27 @@ class OutputLockTest {
             assertEquals(List.of(), warnings);
         }
     }
+
+    @Test
+    void aRunInAnotherProcessHoldsTheFolderToo() throws Exception {
+        // The case that matters (two command-line runs), where the operating system's lock refuses the
+        // second; within one program the overlap is found before it asks.
+        String javaCommand = ProcessHandle.current().info().command().orElse("java");
+        Process other = new ProcessBuilder(javaCommand, "-cp", System.getProperty("java.class.path"),
+                LockHolder.class.getName(), dir.toString()).redirectError(ProcessBuilder.Redirect.INHERIT).start();
+        try (var out = new java.io.BufferedReader(new java.io.InputStreamReader(other.getInputStream()))) {
+            assertEquals("locked", out.readLine());
+            List<String> warnings = new ArrayList<>();
+            PipelineException error = assertThrows(PipelineException.class, () -> OutputLock.take(dir, warnings::add));
+            assertTrue(error.getMessage().startsWith("Another run is using the output folder " + dir), error.getMessage());
+
+            other.getOutputStream().close(); // that run ends
+            assertTrue(other.waitFor(10, java.util.concurrent.TimeUnit.SECONDS));
+            try (OutputLock mine = OutputLock.take(dir, warnings::add)) {
+                assertEquals(List.of(), warnings);
+            }
+        } finally {
+            other.destroyForcibly();
+        }
+    }
 }

@@ -100,9 +100,6 @@ public final class InputCheck {
         public List<String> warnings() {
             List<String> lines = new ArrayList<>();
             issues.forEach(issue -> lines.add(issue.line()));
-            if (files > 0 && samples.isEmpty()) {
-                lines.add("No sample of " + input + " can be analysed.");
-            }
             return lines;
         }
     }
@@ -132,6 +129,9 @@ public final class InputCheck {
         }
         rejectFilesThatAreNotOneSample(samples, issues, rejected);
         rejectNamesThatDifferInCase(samples, issues, rejected);
+        if (System.getProperty("os.name", "").startsWith("Windows")) {
+            rejectNamesWindowsCannotUse(samples, issues, rejected);
+        }
         if (depth == Depth.FULL) {
             samples.forEach((name, sample) -> {
                 if (!rejected.contains(name) && sample.isFastq() && sample.files().size() == 2) {
@@ -198,6 +198,38 @@ public final class InputCheck {
                         String.join(", ", names) + " would share a results folder; rename one"));
             }
         }));
+    }
+
+    /** Names Windows keeps for its devices: no folder can have one, whatever the extension after it. */
+    private static final Set<String> WINDOWS_DEVICES = Set.of("con", "prn", "aux", "nul",
+            "com1", "com2", "com3", "com4", "com5", "com6", "com7", "com8", "com9",
+            "lpt1", "lpt2", "lpt3", "lpt4", "lpt5", "lpt6", "lpt7", "lpt8", "lpt9");
+
+    /**
+     * Why Windows cannot make a results folder named {@code sample}, or {@code null}. A name ending in
+     * a space or a dot ({@code Sample 1 _R1.fastq.gz}) stopped the whole run, not only its sample,
+     * with "Trailing char < >"; a device name ({@code con.fasta}) cannot be a folder at all.
+     */
+    static String windowsFolderProblem(String sample) {
+        if (sample.endsWith(" ") || sample.endsWith(".")) {
+            return "the sample name ends with " + (sample.endsWith(" ") ? "a space" : "a dot");
+        }
+        String base = sample.contains(".") ? sample.substring(0, sample.indexOf('.')) : sample;
+        if (WINDOWS_DEVICES.contains(base.strip().toLowerCase(Locale.ROOT))) {
+            return "the sample name is one Windows keeps for a device";
+        }
+        return null;
+    }
+
+    private static void rejectNamesWindowsCannotUse(Map<String, Sample> samples, List<Issue> issues,
+                                                    Set<String> rejected) {
+        samples.forEach((name, sample) -> {
+            String problem = windowsFolderProblem(name);
+            if (problem != null && rejected.add(name)) {
+                issues.add(new Issue(name, fileNames(sample.files()), problem,
+                        "Windows cannot make its results folder; rename the file"));
+            }
+        });
     }
 
     private static List<String> fileNames(List<Path> files) {

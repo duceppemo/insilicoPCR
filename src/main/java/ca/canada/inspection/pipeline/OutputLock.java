@@ -12,7 +12,8 @@ import java.util.function.Consumer;
  * The output folder held by one run: two runs into it at once (a workflow manager running a job
  * per sample into one folder) overwrote each other's primer database and reports, and could
  * search each other's primers. The lock is the operating system's, so it goes with the run,
- * however the run ends; the lock file is left in the folder, hidden.
+ * however the run ends; the lock file is left in the folder (hidden on Linux and macOS by its
+ * leading dot; listed on Windows).
  */
 final class OutputLock implements AutoCloseable {
     static final String FILE_NAME = ".insilicoPCR.lock";

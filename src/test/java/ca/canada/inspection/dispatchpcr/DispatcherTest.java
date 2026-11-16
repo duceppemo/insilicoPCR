@@ -128,6 +128,30 @@ class DispatcherTest {
     }
 
     @Test
+    void anInputWhoseEveryFileIsFaultyIsAFailedRun() throws IOException {
+        // One job per sample, given one cut-short file: empty reports and exit code 0 read as a result.
+        Path input = Files.createDirectories(directory.resolve("faulty"));
+        Files.writeString(input.resolve("headers.fasta"), ">c1\n>c2\n");
+        Path primers = Files.writeString(directory.resolve("primers.fasta"),
+                ">a-F\nACGTACGTACGTACGTAC\n>a-R\nACGTACGTACGTACGTAC\n");
+
+        assertEquals(1, run("-i", input.toString(), "-o", directory.resolve("out").toString(),
+                "-p", primers.toString(), "-t", "1"));
+        assertTrue(err().contains("No sample of " + input + " can be analysed: every input file is faulty")
+                || err().contains("Missing"), err());
+    }
+
+    @Test
+    void aKilledCommandLineRunIsCancelledNotFailed() {
+        // After the shutdown hook stopped them, each program ended "with exit code 137" read as a failure:
+        // "Error: Tadpole failed ..." in a workflow manager's log, and the read extension went on to the report.
+        var monitor = Dispatcher.consoleMonitor();
+        assertFalse(monitor.isCancelled());
+        monitor.processes().destroyAll(); // what the shutdown hook does
+        assertTrue(monitor.isCancelled());
+    }
+
+    @Test
     @org.junit.jupiter.api.condition.EnabledOnOs({org.junit.jupiter.api.condition.OS.LINUX,
             org.junit.jupiter.api.condition.OS.WINDOWS})
     void aCommandLineRunKilledStopsItsPrograms() throws Exception {

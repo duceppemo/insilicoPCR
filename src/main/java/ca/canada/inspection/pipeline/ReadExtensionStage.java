@@ -39,8 +39,8 @@ import java.util.concurrent.CancellationException;
  * reads carry both primers (and, in {@code target} mode, for assays without a product
  * of their declared target size), extends the primer-carrying reads through the baited
  * reads and calls products on the extended reads ({@link ReadExtensionCaller}). This
- * is what finds a product longer than a read or merged pair. Shared by the
- * command-line and GUI pipelines; run after the read-level search, with the contig
+ * is what finds a product longer than a read or merged pair. A step of
+ * {@link InSilicoPcrPipeline}, run after the read-level search, with the contig
  * hits of each sample attached and while the primer BLAST database still exists.
  */
 public final class ReadExtensionStage {

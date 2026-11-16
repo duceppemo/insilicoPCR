@@ -70,7 +70,7 @@ class HtmlReportTest {
 
     @Test
     void targetSizeMakesTheSamplePositiveWhateverElseAmplifies() {
-        Cell cell = HtmlReport.cell("its", List.of(product("its", 300), product("its", 436)), SIZES, null);
+        Cell cell = HtmlReport.cell("its", List.of(product("its", 300), product("its", 436)), SIZES, null, null);
 
         assertEquals(State.TARGET, cell.state());
         assertEquals(List.of(436), cell.sizes(), "the size shown is the target product's");
@@ -79,16 +79,16 @@ class HtmlReportTest {
 
     @Test
     void productOfAnotherSizeIsNotCalledPositiveButIsShown() {
-        assertEquals(State.OTHER, HtmlReport.cell("its", List.of(product("its", 575), product("its", 90)), SIZES, null).state());
+        assertEquals(State.OTHER, HtmlReport.cell("its", List.of(product("its", 575), product("its", 90)), SIZES, null, null).state());
 
-        Cell unexpected = HtmlReport.cell("its", List.of(product("its", 90), product("its", 1200)), SIZES, null);
+        Cell unexpected = HtmlReport.cell("its", List.of(product("its", 90), product("its", 1200)), SIZES, null, null);
         assertEquals(State.UNEXPECTED, unexpected.state());
         assertEquals(List.of(90, 1200), unexpected.sizes());
     }
 
     @Test
     void assayWithoutDeclaredSizeIsAmplifiedNotJudged() {
-        Cell cell = HtmlReport.cell("plain", List.of(product("plain", 200)), SIZES, null);
+        Cell cell = HtmlReport.cell("plain", List.of(product("plain", 200)), SIZES, null, null);
 
         assertEquals(State.AMPLIFIED, cell.state());
         assertEquals(List.of(200), cell.sizes());
@@ -96,21 +96,21 @@ class HtmlReportTest {
 
     @Test
     void noProductIsReadFromTheFastqDiagnostics() {
-        assertEquals(State.NONE, HtmlReport.cell("its", List.of(), SIZES, null).state());
+        assertEquals(State.NONE, HtmlReport.cell("its", List.of(), SIZES, null, null).state());
 
-        Cell weak = HtmlReport.cell("its", List.of(), SIZES, finding(Status.WEAK_READ_SUPPORT, 500));
+        Cell weak = HtmlReport.cell("its", List.of(), SIZES, finding(Status.WEAK_READ_SUPPORT, 500), null);
         assertEquals(State.INCONCLUSIVE, weak.state());
         assertTrue(weak.note().contains("3 of 17 informative read(s)"), weak.note());
 
         // Reads could hold 300 bp at most; the declared product starts at 424 bp: not checkable.
-        Cell tooLong = HtmlReport.cell("its", List.of(), SIZES, finding(Status.NOT_IN_READS, 300));
+        Cell tooLong = HtmlReport.cell("its", List.of(), SIZES, finding(Status.NOT_IN_READS, 300), null);
         assertEquals(State.UNCHECKED, tooLong.state());
         assertTrue(tooLong.note().contains("target 424-444 bp") && tooLong.note().contains("300 bp"), tooLong.note());
 
         // Reads long enough to have shown it, or no declared size to compare with: a plain negative.
-        assertEquals(State.NONE, HtmlReport.cell("its", List.of(), SIZES, finding(Status.NOT_IN_READS, 500)).state());
-        assertEquals(State.NONE, HtmlReport.cell("plain", List.of(), SIZES, finding(Status.NOT_IN_READS, 100)).state());
-        assertEquals(State.NONE, HtmlReport.cell("its", List.of(), SIZES, finding(Status.PARTIAL_BAIT, 100)).state());
+        assertEquals(State.NONE, HtmlReport.cell("its", List.of(), SIZES, finding(Status.NOT_IN_READS, 500), null).state());
+        assertEquals(State.NONE, HtmlReport.cell("plain", List.of(), SIZES, finding(Status.NOT_IN_READS, 100), null).state());
+        assertEquals(State.NONE, HtmlReport.cell("its", List.of(), SIZES, finding(Status.PARTIAL_BAIT, 100), null).state());
     }
 
     @Test
@@ -121,7 +121,7 @@ class HtmlReportTest {
                 Assembly.SPLIT_ACROSS_CONTIGS, new ReadsWithOligo(19, 7, 0), 300,
                 "no complete amplicon in the reads, which could hold amplicons up to 300 bp; extending 19"
                         + " forward-seeded and 7 reverse-seeded read(s) through the baited reads, by up to 2000 bases"
-                        + " each way, gave no product held by at least 2 extended reads seeded from each primer", ""));
+                        + " each way, gave no product held by at least 2 extended reads seeded from each primer", ""), null);
 
         assertEquals(State.NONE, cell.state());
         assertTrue(cell.note().startsWith("Both primers are in the reads: no complete amplicon in the reads"),
@@ -135,12 +135,12 @@ class HtmlReportTest {
                 + " 434 bp (40 of 50 forward-seeded and 38 of 50 reverse-seeded reads), not reported: bases 100-400 are"
                 + " a repeat with another copy in the sample", "");
 
-        Cell cell = HtmlReport.cell("its", List.of(), SIZES, withheld);
+        Cell cell = HtmlReport.cell("its", List.of(), SIZES, withheld, null);
         assertEquals(State.UNCONFIRMED, cell.state());
         assertTrue(cell.note().startsWith("Not reported: extended reads hold a product of 434 bp"), cell.note());
         assertEquals(State.UNCONFIRMED, HtmlReport.cell("its", List.of(), SIZES, new Finding("S", "its",
                 Status.EXTENSION_NOT_SUPPORTED_BY_PAIRS, Assembly.NOT_ASSEMBLED, new ReadsWithOligo(5, 5, 0), 300,
-                "x", "")).state());
+                "x", ""), null).state());
 
         Path tsv = Files.write(dir.resolve("report.tsv"), List.of(HEADER));
         String page = Files.readString(write(tsv, List.of("S"), Set.of("S"), panel(PRIMERS, SIZES),

@@ -170,6 +170,10 @@ class DispatcherTest {
                     .findFirst().orElse(null);
         }
         assertTrue(program != null, "the program never started");
+        // The program shows as a child as soon as it starts, a moment before the run registers it and,
+        // on Windows, puts it in its job: a kill in between left it running (once in CI). A run is killed
+        // while its program runs, not in that moment.
+        Thread.sleep(1000);
 
         run.destroy(); // SIGTERM; on Windows, TerminateProcess
         assertTrue(run.waitFor(10, java.util.concurrent.TimeUnit.SECONDS));

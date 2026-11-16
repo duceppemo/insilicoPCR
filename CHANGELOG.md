@@ -84,6 +84,16 @@
   outside the code page, long paths, files from Windows tools, reruns, two runs
   into one folder, a run killed from Task Manager); a release is published only
   once it passes. Its results are the build's `wintest-results` artifact.
+- Tests:
+  - The window's default settings are compared with the command line's own
+    (`CliConfig`), not with a library default both could drift from.
+  - The HTML report's printout is checked in the browser against the page's
+    print style sheet, not by reading the CSS as text.
+  - The lock of an output folder is tested from another process, as two runs
+    take it, not only twice within one program.
+  - Windows' path limit is checked against every file `SampleFiles` names.
+  - Test-only overloads in the application's code are gone
+    (`HtmlReport.cell`, `FastqSettingsDialog.parse`, `FastqSettings`).
 
 ## 0.15.2 (2026-11-15)
 

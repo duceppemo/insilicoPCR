@@ -41,8 +41,8 @@ class InputValidatorTest {
     @Test
     void nullsAreReported() throws IOException {
         Path primers = primers();
-        assertTrue(InputValidator.validate(null, dir, primers).contains("Please enter"));
-        assertTrue(InputValidator.validate(primers, dir, null).contains("Please enter"));
+        assertTrue(InputValidator.validate(null, dir, primers).contains("Please choose"));
+        assertTrue(InputValidator.validate(primers, dir, null).contains("Please choose"));
     }
 
     @Test

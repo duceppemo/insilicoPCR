@@ -58,6 +58,16 @@
 - HTML report: the read-level evidence table marked every withheld product `?`,
   also those its grid cell marks `⇄` (not confirmed by read pairs); it uses the
   grid's mark.
+- Messages named Java fields, not options: `--min-length 6000` alone said
+  `minAmpliconLength (6000) is larger than maxAmpliconLength (5000)`, `-t 0`
+  said `threads must be >= 1`; they name `--min-length`, `-l` and `-t`. The
+  window asked for "a reference file" for its primer file.
+- Docs: the Reports page gave "Not confirmed by read pairs" the old `?` mark;
+  the probe's mismatch budget is `--probe-mismatches`, not the total budget
+  (Standard PCR vs qPCR); the file an open Excel keeps a rerun from replacing is
+  a sample's BLAST table, not a report, which is never replaced
+  (Troubleshooting); the window's limits on threads and mismatches, and the
+  lock's fallback on file systems that cannot lock, are documented.
 - A product made by several variants of a degenerate primer named a variant
   whose first base does not pair, rather than one that pairs over its whole
   length, when the two had no mismatch in their alignments: BLAST leaves a

@@ -43,7 +43,7 @@ If the launcher says `Error: could not find java.dll` or `Could not find Java SE
 - **Sample names Windows cannot give a folder.** A sample's results go to a folder named after it, and Windows cannot make one whose name ends with a space or a dot (`Sample 1 _R1.fastq.gz` gives the sample `Sample 1 `) or is a device name (`con.fasta`, `nul.fa`, `com1.fastq.gz`). Since 0.15.3 such a sample is left out with a warning (`the sample name ends with a space`) and the others are run; before, the whole run stopped with `Trailing char < >`. Rename the file.
 - **FASTQ input from an installation whose path has an accent and a `#` or `%`.** BBTools finds its resources from its own path, and cannot read one that has both (`D:\Données\C# tools`): the run stops naming the folder. Move insilicoPCR to a folder whose path has neither; assemblies run from anywhere.
 - **A trailing backslash before a quote.** In `-i "C:\my data\" -p primers.fasta`, the backslash keeps the quote, and `-i` gets the rest of the line. Leave out the last backslash: `-i "C:\my data"`.
-- **Files open in another program.** A report of the last run open in Excel cannot be replaced by the next run into the same folder: close it, or give the run another output folder.
+- **Files open in another program.** A sample's BLAST hits (`detailed_report/<sample>/<sample>.tsv`) or the primer database of the last run, open in Excel or held by an antivirus scan, cannot be replaced by the next run into the same folder, which stops naming the file: close it, or give the run another output folder. The consolidated reports are never replaced (each run writes `report(n).tsv` with the next number), so one open in Excel does not stop a run.
 
 ## Windows SmartScreen warning
 

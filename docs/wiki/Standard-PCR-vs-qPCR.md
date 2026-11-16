@@ -25,7 +25,7 @@ assayName-P
 
 A positive consolidated report row is generated only when the primer pair produces a valid amplicon **and** the probe is detected entirely within that amplicon. If the probe is defined in the primer file but produces no accepted hit inside the amplicon, the assay stays negative — the primer pair alone is not enough.
 
-Because hydrolysis probes do not extend, the 3'-end mismatch rules that apply to primers are not applied to probes — a probe hit only needs to fit the total mismatch budget (see [Amplicon Calling](Amplicon-Calling)).
+Because hydrolysis probes do not extend, the 3'-end mismatch rules that apply to primers are not applied to probes — a probe hit only needs to fit the probe's own mismatch budget (`--probe-mismatches`, the same as `-m` by default) and lie inside the product, with at most 2 bases off the template's end (see [Amplicon Calling](Amplicon-Calling)).
 
 ## Mixing both in one run
 

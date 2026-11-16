@@ -45,8 +45,9 @@ usage: java -jar insilicoPCR.jar -i <input> -o <output> -p <primers> [-t
  -g,--gel                        Also write the synthetic gel image as PNG
                                  (requires a graphical environment)
  -h,--help                       Print help and usage
- -i,--input <path>               Input file/directory containing
-                                 .fasta/.fastq sequence(s)
+ -i,--input <path>               Input file, or folder of .fasta/.fastq
+                                 files (the files directly in it:
+                                 subfolders are not read)
     --input-check <full|quick>   How the input files are checked before
                                  the run. full: every read of every FASTQ
                                  file is read, and the two files of a pair
@@ -101,7 +102,7 @@ usage: java -jar insilicoPCR.jar -i <input> -o <output> -p <primers> [-t
 
 | Option | Meaning |
 |---|---|
-| `-i`, `--input` | Input FASTA/FASTQ file or directory |
+| `-i`, `--input` | Input FASTA/FASTQ file, or a folder of them: the files directly in it, not its subfolders |
 | `-o`, `--output` | Output directory |
 | `-p`, `--primers` | Primer FASTA file |
 

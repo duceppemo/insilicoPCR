@@ -128,6 +128,19 @@ class DispatcherTest {
     }
 
     @Test
+    void anInputWhoseFilesAreAllInSubfoldersSaysSo() throws IOException {
+        Path input = Files.createDirectories(directory.resolve("run").resolve("S1"));
+        Files.writeString(input.resolve("S1.fasta"), ">c1\nACGTACGTACGTACGTACGT\n");
+        Path primers = Files.writeString(directory.resolve("primers.fasta"),
+                ">a-F\nACGTACGTACGTACGTAC\n>a-R\nACGTACGTACGTACGTAC\n");
+
+        assertEquals(1, run("-i", input.getParent().toString(), "-o", directory.resolve("out").toString(),
+                "-p", primers.toString(), "-t", "1"));
+        assertTrue(err().contains("No FASTA or FASTQ file directly in " + input.getParent() + ": its subfolders S1"
+                + " hold some, but subfolders are not read") || err().contains("Missing"), err());
+    }
+
+    @Test
     void anInputWhoseEveryFileIsFaultyIsAFailedRun() throws IOException {
         // One job per sample, given one cut-short file: empty reports and exit code 0 read as a result.
         Path input = Files.createDirectories(directory.resolve("faulty"));

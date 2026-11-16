@@ -85,6 +85,21 @@ class PreviousRunTest {
     }
 
     @Test
+    void aSampleNameWithSpacesAroundItIsReadBackAsWritten() throws IOException {
+        // "Sample 1 " (from Sample 1 _R1.fastq.gz) read back as "Sample 1": an empty lane of that name stood
+        // beside the one with its bands, which read as a negative sample.
+        reads = Files.createDirectories(dir.resolve("reads"));
+        output = Files.createDirectories(dir.resolve("results"));
+        Map<String, Sample> samples = new LinkedHashMap<>();
+        samples.put("Sample 1 ", sample("Sample 1 ", "Sample 1 _R1.fastq.gz", "Sample 1 _R2.fastq.gz"));
+        Path report = Files.createDirectories(output.resolve(PipelineDirectories.CONSOLIDATED)).resolve("report.tsv");
+        Files.writeString(report, "Sample\tGene\n");
+        QaLogWriter.write(TestContexts.writingTo(output, samples), "0.0.0", report, List.of());
+
+        assertEquals(List.of("Sample 1 "), PreviousRun.open(output).samples());
+    }
+
+    @Test
     void aMovedRunFolderIsReopened() throws IOException {
         finishedRun();
         Path moved = Files.move(output, dir.resolve("archive"));

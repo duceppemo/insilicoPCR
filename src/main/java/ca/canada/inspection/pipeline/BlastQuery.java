@@ -54,8 +54,9 @@ final class BlastQuery implements AutoCloseable {
             return new BlastQuery(fasta, false);
         }
         Path plain = Files.createTempFile(scratchDirectory, PREFIX, ".fasta");
-        try (InputStream in = SequenceFileUtils.withoutByteOrderMark(gzipped ? new GZIPInputStream(Files.newInputStream(fasta))
-                : Files.newInputStream(fasta))) {
+        // The raw stream is a resource of its own: closed even when the gzip header cannot be read.
+        try (InputStream raw = Files.newInputStream(fasta);
+             InputStream in = SequenceFileUtils.withoutByteOrderMark(gzipped ? new GZIPInputStream(raw) : raw)) {
             Files.copy(in, plain, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
             Files.deleteIfExists(plain);

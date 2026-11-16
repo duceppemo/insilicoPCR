@@ -13,6 +13,7 @@ import ca.canada.inspection.report.HtmlReport;
 import ca.canada.inspection.util.SequenceFileUtils;
 import ca.canada.inspection.util.Version;
 
+import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Files;
 import java.util.ArrayList;
@@ -40,13 +41,44 @@ public final class ReportGenerator {
         // The run's rows, made once: the report file, the HTML report and the gel all show these.
         List<ReportRow> rows = Products.ofRun(context.samples(), context.primers(), context.config().ampliconOptions(),
                 extraRows(context, readEvidence, extension));
-        Path report = ConsolidatedReport.write(context.directories().consolidated(), rows, context.primers());
-        if (context.config().gel()) {
-            GelImageWriter.write(report, SyntheticGelImage.defaultPng(report), context.samples().keySet(),
-                    monitor::info, monitor::warning);
+        // What this step writes: removed when the run is stopped meanwhile, so that a stopped run writes no
+        // report, as the window says (a report without its QAlog would be no run's).
+        List<Path> written = new ArrayList<>();
+        try {
+            return write(context, readEvidence, extension, rows, written);
+        } catch (CancellationException e) {
+            for (Path file : written) {
+                try {
+                    Files.deleteIfExists(file);
+                } catch (IOException ignored) {
+                    // left, unnamed by any QAlog
+                }
+            }
+            throw e;
         }
+    }
+
+    private static void stopIfCancelled(RunMonitor monitor) {
+        if (monitor.isCancelled()) {
+            throw new CancellationException("The run was cancelled (reports).");
+        }
+    }
+
+    private static RunResult write(PipelineContext context, Map<String, ReadEvidence> readEvidence,
+                                   ReadExtensionStage.Result extension, List<ReportRow> rows, List<Path> written) {
+        RunMonitor monitor = context.monitor();
+        Path report = ConsolidatedReport.write(context.directories().consolidated(), rows, context.primers());
+        written.add(report);
+        if (context.config().gel()) {
+            written.addAll(GelImageWriter.write(report, SyntheticGelImage.defaultPng(report), context.samples().keySet(),
+                    monitor::info, monitor::warning));
+        }
+        stopIfCancelled(monitor);
         FastqDiagnosticsStage.Result diagnostics = FastqDiagnosticsStage.run(report, context.samples(), context.directories(),
                 context.primers(), context.config().ampliconOptions(), readEvidence, extension);
+        if (diagnostics.file() != null) {
+            written.add(diagnostics.file());
+        }
         diagnostics.logLines().forEach(monitor::warning);
         List<SplitAcrossContigs.Split> splits = assemblySplits(context);
         splits.forEach(split -> monitor.warning("Warning: " + split.message()));
@@ -54,6 +86,7 @@ public final class ReportGenerator {
                 context.primers(), diagnostics.findings(),
                 RunSettings.details(Version.VERSION, context.config(), context.hasFastqSamples()),
                 context.inputIssues(), splits);
+        written.add(html);
         monitor.info("HTML report written to " + html);
         List<String> qaLines = new ArrayList<>(QaLogWriter.inputIssueLines(context.inputIssues()));
         qaLines.addAll(context.primers().expectedSizes().qaLogLines());
@@ -61,9 +94,7 @@ public final class ReportGenerator {
         splits.forEach(split -> qaLines.add("Primers at contig ends: " + split.message()));
         // QAlog.txt marks the run finished and names its report: a run stopped before it does not
         // write it, and the folder's log still names the last finished run's report.
-        if (monitor.isCancelled()) {
-            throw new CancellationException("The run was cancelled (reports).");
-        }
+        stopIfCancelled(monitor);
         QaLogWriter.write(context, Version.VERSION, report, qaLines);
         return new RunResult(report, html, List.copyOf(context.samples().keySet()));
     }

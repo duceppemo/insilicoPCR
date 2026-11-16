@@ -75,6 +75,11 @@ public final class Dispatcher {
         try {
             new InSilicoPcrPipeline(config, consoleMonitor()).run();
             return 0;
+        } catch (java.util.concurrent.CancellationException e) {
+            // Killed (kill, Ctrl-C, a workflow manager stopping its job): its programs are stopped, which is
+            // no fault to show a trace of.
+            err.println("Run cancelled");
+            return 1;
         } catch (RuntimeException e) {
             // A failure the user can act on is its message; anything else is a bug and
             // keeps the stack trace a report of it needs.
@@ -115,7 +120,7 @@ public final class Dispatcher {
     static Options options() {
         Options options = new Options();
         options.addOption(Option.builder("i").longOpt("input").hasArg().argName("path")
-                .desc("Input file/directory containing .fasta/.fastq sequence(s)").build());
+                .desc("Input file, or folder of .fasta/.fastq files (the files directly in it: subfolders are not read)").build());
         options.addOption(Option.builder("o").longOpt("output").hasArg().argName("dir")
                 .desc("Directory for output files").build());
         options.addOption(Option.builder("p").longOpt("primers").hasArg().argName("file")

@@ -100,7 +100,9 @@ public record PreviousRun(Path report, List<String> samples) {
         List<String> values = new ArrayList<>();
         for (String line : lines) {
             if (line.startsWith(prefix)) {
-                values.add(line.substring(prefix.length()).strip());
+                // As written: a sample named "Sample 1 " (from Sample 1 _R1.fastq.gz) is not "Sample 1",
+                // whose empty lane stood beside the one holding its bands.
+                values.add(line.substring(prefix.length()));
             }
         }
         return values;

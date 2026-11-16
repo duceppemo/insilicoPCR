@@ -40,7 +40,7 @@ final class QaLogInputs {
         try {
             for (String line : Files.readAllLines(qaLog, StandardCharsets.UTF_8)) {
                 if (line.startsWith(NOT_ANALYSED_PREFIX)) {
-                    samples.add(line.substring(NOT_ANALYSED_PREFIX.length()).strip());
+                    samples.add(line.substring(NOT_ANALYSED_PREFIX.length())); // as written, spaces too
                 }
             }
         } catch (IOException e) {

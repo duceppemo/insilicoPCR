@@ -74,6 +74,18 @@ class RunFormTest {
     }
 
     @Test
+    void anInputFolderWithFilesInSubfoldersOnlySaysSo() throws IOException {
+        Path input = Files.createDirectories(dir.resolve("run").resolve("S1"));
+        Files.writeString(input.resolve("S1.fasta"), ">c1\nACGT\n");
+        Path primers = Files.writeString(dir.resolve("primers.fasta"), ">a-F\nACGTACGT\n>a-R\nACGTACGT\n");
+
+        RunForm.Outcome.Invalid invalid = assertInstanceOf(RunForm.Outcome.Invalid.class, new RunForm(input.getParent(),
+                dir.resolve("out"), primers, 1, 0, "1e5", AmpliconSettings.DEFAULTS, FastqSettings.DEFAULTS).toConfig());
+        assertEquals("The input folder holds no FASTA/FASTQ file directly, only in subfolders, which are not read:"
+                + " choose one of them, or move their files up into one folder", invalid.message());
+    }
+
+    @Test
     void theInputFolderAsTheOutputFolderIsAMessage() throws IOException {
         Path primers = Files.writeString(dir.resolve("primers.fasta"), ">a-F\nACGTACGT\n>a-R\nACGTACGT\n");
         RunForm.Outcome.Invalid invalid = assertInstanceOf(RunForm.Outcome.Invalid.class,

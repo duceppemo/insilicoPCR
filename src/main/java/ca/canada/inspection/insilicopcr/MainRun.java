@@ -141,7 +141,8 @@ public class MainRun extends Application {
         var selectFolder = new MenuItem("Folder…");
         selectFolder.setOnAction(event -> PathFieldBinder.chooseDirectory(stage, inputField, path -> inputFile = path));
         var browse = new MenuButton("Select", null, selectFile, selectFolder);
-        browse.setTooltip(new Tooltip("Choose one sequence file, or a folder of FASTA/FASTQ files. "
+        browse.setTooltip(new Tooltip("Choose one sequence file, or a folder of FASTA/FASTQ files (the files directly in"
+                + " it: its subfolders are not read). "
                 + "You can also drag a file or folder onto the field."));
         browse.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
         pane.add(browse, 31, 4, 5, 2);

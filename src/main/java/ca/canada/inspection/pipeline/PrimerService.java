@@ -116,7 +116,9 @@ public final class PrimerService {
         fasta.keySet().forEach(PrimerService::validatePrimerId);
         checkAssaysComplete(fasta.keySet(), file);
         try {
-            return new PrimerFile(fasta, ExpectedSizes.fromHeaders(descriptions), MixGroups.fromHeaders(descriptions));
+            MixGroups mixGroups = MixGroups.fromHeaders(descriptions);
+            mixGroups.checkNames(PrimerId.byAssay(fasta.keySet()).keySet());
+            return new PrimerFile(fasta, ExpectedSizes.fromHeaders(descriptions), mixGroups);
         } catch (IllegalArgumentException e) {
             // The message says it all; without the cause, which reads as a bug (RunFailure).
             throw new PipelineException(e.getMessage() + " (primer file " + file + ")");

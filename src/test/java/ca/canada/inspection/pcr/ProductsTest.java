@@ -112,6 +112,35 @@ class ProductsTest {
     }
 
     @Test
+    void aPrimerSharedByTwoAssaysOfOneReactionMakesEachMoleculeOnce() {
+        // AMOS-like: abortus-F and meli-F are one primer, repeated under each assay's ID, at an inverted
+        // repeat (101 on the plus strand, 900 on the minus); meli-R makes meli's designed 500 bp product.
+        Sample sample = new Sample("S");
+        for (String id : List.of("abortus-F", "meli-F")) {
+            sample.hits().add(id, plusHit(id, "c1", 101));
+            sample.hits().add(id, minusHit(id, "c1", 900));
+        }
+        sample.hits().add("meli-R", minusHit("meli-R", "c1", 581));
+        Map<String, String> sequences = new LinkedHashMap<>();
+        for (String id : List.of("abortus-F", "abortus-R", "meli-F", "meli-R")) {
+            sequences.put(id, PRIMER_20);
+        }
+        java.util.function.Function<List<ReportRow>, List<String>> shown = rows -> rows.stream()
+                .map(row -> row.assay() + " " + row.start() + "-" + row.end() + " " + row.pairing()).toList();
+        AmpliconOptions options = AmpliconOptions.withMismatches(0);
+
+        // One reaction: the 819 bp molecule once (one primer, the first assay by name), the 500 bp once
+        // (meli's designed product, not again as abortus+meli).
+        MixGroups amos = MixGroups.fromHeaders(Map.of("abortus-F", "mix=amos", "meli-F", "mix=amos"));
+        assertEquals(List.of("abortus 101-919 ONE_PRIMER", "meli 101-600 DESIGNED"),
+                shown.apply(Products.of(sample, PrimerPanel.of(sequences, ExpectedSizes.NONE, amos), options)));
+
+        // Run apart, each assay is its own tube: each reports what its primers make.
+        assertEquals(List.of("abortus 101-919 ONE_PRIMER", "meli 101-600 DESIGNED", "meli 101-919 ONE_PRIMER"),
+                shown.apply(Products.of(sample, PrimerPanel.of(sequences), options)));
+    }
+
+    @Test
     void aSamplesProductsAreWorkedOutOnceUntilItsHitsChange() {
         Sample sample = new Sample("S");
         sample.hits().add("toxA-F_1", plusHit("toxA-F_1", "c1", 101));

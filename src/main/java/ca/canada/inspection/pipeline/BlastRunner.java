@@ -27,7 +27,8 @@ public final class BlastRunner {
         if (refused.isEmpty()) {
             return;
         }
-        if (refused.size() == samples.stream().filter(sample -> !sample.isFastq()).count()) {
+        // Every sample refused, mini-assemblies included: the fault is not the files'.
+        if (refused.size() == samples.size()) {
             throw new PipelineException("BLAST failed", refused.values().iterator().next().failure());
         }
         for (Sample sample : samples) {
@@ -39,6 +40,12 @@ public final class BlastRunner {
             }
         }
     }
+
+    /**
+     * blastn's exit codes for a query it cannot read: 1, "BLAST query error" (a record whose first line holds
+     * no base); 3, "Sequence contains no data" (a file with no base at all).
+     */
+    static final java.util.Set<Integer> REFUSED_THE_FILE = java.util.Set.of(1, 3);
 
     /** An assembly blastn could not search, and why. */
     private record Refused(InputCheck.Issue issue, ProgramFailedException failure) {
@@ -66,8 +73,11 @@ public final class BlastRunner {
             BlastTsv.runBlastn(context.monitor(), context.dependencies().blastn(), blastQuery.path(),
                     context.directories().primerDatabase(), context.config().evalue(), 1, blastTsv);
         } catch (ProgramFailedException e) {
-            if (sample.isFastq()) {
-                throw e; // its mini-assembly is the program's own file: not the user's to fix
+            // Its mini-assembly is the program's own file, not the user's to fix; and only blastn's reader
+            // refusing the file is the file's fault: a blastn killed (out of memory: 137), a database or a
+            // disk error fails the run, as before, rather than calling a good file faulty.
+            if (sample.isFastq() || !REFUSED_THE_FILE.contains(e.exitCode())) {
+                throw e;
             }
             refused.put(sample.getName(), new Refused(new InputCheck.Issue(sample.getName(),
                     List.of(query.getFileName().toString()), "blastn cannot read the file",

@@ -15,7 +15,10 @@
   any role. Such a product is reported under the two assays' names joined by
   `+` (`stxQ+toxA`, its own column of the HTML report), tagged **two assays**.
   Assays without `mix=` are run on their own, so one file can hold singleplex
-  and multiplex assays. `QAlog.txt` lists the groups.
+  and multiplex assays. `QAlog.txt` lists the groups. In one reaction, a product
+  at one place is reported once (two assays may repeat a shared primer under
+  their own IDs). FASTQ read-level and extension calls are an assay's forward
+  with its reverse primer only.
 - Application: while a run goes on, **Run** is **Stop**, which stops it (after
   confirmation) and leaves the window open; before, only closing the window
   stopped a run.
@@ -27,7 +30,8 @@
   BBDuk's first bait matched k-mers as long as the shortest primer, with
   substitutions only, and the assay was negative from reads (nor listed in the
   diagnostics) though positive on an assembly. The k-mers are shorter by
-  `--5p-truncation`, at least 16 plus `-m` bases, and up to 2 insertions or
+  `--5p-truncation`, at least 16 plus `-m` bases (one shorter than the shortest
+  primer when `-m` allows indels, so a deletion can match), and up to 2 insertions or
   deletions are allowed besides `-m` substitutions (`edist`, the most BBDuk
   takes). On the Brucella read set (`-m 0`) the calls and run time are
   unchanged; on a nematode read set at `-m 3`, the reads baited (126,260
@@ -55,7 +59,9 @@
   FASTA whose first sequence line is all gaps, a file with no base) stopped the
   whole run with "BLAST failed". It is a faulty input file like the others:
   its sample is left out with a warning and in "Input not analysed", and the
-  others are run. When blastn refuses every assembly, the run fails as before.
+  others are run. Only blastn's reader refusing the file counts (its exit codes
+  1 and 3): a blastn killed or failing otherwise fails the run, as does blastn
+  refusing every sample.
 - Input folders are read one level deep, which no page said: a sample in a
   subfolder (one folder per sample, as some sequencers' software writes them)
   was missing without a word. A subfolder holding sequence files is named in a

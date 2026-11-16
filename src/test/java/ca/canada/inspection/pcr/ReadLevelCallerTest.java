@@ -277,6 +277,33 @@ class ReadLevelCallerTest {
     }
 
     @Test
+    void readsCallAnAssaysOwnProductOnlyNotOneOfOnePrimerOrOfTwoAssays() {
+        // A read folding back on one primer, or reads of two assays' primers in one reaction: each became
+        // a call (the A+B one at 100%: no primer of its own to count support from).
+        Sample reads = reads();
+        Map<String, Integer> lengths = new HashMap<>();
+        for (int i = 1; i <= 2; i++) {
+            lengths.put("fold_" + i, 101);
+            reads.hits().add("a-F", TestHits.plusHit("a-F", "fold_" + i, 11));
+            reads.hits().add("a-F", TestHits.minusHit("a-F", "fold_" + i, 61));
+            lengths.put("chimera_" + i, 101);
+            reads.hits().add("a-F", TestHits.plusHit("a-F", "chimera_" + i, 11));
+            reads.hits().add("b-R", TestHits.minusHit("b-R", "chimera_" + i, 61));
+        }
+        Map<String, String> sequences = new java.util.LinkedHashMap<>();
+        for (String id : List.of("a-F", "a-R", "b-F", "b-R")) {
+            sequences.put(id, PRIMER_20);
+        }
+        PrimerPanel mixed = PrimerPanel.of(sequences, ExpectedSizes.NONE,
+                MixGroups.fromHeaders(Map.of("a-F", "mix=one", "b-F", "mix=one")));
+
+        ReadLevelCaller.ReadEvidence evidence = TestEvidence.evaluate(reads, lengths, mixed, DEFAULTS);
+
+        assertEquals(List.of(), evidence.products("a"));
+        assertEquals(List.of(), evidence.products("a+b"));
+    }
+
+    @Test
     void withoutReadSequencesEveryReadCarryingThePrimerIsInformative() {
         Sample reads = reads();
         Map<String, Integer> lengths = new HashMap<>();

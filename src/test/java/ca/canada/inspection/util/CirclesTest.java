@@ -33,6 +33,7 @@ class CirclesTest {
         String repeatLoop = bases(150, 4);
         String unmarked = bases(2000, 5);
         String unflagged = bases(1500, 7);
+        String chance = bases(1200, 8);
         Path fasta = Files.writeString(directory.resolve("assembly.fasta"),
                 ">plasmid1 length=5000 depth=12.5x circular=true\n" + plasmid + "\n"
                         + ">chr [organism=Brucella] [topology=circular]\n" + chromosome + "\n"
@@ -46,7 +47,10 @@ class CirclesTest {
                         + unflagged.substring(0, 26) + "\n"
                         + ">contig_6,len=1505,cov=30.2,class=long/medium/unanchored\n" + unflagged
                         + unflagged.substring(0, 5) + "\n"
-                        + ">tiny circular=true\nACGTACGTAC\n");
+                        // Ends alike by 7 bases: not a count Tadpole repeats, taken for chance; the loop is whole.
+                        + ">contig_7,len=1207,class=long/medium/self-loop\n" + chance + chance.substring(0, 7) + "\n"
+                        + ">tiny circular=true\nACGTACGTAC\n"
+                        + ">contig_8,len=60,class=short/self-loop\n" + bases(60, 9) + "\n");
 
         Map<String, Integer> circles = Circles.of(fasta, 31);
 
@@ -54,7 +58,8 @@ class CirclesTest {
         // called a self-loop, only when it repeats 12 or more (5 alike is as likely chance).
         assertEquals(Map.of("plasmid1", 5000, "chr", 3000, "contig_3,len=1802,cov=38.2,class=long/medium/self-loop,min=23",
                 1800, "contig_9,len=180,class=short/self-loop", 150,
-                "contig_5,len=1526,cov=30.2,class=long/medium/unanchored", 1500), circles);
+                "contig_5,len=1526,cov=30.2,class=long/medium/unanchored", 1500,
+                "contig_7,len=1207,class=long/medium/self-loop", 1207, "tiny", 10), circles);
     }
 
     @Test

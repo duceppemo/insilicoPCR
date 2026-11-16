@@ -513,6 +513,36 @@ class EndToEndTest {
     }
 
     @Test
+    void aProbeWhoseTrimmedEndLiesBeforeTheOriginStartsAtTheCirclesEnd() throws IOException {
+        // A 26-base probe at 2,998-3,000 then 1-23, a mismatch at its 3rd base: BLAST aligns its bases 4 to 26, and
+        // the 3 before them, past the origin backwards, gave ProbeLocation -2-23.
+        java.util.Random random = new java.util.Random(47);
+        StringBuilder plasmid = new StringBuilder();
+        while (plasmid.length() < 3_000) {
+            plasmid.append("ACGT".charAt(random.nextInt(4)));
+        }
+        String forward = "GATCGGAAGAGCACACGTCT";
+        String reverse = "CTTGCCAGTAGCGTCATACG";
+        String probe = "TGGCAATCCGATTACGGACTAGCTTC";
+        plasmid.replace(2_900, 2_920, forward);
+        plasmid.replace(80, 100, reverseComplement(reverse));
+        String site = probe.substring(0, 2) + (probe.charAt(2) == 'G' ? 'C' : 'G') + probe.substring(3);
+        plasmid.replace(2_997, 3_000, site.substring(0, 3));
+        plasmid.replace(0, 23, site.substring(3));
+        Path input = Files.createDirectory(directory.resolve("probe-origin-in"));
+        Files.writeString(input.resolve("plasmid.fasta"), ">pX circular=true\n" + plasmid + "\n");
+        Path primers = Files.writeString(directory.resolve("probe-origin-primers.fasta"), ">a-F\n" + forward
+                + "\n>a-R\n" + reverse + "\n>a-P\n" + probe + "\n");
+        Path output = directory.resolve("probe-origin-out");
+
+        pipeline(PipelineConfig.builder(input, output, primers).threads(2).ampliconOptions(
+                ca.canada.inspection.pcr.AmpliconOptions.builder().mismatches(1).build()).build()).run();
+
+        assertEquals(List.of("plasmid a 2901-100 200 a-P 2998-23 26"), cells(report(output), "Sample", "Gene",
+                "GenomeLocation", "AmpliconSize", "Probe", "ProbeLocation", "ProbeSize"));
+    }
+
+    @Test
     void theMiniAssemblysCircleIsSearchedAcrossItsOrigin() throws IOException {
         // Reads of a 1,500-bp circle (baited whole), its 1,300-bp product across the origin (forward at 1,101, reverse
         // ending at 900): the assembly writes the circle from a point of its own, within the product here, with its

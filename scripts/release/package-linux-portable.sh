@@ -117,6 +117,8 @@ rm -f "$ARCHIVE" "$ARCHIVE.sha256"
 } > "$STAGE_DIR/VERSIONS.txt"
 
 # The same commit gives the same archive: entries in one order, each dated by the commit (not by the build).
+# In UTC: zip -X keeps the DOS dates only, which are local time (two time zones gave two archives).
+export TZ=UTC
 cd "$ROOT/build"
 EPOCH="${SOURCE_DATE_EPOCH:-$(git -C "$ROOT" log -1 --format=%ct 2>/dev/null || date +%s)}"
 find "$(basename "$STAGE_DIR")" -exec touch -h -d "@$EPOCH" {} +

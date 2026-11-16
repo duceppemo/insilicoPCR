@@ -58,4 +58,15 @@ class MixGroupsTest {
                 error.getMessage());
         mix.checkNames(Set.of("a", "b", "c+d")); // another name with a +: fine
     }
+
+    @Test
+    void anAssayOfAReactionWithAPlusInItsIdIsRefused() {
+        // a with b+c, and a+b with c, were both reported as a+b+c: two products under one gene.
+        MixGroups mix = MixGroups.fromHeaders(Map.of("a-F", "mix=t", "b+c-F", "mix=t", "a+b-F", "mix=t", "c-F", "mix=t"));
+
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> mix.checkNames(Set.of("a", "b+c", "a+b", "c")));
+        assertEquals("Assay a+b shares the reaction t (mix=) and has '+' in its ID, which joins the names of two assays"
+                + " in a product of both: rename it", error.getMessage());
+    }
 }

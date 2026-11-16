@@ -371,9 +371,12 @@ public final class Products {
                 if (!amplicon.contains(probeStart, probeEnd)) {
                     continue;
                 }
-                // A probe across a circle's origin ends on the circle's start, as the product does.
-                int shownEnd = amplicon.circle() > 0 ? AmpliconCaller.onCircle(probeEnd, amplicon.circle()) : probeEnd;
-                rows.accept(pair.withProbe(new ReportRow.Probe(probeId, probeStart, shownEnd,
+                // A probe across a circle's origin ends on the circle's start, as the product does; one whose 5'
+                // bases BLAST left unaligned lie before the origin starts at the circle's end (it read -2).
+                int circle = amplicon.circle();
+                int shownStart = circle > 0 ? AmpliconCaller.onCircle(probeStart, circle) : probeStart;
+                int shownEnd = circle > 0 ? AmpliconCaller.onCircle(probeEnd, circle) : probeEnd;
+                rows.accept(pair.withProbe(new ReportRow.Probe(probeId, shownStart, shownEnd,
                         probeHit.alignedMismatches(), probeEnd - probeStart + 1)));
             }
         }

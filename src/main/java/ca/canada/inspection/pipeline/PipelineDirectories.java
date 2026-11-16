@@ -20,29 +20,48 @@ public record PipelineDirectories(Path output, Path detailed, Path consolidated)
         return directories;
     }
 
-    /** How deep a run writes in its output folder: {@code detailed_report/<sample>/<file>}. */
-    private static final int DEPTH = 3;
+    /** How deep a run writes in its report folders: {@code detailed_report/<sample>/<file>}. */
+    private static final int DEPTH = 2;
+
+    /**
+     * Whether a run writes {@code name}, an entry of its output folder: the primer database
+     * ({@code primer_tmp.fasta} and BLAST's files beside it), the logs, the lock, and the two report folders.
+     */
+    static boolean written(String name) {
+        return name.startsWith("primer_tmp.fasta") || name.startsWith("QAlog") || name.startsWith("log.txt")
+                || name.equals(OutputLock.FILE_NAME) || name.equals("detailed_report") || name.equals(CONSOLIDATED);
+    }
 
     /**
      * Refuses an output folder holding a symbolic link where the run writes: in a folder reused from another
      * run (unpacked from an archive, or shared with others), a link named like an output (primer_tmp.fasta,
      * QAlog.txt.part, detailed_report/&lt;sample&gt;) made the run overwrite, or delete, the file it points to,
-     * outside the folder. A run makes no link itself. The output folder may itself be a link.
+     * outside the folder. A run makes no link itself. Links elsewhere in the folder are no concern of the run's
+     * (an input folder inside it with linked reads, a .venv): before 0.15.3 any link within three levels was
+     * refused. The output folder may itself be a link.
      */
     static void refuseLinks(Path output) {
         if (!Files.isDirectory(output)) {
             return;
         }
-        List<Path> links;
-        try (java.util.stream.Stream<Path> entries = Files.walk(output.toRealPath(), DEPTH)) {
-            links = entries.filter(Files::isSymbolicLink).sorted().limit(5).toList();
+        List<Path> links = new java.util.ArrayList<>();
+        try (java.util.stream.Stream<Path> entries = Files.list(output.toRealPath())) {
+            for (Path entry : entries.filter(entry -> written(entry.getFileName().toString())).sorted().toList()) {
+                if (Files.isSymbolicLink(entry)) {
+                    links.add(entry);
+                } else if (Files.isDirectory(entry)) {
+                    try (java.util.stream.Stream<Path> inside = Files.walk(entry, DEPTH)) {
+                        inside.filter(Files::isSymbolicLink).sorted().forEach(links::add);
+                    }
+                }
+            }
         } catch (IOException | java.io.UncheckedIOException e) {
             return; // listed again as the run writes; a folder it cannot read fails there
         }
         if (!links.isEmpty()) {
             throw new PipelineException("The output folder " + output + " holds symbolic links where a run writes ("
-                    + String.join(", ", links.stream().map(Path::toString).toList()) + "): a run would write through"
-                    + " them, into the files they point to. Remove them, or choose another output folder.");
+                    + String.join(", ", links.stream().limit(5).map(Path::toString).toList()) + "): a run would write"
+                    + " through them, into the files they point to. Remove them, or choose another output folder.");
         }
     }
 

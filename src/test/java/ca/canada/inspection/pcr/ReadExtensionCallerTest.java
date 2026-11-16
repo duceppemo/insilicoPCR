@@ -459,7 +459,7 @@ class ReadExtensionCallerTest {
         assertEquals("long", row.assay());
         assertEquals(1074, row.size());
         assertEquals("FASTQ read-extension call: no read holds the product; 3 of 3 forward-seeded and 2 of 2"
-                        + " reverse-seeded reads, extended through the baited reads (k=31), hold it at 1072,1074 bp;"
+                        + " reverse-seeded reads, extended through the reads baited in rounds (k=31), hold it at 1072,1074 bp;"
                         + " the extended read is the best-supported path, not an assembled consensus;"
                         + " representative extended from read ERR1.5 5/1",
                 row.contigDescription());

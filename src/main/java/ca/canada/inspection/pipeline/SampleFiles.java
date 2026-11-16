@@ -78,7 +78,7 @@ public record SampleFiles(Path directory, String name) {
     }
 
     /**
-     * The seeds extended through the baited reads. Each is the best-supported path
+     * The seeds extended through the reads baited in rounds. Each is the best-supported path
      * from one read, not an assembled consensus.
      */
     Path extendedReads() {

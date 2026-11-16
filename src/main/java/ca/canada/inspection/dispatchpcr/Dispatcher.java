@@ -189,13 +189,14 @@ public final class Dispatcher {
                         + " default: " + ReadLevelCaller.DEFAULT_MIN_SUPPORT_FRACTION).build());
         options.addOption(Option.builder().longOpt("read-extension").hasArg().argName("mode")
                 .desc("FASTQ mode: which assays the reads carrying both primers are extended for, through the"
-                        + " baited reads, to find products longer than a read or merged pair. One of: unreported"
+                        + " reads baited in rounds, to find products longer than a read or merged pair. One of: unreported"
                         + " (assays found in no contig and in no read), target (those, and assays that declare"
                         + " size= and show no product of that size yet), off (none); default: "
                         + ReadExtensionCaller.Mode.DEFAULT).build());
         options.addOption(Option.builder().longOpt("bbtools-memory").hasArg().argName("GB")
-                .desc("FASTQ mode: memory in GB that the BBTools programs running at once share (" + ChildJavaMemory.limits()
-                        + "). Set it on a computer shared with others; default: " + ChildJavaMemory.automatic()).build());
+                .desc("Memory in GB that the BBTools programs running at once share in FASTQ mode (" + ChildJavaMemory.limits()
+                        + "), and that the BLAST searches running at once share, about 2 GB each, for assemblies too."
+                        + " Set it on a computer shared with others; default: " + ChildJavaMemory.automatic()).build());
         options.addOption(Option.builder().longOpt("input-check").hasArg().argName("full|quick")
                 .desc("How the input files are checked before the run. full: every read of every FASTQ file"
                         + " is read, and the two files of a pair must hold the same number of reads. quick: the"

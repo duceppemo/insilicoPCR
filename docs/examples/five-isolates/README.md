@@ -6,7 +6,7 @@ A small synthetic data set: five made-up genomes of 4 to 11 kb and two assays th
 |---|---|
 | [`genomes/`](genomes) | `isolate_01.fasta` to `isolate_05.fasta`, one contig each. The sequences are random; the primer sites were written into them |
 | [`primers.fasta`](primers.fasta) | `toxA` (standard PCR, 312 bp) and `stxQ` (qPCR with a probe, 118 bp) |
-| [`report.tsv`](report.tsv) | Consolidated report of the run below, with insilicoPCR 0.12.1 and default settings |
+| [`report.tsv`](report.tsv) | Consolidated report of the run below, with default settings (unchanged since insilicoPCR 0.12.1) |
 | [`reads/`](reads) | Simulated paired reads of `isolate_01` (2 x 150 bases, about 20 times coverage, no errors), for a FASTQ-mode run that takes a few seconds |
 | [`make-reads.py`](make-reads.py) | The script that wrote them; it writes the same files again on every run |
 

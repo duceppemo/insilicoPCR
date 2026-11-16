@@ -144,7 +144,7 @@ class ReadExtensionStageTest {
     @Test
     void logAndQaLinesReportTheExtension() {
         Finding called = new Finding("S", "long", Status.CALLED_BY_EXTENSION, Assembly.SPLIT_ACROSS_CONTIGS,
-                new ReadsWithOligo(6134, 5424, 0), 579, "reads extended through the baited reads hold a product of"
+                new ReadsWithOligo(6134, 5424, 0), 579, "reads extended through the reads baited in rounds hold a product of"
                 + " 1074 bp (142 of 150 forward-seeded and 145 of 150 reverse-seeded reads)", "");
         Finding notClosed = new Finding("T", "long", Status.NOT_CLOSED_BY_EXTENSION, Assembly.NOT_ASSEMBLED,
                 new ReadsWithOligo(19, 7, 0), 144, "gave no product held by at least 2 extended reads seeded from one primer", "");
@@ -160,7 +160,7 @@ class ReadExtensionStageTest {
 
         List<String> log = result.logLines();
         assertTrue(log.getFirst().startsWith("Note: sample S, assay long: product in no contig and in no read,"
-                + " called by extending reads (reads extended through the baited reads hold a product of 1074 bp"),
+                + " called by extending reads (reads extended through the reads baited in rounds hold a product of 1074 bp"),
                 log.getFirst());
         assertTrue(log.contains("Note: 1 FASTQ-mode negative(s) have both primers in the reads, but neither a read nor"
                 + " the extended reads hold a complete amplicon; see report_fastq_diagnostics.tsv"), log.toString());

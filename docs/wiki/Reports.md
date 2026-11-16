@@ -139,10 +139,11 @@ whole families of rRNA, mitochondrial and repeat reads that share a short k-mer 
 the baited reads are micro-assembled with Tadpole, and the primers are BLASTed against the resulting contigs. The mini-assembly can **omit the target region** or **break inside the
 amplicon**, so the forward and reverse primers land on different contigs. Recruitment only reaches about one
 fragment length beyond each primer, so amplicons longer than roughly two fragment lengths always end up split.
-Baiting allows `-m` substitutions (at most 3, BBDuk's limit: `-m 4` and more stopped every run with reads before 0.15.3) and up to 2 indels on k-mers shorter than the primers by `--5p-truncation` (at least
-16 plus `-m` bases; since 0.15.3, before which they were as long as the shortest primer, substitutions only): a primer
-site with more differences may still bait no read, a [known gap](Limitations#known-gaps) that the diagnostics do not
-list.
+Baiting allows `-m` substitutions (at most 3, BBDuk's limit: `-m 4` and more stopped every run with reads before 0.15.3) and `-m` indels (at most 2: none at `-m 0`) on k-mers shorter than the primers by `--5p-truncation` (at least
+16 plus `-m` bases, and shorter than the shortest primer; since 0.15.3, before which they were as long as the shortest
+primer, substitutions only): a primer site with more differences may still bait no read, a
+[known gap](Limitations#known-gaps). The diagnostics then list the assay as `PARTIAL_BAIT` when the other primer
+baits reads, and not at all when neither does.
 
 ### Read-level calls
 
@@ -302,7 +303,10 @@ Every assay the mini-assembly did not report but whose oligos are in the baited 
 reports only at another size than a product called from reads, is listed in
 `report_fastq_diagnostics.tsv` (named after the consolidated report, e.g. `report(1)_fastq_diagnostics.tsv`),
 summarized in `QAlog.txt`, and noted on the console or in the GUI log. Files kept per sample under
-`detailed_report/<sample>/`: `_merged.fastq.gz` / `_unmerged.fastq.gz` (BBMerge output, paired-end input only), `_baitedReads.fasta`
+`detailed_report/<sample>/`: `_targetMatches.fastq.gz` (the first baiting: reads sharing a k-mer with a primer),
+`_baitAnchors.fastq.gz` (those of them holding a primer site the rules accept, with their mates, since 0.15.3),
+`_doubleTargetMatches.fastq.gz` (the second baiting: reads overlapping the anchors), `_assembly.fasta` (the
+mini-assembly, searched like an assembly, its hits in `<sample>.tsv`), `_merged.fastq.gz` / `_unmerged.fastq.gz` (BBMerge output, paired-end input only), `_baitedReads.fasta`
 (the reads searched, renamed `read_<n>` with the original name as description) and `_baitedReads.blast.txt`
 (their BLAST hits the rules accept: since 0.15.3, as in the sample's own table; before, every alignment, half a
 million lines for one sample), and, when reads were extended, `_extensionSeeds.fasta`, `_extendedReads.fasta`,
@@ -328,7 +332,7 @@ and `_extensionReads.fastq.gz`.
 | `NOT_IN_READS` | Both primers are in the reads, but no read holds a complete amplicon, and the reads were not extended (`--read-extension off`). Conclusive only for amplicons up to `CheckableLength`; a longer amplicon cannot be ruled out |
 | `NOT_CLOSED_BY_EXTENSION` | Both primers are in the reads, no read holds a complete amplicon, and extending the reads did not join the primers (at least 2 extended reads of one primer holding a product). `ReadDetail` gives the number of reads extended and anything seen too few times. A negative, weaker than one on an assembly, especially when few reads carry the primers |
 | `EXTENSION_IN_TANDEM_REPEAT` | As `NOT_CLOSED_BY_EXTENSION`, but most of the extended reads end in a tandem repeat ((AT)n, (CAG)n, a VNTR), which they loop in: the extension follows the better-supported branch, and in a repeat longer than a k-mer the repeat's own k-mers outnumber the way out. **Inconclusive**, since 0.15.3 (before, a plain negative): a product through the repeat is neither shown nor ruled out; confirm it on an assembly of long reads, or by PCR. `ReadDetail` names the repeat's unit |
-| `PARTIAL_BAIT` | Only some of the assay's primers are in the reads (e.g. one primer site diverged beyond `-m`); usually a true negative |
+| `PARTIAL_BAIT` | Only some of the assay's primers are in the reads: one primer site diverged beyond `-m`, a true negative, or one with more 5' mismatches than the bait's k-mer leaves out, which an assembly would accept (a [known gap](Limitations#known-gaps)) |
 
 | Assembly | Meaning |
 |---|---|

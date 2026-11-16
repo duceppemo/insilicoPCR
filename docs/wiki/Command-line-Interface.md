@@ -28,15 +28,17 @@ usage: java -jar insilicoPCR.jar -i <input> -o <output> -p <primers> [-t
                                  may differ from the template (or be left
                                  out of BLAST's alignment) without
                                  counting as mismatches; default: 5
-    --bbtools-memory <GB>        FASTQ mode: memory in GB that the BBTools
-                                 programs running at once share (each gets
-                                 at most 64 GB; fewer samples run at once
-                                 rather than any getting under 4 GB). Set
-                                 it on a computer shared with others;
-                                 default: three quarters of the memory
-                                 insilicoPCR leaves free on the computer
-                                 (a job's limit on a cluster), at least
-                                 half of its own heap
+    --bbtools-memory <GB>        Memory in GB that the BBTools programs
+                                 running at once share in FASTQ mode (each
+                                 gets at most 64 GB; fewer samples run at
+                                 once rather than any getting under 4 GB),
+                                 and that the BLAST searches running at
+                                 once share, about 2 GB each, for
+                                 assemblies too. Set it on a computer
+                                 shared with others; default: three
+                                 quarters of the memory insilicoPCR leaves
+                                 free on the computer (a job's limit on a
+                                 cluster), at least half of its own heap
  -e,--evalue <value>             blastn e-value; deliberately permissive,
                                  since primer hits are filtered by the
                                  mismatch and 3'/5' rules instead, and
@@ -71,13 +73,13 @@ usage: java -jar insilicoPCR.jar -i <input> -o <output> -p <primers> [-t
                                  default: same as -m
     --read-extension <mode>      FASTQ mode: which assays the reads
                                  carrying both primers are extended for,
-                                 through the baited reads, to find
-                                 products longer than a read or merged
-                                 pair. One of: unreported (assays found in
-                                 no contig and in no read), target (those,
-                                 and assays that declare size= and show no
-                                 product of that size yet), off (none);
-                                 default: unreported
+                                 through the reads baited in rounds, to
+                                 find products longer than a read or
+                                 merged pair. One of: unreported (assays
+                                 found in no contig and in no read),
+                                 target (those, and assays that declare
+                                 size= and show no product of that size
+                                 yet), off (none); default: unreported
     --read-min-fraction <0-1>    FASTQ mode: share of informative reads
                                  (carrying a primer at the product's locus
                                  and long enough) that must hold a
@@ -127,17 +129,17 @@ usage: java -jar insilicoPCR.jar -i <input> -o <output> -p <primers> [-t
 | `--tadpole-min-contig` | `60` | FASTQ mode: minimum contig length kept (Tadpole `mincontig`); keep it below the shortest amplicon you expect |
 | `--read-min-fraction` | `0.3` | FASTQ mode: share (0–1) of informative reads that must hold a complete amplicon for a read-level call; see [Read-level calls](Reports#read-level-calls) |
 | `--read-extension` | `unreported` | FASTQ mode: which assays the reads carrying both primers are extended for, to find products longer than a read or merged pair. `unreported`: assays found in no contig and in no read. `target`: those, and assays that declare `size=` and show no product of that size yet. `off`: none. See [Read extension](Reports#read-extension-products-longer-than-a-read) |
-| `--bbtools-memory <GB>` | automatic | FASTQ mode: memory the BBTools programs running at once share, each at most 64 GB; fewer samples run at once rather than any getting under 4 GB. Set it on a computer shared with others; automatic is three quarters of the memory insilicoPCR leaves free on the computer (a job's limit on a cluster), at least half of its own heap (since 0.15.2) |
+| `--bbtools-memory <GB>` | automatic | Memory the BBTools programs running at once share in FASTQ mode, and the BLAST searches running at once, about 2 GB each, for assemblies too (since 0.15.3), each at most 64 GB; fewer samples run at once rather than any getting under 4 GB. Set it on a computer shared with others; automatic is three quarters of the memory insilicoPCR leaves free on the computer (a job's limit on a cluster), at least half of its own heap (since 0.15.2) |
 | `-v`, `--version` | | Print version |
 | `-h`, `--help` | | Print help |
 
-The `--read-min-fraction`, `--read-extension`, `--bbtools-memory` and `--tadpole-*` options only affect FASTQ input, where reads are baited and micro-assembled before BLAST; see [FASTQ mode and false negatives](Reports#fastq-mode-and-false-negatives). In the GUI they are under **FASTQ settings…**.
+The `--read-min-fraction`, `--read-extension` and `--tadpole-*` options only affect FASTQ input, where reads are baited and micro-assembled before BLAST; see [FASTQ mode and false negatives](Reports#fastq-mode-and-false-negatives). `--bbtools-memory` sets the memory of the BBTools programs of FASTQ input, and since 0.15.3 that of the BLAST searches too, assemblies' included: on a computer shared with others, set it for a run of assemblies as well. In the GUI they are all under **FASTQ settings…**.
 
 ### Threads and memory in FASTQ mode
 
 The BBTools programs that bait and assemble the reads run as separate Java processes. Their heap comes out of a budget of three quarters of the memory insilicoPCR leaves free on the computer (a container's limit inside one), and at least half of insilicoPCR's own heap, which the Java `-Xmx` option sets (`java -Xmx96g -jar insilicoPCR.jar ...`, or `JDK_JAVA_OPTIONS=-Xmx96g ./run-insilicoPCR.sh ...` with the launcher, which also works for the application; on Windows, `set JDK_JAVA_OPTIONS=-Xmx96g` before `run-insilicoPCR.bat`); without it, Java takes a quarter of the computer's memory. On a 16 GB computer, that gives BBTools 9 GB (before 0.15.2, the budget was half of insilicoPCR's heap only: 2 GB). The log gives the budget: `Child Java memory: 9 GB for the BBTools programs running at once`. `--bbtools-memory <GB>` sets it instead (in the application: **FASTQ settings…**, **BBTools memory**): on a computer shared with others, the automatic budget counts the memory free of insilicoPCR, not of the other users' programs. Samples are processed several at a time, and those running at once share the `-t` threads and that heap. No sample gets less than 4 GB when the budget holds that much: with less to share, fewer samples run at once, and a budget under 4 GB goes whole to one sample at a time. A sample alone gets all the threads and the whole budget, up to 64 GB. Each step is split anew (BBMerge runs on paired samples only), and the read extension, which runs one sample at a time, gives each sample everything. The log says how it was split, for example `BBTools: 2 samples at a time, each with 4 threads and -Xmx4g`. When the threads do not divide evenly, the ones left over go to some of the samples running at once, one each, so all of `-t` is used: `BBTools: 3 samples at a time, each with 5 or 6 threads (16 in all) and -Xmx16g`.
 
-The BLAST searches run within the same budget (since 0.15.3), counted at about 2 GB each: as many at once as it holds, up to one per thread, and the threads left over go to each search. With a large panel each blastn takes 1.7 to 3 GB, and before 0.15.3 one ran per thread, which at `-t 32` needed 55 to 70 GB. The run's log says when the memory limits them (`BLAST: 12 searches at a time, each with 2 threads`).
+The BLAST searches run within the same budget (since 0.15.3), counted at about 2 GB each: as many at once as it holds, up to one per thread, and the threads left over go to each search. With a large panel each blastn takes 1.7 to 3 GB, and before 0.15.3 one ran per thread, which at `-t 32` needed 55 to 70 GB. The run's log says when the memory limits them (`BLAST: 12 searches at a time, each with 2 threads (about 2 GB each, within 24 GB)`).
 
 A sample whose BBTools program runs out of its share of memory is set aside with a warning, and once the other samples are done, it is run again alone, with all the threads and the whole budget, from the step that ran out. Only if it runs out of memory alone too does the run fail, saying to give the BBTools programs more memory with `--bbtools-memory`; see [Troubleshooting](Troubleshooting#fastq-run-fails-with-ran-out-of-memory-on-sample).
 
@@ -196,3 +198,12 @@ In FASTQ mode, the read extension still extends reads by at most 5000 bases each
 - The primer FASTA must follow the required `-F`, `-R`, and optional `-P` naming convention.
 - Standard PCR and qPCR/probe assays can be mixed in one primer file: assays with a probe require the probe inside the amplicon, probe-less assays are reported on their primer pair alone.
 - The CLI uses the same analysis engine as the graphical application, so results are identical.
+
+## Exit codes and stopping a run
+
+| Exit code | Meaning |
+|---|---|
+| `0` | The run finished: its reports and `QAlog.txt` are written. Faulty input files may have been left out, each named in a warning and in `QAlog.txt` |
+| `1` | The run failed, and the message says why (no sample left to analyse, a refused primer file, an output folder in use, a program that failed) |
+| `2` | The command line is wrong (an unknown option, a value out of range, an option given twice): the message and the help are printed, and nothing is run |
+| `130`, `143` | Stopped by Ctrl-C or `kill`: the external programs are stopped, the program prints `insilicoPCR was stopped before the run ended: its programs are stopped, and its reports are missing or incomplete (QAlog.txt is written only by a run that ends)`, and no `QAlog.txt` is written for the run |

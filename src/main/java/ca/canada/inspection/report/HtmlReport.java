@@ -124,7 +124,7 @@ public final class HtmlReport {
             return !(row.source() instanceof ReportRow.Source.Assembly);
         }
 
-        /** Called on reads extended through the baited reads: a product no single read holds. */
+        /** Called on reads extended through the reads baited in rounds: a product no single read holds. */
         boolean fromExtension() {
             return row.source() instanceof ReportRow.Source.Extension;
         }
@@ -745,7 +745,7 @@ public final class HtmlReport {
         if (notClosed > 0) {
             html.append("<p class=\"hint\">").append(notClosed).append(notClosed == 1 ? " negative has" : " negatives have")
                     .append(" both primers in the reads, but no read holds a complete amplicon and extending the reads")
-                    .append(" through the baited reads did not join the primers; see the diagnostics TSV.</p>\n");
+                    .append(" through the reads baited in rounds did not join the primers; see the diagnostics TSV.</p>\n");
         }
         html.append("</section>\n");
     }

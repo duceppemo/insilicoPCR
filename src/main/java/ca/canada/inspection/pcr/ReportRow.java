@@ -81,7 +81,7 @@ public record ReportRow(String sample, String assay, Site site, Binding forward,
         }
 
         /**
-         * Reads extended through the baited reads (a FASTQ read-extension call).
+         * Reads extended through the reads baited in rounds (a FASTQ read-extension call).
          *
          * @param forwardClosing extended reads seeded from the forward primer that reach the reverse one
          * @param forwardSeeds   reads seeded from the forward primer

@@ -70,9 +70,10 @@
 - FASTQ mode: the mini-assembly gave different contigs on runs of the same
   reads (a circle written from another point, contigs numbered otherwise, one
   in a thousand lost or joined), and the report differed: a product across a
-  circle's origin was found on some runs only. It runs on one thread: 79 s
-  rather than 13 on 1.7 million baited reads, 326 s rather than 43 on 9.7
-  million; small read sets take as long.
+  circle's origin was found on some runs only. It builds its contigs on one
+  thread (Tadpole's `buildthreads=1`, `ways=31`), loading its k-mers on all
+  of them: the same contigs as on one thread, 112 s on 9.7 million baited
+  reads (305 s on one thread, 43 s with contigs that varied).
 - Output safety: an output folder holding symbolic links where a run writes
   (one reused from another run, or unpacked from an archive) made the run
   write through them, overwriting or deleting the files they point to: such a
@@ -327,6 +328,15 @@
 
 ### Changed
 
+- FASTQ mode is faster on large samples, with the same results: a round of the
+  read extension reads the sample's files once, not twice (the candidate
+  products and the grown ends baited in one pass), the check after the rounds
+  takes its reads from the last round's, the mini-assembly loads its k-mers on
+  every thread, the pool of extended reads is built when first needed, and
+  the reads it keeps are compressed faster. Nematode S3 (1.7 million baited
+  reads, 7 extension rounds): 786 s to 491 s; PCN (9.7 million): 482 s to
+  259 s; Brucella: 8 s as before. Reports, diagnostics and assemblies are
+  byte for byte those of before.
 - License: copyright of His Majesty the King in Right of Canada, as represented
   by the Canadian Food Inspection Agency (Crown copyright); still the MIT
   License. `CITATION.cff`, `.zenodo.json` and `pom.xml` name the agency.

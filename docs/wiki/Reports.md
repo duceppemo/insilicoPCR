@@ -4,7 +4,7 @@ insilicoPCR produces report files that summarize primer hits, predicted amplicon
 
 ## Report types
 
-- runtime and quality logs (`QAlog.txt`): the version, the input files and samples, every setting that decides the results (each with its command-line option: mismatches, 3'/5' rules, product length, BLAST e-value, threads, input check, and the FASTQ settings when there are reads), then what the run found worth a note. The run's log lists the same settings at its start, and the HTML report under **Run details** (the e-value, threads, input check and Tadpole settings since 0.15.2)
+- runtime and quality logs (`QAlog.txt`): the version, the input files and samples, every setting that decides the results (each with its command-line option: mismatches, 3'/5' rules, product length, BLAST e-value, threads, input check, and the FASTQ settings when there are reads), the versions of the tools used (`Tools:` BLAST+, BBTools, Java; since 0.15.3), the assays sharing a reaction (`mix=`), then what the run found worth a note. The run's log lists the same settings at its start, and the HTML report under **Run details** (the e-value, threads, input check and Tadpole settings since 0.15.2)
 - detailed per-sample BLAST hit tables (`detailed_report/<sample>/<sample>.tsv`)
 - consolidated TSV report (`consolidated_report/report.tsv`)
 - HTML report (`consolidated_report/report.html`): the same results as a page to read; see [HTML report](#html-report)
@@ -40,7 +40,7 @@ for that assay. The genomes, the primer file and the report of this run are in t
 | All amplicons | Every row of the TSV, with a filter box |
 | Read-level evidence | FASTQ input only: products called from reads (whole or extended) and products seen in too few reads to be reported |
 | Primers at contig ends | FASTA input only (since 0.15.0): assays with no product whose primers point off the ends of two contigs, or both ends of one, with the smallest product joining them would give. See [Limitations](Limitations#assemblies-fasta) |
-| Run details | Version, date, input, primer file, and every setting that decides the results, as in `QAlog.txt` |
+| Run details | Version, date, input, primer file, the assays sharing a reaction (`mix=`), every setting that decides the results, and the versions of the tools used (`Tools`), as in `QAlog.txt` |
 
 The outcome of a sample for an assay uses the [product sizes declared in the primer file](Primer-FASTA-Format#declaring-product-sizes-optional), when there are any:
 
@@ -53,7 +53,7 @@ The outcome of a sample for an assay uses the [product sizes declared in the pri
 | Dotted outline, `?` | Seen in too few reads | FASTQ input: a complete amplicon is in some reads, too few to report (`WEAK_READ_SUPPORT`) |
 | Dashed outline, `⇄` | Not confirmed by read pairs | FASTQ input: extended reads hold a product, but the read pairs do not confirm it; not reported (`EXTENSION_NOT_SUPPORTED_BY_PAIRS`, `EXTENSION_THROUGH_UNRESOLVED_REPEAT`) |
 | `◇` | Primers at contig ends | FASTA input: no contig holds a product, but the primers point off the ends of two contigs, or both ends of one, and joined they would give one within `--max-length`. Neither positive nor negative: the assembly may break inside the product, or the sequence may be circular. Check with a more complete assembly, or with the reads |
-| `○` | Not checkable from reads | FASTQ input run with `--read-extension off`: both primers are in the reads, no product was found, and a product of the declared size is longer than a read or merged pair could hold. Not a reliable negative; rerun with the [read extension](#read-extension-products-longer-than-a-read) on, or confirm on an assembly |
+| `○` | Not checkable from reads | FASTQ input: both primers are in the reads and no product was found, but the reads could not have shown one: with `--read-extension off`, a product of the declared size is longer than a read or merged pair could hold; or the reads extended from the primers loop in a tandem repeat on the way to the product (`EXTENSION_IN_TANDEM_REPEAT`, since 0.15.3). Not a reliable negative; rerun with the [read extension](#read-extension-products-longer-than-a-read) on, or confirm on an assembly (of long reads, for a repeat) or by PCR |
 | `·` | No product | |
 | `◐` beside the size | A primer binds only partly | Added to any of the outcomes above when every product that decides it has a primer with unaligned 5' bases. The product is reported as usual; whether such a primer anneals in a reaction is for you to judge from the [primer binding columns](#primer-binding-columns) |
 
@@ -66,8 +66,9 @@ than from the mini-assembly.
 ## Consolidated report
 
 
-A cell a spreadsheet would take for a formula (it starts with `=` or `@`, or with `+` or `-` and is not a number: a contig description `=HYPERLINK(...)`, a sample file named `-ctrl.fasta`) is written after an apostrophe, since 0.15.3: `'-ctrl`. Excel and LibreOffice then show the text as it is, where they showed `#NAME?`, or a link to follow; the program's own readers (the gel, **Open Previous Run**) take the apostrophe off, and so should a script that reads the report.
 The consolidated report is the primary summary table: one row per predicted amplicon that passed the [amplicon calling rules](Amplicon-Calling).
+
+A cell a spreadsheet would take for a formula (it starts with `=` or `@`, or with `+` or `-` and is not a number: a contig description `=HYPERLINK(...)`, a sample file named `-ctrl.fasta`) is written after an apostrophe, since 0.15.3: `'-ctrl`. Excel and LibreOffice then show the text as it is, where they showed `#NAME?`, or a link to follow; the program's own readers (the gel, **Open Previous Run**) take the apostrophe off, and so should a script that reads the report.
 
 ### Standard PCR mode columns
 
@@ -76,7 +77,7 @@ The consolidated report is the primary summary table: one row per predicted ampl
 | `Sample` | Sample name (from the input file name) |
 | `Gene` | Assay name (primer ID without the `-F`/`-R`/`-P` suffix); for a product of two assays that share a reaction (`mix=`), their names joined by `+` (`stxQ+toxA`), since 0.15.3 |
 | `GenomeLocation` | 1-based start-end of the product on the contig; on a circular sequence, a product across its origin starts after it ends (`1780-279`, since 0.15.3) |
-| `AmpliconSize` | Product length in bp, primers included |
+| `AmpliconSize` | Product length in bp: both primers in full and the template between their 3' ends. It can differ from the span of `GenomeLocation`: by the length of an insertion or deletion in a primer site, and round a circle's origin, where the location starts after it ends (see [Amplicon Calling](Amplicon-Calling)) |
 | `Contig` | Contig/sequence ID the product sits on |
 | `Contig Description` | Free text from the contig FASTA header |
 | `ForwardPrimers` / `ReversePrimers` | Primer IDs that formed the pair (degenerate variants keep their `_n` suffix). Since 0.15.3 they can name one role twice (`toxA-F` and `toxA-F`: a product of one primer alone, at an inverted repeat) or two assays (a product of two assays in one reaction); the first is then the primer on the plus strand. The HTML report tags such a product **one primer** or **two assays**, and says why in the cell's hover text. See [Amplicon Calling](Amplicon-Calling#stage-2-amplicon-calling) |
@@ -134,11 +135,13 @@ The label is information only. Every product is reported whatever its size, with
 Since 0.15.3, a circular sequence is searched as a circle: a PCR on a plasmid, a mitochondrial genome or a complete chromosome makes the product across its origin, which on the sequence as written is in two pieces, at its two ends. A sequence is circular when
 
 - its FASTA header says so: `circular=true` (Unicycler, Flye, Bakta) or `[topology=circular]` (NCBI's submission tools), in the description after the ID;
-- or it is a contig of the FASTQ-mode mini-assembly that closes on itself: one Tadpole calls a `self-loop`, or one whose end repeats 12 or more of its first bases. Tadpole writes a circle with some of its first bases again at its end; the circle is the contig without them.
+- or it is a contig of the FASTQ-mode mini-assembly, of 100 bp or more, that closes on itself: one Tadpole calls a `self-loop`, or one whose end repeats 12 or more of its first bases. Tadpole writes a circle with some of its first bases again at its end, 2 or k - 1 of them on a self-loop; the circle is the contig without them.
 
-A product across the origin is reported with its location starting after it ends: on a 3,000-bp plasmid, `2901-100` is 2,901 to 3,000 then 1 to 100, 200 bp. A primer or probe site across the origin is found whole. A circle is never in the HTML report's *Primers at contig ends* (`◇`): it has no ends.
+A sequence whose header says it is circular is searched as a circle whatever its length.
 
-The mini-assembly runs on one thread, since 0.15.3: on several, its contigs differed between runs of the same reads (a circle written from another point, contigs numbered otherwise, now and then one lost or joined), and so did the report. On 45,000 baited reads it takes as long; on 1.7 million, 79 s rather than 13; on 9.7 million, 326 s rather than 43.
+A product across the origin is reported with its location starting after it ends: on a 3,000-bp plasmid, `2901-100` is 2,901 to 3,000 then 1 to 100, 200 bp. A primer or probe site across the origin is found whole. In the per-sample BLAST table (`detailed_report/<sample>/<sample>.tsv`) such a site ends past the sequence's length (`2989-3012` on a 3,000-bp circle): its positions go on past the origin, where the report gives them on the circle (`2989-12`). A circle is never in the HTML report's *Primers at contig ends* (`◇`): it has no ends.
+
+The mini-assembly builds its contigs on one thread, since 0.15.3: built on several, its contigs differed between runs of the same reads (a circle written from another point, contigs numbered otherwise, now and then one lost or joined), and so did the report. Its k-mers are still loaded on every thread (Tadpole's `buildthreads=1`, with `ways=31`): the same contigs as on one thread throughout. On 9.7 million baited reads it takes 112 s (305 s on one thread throughout, 43 s on 16 threads throughout, with contigs that varied).
 ## Detailed per-sample reports
 
 The `detailed_report` folder keeps each sample's BLAST hits that the rules accept (with a header line), the ones its products are made from: useful for auditing a call. Columns follow BLAST `-outfmt "6 qseqid sseqid positive mismatch gaps evalue bitscore slen length qstart qend qseq sstart send sseq"`. Before 0.15.3 it kept every alignment blastn wrote, rejected ones included: 1.5 million lines (140 MB) for one bacterial genome and a 40-assay panel, of which a few thousand were primer sites. A sequence longer than 1 Mb (a chromosome) is searched in overlapping pieces of 1 Mb, since 0.15.3: BLAST's e-value grows with the length of the sequence searched, and on a whole chromosome a primer site within `-m 2` or `-m 3` could get one above the cut-off and be dropped, though a draft of the same genome kept it. The hits are put back on the sequence, at its own positions, so the table and the report show it whole; each hit comes from the one piece that holds it whole (the pieces share 1,000 bases, each half of the share belonging to one of them).

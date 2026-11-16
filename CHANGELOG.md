@@ -25,6 +25,17 @@
 
 ### Fixed
 
+- FASTQ: at a locus of two product sizes (two alleles, a mixture of strains,
+  paralogs), the reads extended from the forward primer followed one branch
+  and those from the reverse primer the other, and with 2 extended reads
+  needed from each side, neither product was called: the assay read as a
+  negative. 2 extended reads of one primer, either one, close a product now;
+  the check against the sample's read pairs still decides whether it is
+  reported.
+- FASTQ: a product through a tandem repeat ((AT)n, (CAG)n, a VNTR) was a plain
+  negative: the extended reads loop in the repeat, which they cannot cross.
+  Such an assay is `EXTENSION_IN_TANDEM_REPEAT`, inconclusive, and takes no
+  more extension rounds.
 - Input files left out without a word: a link to a file that does not exist
   is named and its sample left out; a file named like a sequence file of a
   kind not read (`x.fas`, `x.fasta.bz2`) is named. A file named `.fasta`,

@@ -29,13 +29,13 @@ import java.util.stream.Collectors;
  * Tadpole for this). The extended reads are then searched like contigs, with the
  * same hit filters and amplicon/probe rules.</p>
  *
- * <p>An extension that picks the wrong branch gives a product that the opposite
- * primer's reads, extended the other way, often do not give. A product must therefore
- * be closed by reads seeded by the forward primer and by reads seeded by the reverse
- * primer ({@link #MIN_CLOSING_READS_PER_SIDE}). That is not enough where two loci share
- * a repeat, through which both sides take the same wrong turn: a closed product is
- * reported only when the sample's read pairs support it over its whole length
- * ({@link PairSupport}).</p>
+ * <p>A product is closed by {@link #MIN_CLOSING_READS_PER_SIDE} extended reads seeded by the
+ * same primer, either one. Before 0.15.3 it needed that many from each primer: at a locus of two
+ * products (two alleles, a mixture of strains, paralogs), the reads of one primer follow one
+ * branch and those of the other the other, and neither product was called. An extension that
+ * picks the wrong branch can give a product too, from one side or both (two loci sharing a
+ * repeat): a closed product is reported only when the sample's read pairs support it over its
+ * whole length ({@link PairSupport}).</p>
  *
  * <p>An extended read is the best-supported path through a locus that can exist in
  * many slightly different copies: its size is what is reported, and its sequence is
@@ -46,7 +46,7 @@ public final class ReadExtensionCaller {
     /** Reads used as seeds per primer of an assay (all expanded variants of a degenerate primer together). */
     public static final int MAX_SEEDS_PER_PRIMER = 150;
 
-    /** Extended reads seeded by each primer that must hold a product for it to be called. */
+    /** Extended reads seeded by one primer, either one, that must hold a product for it to be called. */
     public static final int MIN_CLOSING_READS_PER_SIDE = 2;
 
     /** k-mer length of the extension. */
@@ -147,13 +147,13 @@ public final class ReadExtensionCaller {
                     PairSupport.Verdict.NOT_CHECKED);
         }
 
-        /** Whether reads seeded from both primers hold the product. */
+        /** Whether enough reads seeded from one primer, either one, hold the product. */
         public boolean isClosed() {
-            return forwardClosing >= MIN_CLOSING_READS_PER_SIDE && reverseClosing >= MIN_CLOSING_READS_PER_SIDE;
+            return forwardClosing >= MIN_CLOSING_READS_PER_SIDE || reverseClosing >= MIN_CLOSING_READS_PER_SIDE;
         }
 
         /**
-         * Whether the product is reported: reads seeded from both primers hold it, and the
+         * Whether the product is reported: enough reads seeded from one primer hold it, and the
          * sample's read pairs support it over its whole length.
          */
         public boolean isReportable() {
@@ -189,10 +189,15 @@ public final class ReadExtensionCaller {
      *                     ({@link #knownSizes})
      */
     public record Outcome(String assay, int forwardSeeds, int reverseSeeds, int reach, List<Product> products,
-                          Set<Integer> reported) {
+                          Set<Integer> reported, String tandemRepeat) {
         public Outcome {
             products = List.copyOf(products);
             reported = Set.copyOf(reported);
+        }
+
+        public Outcome(String assay, int forwardSeeds, int reverseSeeds, int reach, List<Product> products,
+                       Set<Integer> reported) {
+            this(assay, forwardSeeds, reverseSeeds, reach, products, reported, null);
         }
 
         /** An outcome for an assay the sample does not report yet. */
@@ -200,7 +205,15 @@ public final class ReadExtensionCaller {
             this(assay, forwardSeeds, reverseSeeds, reach, products, Set.of());
         }
 
-        /** The products that reads extended from both primers hold. */
+        /**
+         * This outcome with what its extended reads ran into: a tandem repeat they loop in ({@link #tandemRepeat(Map)}),
+         * described, or {@code null}.
+         */
+        public Outcome withTandemRepeat(String description) {
+            return new Outcome(assay, forwardSeeds, reverseSeeds, reach, products, reported, description);
+        }
+
+        /** The products that enough reads extended from one primer, either one, hold. */
         public List<Product> closed() {
             return products.stream().filter(Product::isClosed).toList();
         }
@@ -219,7 +232,7 @@ public final class ReadExtensionCaller {
         public Outcome withSupport(java.util.function.Function<Product, PairSupport.Verdict> check) {
             return new Outcome(assay, forwardSeeds, reverseSeeds, reach, products.stream()
                     .map(product -> product.isClosed() ? product.withSupport(check.apply(product)) : product)
-                    .toList(), reported);
+                    .toList(), reported, tandemRepeat);
         }
 
         /**
@@ -237,6 +250,55 @@ public final class ReadExtensionCaller {
     }
 
     private ReadExtensionCaller() {
+    }
+
+    /** Bases at the end of an extended read that must repeat a unit for it to end in a tandem repeat. */
+    static final int TANDEM_STRETCH = 150;
+    /** The longest unit looked for: microsatellites and short VNTRs. */
+    static final int MAX_TANDEM_UNIT = 60;
+
+    /**
+     * What the extended reads {@code reads} (by seed) of an assay with no closed product ran into, or
+     * {@code null}: most of them end in a tandem repeat ({@link #TANDEM_STRETCH} bases repeating one unit
+     * of up to {@link #MAX_TANDEM_UNIT}). The extension follows the better-supported branch, and in a tandem
+     * repeat longer than a k-mer the repeat's own k-mers outnumber the way out: it loops to the end of its
+     * reach, and the assay looked like a plain negative.
+     */
+    public static String tandemRepeat(Map<String, String> reads) {
+        int inRepeat = 0;
+        Map<Integer, Integer> units = new java.util.TreeMap<>();
+        for (String read : reads.values()) {
+            int unit = Math.max(tandemUnit(read.substring(0, Math.min(read.length(), TANDEM_STRETCH))),
+                    tandemUnit(read.substring(Math.max(0, read.length() - TANDEM_STRETCH))));
+            if (unit > 0) {
+                inRepeat++;
+                units.merge(unit, 1, Integer::sum);
+            }
+        }
+        if (inRepeat < MIN_CLOSING_READS_PER_SIDE || inRepeat * 2 < reads.size()) {
+            return null;
+        }
+        int unit = units.entrySet().stream().max(Map.Entry.comparingByValue()).orElseThrow().getKey();
+        return inRepeat + " of " + reads.size() + " extended reads end in a tandem repeat of a " + unit + "-base unit,"
+                + " which the extension cannot cross";
+    }
+
+    /** The unit {@code stretch} repeats over at least 90% of it, or 0: the shortest, of 1 to {@link #MAX_TANDEM_UNIT}. */
+    static int tandemUnit(String stretch) {
+        if (stretch.length() < TANDEM_STRETCH) {
+            return 0;
+        }
+        for (int unit = 1; unit <= MAX_TANDEM_UNIT; unit++) {
+            int same = 0;
+            int compared = stretch.length() - unit;
+            for (int i = 0; i < compared; i++) {
+                same += stretch.charAt(i) == stretch.charAt(i + unit) ? 1 : 0;
+            }
+            if (same * 10 >= compared * 9) {
+                return unit;
+            }
+        }
+        return 0;
     }
 
     /**

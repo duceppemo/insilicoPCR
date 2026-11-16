@@ -147,7 +147,7 @@ class ReadExtensionStageTest {
                 new ReadsWithOligo(6134, 5424, 0), 579, "reads extended through the baited reads hold a product of"
                 + " 1074 bp (142 of 150 forward-seeded and 145 of 150 reverse-seeded reads)", "");
         Finding notClosed = new Finding("T", "long", Status.NOT_CLOSED_BY_EXTENSION, Assembly.NOT_ASSEMBLED,
-                new ReadsWithOligo(19, 7, 0), 144, "gave no product held by at least 2 extended reads seeded from each primer", "");
+                new ReadsWithOligo(19, 7, 0), 144, "gave no product held by at least 2 extended reads seeded from one primer", "");
         Finding wrongTurn = new Finding("V", "long", Status.EXTENSION_NOT_SUPPORTED_BY_PAIRS, Assembly.NOT_ASSEMBLED,
                 new ReadsWithOligo(52, 46, 0), 480, "extended reads hold a product of 727 bp (44 of 52 forward-seeded"
                 + " and 37 of 46 reverse-seeded reads), not reported: the 300-base window at 191-490 is held by 1 read"
@@ -179,7 +179,7 @@ class ReadExtensionStageTest {
                 + " the reads, but neither a read nor the extended reads hold a complete amplicon")), on.toString());
 
         assertTrue(on.stream().anyMatch(line -> line.startsWith("FASTQ mode WARNING: 2 assay(s) have a product that"
-                + " extended reads of both primers hold but read pairs do not confirm; NOT reported")), on.toString());
+                + " extended reads hold but read pairs do not confirm; NOT reported")), on.toString());
     }
 
     /** One BLAST TSV line: a perfect full-length primer hit at positions {@code qstart-qend}. */

@@ -51,7 +51,7 @@ The outcome of a sample for an assay uses the [product sizes declared in the pri
 | Amber outline, `≈` | Other known product | Only a product declared as another known size (`other=`) |
 | Red dashed outline, `!` | Unexpected size | Only a product of a size the primer file does not declare |
 | Dotted outline, `?` | Seen in too few reads | FASTQ input: a complete amplicon is in some reads, too few to report (`WEAK_READ_SUPPORT`) |
-| Dashed outline, `⇄` | Not confirmed by read pairs | FASTQ input: reads extended from both primers hold a product, but the read pairs do not confirm it; not reported (`EXTENSION_NOT_SUPPORTED_BY_PAIRS`, `EXTENSION_THROUGH_UNRESOLVED_REPEAT`) |
+| Dashed outline, `⇄` | Not confirmed by read pairs | FASTQ input: extended reads hold a product, but the read pairs do not confirm it; not reported (`EXTENSION_NOT_SUPPORTED_BY_PAIRS`, `EXTENSION_THROUGH_UNRESOLVED_REPEAT`) |
 | `◇` | Primers at contig ends | FASTA input: no contig holds a product, but the primers point off the ends of two contigs, or both ends of one, and joined they would give one within `--max-length`. Neither positive nor negative: the assembly may break inside the product, or the sequence may be circular. Check with a more complete assembly, or with the reads |
 | `○` | Not checkable from reads | FASTQ input run with `--read-extension off`: both primers are in the reads, no product was found, and a product of the declared size is longer than a read or merged pair could hold. Not a reliable negative; rerun with the [read extension](#read-extension-products-longer-than-a-read) on, or confirm on an assembly |
 | `·` | No product | |
@@ -212,9 +212,10 @@ of its primers**, the reads themselves are therefore extended (which assays exac
    closed, however deep the sample. Kept: `_extensionEnds.fasta` (the ends of the last round) and
    `_extensionReads.fastq.gz` (the reads the rounds baited).
 3. The extended reads are searched like contigs: same hit filters, amplicon rules and probe requirement.
-4. A product must be held by at least **2 extended reads seeded from the forward primer and at least 2 seeded
-   from the reverse primer**. Sizes within 10 bp of each other are one product, taken at its most frequent
-   size.
+4. A product must be held by at least **2 extended reads seeded from one primer**, either one. Before 0.15.3 it
+   needed 2 from each: at a locus of two products (two alleles, a mixture of strains, paralogs) the reads of one
+   primer follow one branch and those of the other the other, and neither product was called. Sizes within 10 bp
+   of each other are one product, taken at its most frequent size.
 5. Such a product is then **checked against the sample's read pairs**, described below, and reported only when
    they support it over its whole length. Each product reported gets its own row.
 
@@ -319,11 +320,12 @@ and `_extensionReads.fastq.gz`.
 |---|---|
 | `CALLED_FROM_READS` | Reported in `report.tsv` from reads |
 | `CALLED_BY_EXTENSION` | A product that no contig and no read holds, but reads extended from both primers do, and that the read pairs support: reported in `report.tsv` (`FASTQ read-extension call`). `ReadDetail` gives the size and the extended reads holding it per side, then any product withheld or held by too few extended reads. With `--read-extension target` the assay can show other products too (`Assembly` is then `OTHER_PRODUCT_ONLY`) |
-| `EXTENSION_NOT_SUPPORTED_BY_PAIRS` | Reads extended from both primers hold a product, but read pairs do not span one of its windows, or are too few to verify it. **Not reported, and warned about**: this is what a wrong turn through a repeat looks like. `ReadDetail` gives the weakest window, its position and the median |
-| `EXTENSION_THROUGH_UNRESOLVED_REPEAT` | Reads extended from both primers hold a product that passes through a repeat with another copy in the sample, longer than the read pairs can bridge. **Not reported, and warned about**: a real product and a wrong turn look the same there. `ReadDetail` gives the repeat's position |
+| `EXTENSION_NOT_SUPPORTED_BY_PAIRS` | Extended reads hold a product, but read pairs do not span one of its windows, or are too few to verify it. **Not reported, and warned about**: this is what a wrong turn through a repeat looks like. `ReadDetail` gives the weakest window, its position and the median |
+| `EXTENSION_THROUGH_UNRESOLVED_REPEAT` | Extended reads hold a product that passes through a repeat with another copy in the sample, longer than the read pairs can bridge. **Not reported, and warned about**: a real product and a wrong turn look the same there. `ReadDetail` gives the repeat's position |
 | `WEAK_READ_SUPPORT` | Complete amplicons in reads, but fewer than 2 or under `--read-min-fraction` (default 30%) of informative reads. **Not reported, and warned about**: contamination, index hopping, a mixed sample, or a locus of which only some copies match the assay. Inspect the reads before trusting either answer |
 | `NOT_IN_READS` | Both primers are in the reads, but no read holds a complete amplicon, and the reads were not extended (`--read-extension off`). Conclusive only for amplicons up to `CheckableLength`; a longer amplicon cannot be ruled out |
-| `NOT_CLOSED_BY_EXTENSION` | Both primers are in the reads, no read holds a complete amplicon, and extending the reads did not join the primers from both sides. `ReadDetail` gives the number of reads extended and anything seen from one side only. A negative, weaker than one on an assembly, especially when few reads carry the primers |
+| `NOT_CLOSED_BY_EXTENSION` | Both primers are in the reads, no read holds a complete amplicon, and extending the reads did not join the primers (at least 2 extended reads of one primer holding a product). `ReadDetail` gives the number of reads extended and anything seen too few times. A negative, weaker than one on an assembly, especially when few reads carry the primers |
+| `EXTENSION_IN_TANDEM_REPEAT` | As `NOT_CLOSED_BY_EXTENSION`, but most of the extended reads end in a tandem repeat ((AT)n, (CAG)n, a VNTR), which they loop in: the extension follows the better-supported branch, and in a repeat longer than a k-mer the repeat's own k-mers outnumber the way out. **Inconclusive**, since 0.15.3 (before, a plain negative): a product through the repeat is neither shown nor ruled out; confirm it on an assembly of long reads, or by PCR. `ReadDetail` names the repeat's unit |
 | `PARTIAL_BAIT` | Only some of the assay's primers are in the reads (e.g. one primer site diverged beyond `-m`); usually a true negative |
 
 | Assembly | Meaning |

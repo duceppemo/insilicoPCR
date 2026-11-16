@@ -220,15 +220,19 @@ class FastqDiagnosticsTest {
         assertEquals(Status.NOT_CLOSED_BY_EXTENSION, none.status());
         assertEquals("no complete amplicon in the reads, which could hold amplicons up to 240 bp; extending 150"
                 + " forward-seeded and 150 reverse-seeded read(s) through the baited reads, by up to 2000 bases each"
-                + " way, gave no product held by at least 2 extended reads seeded from each primer",
+                + " way, gave no product held by at least 2 extended reads seeded from one primer",
                 none.readDetail());
 
-        // Closed from one side only: still a negative, and the detail says what was seen.
+        // Held by one extended read of each side: still a negative, and the detail says what was seen.
+        Finding oneEach = FastqDiagnostics.assess(fastqSample(), PRIMERS, DEFAULTS, noReadCall(ALL_IN_READS),
+                Map.of(), Map.of("assay", extensionOutcome(new int[]{447, 1, 1}))).getFirst();
+        assertEquals(Status.NOT_CLOSED_BY_EXTENSION, oneEach.status());
+        assertTrue(oneEach.readDetail().endsWith("; too few to report: 447 bp in 1 of 150 forward-seeded and 1 of 150"
+                + " reverse-seeded reads"), oneEach.readDetail());
+        // Two from the reverse side alone close it (since 0.15.3): called, the read pairs confirming it.
         Finding oneSided = FastqDiagnostics.assess(fastqSample(), PRIMERS, DEFAULTS, noReadCall(ALL_IN_READS),
                 Map.of(), Map.of("assay", extensionOutcome(new int[]{447, 0, 2}))).getFirst();
-        assertEquals(Status.NOT_CLOSED_BY_EXTENSION, oneSided.status());
-        assertTrue(oneSided.readDetail().endsWith("; too few to report: 447 bp in 0 of 150 forward-seeded and 2 of 150"
-                + " reverse-seeded reads"), oneSided.readDetail());
+        assertEquals(Status.CALLED_BY_EXTENSION, oneSided.status());
     }
 
     @Test

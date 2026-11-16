@@ -355,20 +355,7 @@ class EndToEndTest {
         genome.replace(5_000, 5_020, forward);
         genome.replace(7_480, 7_500, reverseComplement(reverse)); // the product: 5,001 to 7,500
         Path input = Files.createDirectory(directory.resolve("long-reads"));
-        StringBuilder first = new StringBuilder();
-        StringBuilder second = new StringBuilder();
-        String quality = "I".repeat(150);
-        for (int pair = 0; pair < 40 * genome.length() / 300; pair++) {
-            int start = random.nextInt(genome.length() - 350);
-            String fragment = genome.substring(start, start + 350);
-            boolean flip = random.nextBoolean();
-            String one = flip ? reverseComplement(fragment) : fragment;
-            first.append("@p").append(pair).append("/1\n").append(one, 0, 150).append("\n+\n").append(quality).append('\n');
-            second.append("@p").append(pair).append("/2\n").append(reverseComplement(one).substring(0, 150))
-                    .append("\n+\n").append(quality).append('\n');
-        }
-        gzip(first.toString().getBytes(StandardCharsets.UTF_8), input.resolve("long_R1.fastq.gz"));
-        gzip(second.toString().getBytes(StandardCharsets.UTF_8), input.resolve("long_R2.fastq.gz"));
+        simulatePairs(genome, 40, random, input, "long");
         Path primers = Files.writeString(directory.resolve("long-primers.fasta"), ">long-F\n" + forward + "\n>long-R\n"
                 + reverse + "\n");
         Path output = directory.resolve("long-results");
@@ -382,6 +369,107 @@ class EndToEndTest {
                 return e.toString();
             }
         });
+    }
+
+    /**
+     * Error-free pairs of 2 x 150 bases from fragments of 350 of {@code genome}, at {@code coverage}, on both
+     * strands, as {@code name_R1.fastq.gz} and {@code name_R2.fastq.gz} in {@code folder}.
+     */
+    private static void simulatePairs(CharSequence genome, int coverage, java.util.Random random, Path folder,
+                                      String name) throws IOException {
+        StringBuilder first = new StringBuilder();
+        StringBuilder second = new StringBuilder();
+        String quality = "I".repeat(150);
+        for (int pair = 0; pair < coverage * genome.length() / 300; pair++) {
+            int start = random.nextInt(genome.length() - 350);
+            String fragment = genome.subSequence(start, start + 350).toString();
+            String one = random.nextBoolean() ? reverseComplement(fragment) : fragment;
+            first.append("@p").append(pair).append("/1\n").append(one, 0, 150).append("\n+\n").append(quality).append('\n');
+            second.append("@p").append(pair).append("/2\n").append(reverseComplement(one).substring(0, 150))
+                    .append("\n+\n").append(quality).append('\n');
+        }
+        gzip(first.toString().getBytes(StandardCharsets.UTF_8), folder.resolve(name + "_R1.fastq.gz"));
+        gzip(second.toString().getBytes(StandardCharsets.UTF_8), folder.resolve(name + "_R2.fastq.gz"));
+    }
+
+    @Test
+    void bothAllelesOfALocusOfTwoProductSizesAreCalledFromReads() throws IOException {
+        // Two alleles, 3,000 and 2,900 bp (a deletion of 100 inside the product), 30x each: at the branch, the reads
+        // extended from the forward primer took one allele and those from the reverse primer the other, and with 2
+        // needed from each side neither allele was called, a plain negative (before 0.15.3).
+        java.util.Random random = new java.util.Random(23);
+        StringBuilder genome = new StringBuilder();
+        while (genome.length() < 9_000) {
+            genome.append("ACGT".charAt(random.nextInt(4)));
+        }
+        String forward = "GATCGGAAGAGCACACGTCT";
+        String reverse = "CTTGCCAGTAGCGTCATACG";
+        genome.replace(3_000, 3_020, forward);
+        genome.replace(5_980, 6_000, reverseComplement(reverse)); // 3,001 to 6,000
+        StringBuilder other = new StringBuilder(genome).delete(4_400, 4_500);
+        Path input = Files.createDirectory(directory.resolve("allele-reads"));
+        simulatePairs(genome, 30, random, input, "a");
+        simulatePairs(other, 30, random, input, "b");
+        // One sample of the two: its files joined.
+        for (String mate : List.of("_R1.fastq.gz", "_R2.fastq.gz")) {
+            byte[] both = concat(Files.readAllBytes(input.resolve("a" + mate)), Files.readAllBytes(input.resolve("b" + mate)));
+            Files.write(input.resolve("het" + mate), both);
+            Files.delete(input.resolve("a" + mate));
+            Files.delete(input.resolve("b" + mate));
+        }
+        Path primers = Files.writeString(directory.resolve("allele-primers.fasta"), ">het-F\n" + forward + "\n>het-R\n"
+                + reverse + "\n");
+        Path output = directory.resolve("allele-results");
+
+        pipeline(PipelineConfig.builder(input, output, primers).threads(2).build()).run();
+
+        assertEquals(List.of("het het 2900 ", "het het 3000 "), products(report(output)), () -> {
+            try {
+                return Files.readString(output.resolve("consolidated_report").resolve("report_fastq_diagnostics.tsv"));
+            } catch (IOException e) {
+                return e.toString();
+            }
+        });
+    }
+
+    private static byte[] concat(byte[] first, byte[] second) {
+        byte[] both = java.util.Arrays.copyOf(first, first.length + second.length);
+        System.arraycopy(second, 0, both, first.length, second.length);
+        return both;
+    }
+
+    @Test
+    void readsExtendedIntoATandemRepeatAreInconclusiveNotNegative() throws IOException {
+        // A 600 bp product with (CAG)30 in its middle: the extension, which follows the better-supported branch,
+        // loops in the repeat to the end of its reach, and the assay was a plain negative, NOT_CLOSED_BY_EXTENSION.
+        // Beside it, a 2,500 bp product that takes several rounds: the repeat's assay, out of the rounds at once,
+        // must keep its outcome while the other goes on (it lost it, and read as NOT_IN_READS).
+        java.util.Random random = new java.util.Random(17);
+        StringBuilder genome = new StringBuilder();
+        while (genome.length() < 14_000) {
+            genome.append("ACGT".charAt(random.nextInt(4)));
+        }
+        String forward = "GATCGGAAGAGCACACGTCT";
+        String reverse = "CTTGCCAGTAGCGTCATACG";
+        genome.replace(3_000, 3_020, forward);
+        genome.replace(3_255, 3_345, "CAG".repeat(30));
+        genome.replace(3_580, 3_600, reverseComplement(reverse)); // the product: 3,001 to 3,600
+        String longForward = "TGACCTAGGCAATCGGTTCA";
+        String longReverse = "AGGTCATTGCCGATAGCTTC";
+        genome.replace(7_000, 7_020, longForward);
+        genome.replace(9_480, 9_500, reverseComplement(longReverse)); // 7,001 to 9,500
+        Path input = Files.createDirectory(directory.resolve("repeat-reads"));
+        simulatePairs(genome, 40, random, input, "rep");
+        Path primers = Files.writeString(directory.resolve("repeat-primers.fasta"), ">rep-F\n" + forward + "\n>rep-R\n"
+                + reverse + "\n>long-F\n" + longForward + "\n>long-R\n" + longReverse + "\n");
+        Path output = directory.resolve("repeat-results");
+
+        pipeline(PipelineConfig.builder(input, output, primers).threads(2).build()).run();
+
+        List<String> diagnostics = lines(output.resolve("consolidated_report").resolve("report_fastq_diagnostics.tsv"));
+        assertTrue(diagnostics.stream().anyMatch(row -> row.startsWith("rep\trep\tEXTENSION_IN_TANDEM_REPEAT\t")
+                && row.contains("tandem repeat of a 3-base unit")), diagnostics.toString());
+        assertEquals(List.of("rep long 2500 "), products(report(output)));
     }
 
     private static String reverseComplement(CharSequence bases) {

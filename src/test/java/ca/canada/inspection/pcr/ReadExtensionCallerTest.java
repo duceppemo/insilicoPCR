@@ -267,9 +267,10 @@ class ReadExtensionCallerTest {
     }
 
     @Test
-    void productClosedFromOneSideOnlyIsNotCalled() {
-        // Three forward-seeded reads reach the reverse primer, but only one read extended
-        // from the reverse primer comes back to the forward one: a wrong turn looks like this.
+    void aProductClosedFromOneSideIsClosedAndLeftToTheReadPairs() {
+        // Three forward-seeded reads reach the reverse primer, one read extended from the reverse primer comes
+        // back: closed, as at a locus of two alleles, where the reads of each primer follow their own branch
+        // (before 0.15.3 neither allele was called). A wrong turn looks like this too: the read pairs decide.
         List<Seed> seeds = seeds(3, 3);
         Sample extended = extended();
         for (int i : new int[]{0, 1, 2, 3}) {
@@ -278,11 +279,17 @@ class ReadExtensionCallerTest {
 
         Outcome outcome = evaluate(extended, seeds);
 
-        assertTrue(outcome.closed().isEmpty());
+        assertEquals(1, outcome.closed().size());
         Product product = outcome.products().getFirst();
         assertEquals(3, product.forwardClosing());
         assertEquals(1, product.reverseClosing());
-        assertFalse(product.isReportable());
+        assertFalse(product.isReportable(), "not checked against the read pairs yet");
+        assertEquals(1, outcome.withSupport(checked -> SUPPORTED).called().size());
+        // One extended read on each side is too few.
+        Sample single = extended();
+        product(single, "extended_read_0", 1303);
+        product(single, "extended_read_3", 1303);
+        assertTrue(evaluate(single, seeds).closed().isEmpty());
     }
 
     @Test
@@ -365,11 +372,11 @@ class ReadExtensionCallerTest {
         assertTrue(rejected.called().isEmpty());
         assertEquals(1, rejected.withheld().size());
         assertEquals(unsupported, rejected.withheld().getFirst().support());
-        // A product held from one side only is not checked at all.
-        Sample oneSided = extended();
-        product(oneSided, "extended_read_0", 1074);
-        product(oneSided, "extended_read_1", 1074);
-        Outcome open = evaluate(oneSided, seeds).withSupport(product -> SUPPORTED);
+        // A product held by one extended read of each side is not closed, nor checked at all.
+        Sample oneEach = extended();
+        product(oneEach, "extended_read_0", 1074);
+        product(oneEach, "extended_read_3", 1074);
+        Outcome open = evaluate(oneEach, seeds).withSupport(product -> SUPPORTED);
         assertTrue(open.closed().isEmpty() && open.called().isEmpty() && open.withheld().isEmpty());
     }
 
@@ -474,5 +481,21 @@ class ReadExtensionCallerTest {
     private static List<String> candidates(Sample sample, PrimerPanel primers, AmpliconOptions options,
                                            ReadEvidence reads) {
         return candidates(sample, primers, options, reads, ReadExtensionCaller.Mode.DEFAULT);
+    }
+
+    @Test
+    void extendedReadsEndingInATandemRepeatAreNamedByItsUnit() {
+        // Extended reads that loop in (CAG)n or (AT)n to the end of their reach: the assay was a plain negative.
+        String unique = "GATCGGAAGAGCACACGTCTGAACTCCAGTCACTTGCCAGTAGCGTCATACGGATTACAGGCTTAACCGGTTAAGCCATGCAACGTGTTTAAACCCGGGT"
+                + "TACGATCGATCGTAGCTAGCTTGACTGACTAACGATCGGCTAAGTCGATCGACGATCGAATTCGGCCGTTAACC";
+        assertEquals(3, ReadExtensionCaller.tandemUnit("CAG".repeat(60).substring(0, ReadExtensionCaller.TANDEM_STRETCH)));
+        assertEquals(2, ReadExtensionCaller.tandemUnit("AT".repeat(100).substring(0, ReadExtensionCaller.TANDEM_STRETCH)));
+        assertEquals(0, ReadExtensionCaller.tandemUnit(unique.substring(0, ReadExtensionCaller.TANDEM_STRETCH)));
+
+        String looped = unique + "CAG".repeat(100);
+        assertEquals("2 of 3 extended reads end in a tandem repeat of a 3-base unit, which the extension cannot cross",
+                ReadExtensionCaller.tandemRepeat(Map.of("s1", looped, "s2", looped, "s3", unique)));
+        assertEquals(null, ReadExtensionCaller.tandemRepeat(Map.of("s1", looped, "s2", unique, "s3", unique)),
+                "most reads must end in it");
     }
 }

@@ -54,7 +54,7 @@ public final class HtmlReport {
         /** A complete amplicon in too few of the reads to be reported (FASTQ input). */
         INCONCLUSIVE("Seen in too few reads", "A complete amplicon is in some reads, too few to be reported", "?"),
         /** Extended reads join the primers, but read pairs do not confirm the product (FASTQ input). */
-        UNCONFIRMED("Not confirmed by read pairs", "Reads extended from both primers hold a product, but the read"
+        UNCONFIRMED("Not confirmed by read pairs", "Extended reads hold a product, but the read"
                 + " pairs do not confirm it; not reported", "\u21c4"),
         /** No product on any one contig, but the primers point off contig ends: one could span them (FASTA input). */
         ACROSS_ENDS("Primers at contig ends", "No product on any one contig, but the primers point off the ends of two"

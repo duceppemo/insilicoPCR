@@ -71,7 +71,7 @@ public record SampleFiles(Path directory, String name) {
     }
 
     /**
-     * The products that extended reads of both primers hold, before the read pairs have
+     * The products that extended reads hold, before the read pairs have
      * confirmed them or not: best-supported paths, not assembled consensus sequences.
      */
     Path extensionCandidates() {

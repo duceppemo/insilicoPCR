@@ -122,7 +122,7 @@ class HtmlReportTest {
                 Assembly.SPLIT_ACROSS_CONTIGS, new ReadsWithOligo(19, 7, 0), 300,
                 "no complete amplicon in the reads, which could hold amplicons up to 300 bp; extending 19"
                         + " forward-seeded and 7 reverse-seeded read(s) through the baited reads, by up to 2000 bases"
-                        + " each way, gave no product held by at least 2 extended reads seeded from each primer", ""), null);
+                        + " each way, gave no product held by at least 2 extended reads seeded from one primer", ""), null);
 
         assertEquals(State.NONE, cell.state());
         assertTrue(cell.note().startsWith("Both primers are in the reads: no complete amplicon in the reads"),
@@ -164,7 +164,7 @@ class HtmlReportTest {
                 + " up to 300 bp; reads extended through the baited reads hold a product of 434 bp (142 of 150"
                 + " forward-seeded and 145 of 150 reverse-seeded reads)", "");
         Finding notClosed = new Finding("short", "its", Status.NOT_CLOSED_BY_EXTENSION, Assembly.NOT_ASSEMBLED,
-                new ReadsWithOligo(19, 7, 0), 144, "gave no product held by at least 2 extended reads seeded from each primer", "");
+                new ReadsWithOligo(19, 7, 0), 144, "gave no product held by at least 2 extended reads seeded from one primer", "");
 
         String page = Files.readString(write(tsv, List.of("long", "short"), Set.of("long", "short"),
                 panel(PRIMERS, SIZES), List.of(called, notClosed), DETAILS));

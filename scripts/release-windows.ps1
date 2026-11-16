@@ -5,6 +5,13 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+# PowerShell 7 (pwsh): Windows PowerShell 5.1 has no $IsWindows, so this script took the Unix branch
+# below and ran ./mvnw, and its Compress-Archive writes entry names with backslashes, which a ZIP
+# must not hold. CI runs it with pwsh; release-windows.bat starts pwsh when it is installed.
+if ($PSVersionTable.PSVersion.Major -lt 6) {
+    throw "Run this script with PowerShell 7 (pwsh), not Windows PowerShell $($PSVersionTable.PSVersion): https://aka.ms/powershell"
+}
+
 $Root = Split-Path -Parent $PSScriptRoot
 if (-not $Version) {
     $Version = ([xml](Get-Content (Join-Path $Root "pom.xml"))).project.version
@@ -60,6 +67,10 @@ if ($IsWindows) {
     .\mvnw.cmd -B clean package -DskipTests
 } else {
     ./mvnw -B clean package -DskipTests
+}
+# A failed build would otherwise leave target\ as an earlier build left it, and that would be packaged.
+if ($LASTEXITCODE -ne 0) {
+    throw "The Maven build failed (exit code $LASTEXITCODE)"
 }
 
 if (-not $env:JAVA_HOME -or -not (Test-Path (Join-Path $env:JAVA_HOME "bin\java.exe"))) {

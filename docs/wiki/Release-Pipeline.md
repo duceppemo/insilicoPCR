@@ -49,9 +49,13 @@ release/insilicoPCR-<version>-linux-x64.zip.sha256
 
 ## Windows packaging
 
+With PowerShell 7 (`pwsh`; `scripts\release-windows.bat` starts it when it is installed):
+
 ```powershell
 scripts/release-windows.ps1 -Version 0.15.2
 ```
+
+Windows PowerShell 5.1 is refused: it ran `./mvnw`, the Unix script, instead of `mvnw.cmd`, and its `Compress-Archive` writes ZIP entry names with backslashes. A failed Maven build stops the script, rather than packaging what an earlier build left in `target`.
 
 Without `-Version` (or the version argument of `package-linux-portable.sh`), the ZIP is named for the version in `pom.xml` (before 0.15.2, for a fixed 0.8.0, whatever version it held). CI names a release's ZIPs for its tag, a manual run's for the version it is given, if any, and every other build's for the version in `pom.xml` (before 0.15.3, for 0.8.0).
 

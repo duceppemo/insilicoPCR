@@ -21,6 +21,12 @@ APP="$(dirname "$JAR")"
 JAVA="$(find "$APP/runtime" -maxdepth 4 \( -name java -o -name java.exe \) -path '*jdk/bin/*' | head -n 1)"
 [[ -n "$JAVA" ]] || { echo "FAIL: no bundled Java under $APP/runtime" >&2; exit 1; }
 
+# The bundled programs' licenses: their redistribution requires them.
+for notice in LICENSE THIRD-PARTY-NOTICES.md third_party/BBTools/license.txt third_party/BLAST/LICENSE \
+              third_party/OpenJFX/LICENSE third_party/OpenJFX/ASSEMBLY_EXCEPTION; do
+  [[ -f "$APP/$notice" ]] || { echo "FAIL: $notice is not in $ZIP" >&2; exit 1; }
+done
+
 # The launcher users run (module path, bundled Java), not only the JAR. On Windows, cmd mangles
 # a quoted script path followed by quoted arguments, so the batch launcher is run with --version
 # only, and the runs below use the bundled Java there.

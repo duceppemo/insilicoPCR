@@ -1,6 +1,6 @@
 # Release Pipeline
 
-The release process creates deterministic portable ZIP archives for Linux and Windows.
+The release process creates portable ZIP archives for Linux and Windows. The Linux archive lists its entries in one order, each dated by the commit, and holds `VERSIONS.txt`, the versions of the Java runtime, BLAST+, BBTools and JavaFX it bundles; the program's jar inside it is dated by its build.
 
 ![insilicoPCR release pipeline](https://raw.githubusercontent.com/duceppemo/insilicoPCR/master/docs/assets/release-pipeline.svg)
 

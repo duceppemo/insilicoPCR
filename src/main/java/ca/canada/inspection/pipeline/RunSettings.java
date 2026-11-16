@@ -54,12 +54,13 @@ public final class RunSettings {
     }
 
     /** The HTML report's "Run details": the run's paths, then its settings. */
-    static RunDetails details(String version, PipelineConfig config, boolean withFastq) {
+    static RunDetails details(String version, PipelineConfig config, boolean withFastq, String tools) {
         List<Setting> settings = new ArrayList<>();
         settings.add(new Setting("Input", String.valueOf(config.input())));
         settings.add(new Setting("Primer file", String.valueOf(config.primers())));
         settings.add(new Setting("Output folder", String.valueOf(config.output())));
         settings.addAll(of(config, withFastq));
+        settings.add(new Setting("Tools", tools));
         return new RunDetails(DATE_FORMAT.format(LocalDateTime.now()), version, settings);
     }
 

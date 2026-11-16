@@ -89,6 +89,7 @@ final class QaLogWriter {
             for (String line : RunSettings.lines(context.config(), context.hasFastqSamples())) {
                 writeLine(writer, line);
             }
+            writeLine(writer, "  Tools: " + context.dependencies().versions());
             for (String line : extraLines) {
                 writeLine(writer, line);
             }

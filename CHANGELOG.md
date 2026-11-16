@@ -10,6 +10,22 @@
 
 ### Fixed
 
+- A primer whose ID held a letter outside ASCII (`Café-F`, `stxΔ-F`) found
+  nothing, and its assay was negative in every sample without a word:
+  makeblastdb writes such a letter as `#` and still succeeds, and the hits then
+  named a primer the run did not know, which were dropped. Such an ID is
+  refused, naming the letter and an ASCII spelling; and a hit naming an oligo
+  the primer file does not hold is an error, not a silent skip.
+- An assay declaring `other=` without `size=` could never be positive (every
+  product "other" or "unexpected"); such a primer file is refused.
+- An assembly whose sequence ID held a byte that is not UTF-8 (a header saved
+  as Latin-1, `Québec`) stopped the whole run when BLAST's hits were read back:
+  BLAST copies the ID's bytes, and they were read strictly. They are copied as
+  bytes, and read as the FASTA is.
+- FASTA files are read as BLAST reads them in three more ways: comments (the
+  rest of a line after `;`, a line starting with `#` or `!`) are not bases, a
+  `U` pairs with `A` as `T` does, and a header with no ID (BLAST names it
+  `Query_1`) is refused at the input check.
 - A product made by several variants of a degenerate primer named a variant
   whose first base does not pair, rather than one that pairs over its whole
   length, when the two had no mismatch in their alignments: BLAST leaves a

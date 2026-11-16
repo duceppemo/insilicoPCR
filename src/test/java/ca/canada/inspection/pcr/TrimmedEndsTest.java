@@ -300,4 +300,12 @@ class TrimmedEndsTest {
         org.junit.jupiter.api.Assertions.assertFalse(template.has(0) || template.has(5));
         assertEquals('T', template.base(4));
     }
+
+    @Test
+    void aUInTheTemplatePairsAsATDoes() {
+        // BLAST pairs U with T: a template written in RNA letters counted every trimmed base as unpaired.
+        TrimmedEnds.Template template = TrimmedEnds.Template.whole("acgu");
+        assertEquals('T', template.base(4));
+        assertEquals('A', template.base(1));
+    }
 }

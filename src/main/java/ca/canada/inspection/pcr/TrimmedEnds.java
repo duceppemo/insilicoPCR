@@ -41,8 +41,10 @@ public final class TrimmedEnds {
             return position >= 1 && position <= bases.length();
         }
 
+        /** The base at {@code position}, upper case; U read as T, as BLAST pairs it. */
         char base(int position) {
-            return Character.toUpperCase(bases.charAt(position - 1));
+            char base = Character.toUpperCase(bases.charAt(position - 1));
+            return base == 'U' ? 'T' : base;
         }
     }
 

@@ -173,6 +173,21 @@ public final class PrimerService {
         if (PrimerId.parse(id) == null) {
             throw new PipelineException("Primer ID must follow the <assay>-F / <assay>-R / <assay>-P naming convention: " + id);
         }
+        // makeblastdb writes any other character as '#' (and still succeeds): the hits of the primer then
+        // name one the run does not know, and the assay was negative everywhere, without a word.
+        String outside = id.codePoints().filter(c -> c < 0x21 || c > 0x7E).collect(StringBuilder::new,
+                StringBuilder::appendCodePoint, StringBuilder::append).toString();
+        if (!outside.isEmpty()) {
+            throw new PipelineException("Primer ID " + id + " has a character BLAST cannot keep in an ID (" + outside
+                    + "): rename the primer with letters A-Z, digits and punctuation only, such as "
+                    + asciiSuggestion(id));
+        }
+    }
+
+    /** {@code id} with its accented letters unaccented and any other character outside ASCII as {@code _}. */
+    static String asciiSuggestion(String id) {
+        String unaccented = java.text.Normalizer.normalize(id, java.text.Normalizer.Form.NFD).replaceAll("\\p{M}", "");
+        return unaccented.replaceAll("[^\\x21-\\x7E]", "_");
     }
 
     /** Fails on an assay that lacks a forward or a reverse primer, naming the primers it lacks. */

@@ -28,6 +28,19 @@ class BlastTsvTest {
     }
 
     @Test
+    void bytesThatAreNotUtf8AreCopiedAsTheyAre() throws IOException {
+        // blastn copies a FASTA ID's bytes: Québec_c1 saved as Latin-1 stopped the run here.
+        byte[] row = "Qu\u00e9bec_c1\tp-F\n".getBytes(java.nio.charset.StandardCharsets.ISO_8859_1);
+        Path tsv = Files.write(dir.resolve("latin1.tsv"), row);
+        BlastTsv.prependHeader(tsv);
+
+        byte[] header = (BlastTsv.HEADER + "\n").getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        byte[] expected = java.util.Arrays.copyOf(header, header.length + row.length);
+        System.arraycopy(row, 0, expected, header.length, row.length);
+        org.junit.jupiter.api.Assertions.assertArrayEquals(expected, Files.readAllBytes(tsv));
+    }
+
+    @Test
     void missingFileBecomesHeaderOnly() throws IOException {
         Path tsv = dir.resolve("absent.tsv");
         BlastTsv.prependHeader(tsv);

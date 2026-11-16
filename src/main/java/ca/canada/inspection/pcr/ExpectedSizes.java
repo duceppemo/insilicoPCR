@@ -82,7 +82,8 @@ public final class ExpectedSizes {
      *                     in the file ({@code assay-F}, {@code assay-R}, {@code assay-P});
      *                     words other than {@code size=} and {@code other=} are free text
      * @throws IllegalArgumentException for a value that is not a size, a range or a list of
-     *                                  them, or an assay declaring one key with two values
+     *                                  them, an assay declaring one key with two values, or an
+     *                                  assay declaring {@code other=} without {@code size=}
      */
     public static ExpectedSizes fromHeaders(Map<String, String> descriptions) {
         // assay -> key -> the primer that declared it and its value as written
@@ -107,6 +108,14 @@ public final class ExpectedSizes {
             }
         });
 
+        declared.forEach((assay, keys) -> {
+            // Without a target, no product of the assay could ever be positive: every one would be
+            // "other" or "unexpected". A size= left out is a mistake to say, not a rule to apply.
+            if (!keys.containsKey(TARGET_KEY)) {
+                throw new IllegalArgumentException("Assay " + assay + " declares other= (on " + keys.get(OTHER_KEY)[0]
+                        + ") but no size=: give the size of its target product too (size= on one of its primers)");
+            }
+        });
         Map<String, Declared> byAssay = new HashMap<>();
         declared.forEach((assay, keys) -> byAssay.put(assay, new Declared(
                 ranges(keys.get(TARGET_KEY)), ranges(keys.get(OTHER_KEY)))));

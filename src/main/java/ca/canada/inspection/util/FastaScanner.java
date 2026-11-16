@@ -30,14 +30,23 @@ public final class FastaScanner implements AutoCloseable {
      * or skipped when it is {@code null}: the nucleotide letters (IUPAC codes and U, either case),
      * the characters BLAST counts. Anything else (line ends, blanks, alignment gaps {@code -} and
      * {@code .}, digits, {@code *}) BLAST drops, and so does this: a position here is BLAST's.
+     * So are comments, as BLAST reads them: the rest of a line after {@code ;}, and a line that
+     * starts with {@code #} or {@code !}.
      */
     public String nextHeader(IntConsumer bases) throws IOException {
         int c;
+        boolean comment = false;
         while ((c = read()) >= 0) {
             if (c == '\n' || c == '\r') {
                 atLineStart = true;
+                comment = false;
+            } else if (comment) {
+                // the rest of a comment line
             } else if (atLineStart && c == '>') {
                 return headerLine();
+            } else if (isComment(c, atLineStart)) {
+                comment = true;
+                atLineStart = false;
             } else {
                 atLineStart = false;
                 if (bases != null && isNucleotide(c)) {
@@ -77,6 +86,11 @@ public final class FastaScanner implements AutoCloseable {
         }
         atLineStart = true;
         return header.toString();
+    }
+
+    /** Whether {@code c} starts a comment, as BLAST reads FASTA: {@code ;} anywhere, {@code #} or {@code !} at a line's start. */
+    public static boolean isComment(int c, boolean atLineStart) {
+        return c == ';' || atLineStart && (c == '#' || c == '!');
     }
 
     /** The next character across the files, or -1 after the last one. A new file starts a new line. */

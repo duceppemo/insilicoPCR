@@ -32,11 +32,14 @@ public final class BlastHits {
      */
     public static Set<String> read(Path tsv, List<Path> searched, Hits into, PrimerPanel primers,
                                    AmpliconOptions options) {
-        try (BufferedReader reader = Files.newBufferedReader(tsv, StandardCharsets.UTF_8);
+        // Decoded leniently, as the searched FASTA is (SequenceFileUtils.openMaybeGzip): a sequence ID with a
+        // byte that is not UTF-8 reads the same way in both, instead of stopping the run here.
+        try (BufferedReader reader = new BufferedReader(new java.io.InputStreamReader(Files.newInputStream(tsv),
+                StandardCharsets.UTF_8));
              QueryTemplates templates = new QueryTemplates(searched)) {
             String line;
             while ((line = reader.readLine()) != null) {
-                if (line.isBlank() || line.startsWith("qseqid")) {
+                if (line.isBlank() || line.equals(BlastField.HEADER)) {
                     continue;
                 }
                 BlastHitParser.parse(line, primers, options, templates)

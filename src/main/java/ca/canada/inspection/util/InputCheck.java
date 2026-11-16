@@ -325,7 +325,7 @@ public final class InputCheck {
     private static final int HEADER_KEPT = 1 << 16;
 
     /**
-     * A FASTA file must start with a header, after any blank lines (BLAST skips them too), hold
+     * A FASTA file must start with a header, after any blank or comment lines (BLAST skips them too), hold
      * at least one line of sequence, and give each sequence its own ID. It is read to its end, at
      * either depth, in one pass: the IDs are in every header, and a gzipped file cut short is
      * found here rather than at the BLAST search.
@@ -343,6 +343,7 @@ public final class InputCheck {
                 Set<String> ids = new HashSet<>();
                 boolean beforeFirstHeader = true;
                 boolean atLineStart = true;
+                boolean comment = false;
                 StringBuilder header = null; // the header line being read, '>' included
                 int read;
                 while ((read = reader.read(block)) >= 0) {
@@ -360,6 +361,9 @@ public final class InputCheck {
                                 header = null;
                             }
                             atLineStart = true;
+                            comment = false;
+                        } else if (comment) {
+                            continue; // the rest of a comment line
                         } else if (header != null) {
                             if (header.length() < HEADER_KEPT) {
                                 header.append(c);
@@ -368,6 +372,9 @@ public final class InputCheck {
                             beforeFirstHeader = false;
                             atLineStart = false;
                             header = new StringBuilder(">");
+                        } else if (FastaScanner.isComment(c, atLineStart)) {
+                            comment = true; // as BLAST reads FASTA, before the first header too
+                            atLineStart = false;
                         } else if (beforeFirstHeader) {
                             if (!Character.isWhitespace(c)) {
                                 return new FileFault("not a FASTA file", "the first line does not start with >", 0);
@@ -413,6 +420,11 @@ public final class InputCheck {
      */
     private static FileFault repeatedId(Set<String> ids, CharSequence header) {
         String id = SequenceFileUtils.fastaId(header.toString());
+        if (id.isEmpty()) {
+            // BLAST names such a sequence Query_1, Query_2...: an ID the run's other readers do not know.
+            return new FileFault("a sequence has no ID", "a header line holds nothing after its >; give each"
+                    + " sequence an ID", 0);
+        }
         if (ids.add(id)) {
             return null;
         }

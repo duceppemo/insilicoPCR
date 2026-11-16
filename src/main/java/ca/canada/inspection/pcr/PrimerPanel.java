@@ -20,8 +20,9 @@ public final class PrimerPanel {
     private final Map<String, PrimerId.Assay> completeAssays;
     private final Set<String> assaysWithProbe;
     private final ExpectedSizes expectedSizes;
+    private final MixGroups mixGroups;
 
-    private PrimerPanel(Map<String, String> sequences, ExpectedSizes expectedSizes) {
+    private PrimerPanel(Map<String, String> sequences, ExpectedSizes expectedSizes, MixGroups mixGroups) {
         this.sequences = Collections.unmodifiableMap(new LinkedHashMap<>(sequences));
         // Read-only all the way down: every step shares these groups.
         Map<String, PrimerId.Assay> grouped = new LinkedHashMap<>();
@@ -39,6 +40,7 @@ public final class PrimerPanel {
         });
         this.assaysWithProbe = Collections.unmodifiableSet(withProbe);
         this.expectedSizes = Objects.requireNonNull(expectedSizes, "expectedSizes");
+        this.mixGroups = Objects.requireNonNull(mixGroups, "mixGroups");
     }
 
     /** A panel declaring no product sizes. */
@@ -46,8 +48,13 @@ public final class PrimerPanel {
         return of(sequences, ExpectedSizes.NONE);
     }
 
+    /** A panel whose assays are each run on their own. */
     public static PrimerPanel of(Map<String, String> sequences, ExpectedSizes expectedSizes) {
-        return new PrimerPanel(sequences, expectedSizes);
+        return of(sequences, expectedSizes, MixGroups.NONE);
+    }
+
+    public static PrimerPanel of(Map<String, String> sequences, ExpectedSizes expectedSizes, MixGroups mixGroups) {
+        return new PrimerPanel(sequences, expectedSizes, mixGroups);
     }
 
     /** Sequences by oligo ID, in the order of the primer file. */
@@ -100,5 +107,10 @@ public final class PrimerPanel {
     /** The product sizes the primer file declares ({@code size=}, {@code other=}). */
     public ExpectedSizes expectedSizes() {
         return expectedSizes;
+    }
+
+    /** Which assays share a reaction ({@code mix=}), and so pair across assays. */
+    public MixGroups mixGroups() {
+        return mixGroups;
     }
 }

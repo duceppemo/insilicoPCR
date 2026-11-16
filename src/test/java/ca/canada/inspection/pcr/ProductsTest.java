@@ -77,6 +77,41 @@ class ProductsTest {
     }
 
     @Test
+    void aPrimerAloneOnBothStrandsMakesAProductOfItsAssay() {
+        // An inverted repeat: toxA-F binds the plus strand at 101 and the minus strand at 581, facing.
+        Sample sample = new Sample("S");
+        sample.hits().add("toxA-F_1", plusHit("toxA-F_1", "c1", 101));
+        sample.hits().add("toxA-F_1", minusHit("toxA-F_1", "c1", 581));
+
+        List<ReportRow> rows = Products.of(sample, degenerate(), AmpliconOptions.withMismatches(0));
+
+        // Found once, from its plus-strand site, not again with the two hits swapped.
+        assertEquals(List.of("toxA toxA-F_1 toxA-F_1 500 + ONE_PRIMER"), rows.stream().map(row -> row.assay() + " "
+                + row.forwardPrimer() + " " + row.reversePrimer() + " " + row.size() + " " + row.strand() + " "
+                + row.pairing()).toList());
+    }
+
+    @Test
+    void primersOfTwoAssaysPairOnlyWhenTheyShareAReaction() {
+        Sample sample = new Sample("S");
+        sample.hits().add("a-F", plusHit("a-F", "c1", 101));
+        sample.hits().add("b-R", minusHit("b-R", "c1", 581));
+        Map<String, String> sequences = new LinkedHashMap<>();
+        for (String id : List.of("a-F", "a-R", "b-F", "b-R")) {
+            sequences.put(id, PRIMER_20);
+        }
+        AmpliconOptions options = AmpliconOptions.withMismatches(0);
+
+        // Run on their own (no mix=): no product of a-F with b-R.
+        assertEquals(List.of(), Products.of(sample, PrimerPanel.of(sequences), options));
+
+        MixGroups mix = MixGroups.fromHeaders(Map.of("a-F", "mix=panel1", "b-R", "size=300 mix=panel1"));
+        List<ReportRow> rows = Products.of(sample, PrimerPanel.of(sequences, ExpectedSizes.NONE, mix), options);
+        assertEquals(List.of("a+b a-F b-R 500 TWO_ASSAYS"), rows.stream().map(row -> row.assay() + " "
+                + row.forwardPrimer() + " " + row.reversePrimer() + " " + row.size() + " " + row.pairing()).toList());
+    }
+
+    @Test
     void aSamplesProductsAreWorkedOutOnceUntilItsHitsChange() {
         Sample sample = new Sample("S");
         sample.hits().add("toxA-F_1", plusHit("toxA-F_1", "c1", 101));

@@ -90,6 +90,7 @@ public final class ReportGenerator {
         monitor.info("HTML report written to " + html);
         List<String> qaLines = new ArrayList<>(QaLogWriter.inputIssueLines(context.inputIssues()));
         qaLines.addAll(context.primers().expectedSizes().qaLogLines());
+        qaLines.addAll(context.primers().mixGroups().qaLogLines());
         qaLines.addAll(diagnostics.qaLogLines());
         splits.forEach(split -> qaLines.add("Primers at contig ends: " + split.message()));
         // QAlog.txt marks the run finished and names its report: a run stopped before it does not

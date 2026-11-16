@@ -2,6 +2,7 @@ package ca.canada.inspection.pipeline;
 
 import ca.canada.inspection.util.SequenceFileUtils;
 import ca.canada.inspection.pcr.ExpectedSizes;
+import ca.canada.inspection.pcr.MixGroups;
 import ca.canada.inspection.pcr.PrimerId;
 import ca.canada.inspection.pcr.PrimerPanel;
 
@@ -41,8 +42,9 @@ public final class PrimerService {
      *
      * @param sequences     primer sequences by primer ID (the header up to the first blank), in file order
      * @param expectedSizes product sizes the headers declare ({@code size=}, {@code other=})
+     * @param mixGroups     the assays the headers say share a reaction ({@code mix=})
      */
-    public record PrimerFile(Map<String, String> sequences, ExpectedSizes expectedSizes) {
+    public record PrimerFile(Map<String, String> sequences, ExpectedSizes expectedSizes, MixGroups mixGroups) {
     }
 
     private PrimerService() {
@@ -57,7 +59,7 @@ public final class PrimerService {
         PrimerFile file = read(config.primers());
         Map<String, String> preparedPrimers = expandPrimers(file.sequences());
         writePrimerDatabase(directories.primerDatabase(), preparedPrimers);
-        return PrimerPanel.of(preparedPrimers, file.expectedSizes());
+        return PrimerPanel.of(preparedPrimers, file.expectedSizes(), file.mixGroups());
     }
 
     /** Validates the IDs and sequences and expands degenerate bases. */
@@ -114,7 +116,7 @@ public final class PrimerService {
         fasta.keySet().forEach(PrimerService::validatePrimerId);
         checkAssaysComplete(fasta.keySet(), file);
         try {
-            return new PrimerFile(fasta, ExpectedSizes.fromHeaders(descriptions));
+            return new PrimerFile(fasta, ExpectedSizes.fromHeaders(descriptions), MixGroups.fromHeaders(descriptions));
         } catch (IllegalArgumentException e) {
             // The message says it all; without the cause, which reads as a bug (RunFailure).
             throw new PipelineException(e.getMessage() + " (primer file " + file + ")");

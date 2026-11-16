@@ -1,0 +1,106 @@
+package ca.canada.inspection.pcr;
+
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.TreeSet;
+
+/**
+ * Which assays of a primer file share a reaction: the multiplexes, as the primer file declares them
+ * with {@code mix=<name>} after a primer's ID ({@code >toxA-F mix=panel1}). The primers of the assays
+ * of one group can pair with each other into products of two assays; an assay without the word is run
+ * on its own, so a file can hold singleplex and multiplex assays at once.
+ */
+public final class MixGroups {
+    /** The header word that names an assay's group. */
+    static final String KEY = "mix";
+
+    /** A primer file that declares no group: every assay is run on its own. */
+    public static final MixGroups NONE = new MixGroups(Map.of());
+
+    /** assay -> group */
+    private final Map<String, String> groupOf;
+
+    private MixGroups(Map<String, String> groupOf) {
+        this.groupOf = Collections.unmodifiableMap(new HashMap<>(groupOf));
+    }
+
+    /**
+     * Reads {@code mix=} from the primers' header descriptions. An assay's group may be given on any of
+     * its primers, and on several if they agree.
+     *
+     * @param descriptions header text following the primer ID, per primer ID as written in the file
+     * @throws IllegalArgumentException for an empty name, or an assay given two different groups
+     */
+    public static MixGroups fromHeaders(Map<String, String> descriptions) {
+        // assay -> the primer that declared its group, and the group
+        Map<String, String[]> declared = new TreeMap<>();
+        descriptions.forEach((primerId, description) -> {
+            PrimerId parsed = PrimerId.parse(primerId);
+            String assay = parsed == null ? primerId : parsed.assay();
+            for (String word : description.trim().split("\\s+")) {
+                int equals = word.indexOf('=');
+                if (equals < 0 || !word.substring(0, equals).toLowerCase(Locale.ROOT).equals(KEY)) {
+                    continue;
+                }
+                String group = word.substring(equals + 1);
+                if (group.isEmpty()) {
+                    throw new IllegalArgumentException("Primer " + primerId + ": " + KEY + "= needs the name of the"
+                            + " reaction the assay shares with others, such as " + KEY + "=panel1");
+                }
+                String[] previous = declared.putIfAbsent(assay, new String[]{primerId, group});
+                if (previous != null && !previous[1].equals(group)) {
+                    throw new IllegalArgumentException("Assay " + assay + " declares " + KEY + "= twice with different"
+                            + " values: " + previous[1] + " on " + previous[0] + ", " + group + " on " + primerId
+                            + " (an assay is in one reaction)");
+                }
+            }
+        });
+        Map<String, String> groupOf = new HashMap<>();
+        declared.forEach((assay, primerAndGroup) -> groupOf.put(assay, primerAndGroup[1]));
+        return groupOf.isEmpty() ? NONE : new MixGroups(groupOf);
+    }
+
+    /** The group of {@code assay}, or {@code null} when it is run on its own. */
+    public String groupOf(String assay) {
+        return groupOf.get(assay);
+    }
+
+    /** Whether {@code first} and {@code second}, two assays, share a reaction. */
+    public boolean shareAReaction(String first, String second) {
+        String group = groupOf.get(first);
+        return group != null && !first.equals(second) && group.equals(groupOf.get(second));
+    }
+
+    /** The groups, by name, with their assays by name. */
+    public Map<String, Set<String>> groups() {
+        Map<String, Set<String>> groups = new TreeMap<>();
+        groupOf.forEach((assay, group) -> groups.computeIfAbsent(group, ignored -> new TreeSet<>()).add(assay));
+        return groups;
+    }
+
+    /** For QAlog.txt: the reactions the primer file declares and their assays; none when it declares none. */
+    public java.util.List<String> qaLogLines() {
+        if (groupOf.isEmpty()) {
+            return java.util.List.of();
+        }
+        java.util.List<String> lines = new java.util.ArrayList<>();
+        lines.add("Assays sharing a reaction (mix= in the primer file; their primers pair across assays):");
+        groups().forEach((group, assays) -> lines.add("  " + group + ": " + String.join(", ", assays)));
+        return lines;
+    }
+
+    /**
+     * The name a product of two assays is reported under, the same whichever primer is on which strand:
+     * the two names in name order ({@code stxQ+toxA}); its primers are in the row's primer columns.
+     */
+    public static String crossAssayName(String first, String second) {
+        Objects.requireNonNull(first);
+        Objects.requireNonNull(second);
+        return first.compareTo(second) <= 0 ? first + "+" + second : second + "+" + first;
+    }
+}

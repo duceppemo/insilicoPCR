@@ -7,6 +7,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -122,6 +123,20 @@ class PrimerServiceTest {
         assertEquals(java.util.List.of("assay-F", "assay-R"), java.util.List.copyOf(file.sequences().keySet()));
         assertTrue(file.expectedSizes().isEmpty());
         assertEquals(Map.of("assay-F", "ACGT", "assay-R", "ACGT"), PrimerService.expand(file.sequences()));
+    }
+
+    @Test
+    void theAssaysOfAMultiplexAreReadFromTheHeaders() throws java.io.IOException {
+        // Singleplex and multiplex assays in one file: only those sharing a mix= pair across assays.
+        java.nio.file.Path primerFile = java.nio.file.Files.writeString(dir.resolve("mixed.fasta"),
+                ">a-F mix=panel1\nACGT\n>a-R\nACGT\n>b-F size=300 mix=panel1\nACGT\n>b-R\nACGT\n"
+                        + ">c-F\nACGT\n>c-R\nACGT\n");
+
+        PrimerService.PrimerFile file = PrimerService.read(primerFile);
+
+        assertTrue(file.mixGroups().shareAReaction("a", "b"));
+        assertFalse(file.mixGroups().shareAReaction("a", "c"));
+        assertEquals(java.util.List.of("b"), java.util.List.copyOf(file.expectedSizes().assays()));
     }
 
     @Test

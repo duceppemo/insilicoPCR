@@ -99,11 +99,55 @@ public final class Products {
             for (String forwardPrimer : group.forward()) {
                 for (String reversePrimer : group.reverse()) {
                     pairs(assayRows::add, sampleName, contigs, hits, assayName, group,
-                            forwardPrimer, reversePrimer, options, probeRequired);
+                            forwardPrimer, reversePrimer, options, probeRequired, false);
+                }
+            }
+            // One primer alone, on both strands where a sequence repeats inverted: a product of the tube
+            // as well, reported under its assay (ReportRow#onePrimer marks it).
+            for (List<String> role : List.of(group.forward(), group.reverse())) {
+                for (String plusStrand : role) {
+                    for (String minusStrand : role) {
+                        pairs(assayRows::add, sampleName, contigs, hits, assayName, group,
+                                plusStrand, minusStrand, options, probeRequired, true);
+                    }
                 }
             }
             bestPerProduct(assayRows).forEach(rows);
         }
+        crossAssayProducts(rows, sampleName, contigs, hits, options, primers);
+    }
+
+    /**
+     * Products of the primers of two assays that share a reaction ({@code mix=} in the primer file),
+     * reported under {@link MixGroups#crossAssayName}: any primer of one, either role, with any of the
+     * other. Assays run on their own make none.
+     */
+    private static void crossAssayProducts(Consumer<ReportRow> rows, String sampleName, Map<String, String> contigs,
+                                           HitIndex hits, AmpliconOptions options, PrimerPanel primers) {
+        MixGroups mix = primers.mixGroups();
+        Map<String, List<ReportRow>> byName = new java.util.LinkedHashMap<>();
+        primers.completeAssays().forEach((first, firstGroup) -> primers.completeAssays().forEach((second, secondGroup) -> {
+            if (!mix.shareAReaction(first, second)) {
+                return;
+            }
+            String name = MixGroups.crossAssayName(first, second);
+            List<ReportRow> named = byName.computeIfAbsent(name, ignored -> new ArrayList<>());
+            for (String plusStrand : primersOf(firstGroup)) {
+                for (String minusStrand : primersOf(secondGroup)) {
+                    // No probe asked for: a product two assays make is in the tube whichever probe sees it.
+                    pairs(named::add, sampleName, contigs, hits, name, firstGroup, plusStrand, minusStrand,
+                            options, false, true);
+                }
+            }
+        }));
+        byName.values().forEach(named -> bestPerProduct(named).forEach(rows));
+    }
+
+    /** The primers of an assay, forward then reverse: not its probe, which primes nothing. */
+    private static List<String> primersOf(PrimerId.Assay group) {
+        List<String> primers = new ArrayList<>(group.forward());
+        primers.addAll(group.reverse());
+        return primers;
     }
 
     /**
@@ -157,8 +201,14 @@ public final class Products {
     private static void pairs(Consumer<ReportRow> rows, String sampleName, Map<String, String> contigs,
                                                HitIndex hits,
                                                String assayName, PrimerId.Assay group, String forwardPrimer,
-                                               String reversePrimer, AmpliconOptions options, boolean probeRequired) {
+                                               String reversePrimer, AmpliconOptions options, boolean probeRequired,
+                                               boolean plusStrandFirst) {
         for (BlastResult forwardHit : hits.of(forwardPrimer)) {
+            // Two primers of one role, or of two assays: each product is found once, from the primer on
+            // its plus strand, not again with the two swapped.
+            if (plusStrandFirst && !forwardHit.isPlusStrand()) {
+                continue;
+            }
             for (BlastResult reverseHit : hits.on(reversePrimer, forwardHit.queryID())) {
                 Amplicon amplicon = AmpliconCaller.call(forwardHit, reverseHit, options).orElse(null);
                 if (amplicon == null) {

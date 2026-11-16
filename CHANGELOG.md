@@ -4,6 +4,18 @@
 
 ### Added
 
+- Products of one primer alone are reported: a forward primer with a forward
+  primer of its assay (itself or another variant), or a reverse with a reverse,
+  where a sequence repeats inverted. They are a product of the tube; until now
+  a documented gap, reported as nothing. Such a row is under its assay, with
+  its size check, its primer columns naming one role twice, and the HTML report
+  tags it **one primer**.
+- Multiplex reactions: assays given the same `mix=<name>` in the primer file
+  share a reaction, and their primers also pair with each other, any role with
+  any role. Such a product is reported under the two assays' names joined by
+  `+` (`stxQ+toxA`, its own column of the HTML report), tagged **two assays**.
+  Assays without `mix=` are run on their own, so one file can hold singleplex
+  and multiplex assays. `QAlog.txt` lists the groups.
 - Application: while a run goes on, **Run** is **Stop**, which stops it (after
   confirmation) and leaves the window open; before, only closing the window
   stopped a run.

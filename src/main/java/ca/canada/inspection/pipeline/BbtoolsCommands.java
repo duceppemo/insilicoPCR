@@ -99,13 +99,34 @@ record BbtoolsCommands(String javaCommand, Path bbtoolsJar, int childMemoryGiB, 
         }
     }
 
+    /** The shortest k the first bait uses: below it, k-mers of a primer match unrelated reads too often. */
+    static final int MIN_BAIT_K = 16;
+
     /**
-     * First pass: keep reads sharing a k-mer with any primer, allowing
-     * {@code hdist} mismatches so primers with tolerated mismatches still bait.
+     * The first bait's k: the shortest oligo's length less the 5' bases a hit may leave unaligned
+     * ({@code --5p-truncation}), so that a primer whose 5' bases do not match the reads still shares a
+     * k-mer with them, as a hit on an assembly would still be accepted; not below {@link #MIN_BAIT_K} plus
+     * the substitutions allowed ({@code mismatches}), nor above the shortest oligo. A k as long as the
+     * primer could not match across an indel either: the read's k-mer then spans one base more of the
+     * template than the primer has. Each substitution allowed keeps one more base: 3 in a 16-mer matched
+     * random reads, which baited 68 times the reads of a run at -m 3 and ran 3 times as long.
      */
-    Command firstBait(Path primerDatabase, List<Path> reads, Path output, int kLength, int hdist) {
-        Command command = bbduk(primerDatabase, reads, output, hdist);
-        return withOption(command, "k=" + kLength);
+    static int firstBaitK(int shortestOligo, int fivePrimeTruncation, int mismatches) {
+        return Math.min(shortestOligo, Math.max(MIN_BAIT_K + mismatches, shortestOligo - fivePrimeTruncation));
+    }
+
+    /** The most insertions and deletions BBDuk matches k-mers within ({@code edist}): it refuses more. */
+    static final int MAX_BAIT_INDELS = 2;
+
+    /**
+     * First pass: keep reads sharing a k-mer with any primer, within {@code mismatches} substitutions
+     * ({@code hdist}) or that many edits, insertions and deletions included ({@code edist}, at most
+     * {@link #MAX_BAIT_INDELS}): {@code -m} counts all three, so that what a hit on an assembly would
+     * accept also baits reads.
+     */
+    Command firstBait(Path primerDatabase, List<Path> reads, Path output, int kLength, int mismatches) {
+        Command command = bbduk(primerDatabase, reads, output, mismatches);
+        return withOption(withOption(command, "edist=" + Math.min(mismatches, MAX_BAIT_INDELS)), "k=" + kLength);
     }
 
     /**

@@ -47,8 +47,10 @@ public final class FastqProcessor {
 
         RunMonitor monitor = context.monitor();
         monitor.info("FastQ files identified, conducting baiting and assembly");
-        int kLength = context.primers().sequences().values().stream().mapToInt(String::length).min()
+        int shortest = context.primers().sequences().values().stream().mapToInt(String::length).min()
                 .orElseThrow(() -> new PipelineException("Primer dictionary is empty"));
+        int kLength = BbtoolsCommands.firstBaitK(shortest, context.config().ampliconOptions().maxFivePrimeTruncation(),
+                context.config().mismatches());
         int budget = context.childJavaMemoryBudgetGiB();
         int threads = context.config().threads();
         ChildJavaMemory.Share alone = ChildJavaMemory.share(budget, threads, 1);

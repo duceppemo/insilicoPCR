@@ -77,9 +77,18 @@ public enum ReportColumn {
 
     /**
      * Text as one TSV cell: a tab or a line break (a FASTA header's description may hold one)
-     * would start another column or row, so each becomes a space.
+     * would start another column or row, so each becomes a space. Text between quotes (a file
+     * named {@code "isolate 7".fasta}) is quoted as a spreadsheet quotes it, since the reader takes
+     * such quotes off (they are a spreadsheet's): read back, it is {@link #readBack} of the text.
      */
     public static String cell(String text) {
+        String cell = readBack(text);
+        return cell.length() >= 2 && cell.startsWith("\"") && cell.endsWith("\"")
+                ? "\"" + cell.replace("\"", "\"\"") + "\"" : cell;
+    }
+
+    /** What a cell written from {@code text} reads back as: its tabs and line breaks are spaces. */
+    public static String readBack(String text) {
         return text.replace('\t', ' ').replace('\r', ' ').replace('\n', ' ');
     }
 }

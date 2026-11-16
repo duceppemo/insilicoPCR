@@ -9,6 +9,7 @@ import javafx.stage.Window;
 import java.io.File;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
 
@@ -60,24 +61,31 @@ public final class PathFieldBinder {
         return path;
     }
 
+    /**
+     * The path a drop of {@code files} gives a field, or {@code null}: a field holds one file or folder.
+     * Dropping both files of a read pair on the input field kept the first, which was then run alone
+     * as single-end reads; such a drop is not taken (the pointer says so while dragging).
+     */
+    static Path dropped(List<File> files) {
+        return files != null && files.size() == 1 ? files.getFirst().toPath() : null;
+    }
+
     public static void bindDropTarget(TextField field, Consumer<Path> onPathSelected) {
         field.setOnDragOver(event -> {
-            if (event.getGestureSource() != field && event.getDragboard().hasFiles()) {
+            if (event.getGestureSource() != field && event.getDragboard().hasFiles()
+                    && dropped(event.getDragboard().getFiles()) != null) {
                 event.acceptTransferModes(TransferMode.COPY_OR_MOVE);
             }
             event.consume();
         });
 
         field.setOnDragDropped(event -> {
-            var dragboard = event.getDragboard();
-            var success = false;
-            if (dragboard.hasFiles()) {
-                var path = dragboard.getFiles().getFirst().toPath();
+            Path path = event.getDragboard().hasFiles() ? dropped(event.getDragboard().getFiles()) : null;
+            if (path != null) {
                 onPathSelected.accept(path);
                 field.setText(path.toString());
-                success = true;
             }
-            event.setDropCompleted(success);
+            event.setDropCompleted(path != null);
             event.consume();
         });
     }

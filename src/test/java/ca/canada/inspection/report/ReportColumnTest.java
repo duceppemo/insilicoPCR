@@ -61,4 +61,17 @@ class ReportColumnTest {
             assertEquals(List.of(expected, WITHOUT), read, "probe columns: " + probeColumns);
         }
     }
+
+    @Test
+    void textBetweenQuotesReadsBackAsItIs() throws IOException {
+        // A file named "isolate 7".fasta: the reader takes a spreadsheet's quotes off, which split its lane.
+        for (String name : List.of("\"isolate 7\"", "\"a \"\"b\"\" c\"", "say \"hi\"", "\"", "plain\ttab")) {
+            Path report = Files.writeString(dir.resolve("quoted.tsv"), String.join("\t",
+                    ReportColumn.of(false).stream().map(ReportColumn::header).toList()) + "\n"
+                    + String.join("\t", ReportColumn.of(false).stream().map(column -> column == ReportColumn.SAMPLE
+                    ? ReportColumn.cell(name) : column.value(WITHOUT)).toList()) + "\n");
+
+            assertEquals(ReportColumn.readBack(name), ReportTsv.read(report).getFirst().sample(), name);
+        }
+    }
 }

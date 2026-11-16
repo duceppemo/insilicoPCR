@@ -55,7 +55,7 @@ public final class HtmlReport {
         INCONCLUSIVE("Seen in too few reads", "A complete amplicon is in some reads, too few to be reported", "?"),
         /** Extended reads join the primers, but read pairs do not confirm the product (FASTQ input). */
         UNCONFIRMED("Not confirmed by read pairs", "Reads extended from both primers hold a product, but the read"
-                + " pairs do not confirm it; not reported", "?"),
+                + " pairs do not confirm it; not reported", "\u21c4"),
         /** No product on any one contig, but the primers point off contig ends: one could span them (FASTA input). */
         ACROSS_ENDS("Primers at contig ends", "No product on any one contig, but the primers point off the ends of two"
                 + " contigs, or both ends of one: a product could span the break, or the end of a circular sequence",
@@ -88,6 +88,11 @@ public final class HtmlReport {
 
         public String label() {
             return label;
+        }
+
+        /** The mark in a grid cell and the legend; none for {@link #AMPLIFIED}, a plain coloured chip. */
+        String glyph() {
+            return glyph;
         }
 
         String css() {
@@ -421,14 +426,14 @@ public final class HtmlReport {
                 html.append(" <span class=\"tag\">reads</span>");
             }
             html.append("</th>");
-            row.forEach((assay, cell) -> html.append("<td>").append(chip(sample, assay, cell, true)).append("</td>"));
+            row.forEach((assay, cell) -> html.append("<td>").append(chip(sample, assay, cell)).append("</td>"));
             html.append("</tr>\n");
         });
         html.append("</tbody></table></div>\n</section>\n");
     }
 
     /** The coloured mark for one sample and assay: glyph and size, with the detail as tooltip. */
-    private static String chip(String sample, String assay, Cell cell, boolean inGrid) {
+    private static String chip(String sample, String assay, Cell cell) {
         State state = cell.state();
         List<Integer> sizes = cell.sizes();
         StringBuilder text = new StringBuilder(state.glyph);
@@ -457,15 +462,19 @@ public final class HtmlReport {
         }
         String element = cell.products().isEmpty() ? "span" : "button";
         // A plain "no product" says nothing its row and column do not: no title, which was a third
-        // of the page on a large run (5,000 samples by 40 assays).
+        // of the page on a large run (5,000 samples by 40 assays), and no label either.
         boolean plain = state == State.NONE && cell.note().isEmpty();
+        // Read out by a screen reader as which cell it is and its outcome: a cell with products as
+        // the button it is, one without (seen in too few reads, primers at contig ends...) as an
+        // image, its outcome otherwise only in a title that neither keyboard nor screen reader reaches.
+        String label = sample + " · " + assay + ": " + state.label + (text.isEmpty() ? "" : " " + text)
+                + (reads ? ", from reads" : "") + (cell.note().isEmpty() ? "" : ". " + cell.note());
+        String attributes = cell.products().isEmpty()
+                ? (plain ? "" : " role=\"img\" aria-label=\"" + escape(label) + "\"")
+                : " data-s=\"" + escape(sample) + "\" data-a=\"" + escape(assay) + "\" aria-label=\"" + escape(label) + "\"";
         return "<" + element + (element.equals("button") ? " type=\"button\"" : "") + " class=\"chip " + state.css()
                 + "\"" + (plain ? "" : " title=\"" + escape(tip.toString()) + "\"")
-                + (inGrid && !cell.products().isEmpty()
-                // Read out by a screen reader as which cell it is, not only its sizes.
-                ? " data-s=\"" + escape(sample) + "\" data-a=\"" + escape(assay) + "\" aria-label=\""
-                + escape(sample + " · " + assay + ": " + state.label + (text.isEmpty() ? "" : " " + text)
-                + (reads ? ", from reads" : "")) + "\"" : "")
+                + attributes
                 + ">" + escape(text.toString())
                 + (others > 0 ? "<sup>+" + others + "</sup>" : "")
                 + (cell.partlyBound() ? "<span class=\"part\" role=\"img\" aria-label=\"" + escape(PARTLY_BOUND_LABEL) + "\">"

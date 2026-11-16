@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Added
+
+- Application: while a run goes on, **Run** is **Stop**, which stops it (after
+  confirmation) and leaves the window open; before, only closing the window
+  stopped a run.
+
 ### Fixed
 
 - A product made by several variants of a degenerate primer named a variant
@@ -47,6 +53,21 @@
   package a jar an earlier build left; Maven's exit code was not checked. It
   needs PowerShell 7 (`pwsh`, which the `.bat` now starts when installed) and
   stops when Maven fails.
+- Application:
+  - An input folder that cannot be listed (another user's, without
+    permission) made **Run** do nothing, without a message; it says so.
+  - Dropping both files of a read pair on the input field kept the first,
+    which was then run alone as single-end reads; a field takes one file or
+    folder, and a drop of several is refused.
+- HTML report: "Seen in too few reads" and "Not confirmed by read pairs" had the
+  same mark (`?`) and look; the second is `⇄`, with a dashed border. A grid
+  cell without a product (those two, "Primers at contig ends", "Not checkable
+  from reads") gave its outcome in a hover text only; a screen reader reads it.
+- Gel: a sample named between quotes (`"isolate 7".fasta`) was split into two
+  lanes, one empty: `report.tsv` read back without its quotes. Such a cell is
+  written as a spreadsheet quotes it, and reads back as it was.
+- Gel: a sample whose name held a control character made a saved SVG no
+  program opens; such characters are replaced in the SVG.
 - Windows test harness: the two cases killing a run passed as "skipped" when no
   program was seen to be killed, so they could stop testing without anyone
   knowing; they fail then. New cases: sample names Windows cannot give a

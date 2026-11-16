@@ -48,6 +48,16 @@
 - A `.gz` input file that is not gzip stayed open after the input check said
   so, until Java's garbage collector came by; on Windows it could not be
   renamed meanwhile.
+- Application: the log area kept every line of the run, and on a run of
+  hundreds of FASTQ samples (some 100,000 lines of the programs' output) the
+  window slowed down, its Stop button with it. It keeps the latest lines;
+  `log.txt` keeps them all.
+- **Open Report TSV** read the whole chosen file before checking it is a
+  report: a sample's BLAST table, named like a report and gigabytes on a large
+  assembly, froze the window. The first line is checked first.
+- HTML report: the read-level evidence table marked every withheld product `?`,
+  also those its grid cell marks `⇄` (not confirmed by read pairs); it uses the
+  grid's mark.
 - A product made by several variants of a degenerate primer named a variant
   whose first base does not pair, rather than one that pairs over its whole
   length, when the two had no mismatch in their alignments: BLAST leaves a

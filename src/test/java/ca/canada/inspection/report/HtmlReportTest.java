@@ -147,7 +147,9 @@ class HtmlReportTest {
                 List.of(withheld), DETAILS));
         assertTrue(page.contains("class=\"chip unconfirmed\""));
         assertTrue(page.contains("not confirmed by read pairs, not reported"), "its own summary tile");
-        assertTrue(page.contains("<span class=\"chip inconclusive\">?</span> not reported"), "listed with the reads");
+        // Listed with the reads under the mark of its grid cell, not the "?" of "seen in too few reads".
+        assertTrue(page.contains("<span class=\"chip unconfirmed\" role=\"img\" aria-label=\"Not confirmed by read"
+                + " pairs\">\u21c4</span> not reported"), "listed with the reads");
     }
 
     @Test

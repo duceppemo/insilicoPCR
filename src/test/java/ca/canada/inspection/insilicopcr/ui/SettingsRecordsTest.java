@@ -15,10 +15,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class SettingsRecordsTest {
 
     @Test
-    void defaultAmpliconSettingsMatchCommandLineDefaults() {
+    void defaultAmpliconSettingsAreTheLibrarysDefaults() {
+        // Compared with the command line itself in CliConfigTest.theWindowsDefaultsAreTheCommandLines.
         AmpliconOptions gui = AmpliconSettings.DEFAULTS.toOptions(2);
-        AmpliconOptions cli = AmpliconOptions.withMismatches(2);
-        assertEquals(cli, gui, "blank probe mismatches follow the primer mismatches, as on the command line");
+        AmpliconOptions defaults = AmpliconOptions.withMismatches(2);
+        assertEquals(defaults, gui, "blank probe mismatches follow the primer mismatches");
         assertTrue(AmpliconSettings.DEFAULTS.isDefault());
         assertEquals("Amplicon settings…", AmpliconSettingsDialog.buttonLabel(AmpliconSettings.DEFAULTS));
     }
@@ -55,17 +56,17 @@ class SettingsRecordsTest {
 
     @Test
     void fastqDialogParsesAndRejectsInvalidValues() {
-        assertEquals(new FastqSettings(new TadpoleOptions(25, 2, 1, 80), 0.25),
-                FastqSettingsDialog.parse("25", "2", "1", "80", " 0.25 "));
-        assertThrows(IllegalArgumentException.class, () -> FastqSettingsDialog.parse("0", "2", "1", "60", "0.3"));
-        assertThrows(IllegalArgumentException.class, () -> FastqSettingsDialog.parse("31", "2", "1", "60", "1.5"));
-        assertThrows(IllegalArgumentException.class, () -> FastqSettingsDialog.parse("31", "2", "1", "60", "NaN"));
-        assertThrows(IllegalArgumentException.class, () -> FastqSettingsDialog.parse("31", "2", "1", "60", "30%"));
+        assertEquals(new FastqSettings(new TadpoleOptions(25, 2, 1, 80), 0.25, ca.canada.inspection.pcr.ReadExtensionCaller.Mode.DEFAULT, ca.canada.inspection.pipeline.PipelineConfig.AUTOMATIC_BBTOOLS_MEMORY),
+                FastqSettingsDialog.parse("25", "2", "1", "80", " 0.25 ", ca.canada.inspection.pcr.ReadExtensionCaller.Mode.DEFAULT, ""));
+        assertThrows(IllegalArgumentException.class, () -> FastqSettingsDialog.parse("0", "2", "1", "60", "0.3", ca.canada.inspection.pcr.ReadExtensionCaller.Mode.DEFAULT, ""));
+        assertThrows(IllegalArgumentException.class, () -> FastqSettingsDialog.parse("31", "2", "1", "60", "1.5", ca.canada.inspection.pcr.ReadExtensionCaller.Mode.DEFAULT, ""));
+        assertThrows(IllegalArgumentException.class, () -> FastqSettingsDialog.parse("31", "2", "1", "60", "NaN", ca.canada.inspection.pcr.ReadExtensionCaller.Mode.DEFAULT, ""));
+        assertThrows(IllegalArgumentException.class, () -> FastqSettingsDialog.parse("31", "2", "1", "60", "30%", ca.canada.inspection.pcr.ReadExtensionCaller.Mode.DEFAULT, ""));
         // The read extension keeps its default unless another choice is made.
         assertEquals(ReadExtensionCaller.Mode.UNREPORTED,
-                FastqSettingsDialog.parse("31", "2", "1", "60", "0.3").readExtension());
-        assertEquals(new FastqSettings(TadpoleOptions.DEFAULTS, 0.3, ReadExtensionCaller.Mode.TARGET),
-                FastqSettingsDialog.parse("31", "2", "1", "60", "0.3", ReadExtensionCaller.Mode.TARGET));
+                FastqSettingsDialog.parse("31", "2", "1", "60", "0.3", ca.canada.inspection.pcr.ReadExtensionCaller.Mode.DEFAULT, "").readExtension());
+        assertEquals(new FastqSettings(TadpoleOptions.DEFAULTS, 0.3, ReadExtensionCaller.Mode.TARGET, ca.canada.inspection.pipeline.PipelineConfig.AUTOMATIC_BBTOOLS_MEMORY),
+                FastqSettingsDialog.parse("31", "2", "1", "60", "0.3", ReadExtensionCaller.Mode.TARGET, ""));
     }
 
     @Test
@@ -104,14 +105,14 @@ class SettingsRecordsTest {
     void fastqSettingsDefaultsAndLabel() {
         assertTrue(FastqSettings.DEFAULTS.isDefault());
         assertEquals("FASTQ settings…", FastqSettingsDialog.buttonLabel(FastqSettings.DEFAULTS));
-        FastqSettings custom = new FastqSettings(new TadpoleOptions(25, 2, 1, 60), 0.3);
+        FastqSettings custom = new FastqSettings(new TadpoleOptions(25, 2, 1, 60), 0.3, ca.canada.inspection.pcr.ReadExtensionCaller.Mode.DEFAULT, ca.canada.inspection.pipeline.PipelineConfig.AUTOMATIC_BBTOOLS_MEMORY);
         assertEquals("FASTQ settings… *", FastqSettingsDialog.buttonLabel(custom));
         assertTrue(FastqSettingsDialog.summary(custom).contains("k=25"));
         assertTrue(FastqSettingsDialog.summary(custom).contains("\nRead extension: unreported\n"));
         assertTrue(FastqSettingsDialog.summary(custom).endsWith("BBTools memory: automatic: three quarters of the"
                 + " memory insilicoPCR leaves free, at least half of its heap"));
 
-        FastqSettings noExtension = new FastqSettings(TadpoleOptions.DEFAULTS, 0.3, ReadExtensionCaller.Mode.OFF);
+        FastqSettings noExtension = new FastqSettings(TadpoleOptions.DEFAULTS, 0.3, ReadExtensionCaller.Mode.OFF, ca.canada.inspection.pipeline.PipelineConfig.AUTOMATIC_BBTOOLS_MEMORY);
         assertEquals(ReadExtensionCaller.Mode.UNREPORTED, FastqSettings.DEFAULTS.readExtension());
         assertTrue(!noExtension.isDefault());
         assertEquals("FASTQ settings… *", FastqSettingsDialog.buttonLabel(noExtension));

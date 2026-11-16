@@ -236,12 +236,11 @@ public final class HtmlReport {
                 .toList();
     }
 
-    /** Decides what a sample shows for an assay from its products and, without any, from the reads. */
-    static Cell cell(String assay, List<Product> products, ExpectedSizes sizes, Finding finding) {
-        return cell(assay, products, sizes, finding, null);
-    }
-
-    /** As {@link #cell(String, List, ExpectedSizes, Finding)}; {@code split} says where a product could span contigs. */
+    /**
+     * Decides what a sample shows for an assay from its products and, without any, from the reads
+     * ({@code finding}, its FASTQ diagnostics) or from {@code split}, where a product could span
+     * contigs; either may be {@code null}.
+     */
     static Cell cell(String assay, List<Product> products, ExpectedSizes sizes, Finding finding,
                      SplitAcrossContigs.Split split) {
         Set<ExpectedSizes.Label> labels = products.stream().map(Product::label).filter(java.util.Objects::nonNull)

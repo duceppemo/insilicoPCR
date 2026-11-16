@@ -19,23 +19,16 @@ import java.util.Optional;
  */
 public final class FastqSettingsDialog {
 
-    /** The FASTQ-mode settings edited by this dialog. */
-    /** @param bbtoolsMemoryGiB the BBTools programs' memory, {@link PipelineConfig#AUTOMATIC_BBTOOLS_MEMORY} for automatic */
+    /**
+     * The FASTQ-mode settings edited by this dialog.
+     *
+     * @param bbtoolsMemoryGiB the BBTools programs' memory, {@link PipelineConfig#AUTOMATIC_BBTOOLS_MEMORY} for automatic
+     */
     public record FastqSettings(TadpoleOptions tadpole, double readMinFraction,
                                 ReadExtensionCaller.Mode readExtension, int bbtoolsMemoryGiB) {
         public static final FastqSettings DEFAULTS = new FastqSettings(TadpoleOptions.DEFAULTS,
                 ReadLevelCaller.DEFAULT_MIN_SUPPORT_FRACTION, ReadExtensionCaller.Mode.DEFAULT,
                 PipelineConfig.AUTOMATIC_BBTOOLS_MEMORY);
-
-        /** Settings with the BBTools memory worked out from the computer. */
-        public FastqSettings(TadpoleOptions tadpole, double readMinFraction, ReadExtensionCaller.Mode readExtension) {
-            this(tadpole, readMinFraction, readExtension, PipelineConfig.AUTOMATIC_BBTOOLS_MEMORY);
-        }
-
-        /** Settings with the default read extension. */
-        public FastqSettings(TadpoleOptions tadpole, double readMinFraction) {
-            this(tadpole, readMinFraction, ReadExtensionCaller.Mode.DEFAULT);
-        }
 
         public boolean isDefault() {
             return equals(DEFAULTS);
@@ -120,19 +113,9 @@ public final class FastqSettingsDialog {
     /**
      * Parses the dialog's field texts.
      *
+     * @param bbtoolsMemory a number of GB, or empty for automatic
      * @throws IllegalArgumentException with a user-facing message when a value is invalid
      */
-    static FastqSettings parse(String k, String minSeed, String minCov, String minContig, String readFraction) {
-        return parse(k, minSeed, minCov, minContig, readFraction, ReadExtensionCaller.Mode.DEFAULT);
-    }
-
-    /** As {@link #parse(String, String, String, String, String)}, with the read extension chosen. */
-    static FastqSettings parse(String k, String minSeed, String minCov, String minContig, String readFraction,
-                               ReadExtensionCaller.Mode readExtension) {
-        return parse(k, minSeed, minCov, minContig, readFraction, readExtension, "");
-    }
-
-    /** As above, with the BBTools memory: a number of GB, or empty for automatic. */
     static FastqSettings parse(String k, String minSeed, String minCov, String minContig, String readFraction,
                                ReadExtensionCaller.Mode readExtension, String bbtoolsMemory) {
         int memory = bbtoolsMemory.isBlank() ? PipelineConfig.AUTOMATIC_BBTOOLS_MEMORY

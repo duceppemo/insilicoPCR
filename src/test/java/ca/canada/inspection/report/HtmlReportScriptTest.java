@@ -125,9 +125,21 @@ class HtmlReportScriptTest {
     }
 
     @Test
-    void aPrintoutShowsEveryRowWhateverTheFilters() throws IOException {
-        // Not printed: the count saying rows are hidden. So every row is printed.
-        String css = new String(HtmlReport.class.getResourceAsStream("report.css").readAllBytes(), StandardCharsets.UTF_8);
-        assertTrue(css.contains("#rows tbody tr[hidden], #grid tbody tr[hidden] { display: table-row !important; }"));
+    void aPrintoutShowsEveryRowWhateverTheFilters() throws Exception {
+        // Not printed: the count saying rows are hidden. So every row a filter hid must be printed,
+        // by a rule of the page's own print style sheet that matches it.
+        String out = run(report(), """
+                  type('rowFilter', 'S11'); type('sampleFilter', 'S11'); await wait(400);
+                  const print = Array.from(document.styleSheets).flatMap(sheet => Array.from(sheet.cssRules))
+                      .filter(rule => rule.media && rule.media.mediaText.includes('print'))
+                      .flatMap(rule => Array.from(rule.cssRules));
+                  const printed = element => print.some(rule => rule.selectorText && element.matches(rule.selectorText)
+                      && rule.style.display === 'table-row' && rule.style.getPropertyPriority('display') === 'important');
+                  const hidden = Array.from(document.querySelectorAll('#rows tbody tr, #grid tbody tr')).filter(tr => tr.hidden);
+                  out.push(hidden.length > 0);
+                  out.push(hidden.filter(tr => !printed(tr)).length);
+                  out.push(print.some(rule => rule.selectorText === '.tools' && rule.style.display === 'none'));
+                """);
+        assertEquals("true|0|true", out);
     }
 }

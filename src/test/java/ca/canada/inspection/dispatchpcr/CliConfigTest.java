@@ -43,6 +43,21 @@ class CliConfigTest {
     }
 
     @Test
+    void theWindowsDefaultsAreTheCommandLines() throws Exception {
+        // A run from the window with its settings untouched is the run of the command line given
+        // the same mismatches: a default changed on one side only would no longer pass.
+        PipelineConfig cli = parse("-m", "2");
+        var amplicon = ca.canada.inspection.insilicopcr.ui.AmpliconSettingsDialog.AmpliconSettings.DEFAULTS;
+        var fastq = ca.canada.inspection.insilicopcr.ui.FastqSettingsDialog.FastqSettings.DEFAULTS;
+
+        assertEquals(cli.ampliconOptions(), amplicon.toOptions(2));
+        assertEquals(cli.tadpole(), fastq.tadpole());
+        assertEquals(cli.readMinFraction(), fastq.readMinFraction());
+        assertEquals(cli.readExtension(), fastq.readExtension());
+        assertEquals(cli.bbtoolsMemoryGiB(), fastq.bbtoolsMemoryGiB());
+    }
+
+    @Test
     void defaultsMatchDocumentedValues() throws Exception {
         PipelineConfig config = parse();
         AmpliconOptions options = config.ampliconOptions();

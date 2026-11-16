@@ -143,6 +143,32 @@ public record ReportRow(String sample, String assay, Site site, Binding forward,
         return forward.primer();
     }
 
+    /** How the primers of a product came together. */
+    public enum Pairing {
+        /** An assay's forward and reverse primer, as designed. */
+        DESIGNED,
+        /** One primer role alone (forward with forward, reverse with reverse): an inverted repeat. */
+        ONE_PRIMER,
+        /** Primers of two assays that share a reaction ({@code mix=}). */
+        TWO_ASSAYS
+    }
+
+    /**
+     * How this product's primers came together, from their IDs: in {@code forwardPrimer} the one on the
+     * plus strand for a product that is not {@link Pairing#DESIGNED}.
+     */
+    public Pairing pairing() {
+        PrimerId first = PrimerId.parse(forward.primer());
+        PrimerId second = PrimerId.parse(reverse.primer());
+        if (first == null || second == null) {
+            return Pairing.DESIGNED;
+        }
+        if (!first.assay().equals(second.assay())) {
+            return Pairing.TWO_ASSAYS;
+        }
+        return first.role() == second.role() ? Pairing.ONE_PRIMER : Pairing.DESIGNED;
+    }
+
     public String reversePrimer() {
         return reverse.primer();
     }

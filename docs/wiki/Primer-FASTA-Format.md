@@ -188,3 +188,21 @@ Rules:
   declarations are unchanged. The ranges used are recorded in `QAlog.txt`.
 - The declaration does not change `--min-length`/`--max-length`: a product outside those limits is still not
   reported, declared or not.
+
+
+## Assays in one reaction (multiplex)
+
+A primer file can hold assays run on their own and assays run together in one tube. To say that assays share a reaction, give them the same `mix=<name>` after a primer's ID, on any one of each assay's primers:
+
+```text
+>toxA-F mix=panel1
+TTTCCTCATGCAATTCAAAACC
+>toxA-R
+ATGTCCGTAATGTAGGCGAAA
+>stxQ-F mix=panel1 size=118
+...
+>its-F size=434
+...
+```
+
+The primers of the assays of one group then also pair with each other, any role with any role, as they would in the tube: such a product is reported under the two assays' names joined by `+` (`stxQ+toxA`), tagged **two assays** in the HTML report (see [Amplicon Calling](Amplicon-Calling#stage-2-amplicon-calling)). `its`, without `mix=`, is run on its own, as every assay of a file without `mix=` is. An assay is in one reaction: two different `mix=` names for one assay are refused. `QAlog.txt` lists the groups. Since 0.15.3.

@@ -381,4 +381,24 @@ class HtmlReportTest {
         // neg shows "no product" with nothing to add: no title, a third of a large run's page.
         assertTrue(page.contains("<span class=\"chip none\">"), "a plain negative cell without a title");
     }
+
+    @Test
+    void productsNotMadeAsDesignedAreTaggedWithWhatMadeThem() throws IOException {
+        List<ca.canada.inspection.pcr.ReportRow> rows = List.of(
+                ca.canada.inspection.pcr.TestRows.of("S", "its", 101, 600, 500, "c1", "", "its-F", "its-F",
+                        0, 0, 0, 0, '+', null, 0, 0),
+                ca.canada.inspection.pcr.TestRows.of("S", "its+plain", 101, 400, 300, "c1", "", "its-F", "plain-R_0",
+                        0, 0, 0, 0, '+', null, 0, 0));
+        Path html = HtmlReport.write(Files.writeString(dir.resolve("report.tsv"), ""), rows, List.of("S"), Set.of(),
+                panel(PRIMERS, SIZES), List.of(), DETAILS, List.of(), List.of());
+        String page = Files.readString(html);
+
+        assertTrue(page.contains("its <span class=\"tag\" title=\"made by one primer alone: its-F on both strands,"
+                + " where its site repeats inverted\">one primer</span>"), "one primer");
+        assertTrue(page.contains("its+plain <span class=\"tag\" title=\"made by primers of two assays that share a"
+                + " reaction (mix=): its-F and plain-R_0\">two assays</span>"), "two assays");
+        // The grid's hover text says it too, and the product of two assays has its own column.
+        assertTrue(page.contains("500 bp (unexpected); made by one primer alone"), "grid hover text");
+        assertEquals(1, count(page, "<span class=\"an\">its+plain</span>"));
+    }
 }

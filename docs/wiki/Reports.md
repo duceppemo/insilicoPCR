@@ -70,12 +70,12 @@ The consolidated report is the primary summary table: one row per predicted ampl
 | Column | Meaning |
 |---|---|
 | `Sample` | Sample name (from the input file name) |
-| `Gene` | Assay name (primer ID without the `-F`/`-R`/`-P` suffix) |
+| `Gene` | Assay name (primer ID without the `-F`/`-R`/`-P` suffix); for a product of two assays that share a reaction (`mix=`), their names joined by `+` (`stxQ+toxA`), since 0.15.3 |
 | `GenomeLocation` | 1-based start-end of the product on the contig |
 | `AmpliconSize` | Product length in bp, primers included |
 | `Contig` | Contig/sequence ID the product sits on |
 | `Contig Description` | Free text from the contig FASTA header |
-| `ForwardPrimers` / `ReversePrimers` | Primer IDs that formed the pair (degenerate variants keep their `_n` suffix) |
+| `ForwardPrimers` / `ReversePrimers` | Primer IDs that formed the pair (degenerate variants keep their `_n` suffix). Since 0.15.3 they can name one role twice (`toxA-F` and `toxA-F`: a product of one primer alone, at an inverted repeat) or two assays (a product of two assays in one reaction); the first is then the primer on the plus strand. The HTML report tags such a product **one primer** or **two assays**, and says why in the cell's hover text. See [Amplicon Calling](Amplicon-Calling#stage-2-amplicon-calling) |
 | `ForwardMismatches` / `ReverseMismatches` | Mismatches + indels for each primer, as counted against `-m`. The 3' bases BLAST trimmed off its alignment are compared with the template and counted when they do not pair; a 3' base beyond the end of a contig or read counts too. Unpaired 5' bases are not included (see [Primer binding columns](#primer-binding-columns)) |
 | `Forward3PrimeMismatches` / `Reverse3PrimeMismatches` | Number of imperfections within the 3'-end window (default last 5 bases) |
 | `Strand` | `+` when the forward primer matched the plus strand; `-` when the assay matched the reverse strand |

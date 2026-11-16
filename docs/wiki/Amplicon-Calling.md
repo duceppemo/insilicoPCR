@@ -62,12 +62,18 @@ Hydrolysis probes (`-P`) report by 5'→3' exonuclease cleavage while hybridized
 
 ## Stage 2: amplicon calling
 
-An accepted forward hit and an accepted reverse hit of the same assay are reported as an amplicon only when **all** of these hold (a product of one primer alone, at an inverted repeat, or of two assays' primers is not called: a [known gap](Limitations#known-gaps)):
+Two accepted primer hits are reported as an amplicon only when **all** of the rules below hold. The pairs looked at (since 0.15.3; before, the first only):
+
+- an assay's forward primer with its reverse primer, as designed;
+- **one primer alone**: an assay's forward primer with a forward primer of the same assay (itself, or another variant), or a reverse with a reverse. A primer that binds the plus strand at one place and the minus strand at another, facing within the size limit, as where a sequence repeats inverted, amplifies by itself in a real reaction. Such a product is reported under its assay, with its size check, and marked: `ForwardPrimers` and `ReversePrimers` name the same role (`toxA-F` and `toxA-F`, the first the one on the plus strand), and the HTML report tags it **one primer**;
+- **two assays that share a reaction**: when the primer file says assays are run in one tube (`mix=`, see [Primer FASTA Format](Primer-FASTA-Format#assays-in-one-reaction-multiplex)), any primer of one with any primer of the other, either role. Such a product is reported under the two assays' names joined by `+` (`stxQ+toxA`, its own column of the HTML report, with no size check and no probe asked for), and tagged **two assays**. Assays without `mix=` are run on their own and pair with no other.
+
+FASTQ input: products called from the reads themselves ([read-level calls](Reports#fastq-mode-and-false-negatives)) are an assay's forward with its reverse primer only; the mini-assembly, searched like an assembly, gives the others.
 
 1. **Same contig.** Both primers hit the same input sequence.
 2. **Opposite strands, convergent.** One primer anneals to the plus strand and extends rightward; the other anneals to the minus strand and extends leftward — and they must face each other. Divergent (back-to-back) and same-strand pairs never amplify and are rejected. The assay may legitimately sit on either strand of your genome: `Strand` in the report shows `+` when the forward primer matched the plus strand, `-` when the assay matched the reverse strand.
 3. **Product size limits.** The product (5' end of one primer to the 5' end of the other, inclusive) must be at least `--min-length` (default 0) and at most `--max-length` (default **5000 bp**). Both primers count in full, including 5' bases left unaligned within `--5p-truncation` and bases that lie beyond a contig end, so a product on a contig that stops inside a primer is sized as on a complete template: at the contig's start, `AmpliconSize` then exceeds the span of `GenomeLocation`, which starts at base 1; at its end, `GenomeLocation` runs past the contig's last base. (An indel that BLAST places inside a primer site changes `AmpliconSize` by its length, as it would the real product.) This suppresses "phantom" products from primer sites that are tens of kilobases — or megabases — apart, which would never amplify in a real reaction. Set `-l 0` to disable the cap (e.g., for long-range PCR assessments).
-4. **Probe assays only: probe inside the product.** For an assay that defines a `-P` probe, a row is reported only if an accepted probe hit lies entirely within the amplicon. Probe-less assays in the same primer file are reported on their primer pair alone (per-assay decision; mixing both kinds in one run is supported since 0.8.0).
+4. **Probe assays only: probe inside the product.** For an assay that defines a `-P` probe, a row is reported only if an accepted probe hit lies entirely within the amplicon (a product of one primer alone too; a product of two assays is reported whatever probe sees it). Probe-less assays in the same primer file are reported on their primer pair alone (per-assay decision; mixing both kinds in one run is supported since 0.8.0).
 
 ## Typical settings
 

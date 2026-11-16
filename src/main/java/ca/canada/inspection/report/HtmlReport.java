@@ -452,6 +452,9 @@ public final class HtmlReport {
                 tip.append(" (").append(product.label().text()).append(")");
             }
             tip.append(product.fromExtension() ? ", from extended reads" : product.fromReads() ? ", from reads" : "");
+            if (product.row().pairing() != ReportRow.Pairing.DESIGNED) {
+                tip.append("; ").append(pairingText(product.row()));
+            }
             if (product.partlyBound()) {
                 tip.append("; ").append(product.binding());
             }
@@ -480,6 +483,28 @@ public final class HtmlReport {
                 + PARTLY_BOUND + "</span>" : "")
                 + (reads ? "<span class=\"dot\" role=\"img\" aria-label=\"from reads\"></span>" : "")
                 + "</" + element + ">";
+    }
+
+    /** A tag for a product not made by its assay's forward and reverse primer; nothing for one that is. */
+    private static String pairingTag(ReportRow row) {
+        return switch (row.pairing()) {
+            case DESIGNED -> "";
+            case ONE_PRIMER -> " <span class=\"tag\" title=\"" + escape(pairingText(row)) + "\">one primer</span>";
+            case TWO_ASSAYS -> " <span class=\"tag\" title=\"" + escape(pairingText(row)) + "\">two assays</span>";
+        };
+    }
+
+    /** What made a product not made by its assay's forward and reverse primer, in words; empty for one that is. */
+    static String pairingText(ReportRow row) {
+        return switch (row.pairing()) {
+            case DESIGNED -> "";
+            case ONE_PRIMER -> row.forwardPrimer().equals(row.reversePrimer())
+                    ? "made by one primer alone: " + row.forwardPrimer() + " on both strands, where its site repeats inverted"
+                    : "made by one primer role alone: " + row.forwardPrimer() + " and " + row.reversePrimer()
+                    + " on opposite strands";
+            case TWO_ASSAYS -> "made by primers of two assays that share a reaction (mix=): " + row.forwardPrimer()
+                    + " and " + row.reversePrimer();
+        };
     }
 
     private static void assaySection(StringBuilder html, Map<String, Map<String, Cell>> grid, Set<String> assays,
@@ -581,7 +606,8 @@ public final class HtmlReport {
             }
             html.append("<tr data-s=\"").append(escape(product.sample())).append("\" data-a=\"")
                     .append(escape(product.assay())).append("\"><td>").append(escape(product.sample())).append("</td><td>")
-                    .append(escape(product.assay())).append("</td><td class=\"num\">").append(product.size()).append("</td>");
+                    .append(escape(product.assay())).append(pairingTag(product.row()))
+                    .append("</td><td class=\"num\">").append(product.size()).append("</td>");
             if (labels) {
                 html.append("<td>");
                 if (product.label() != null) {

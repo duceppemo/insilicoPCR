@@ -630,10 +630,14 @@ public final class HtmlReport {
                     .append("</th><th>What the reads show</th></tr></thead>\n<tbody>\n");
             for (Finding finding : shown) {
                 boolean called = finding.status().isCalled();
+                // Marked as its grid cell is: "seen in too few reads" and "not confirmed by read pairs" differ.
+                State withheld = called ? null : State.of(AssayVerdict.of(finding.assay(), 0, Set.of(),
+                        ExpectedSizes.NONE, finding, null).kind());
                 html.append("<tr><td>").append(escape(finding.sample())).append("</td><td>")
                         .append(escape(finding.assay())).append("</td><td>")
                         .append(called ? "<span class=\"tag\">reads</span> reported"
-                                : "<span class=\"chip inconclusive\">?</span> not reported")
+                                : "<span class=\"chip " + withheld.css() + "\" role=\"img\" aria-label=\""
+                                + escape(withheld.label) + "\">" + withheld.glyph + "</span> not reported")
                         .append("</td><td class=\"wrap\">").append(escape(finding.readDetail())).append("</td></tr>\n");
             }
             html.append("</tbody></table></div>\n");

@@ -130,6 +130,33 @@ final class PcrPipelineTask extends Task<RunResult> {
             text.append(next);
         }
         log.appendText(text.toString());
+        // A run of hundreds of FASTQ samples prints some 100,000 lines, and the text area lays out all of
+        // its text on each change: the window slowed down, Stop with it. It keeps the latest lines; the
+        // run's log.txt keeps them all.
+        if (log.getLength() > MAX_SHOWN) {
+            log.replaceText(0, cutPoint(log.getText(), MAX_SHOWN, KEPT_SHOWN), TRIMMED_NOTE);
+        }
+    }
+
+    /** Characters the log area holds at most, and how many of the latest it keeps when it trims. */
+    static final int MAX_SHOWN = 1_000_000;
+    static final int KEPT_SHOWN = 750_000;
+    static final String TRIMMED_NOTE = "[Earlier lines are not shown here; the output folder's log.txt has them all"
+            + " once the run ends.]\n";
+
+    /**
+     * Where to cut the start of {@code text} to keep its latest {@code kept} characters, at the start of a
+     * line, once it holds more than {@code max}; 0 to keep it whole.
+     */
+    static int cutPoint(CharSequence text, int max, int kept) {
+        if (text.length() <= max) {
+            return 0;
+        }
+        int from = text.length() - kept;
+        while (from < text.length() && text.charAt(from - 1) != '\n') {
+            from++;
+        }
+        return from;
     }
 
     private final class WindowMonitor implements RunMonitor {

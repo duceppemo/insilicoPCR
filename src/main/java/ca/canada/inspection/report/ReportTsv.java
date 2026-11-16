@@ -109,24 +109,46 @@ public final class ReportTsv {
      */
     private static List<String> lines(Path report) {
         try {
-            byte[] bytes = Files.readAllBytes(report);
-            Charset utf16 = bytes.length >= 2 && (bytes[0] & 0xff) == 0xff && (bytes[1] & 0xff) == 0xfe
-                    ? StandardCharsets.UTF_16LE
-                    : bytes.length >= 2 && (bytes[0] & 0xff) == 0xfe && (bytes[1] & 0xff) == 0xff
-                    ? StandardCharsets.UTF_16BE : null;
-            String text;
-            if (utf16 != null) {
-                text = new String(bytes, 2, bytes.length - 2, utf16);
-            } else {
-                try {
-                    text = StandardCharsets.UTF_8.newDecoder().decode(java.nio.ByteBuffer.wrap(bytes)).toString();
-                } catch (CharacterCodingException notUtf8) {
-                    text = new String(bytes, Charset.forName("windows-1252"));
-                }
-            }
-            return text.lines().toList();
+            checkFirstLine(report);
+            return decode(Files.readAllBytes(report)).lines().toList();
         } catch (IOException e) {
             throw new UncheckedIOException("Unable to read consolidated report: " + report, e);
+        }
+    }
+
+    /**
+     * Refuses a file whose first line is neither a report's header nor a product, from its first block
+     * only: a sample's BLAST table ({@code detailed_report/<sample>/<sample>.tsv}, gigabytes on a large
+     * assembly) is named like a report, and was read whole, freezing the window, before being refused.
+     */
+    private static void checkFirstLine(Path report) throws IOException {
+        byte[] head;
+        try (java.io.InputStream in = Files.newInputStream(report)) {
+            head = in.readNBytes(1 << 16);
+        }
+        String first = decode(head).lines().findFirst().orElse("");
+        first = first.startsWith("\uFEFF") ? first.substring(1) : first;
+        List<String> cells = List.of(cells(first));
+        if (!first.isBlank() && !cells.contains(ReportColumn.SIZE.header())
+                && cells.stream().noneMatch(cell -> cell.matches("\\d+-\\d+"))) {
+            throw new UncheckedIOException("Not a consolidated report: " + report, new IOException(
+                    "its first line has no " + ReportColumn.SIZE.header() + " column and is not a product"));
+        }
+    }
+
+    /** The text of a report's {@code bytes}, in whichever encoding it was saved ({@link #lines}). */
+    private static String decode(byte[] bytes) {
+        Charset utf16 = bytes.length >= 2 && (bytes[0] & 0xff) == 0xff && (bytes[1] & 0xff) == 0xfe
+                ? StandardCharsets.UTF_16LE
+                : bytes.length >= 2 && (bytes[0] & 0xff) == 0xfe && (bytes[1] & 0xff) == 0xff
+                ? StandardCharsets.UTF_16BE : null;
+        if (utf16 != null) {
+            return new String(bytes, 2, bytes.length - 2, utf16);
+        }
+        try {
+            return StandardCharsets.UTF_8.newDecoder().decode(java.nio.ByteBuffer.wrap(bytes)).toString();
+        } catch (CharacterCodingException notUtf8) {
+            return new String(bytes, Charset.forName("windows-1252"));
         }
     }
 

@@ -48,7 +48,9 @@ public final class QueryTemplates implements Function<BlastResult, TrimmedEnds.T
         if (id.equals(currentId)) {
             return current;
         }
-        if (missing.contains(id)) {
+        // Known to be in no file: reading on to the end would only lose the place for the next query.
+        if (missing.contains(id) || allIds != null && !allIds.contains(id)) {
+            missing.add(id);
             return null;
         }
         try {

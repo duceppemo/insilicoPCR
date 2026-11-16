@@ -93,15 +93,18 @@ public record ReportRow(String sample, String assay, Site site, Binding forward,
 
     /**
      * Which of several rows of one product best shows how the oligos bind: fewest primer
-     * mismatches, then fewest probe mismatches. A degenerate probe is searched as several
-     * variants, and more than one can hit the same place within the mismatch budget; the
-     * variant that matches best is the one to show. Rows that compare equal still differ
-     * (another read, another variant): callers add their own order after this one, and
-     * end it with {@link #VARIANT_ORDER}.
+     * mismatches, then fewest probe mismatches, then fewest primer bases unpaired at the 5' end.
+     * A degenerate oligo is searched as several variants, and more than one can hit the same
+     * place within the mismatch budget; the variant that matches best is the one to show. A
+     * mismatch at a primer's first bases is left out of BLAST's alignment, so it counts as an
+     * unpaired base, not a mismatch: without the last rule, such a variant tied with one that
+     * pairs over its whole length. Rows that compare equal still differ (another read, another
+     * variant): callers add their own order after this one, and end it with {@link #VARIANT_ORDER}.
      */
     public static final Comparator<ReportRow> BEST_BOUND = Comparator
             .comparingInt((ReportRow row) -> row.forwardMismatches() + row.reverseMismatches())
-            .thenComparingInt(ReportRow::probeMismatches);
+            .thenComparingInt(ReportRow::probeMismatches)
+            .thenComparingInt(row -> row.forwardUnpaired() + row.reverseUnpaired());
 
     /**
      * A last, arbitrary but fixed order among rows that differ only by which variant of a

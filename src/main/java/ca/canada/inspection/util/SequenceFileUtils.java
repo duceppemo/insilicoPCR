@@ -2,12 +2,15 @@ package ca.canada.inspection.util;
 
 import ca.canada.inspection.model.Sample;
 
+import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
@@ -129,8 +132,12 @@ public final class SequenceFileUtils {
             return false;
         }
         try (BufferedReader reader = openMaybeGzip(file)) {
+            // Blank lines before the first record are skipped, as the input check skips them.
             String first = reader.readLine();
-            return first != null && !first.isBlank() && (first.charAt(0) == '>' || first.charAt(0) == '@');
+            while (first != null && first.isBlank()) {
+                first = reader.readLine();
+            }
+            return first != null && (first.charAt(0) == '>' || first.charAt(0) == '@');
         } catch (IOException e) {
             return false;
         }
@@ -165,6 +172,30 @@ public final class SequenceFileUtils {
             reader = new BufferedReader(new InputStreamReader(Files.newInputStream(file), StandardCharsets.UTF_8));
         }
         return withoutByteOrderMark(reader);
+    }
+
+    /** The UTF-8 byte order mark, which Notepad and other Windows editors write at the start of a file. */
+    private static final byte[] BYTE_ORDER_MARK = {(byte) 0xEF, (byte) 0xBB, (byte) 0xBF};
+
+    /**
+     * {@code in} past the UTF-8 byte order mark its bytes start with, if any: for what reads a
+     * sequence file as bytes ({@link FastqCheck}, the copy given to blastn), as
+     * {@link #openMaybeGzip} skips it for what reads it as text.
+     */
+    public static InputStream withoutByteOrderMark(InputStream in) throws IOException {
+        BufferedInputStream buffered = new BufferedInputStream(in, 1 << 16);
+        buffered.mark(BYTE_ORDER_MARK.length);
+        if (!Arrays.equals(buffered.readNBytes(BYTE_ORDER_MARK.length), BYTE_ORDER_MARK)) {
+            buffered.reset();
+        }
+        return buffered;
+    }
+
+    /** Whether {@code file}'s bytes start with the UTF-8 byte order mark (a gzipped file's are not read). */
+    public static boolean startsWithByteOrderMark(Path file) throws IOException {
+        try (InputStream in = Files.newInputStream(file)) {
+            return Arrays.equals(in.readNBytes(BYTE_ORDER_MARK.length), BYTE_ORDER_MARK);
+        }
     }
 
     /**

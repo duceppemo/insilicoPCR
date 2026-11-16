@@ -98,6 +98,8 @@ class SequenceFileUtilsTest {
         assertEquals(true, SequenceFileUtils.looksLikeSequenceFile(write("ok.fastq", "@r1\nACGT\n")));
         assertEquals(false, SequenceFileUtils.looksLikeSequenceFile(write("bad.fasta", "plain text\n")));
         assertEquals(false, SequenceFileUtils.looksLikeSequenceFile(write("empty.fasta", "")));
+        assertEquals(true, SequenceFileUtils.looksLikeSequenceFile(write("blank.fasta", "\n  \r\n>c1\nACGT\n")));
+        assertEquals(false, SequenceFileUtils.looksLikeSequenceFile(write("blanks.fasta", "\n\n")));
         assertEquals(false, SequenceFileUtils.looksLikeSequenceFile(write("wrong.txt", ">c1\nACGT\n")));
         assertEquals(false, SequenceFileUtils.looksLikeSequenceFile(dir)); // a directory
     }

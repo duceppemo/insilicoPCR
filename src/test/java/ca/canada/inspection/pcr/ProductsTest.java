@@ -61,6 +61,22 @@ class ProductsTest {
     }
 
     @Test
+    void aVariantWhose5PrimeBaseDoesNotPairDoesNotStandForThePerfectOne() {
+        // blastn-short leaves a mismatch at a primer's first bases out of the alignment: toxA-F_1
+        // aligns from its base 2 (base 1 unpaired), toxA-F_2 over all 20. Both have no mismatch in
+        // the alignment and make one product; the row names the one that pairs over its length.
+        Sample sample = new Sample("S");
+        sample.hits().add("toxA-F_1", TestHits.truncatedPlusHit("toxA-F_1", "c1", 102, 2, 20, PRIMER_20));
+        sample.hits().add("toxA-F_2", plusHit("toxA-F_2", "c1", 101));
+        sample.hits().add("toxA-R", minusHit("toxA-R", "c1", 581));
+
+        List<ReportRow> rows = Products.of(sample, degenerate(), AmpliconOptions.withMismatches(0));
+
+        assertEquals(List.of("toxA-F_2 0 500"), rows.stream()
+                .map(row -> row.forwardPrimer() + " " + row.forwardUnpaired() + " " + row.size()).toList());
+    }
+
+    @Test
     void aSamplesProductsAreWorkedOutOnceUntilItsHitsChange() {
         Sample sample = new Sample("S");
         sample.hits().add("toxA-F_1", plusHit("toxA-F_1", "c1", 101));

@@ -54,6 +54,15 @@ class FastqCheckTest {
     }
 
     @Test
+    void aByteOrderMarkBeforeTheFirstReadIsSkipped() throws IOException {
+        // Saved by a Windows editor: refused as "not a FASTQ file" although it starts with @ there.
+        Result result = check("bom.fastq", "\uFEFF" + READ_1 + READ_2);
+
+        assertTrue(result.valid(), result.detail());
+        assertEquals(2, result.records());
+    }
+
+    @Test
     void aReadWithoutBasesIsARead() throws IOException {
         assertEquals(2, check("zero.fastq", "@trimmed\n\n+\n\n" + READ_2).records());
         assertEquals(2, check("zero_last.fastq", READ_2 + "@trimmed\n\n+\n").records());

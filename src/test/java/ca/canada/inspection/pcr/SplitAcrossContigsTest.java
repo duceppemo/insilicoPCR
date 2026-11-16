@@ -70,6 +70,35 @@ class SplitAcrossContigsTest {
     }
 
     @Test
+    void primersOnOneStrandOfOneContigAreNotASplit() {
+        // Both pointing right: no product across the end either, whatever the contig's shape.
+        Sample sample = genome(plusHit("assay-F", "plasmid", 2901), plusHit("assay-R", "plasmid", 81));
+
+        assertTrue(find(sample, DEFAULTS).isEmpty());
+    }
+
+    @Test
+    void anAssayOnTheMinusStrandPointingOffBothEndsIsASplitToo() {
+        // The forward primer near the start pointing left, the reverse near the end pointing right.
+        Sample sample = genome(minusHit("assay-F", "plasmid", 81), plusHit("assay-R", "plasmid", 2901));
+
+        List<Split> splits = find(sample, DEFAULTS);
+
+        assertEquals(1, splits.size());
+        assertTrue(splits.getFirst().sameContig());
+        assertEquals(100 + 100, splits.getFirst().minimumSize());
+    }
+
+    @Test
+    void aSplitIsWarnedAboutUpToTheLongestProductAndNoFurther() {
+        // At least 200 bp across the end: within -l 200, beyond -l 199.
+        Sample sample = genome(plusHit("assay-F", "plasmid", 2901), minusHit("assay-R", "plasmid", 81));
+
+        assertEquals(1, find(sample, AmpliconOptions.builder().maxLength(200).build()).size());
+        assertTrue(find(sample, AmpliconOptions.builder().maxLength(199).build()).isEmpty());
+    }
+
+    @Test
     void convergentPrimersOnOneContigAreNotASplit() {
         // A pair facing each other on one contig is a product, or none for its own reasons: here too
         // short for --min-length, and short enough for the split's own limit, so that only the

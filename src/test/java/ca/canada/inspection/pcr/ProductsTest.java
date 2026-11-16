@@ -94,6 +94,55 @@ class ProductsTest {
     }
 
     @Test
+    void aReversePrimerAloneOnBothStrandsMakesAProductOfItsAssayToo() {
+        Sample sample = new Sample("S");
+        sample.hits().add("toxA-R", plusHit("toxA-R", "c1", 101));
+        sample.hits().add("toxA-R", minusHit("toxA-R", "c1", 581));
+
+        List<ReportRow> rows = Products.of(sample, degenerate(), AmpliconOptions.withMismatches(0));
+
+        assertEquals(List.of("toxA toxA-R toxA-R 500 ONE_PRIMER"), rows.stream().map(row -> row.assay() + " "
+                + row.forwardPrimer() + " " + row.reversePrimer() + " " + row.size() + " " + row.pairing()).toList());
+    }
+
+    @Test
+    void aOnePrimerProductOfAnAssayWithAProbeNeedsTheProbeInsideIt() {
+        // As for its designed product: in a qPCR tube, a product the probe does not bind gives no signal.
+        Map<String, String> sequences = Map.of("q-F", PRIMER_20, "q-R", PRIMER_20, "q-P", PRIMER_20);
+        AmpliconOptions options = AmpliconOptions.withMismatches(0);
+        java.util.function.IntFunction<List<String>> withProbeAt = at -> {
+            Sample sample = new Sample("S");
+            sample.hits().add("q-F", plusHit("q-F", "c1", 101));
+            sample.hits().add("q-F", minusHit("q-F", "c1", 581));
+            sample.hits().add("q-P", plusHit("q-P", "c1", at));
+            return Products.of(sample, PrimerPanel.of(sequences), options).stream()
+                    .map(row -> row.assay() + " " + row.size() + " " + row.pairing()).toList();
+        };
+
+        assertEquals(List.of("q 500 ONE_PRIMER"), withProbeAt.apply(301));
+        assertEquals(List.of(), withProbeAt.apply(2_001));
+    }
+
+    @Test
+    void twoForwardPrimersOfAssaysInOneReactionMakeAProductOfBoth() {
+        // a-F on the plus strand, b-F on the minus strand facing it: a product of the two assays' mix.
+        Sample sample = new Sample("S");
+        sample.hits().add("a-F", plusHit("a-F", "c1", 101));
+        sample.hits().add("b-F", minusHit("b-F", "c1", 581));
+        Map<String, String> sequences = new LinkedHashMap<>();
+        for (String id : List.of("a-F", "a-R", "b-F", "b-R")) {
+            sequences.put(id, PRIMER_20);
+        }
+        MixGroups mix = MixGroups.fromHeaders(Map.of("a-F", "mix=panel1", "b-F", "mix=panel1"));
+
+        List<ReportRow> rows = Products.of(sample, PrimerPanel.of(sequences, ExpectedSizes.NONE, mix),
+                AmpliconOptions.withMismatches(0));
+
+        assertEquals(List.of("a+b a-F b-F 500 TWO_ASSAYS"), rows.stream().map(row -> row.assay() + " "
+                + row.forwardPrimer() + " " + row.reversePrimer() + " " + row.size() + " " + row.pairing()).toList());
+    }
+
+    @Test
     void primersOfTwoAssaysPairOnlyWhenTheyShareAReaction() {
         Sample sample = new Sample("S");
         sample.hits().add("a-F", plusHit("a-F", "c1", 101));

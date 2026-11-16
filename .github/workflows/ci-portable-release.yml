@@ -65,6 +65,12 @@ jobs:
           fi
           test -f target/site/jacoco/jacoco.xml || { echo "JaCoCo report missing"; exit 1; }
 
+      - name: Require the tests that need BLAST+, Chrome or a display to have run
+        shell: bash
+        run: |
+          chmod +x scripts/ci/require-tests-ran.sh
+          scripts/ci/require-tests-ran.sh target/surefire-reports
+
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v7
         with:

@@ -64,6 +64,32 @@ class BlastHitParserTest {
     }
 
     @Test
+    void anUnalignedThreePrimeBaseCountsAsAMismatchAgainstTheBudget() {
+        // Aligned over 1..19, the 3' base left unaligned and no template to compare it with. Its 3' penalty
+        // (3) is allowed here: only -m decides, the base counting as a mismatch.
+        String aligned = PRIMER_20.substring(0, 19);
+        String blastLine = line("assay-F", 0, 0, 20, 19, 101, 119, aligned, 1, 19, aligned);
+
+        assertTrue(BlastHitParser.parse(blastLine, PRIMERS, new AmpliconOptions(0, 0, 5, 3, 5, 0, 5000)).isEmpty());
+        Optional<BlastResult> hit = BlastHitParser.parse(blastLine, PRIMERS, new AmpliconOptions(1, 1, 5, 3, 5, 0, 5000));
+        assertTrue(hit.isPresent());
+        assertEquals(1, hit.get().primerMismatches());
+    }
+
+    @Test
+    void fivePrimeTruncationIsAllowedUpToTheLimitAndNoFurther() {
+        // --5p-truncation 5 (the default): 5 bases left unaligned at the 5' end pass, 6 do not.
+        String five = PRIMER_20.substring(5);
+        String six = PRIMER_20.substring(6);
+        AmpliconOptions defaults = AmpliconOptions.withMismatches(0);
+
+        assertTrue(BlastHitParser.parse(line("assay-F", 0, 0, 20, 15, 106, 120, five, 6, 20, five), PRIMERS, defaults)
+                .isPresent());
+        assertTrue(BlastHitParser.parse(line("assay-F", 0, 0, 20, 14, 107, 120, six, 7, 20, six), PRIMERS, defaults)
+                .isEmpty());
+    }
+
+    @Test
     void internalMismatchOutsideWindowUsesTotalBudget() {
         // Mismatch at primer position 5: fine with -m 1, rejected with -m 0.
         StringBuilder qseq = new StringBuilder(PRIMER_20);

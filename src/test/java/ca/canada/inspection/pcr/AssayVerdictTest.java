@@ -25,6 +25,19 @@ class AssayVerdictTest {
     }
 
     @Test
+    void aDeclaredProductAsLongAsTheReadsHoldIsCheckedByThem() {
+        // size=420-450: its smallest, 420 bp, fits reads that hold 420 bp, and their silence is a negative;
+        // reads that hold 419 bp could not have shown it.
+        java.util.function.IntFunction<AssayVerdict.Kind> withReadsHolding = length -> AssayVerdict.of("its", 0, Set.of(),
+                SIZES, new FastqDiagnostics.Finding("S", "its", FastqDiagnostics.Status.NOT_IN_READS,
+                        FastqDiagnostics.Assembly.NOT_ASSEMBLED, new FastqDiagnostics.ReadsWithOligo(5, 5, 0), length, "", ""),
+                null).kind();
+
+        assertEquals(AssayVerdict.Kind.NONE, withReadsHolding.apply(420));
+        assertEquals(AssayVerdict.Kind.UNCHECKED, withReadsHolding.apply(419));
+    }
+
+    @Test
     void withoutAProductTheReadsDecide() {
         assertEquals(new AssayVerdict(AssayVerdict.Kind.NONE, ""), AssayVerdict.of("its", 0, Set.of(), SIZES, null, null));
         FastqDiagnostics.Finding notInReads = new FastqDiagnostics.Finding("S", "its", FastqDiagnostics.Status.NOT_IN_READS,

@@ -295,7 +295,8 @@ reports only at another size than a product called from reads, is listed in
 summarized in `QAlog.txt`, and noted on the console or in the GUI log. Files kept per sample under
 `detailed_report/<sample>/`: `_merged.fastq.gz` / `_unmerged.fastq.gz` (BBMerge output, paired-end input only), `_baitedReads.fasta`
 (the reads searched, renamed `read_<n>` with the original name as description) and `_baitedReads.blast.txt`
-(their BLAST hits), and, when reads were extended, `_extensionSeeds.fasta`, `_extendedReads.fasta`,
+(their BLAST hits the rules accept: since 0.15.3, as in the sample's own table; before, every alignment, half a
+million lines for one sample), and, when reads were extended, `_extensionSeeds.fasta`, `_extendedReads.fasta`,
 `_extendedReads.blast.txt`, `_extensionCandidates.fasta` and `_extensionCandidateReads.fastq.gz`.
 
 | Column | Meaning |

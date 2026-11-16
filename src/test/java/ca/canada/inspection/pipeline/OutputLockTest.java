@@ -52,4 +52,18 @@ class OutputLockTest {
             other.destroyForcibly();
         }
     }
+
+    @Test
+    void aFolderThatCannotBeLockedIsWarnedAboutAndTheRunGoesOn() {
+        // A file system that cannot lock (some network shares): the run goes on, the user told the risk.
+        // Here the lock file cannot even be made, its folder missing.
+        List<String> warnings = new ArrayList<>();
+
+        try (OutputLock none = OutputLock.take(dir.resolve("missing"), warnings::add)) {
+            assertEquals(1, warnings.size());
+            assertTrue(warnings.getFirst().startsWith("Warning: could not lock the output folder ("), warnings.getFirst());
+            assertTrue(warnings.getFirst().endsWith("do not run another run into it at the same time"),
+                    warnings.getFirst());
+        }
+    }
 }

@@ -184,6 +184,11 @@
 
 ### Changed
 
+- CI: the Linux job fails when a test that needs BLAST+, BBTools, the example
+  files (Git LFS), Chrome or a display skipped itself or did not run
+  (`scripts/ci/require-tests-ran.sh`): nothing failed then, and they could be
+  turned off unseen. Two tests of the parallel steps that failed now and then on
+  a loaded computer wait for their items to start instead of sleeping.
 - Finding the products is faster on a long sequence with many primer sites: a
   site is compared with its partner's sites within the longest product of it
   (`-l`) only, not with every site on the sequence, and the variants of a

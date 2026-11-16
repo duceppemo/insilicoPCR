@@ -129,15 +129,19 @@ class ParallelStageRunnerTest {
         // A cancelled run must not wait for the work in flight (in the application, the run
         // thread is interrupted when the window is closed or the run cancelled).
         List<String> interrupted = Collections.synchronizedList(new ArrayList<>());
+        // Both items running before the interrupt (a sleep let a loaded computer start one only, and an item
+        // not started is never run: the test failed now and then).
+        java.util.concurrent.CountDownLatch running = new java.util.concurrent.CountDownLatch(2);
         Thread stage = Thread.ofPlatform().start(() -> assertThrows(CancellationException.class,
                 () -> ParallelStageRunner.run("BLAST", List.of("a", "b"), 2, item -> {
+                    running.countDown();
                     try {
                         Thread.sleep(10_000);
                     } catch (InterruptedException e) {
                         interrupted.add(item);
                     }
                 })));
-        Thread.sleep(300);
+        assertTrue(running.await(10, java.util.concurrent.TimeUnit.SECONDS), "the items did not start");
         long start = System.nanoTime();
         stage.interrupt();
         stage.join(5_000);
@@ -150,12 +154,21 @@ class ParallelStageRunnerTest {
     void theFirstFailureStopsTheItemsStillRunning() throws InterruptedException {
         // A sample failing at once was reported only after the others' programs had finished.
         List<String> interrupted = Collections.synchronizedList(new ArrayList<>());
+        // "bad" fails once "slow" is running: failing before it started, it kept "slow" from running at all,
+        // and the test failed now and then.
+        java.util.concurrent.CountDownLatch slowRunning = new java.util.concurrent.CountDownLatch(1);
         long start = System.nanoTime();
         PipelineException error = assertThrows(PipelineException.class, () -> ParallelStageRunner.run("Tadpole",
                 List.of("slow", "bad"), 2, item -> {
                     if (item.equals("bad")) {
+                        try {
+                            slowRunning.await(10, java.util.concurrent.TimeUnit.SECONDS);
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                        }
                         throw new PipelineException("bad failed");
                     }
+                    slowRunning.countDown();
                     try {
                         Thread.sleep(10_000);
                     } catch (InterruptedException e) {

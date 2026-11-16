@@ -260,6 +260,39 @@ class FastqDiagnosticsTest {
     }
 
     @Test
+    void weakReadsAndAProductTheExtensionAddsAreCalledByExtension() {
+        // One read holds the 70 bp product (too few to call), and the extended reads add one of 1074 bp,
+        // which the report gets: the assay is called, by the extension, not "weak read support".
+        Finding finding = FastqDiagnostics.assess(fastqSample(), PRIMERS, DEFAULTS, readsWithAmplicon(1), Map.of(),
+                Map.of("assay", extensionOutcome(new int[]{1074, 142, 145}))).getFirst();
+
+        assertEquals(Status.CALLED_BY_EXTENSION, finding.status());
+        assertTrue(finding.readDetail().startsWith("reads extended through the baited reads hold a product of 1074 bp"),
+                finding.readDetail());
+    }
+
+    @Test
+    void aProductTheAssemblyLacksThatTheReadPairsDoNotSupportIsWithheld() {
+        // The assembly reports 181 bp; the extended reads hold 727 bp, which no read pair spans one window
+        // of: the finding says why it is not reported, beside the size the assembly reports.
+        Sample sample = fastqSample();
+        sample.hits().add("assay-F", TestHits.plusHit("assay-F", "contig_0", 101));
+        sample.hits().add("assay-R", TestHits.minusHit("assay-R", "contig_0", 262));
+        sample.hits().add("assay-P", TestHits.plusHit("assay-P", "contig_0", 200));
+        ReadExtensionCaller.Product wrongTurn = new ReadExtensionCaller.Product("assay", 727, Set.of(727), 44, 52,
+                37, 46, TestRows.any(), new PairSupport.Verdict(PairSupport.Kind.UNSUPPORTED_WINDOW, true, 300, 1, 191, 14,
+                0, 0, 0, 0, 30));
+
+        Finding finding = FastqDiagnostics.assess(sample, PRIMERS, DEFAULTS, noReadCall(ALL_IN_READS), Map.of(),
+                Map.of("assay", new ReadExtensionCaller.Outcome("assay", 52, 46, 2000, List.of(wrongTurn),
+                        Set.of(181)))).getFirst();
+
+        assertEquals(Status.EXTENSION_NOT_SUPPORTED_BY_PAIRS, finding.status());
+        assertEquals(Assembly.OTHER_PRODUCT_ONLY, finding.assembly());
+        assertEquals("reports 181 bp only", finding.assemblyDetail());
+    }
+
+    @Test
     void productTheReadPairsDoNotSupportIsWithheldWithTheReason() {
         // A wrong turn through a repeat: closed from both sides, but no read pair spans one window.
         ReadExtensionCaller.Product wrongTurn = new ReadExtensionCaller.Product("assay", 727, Set.of(727), 44, 52,

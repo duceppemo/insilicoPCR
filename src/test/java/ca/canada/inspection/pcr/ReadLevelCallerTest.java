@@ -209,6 +209,67 @@ class ReadLevelCallerTest {
                 ReadLevelCaller.DEFAULT_MIN_SUPPORT_FRACTION, ids -> sequences).products("assay").getFirst();
     }
 
+    /**
+     * Two reads hold a 70 bp amplicon (forward primer at 11, reverse at 61); {@code read_3} and {@code read_4},
+     * mates of one pair, carry the forward primer only, followed by {@code afterPrimer3} and {@code afterPrimer4}.
+     */
+    private static ReadCall callWithOnePairWithoutIt(String afterPrimer3, String afterPrimer4) {
+        Sample reads = reads();
+        Map<String, Integer> lengths = new HashMap<>();
+        Map<String, String> sequences = new HashMap<>();
+        Map<String, String> after = Map.of("read_1", FLANK, "read_2", FLANK, "read_3", afterPrimer3, "read_4", afterPrimer4);
+        for (String read : List.of("read_1", "read_2", "read_3", "read_4")) {
+            lengths.put(read, 101);
+            reads.hits().add("assay-F", TestHits.plusHit("assay-F", read, 11));
+            sequences.put(read, read(after.get(read)));
+        }
+        for (String read : List.of("read_1", "read_2")) {
+            reads.hits().add("assay-R", TestHits.minusHit("assay-R", read, 61));
+        }
+        Map<String, String> fragments = Map.of("read_1", "read_1", "read_2", "read_2", "read_3", "read_3", "read_4", "read_3");
+        return ReadLevelCaller.evaluate(reads.getName(), reads.hits(), lengths, fragments, PCR_PRIMERS, DEFAULTS,
+                ReadLevelCaller.DEFAULT_MIN_SUPPORT_FRACTION, ids -> sequences).products("assay").getFirst();
+    }
+
+    @Test
+    void matesWithoutTheProductCountAsOneInformativeFragment() {
+        // Two reads hold it; one pair, both mates at the locus, does not: 3 informative molecules, not 4.
+        ReadCall call = callWithOnePairWithoutIt(FLANK, FLANK);
+
+        assertEquals(2, call.supportingReads());
+        assertEquals(3, call.informativeReads());
+    }
+
+    @Test
+    void aPairWithOneMateAtTheLocusIsInformativeAndNotElsewhere() {
+        // read_3 carries the primer at another place, its mate read_4 at the locus: the pair is one
+        // informative molecule, not counted among the reads carrying the primer elsewhere too.
+        ReadCall call = callWithOnePairWithoutIt(OTHER, FLANK);
+
+        assertEquals(3, call.informativeReads());
+        assertEquals(0, call.elsewhereReads());
+    }
+
+    @Test
+    void aReadIsInformativeWhenItReachesTheProductsLengthFromThePrimer() {
+        // The product is 70 bp from the forward primer's 5' end at 11: a read of 80 bases reaches it
+        // exactly and would have shown it; one of 79 stops a base short.
+        for (int length : new int[]{80, 79}) {
+            Sample reads = reads();
+            Map<String, Integer> lengths = new HashMap<>(Map.of("read_1", 101, "read_2", 101, "read_3", length));
+            for (String read : List.of("read_1", "read_2", "read_3")) {
+                reads.hits().add("assay-F", TestHits.plusHit("assay-F", read, 11));
+            }
+            for (String read : List.of("read_1", "read_2")) {
+                reads.hits().add("assay-R", TestHits.minusHit("assay-R", read, 61));
+            }
+
+            ReadCall call = TestEvidence.evaluate(reads, lengths, PCR_PRIMERS, DEFAULTS).products("assay").getFirst();
+
+            assertEquals(length == 80 ? 3 : 2, call.informativeReads(), "a read of " + length);
+        }
+    }
+
     @Test
     void readsCarryingThePrimerElsewhereInTheGenomeAreNotInformative() {
         // The forward primer also matches 50 other places. Those reads would never have

@@ -74,7 +74,7 @@ public final class RunSettings {
     /** The BBTools memory asked for: so many GB, or worked out from the computer. */
     public static String bbtoolsMemory(int gib) {
         return gib > 0 ? gib + " GB for the programs running at once"
-                : "automatic: three quarters of the memory insilicoPCR leaves free, at least half of its heap";
+                : "automatic: " + ChildJavaMemory.automatic();
     }
 
     /** What a read-level call needs, with this share of informative reads. */

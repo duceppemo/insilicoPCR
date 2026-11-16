@@ -14,6 +14,22 @@ public final class ChildJavaMemory {
     private static final int DEFAULT_BUDGET_GIB = 4;
     /** Share of the memory this program leaves free that its children may take. */
     static final double FREE_MEMORY_SHARE = 0.75;
+
+    /**
+     * The rule, in words, for the help and the window: the limits written there by hand (at most 64, under 4)
+     * were the constants' only while no one changed them.
+     */
+    public static String limits() {
+        return "each gets at most " + MAX_CHILD_GIB + " GB; fewer samples run at once rather than any getting under "
+                + MIN_SHARED_CHILD_GIB + " GB";
+    }
+
+    /** The default, in words: the one place it is written (the help, the window, the run's settings). */
+    public static String automatic() {
+        String share = FREE_MEMORY_SHARE == 0.75 ? "three quarters" : Math.round(FREE_MEMORY_SHARE * 100) + "%";
+        return share + " of the memory insilicoPCR leaves free on the computer (a job's limit on a cluster), at least"
+                + " half of its own heap";
+    }
     /** More heap than this does not help one BBTools process. */
     static final int MAX_CHILD_GIB = 64;
     /**
@@ -76,6 +92,11 @@ public final class ChildJavaMemory {
      */
     static int blastnAtOnce(int budgetGiB, int threads, int items) {
         return Math.max(1, Math.min(Math.min(threads, Math.max(1, items)), budgetGiB / BLASTN_GIB));
+    }
+
+    /** The threads of each of {@code atOnce} blastn searches running at once: the run's, shared. */
+    static int blastnThreads(int threads, int atOnce) {
+        return Math.max(1, threads / atOnce);
     }
 
     /** Heap of a child that runs alone. */

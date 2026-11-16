@@ -35,7 +35,7 @@ public final class CliConfig {
             throw new IllegalArgumentException("Primer file does not exist or is not a regular file: " + primers);
         }
 
-        // Only what is given is set: the defaults are the builders' own, the application's too.
+        // Only what is given is set: the defaults are the builders' own (TadpoleOptions' for Tadpole), the application's too.
         AmpliconOptions.Builder amplicon = AmpliconOptions.builder();
         ifGiven(cmd, "mismatches", amplicon::mismatches);
         ifGiven(cmd, "probe-mismatches", amplicon::probeMismatches);

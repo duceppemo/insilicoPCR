@@ -116,8 +116,8 @@ public final class FastqDiagnosticsStage {
                 lines.add("FASTQ mode: " + partial + " negative assay(s) had only some primers in the reads"
                         + " (PARTIAL_BAIT, see diagnostics file).");
             }
-            if (called.isEmpty() && extended.isEmpty() && weak.isEmpty() && notInReads.isEmpty()
-                    && unsupported.isEmpty() && notClosed.isEmpty() && partial == 0) {
+            // Every status has its lines above (FastqDiagnosticsStageTest.everyStatusHasItsLinesInTheLog).
+            if (findings.isEmpty()) {
                 lines.add("FASTQ mode: no negative assay had its oligos in the baited reads.");
             }
             notes.forEach(note -> lines.add("FASTQ mode: " + note));

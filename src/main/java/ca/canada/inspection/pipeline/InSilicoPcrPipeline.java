@@ -1,7 +1,6 @@
 package ca.canada.inspection.pipeline;
 
 import ca.canada.inspection.model.Sample;
-import ca.canada.inspection.pcr.BlastReports;
 import ca.canada.inspection.pcr.PrimerPanel;
 import ca.canada.inspection.pcr.ReadExtensionCaller;
 import ca.canada.inspection.pcr.ReadLevelCaller.ReadEvidence;
@@ -24,11 +23,6 @@ import java.util.concurrent.TimeUnit;
 public final class InSilicoPcrPipeline {
     private final PipelineConfig config;
     private final RunMonitor monitor;
-
-    /** A run that reports to the console. */
-    public InSilicoPcrPipeline(PipelineConfig config) {
-        this(config, RunMonitor.CONSOLE);
-    }
 
     public InSilicoPcrPipeline(PipelineConfig config, RunMonitor monitor) {
         this.config = Objects.requireNonNull(config, "config");
@@ -64,16 +58,8 @@ public final class InSilicoPcrPipeline {
         monitor.info("Checking the input files (" + (config.inputCheck() == InputCheck.Depth.FULL
                 ? "every read; --input-check quick reads the first one only" : "first read only") + ")");
         InputCheck.Result checked = InputCheck.scan(config.input(), config.inputCheck(), config.threads(), config.output());
-        if (checked.files() == 0 && !checked.subfoldersNotRead().isEmpty()) {
-            throw new PipelineException("No FASTA or FASTQ file directly in " + config.input() + ": its subfolders "
-                    + checked.subfoldersNotRead().stream().map(folder -> folder.getFileName().toString())
-                    .collect(java.util.stream.Collectors.joining(", ")) + " hold some, but subfolders are not read."
-                    + " Give one of them as the input, or move their files up into one folder.");
-        }
         if (checked.files() == 0) {
-            // Most likely a mistyped -i: a run of nothing would end as if it had worked (exit 0).
-            throw new PipelineException("No FASTA or FASTQ file in " + config.input() + ": nothing to analyse"
-                    + " (input files are named " + String.join(", ", SequenceFileUtils.ACCEPTED_EXTENSIONS) + ")");
+            throw new PipelineException(InputCheck.noInputFiles(config.input()));
         }
         checked.warnings().forEach(line -> monitor.warning("Warning: " + line));
         if (checked.samples().isEmpty()) {
@@ -102,8 +88,6 @@ public final class InSilicoPcrPipeline {
 
         BlastRunner.run(context);
         ContigService.load(context);
-        BlastReports.attachHits(name -> directories.sample(name).blastReport(), context::searchedFasta, sampleMap, context.primers(),
-                config.ampliconOptions(), monitor::warning);
         monitor.info("Completed BLAST");
         done(Step.BLAST);
 

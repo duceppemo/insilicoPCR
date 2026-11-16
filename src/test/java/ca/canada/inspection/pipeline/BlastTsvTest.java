@@ -26,8 +26,11 @@ class BlastTsvTest {
                 "20", "20", "101", "120", PRIMER, "1", "20", PRIMER);
     }
 
-    private static void keep(Path tsv) {
-        BlastTsv.keepAccepted(tsv, List.of(), PRIMERS, ca.canada.inspection.pcr.AmpliconOptions.withMismatches(1));
+    /** Keeps the accepted hits of {@code tsv}, and gives them as taken: one pass for the table and the hits. */
+    private static ca.canada.inspection.model.Hits keep(Path tsv) {
+        ca.canada.inspection.model.Hits hits = new ca.canada.inspection.model.Hits();
+        BlastTsv.keepAccepted(tsv, List.of(), PRIMERS, ca.canada.inspection.pcr.AmpliconOptions.withMismatches(1), hits);
+        return hits;
     }
 
     @Test
@@ -36,7 +39,10 @@ class BlastTsvTest {
         // primer sites: the table kept them all, then was copied again to add its header.
         Path tsv = Files.writeString(dir.resolve("sample.tsv"), hit("c1", 0) + "\n" + hit("c2", 5) + "\n\n" + hit("c3", 1) + "\n");
 
-        keep(tsv);
+        ca.canada.inspection.model.Hits hits = keep(tsv);
+
+        // The same hits taken, the table not read again for them.
+        assertEquals(List.of("c1", "c3"), hits.byOligo().get("a-F").stream().map(hit -> hit.queryID()).toList());
 
         assertEquals(List.of(BlastTsv.HEADER, hit("c1", 0), hit("c3", 1)), Files.readAllLines(tsv));
     }

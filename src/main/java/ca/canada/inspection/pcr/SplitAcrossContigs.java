@@ -73,7 +73,7 @@ public final class SplitAcrossContigs {
         Set<String> reported = Products.sizes(sample, primers, options).keySet();
         Map<String, Integer> lengths = null;
         List<Split> splits = new ArrayList<>();
-        for (Map.Entry<String, PrimerId.Assay> entry : primers.completeAssays().entrySet()) {
+        for (Map.Entry<String, PrimerId.Assay> entry : primers.assays().entrySet()) {
             String assay = entry.getKey();
             PrimerId.Assay group = entry.getValue();
             if (reported.contains(assay)) {

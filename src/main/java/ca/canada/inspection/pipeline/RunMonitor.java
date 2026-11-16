@@ -6,8 +6,9 @@ import java.util.function.Consumer;
 
 /**
  * Where a run reports what it does, how it runs its external programs, and how it is stopped.
- * The command line uses {@link #CONSOLE}; the application sends everything to its window and
- * stops the run when the window closes.
+ * The command line uses the console ({@code Dispatcher.consoleMonitor()}: {@link #CONSOLE} with its
+ * external programs tracked, and stopped with it); the application sends everything to its window
+ * and stops the run when the window closes.
  */
 public interface RunMonitor {
 

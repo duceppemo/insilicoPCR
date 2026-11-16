@@ -69,15 +69,6 @@ public final class SequenceFileUtils {
         return naming(path).mate();
     }
 
-    /**
-     * Sample name of {@code fileName} with the same rules as {@link #sampleName(Path)},
-     * asking {@code siblingExists} instead of the disk whether a mate file is present
-     * (e.g. when the names come from a run's QA log and the files may have moved).
-     */
-    public static String sampleName(String fileName, java.util.function.Predicate<String> siblingExists) {
-        return naming(fileName, siblingExists).sample();
-    }
-
     /** The sample a file belongs to and which mate of a read pair it is (0: none). */
     private record Naming(String sample, int mate) {
     }
@@ -97,14 +88,6 @@ public final class SequenceFileUtils {
             return fileSystem.getReason();
         }
         return String.valueOf(e.getMessage());
-    }
-
-    /**
-     * Which read of a pair {@code file} is named as: 1 or 2 ({@code _R1}, {@code _R2_001}; a bare {@code _1}
-     * or {@code _2} when its mate is beside it), or 0 for a file named as no pair's.
-     */
-    public static int mateNumber(Path file) {
-        return naming(file).mate();
     }
 
     private static Naming naming(Path path) {
@@ -150,22 +133,6 @@ public final class SequenceFileUtils {
             return Sample.FileType.FASTQ;
         }
         return Sample.FileType.UNKNOWN;
-    }
-
-    public static boolean looksLikeSequenceFile(Path file) {
-        if (!Files.isRegularFile(file) || !hasExtension(file, ACCEPTED_EXTENSIONS)) {
-            return false;
-        }
-        try (BufferedReader reader = openMaybeGzip(file)) {
-            // Blank lines before the first record are skipped, as the input check skips them.
-            String first = reader.readLine();
-            while (first != null && first.isBlank()) {
-                first = reader.readLine();
-            }
-            return first != null && (first.charAt(0) == '>' || first.charAt(0) == '@');
-        } catch (IOException e) {
-            return false;
-        }
     }
 
     /** The samples that {@code files} make, by name, whatever the files hold. */

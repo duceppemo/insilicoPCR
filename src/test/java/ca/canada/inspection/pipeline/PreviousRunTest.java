@@ -67,8 +67,6 @@ class PreviousRunTest {
                         "Sample analysed: alpha", "Settings:"),
                 lines.subList(inputs + 1, inputs + 8));
         assertEquals("FASTQ mode Tadpole settings: k=31", lines.getLast());
-        // An application before 0.15.1 reads the input list up to the blank line.
-        assertEquals(3, QaLogInputs.read(output.resolve("QAlog(1).txt")).size());
     }
 
     @Test
@@ -111,23 +109,17 @@ class PreviousRunTest {
     }
 
     @Test
-    void aLogWrittenBefore0151IsReadFromItsInputList() throws IOException {
+    void aRunOfBefore0151IsNotReopenedAndTheMessageSaysWhatToDo() throws IOException {
+        // Its log names neither its report nor its samples; 1.0 left out the code that worked them out.
         Path run = Files.createDirectories(dir.resolve("old"));
-        Path reports = Files.createDirectories(run.resolve("consolidated_report"));
-        Files.writeString(reports.resolve("report.tsv"), "Sample\n");
-        Path latest = Files.writeString(reports.resolve("report(1).tsv"), "Sample\n");
-        Files.setLastModifiedTime(latest, FileTime.from(Instant.now().plusSeconds(60)));
         Path log = Files.writeString(run.resolve("QAlog.txt"), "In Silico PCR version: 0.15.0\nInput File(s) :\n"
-                + "/gone/S_R1.fastq.gz\n/gone/S_R2.fastq.gz\n/gone/T.fasta\n\nSample not analysed: T\n");
-        // That run wrote its log last; a report newer than the log is from a run that did not finish.
-        Files.setLastModifiedTime(log, FileTime.from(Instant.now().plusSeconds(120)));
-        Path unfinished = Files.writeString(reports.resolve("report(2).tsv"), "Sample\n");
-        Files.setLastModifiedTime(unfinished, FileTime.from(Instant.now().plusSeconds(600)));
+                + "/gone/T.fasta\n");
+        Files.writeString(Files.createDirectories(run.resolve("consolidated_report")).resolve("report.tsv"), "Sample\n");
 
-        PreviousRun previous = PreviousRun.open(run);
+        PipelineException error = assertThrows(PipelineException.class, () -> PreviousRun.open(run));
 
-        assertEquals(latest, previous.report());
-        assertEquals(List.of("S"), previous.samples());
+        assertEquals(log + " was written by a version before 0.15.1, whose runs this version does not reopen: open its"
+                + " report (consolidated_report/report.html) in a browser, or run it again", error.getMessage());
     }
 
     @Test
@@ -142,24 +134,6 @@ class PreviousRunTest {
     }
 
     @Test
-    void aLogWrittenBefore0151WithoutItsReportsOrSamplesIsAMessage() throws IOException {
-        Path run = Files.createDirectories(dir.resolve("old"));
-        Path log = Files.writeString(run.resolve("QAlog.txt"), "In Silico PCR version: 0.15.0\nInput File(s) :\n"
-                + "/gone/notes.txt\n");
-
-        PipelineException noFolder = assertThrows(PipelineException.class, () -> PreviousRun.open(run));
-        assertEquals("Consolidated report folder not found: " + run.resolve("consolidated_report"), noFolder.getMessage());
-
-        Files.createDirectories(run.resolve("consolidated_report"));
-        PipelineException noReport = assertThrows(PipelineException.class, () -> PreviousRun.open(run));
-        assertEquals("No consolidated report found in " + run.resolve("consolidated_report"), noReport.getMessage());
-
-        Files.writeString(run.resolve("consolidated_report").resolve("report.tsv"), "Sample\n");
-        PipelineException noSample = assertThrows(PipelineException.class, () -> PreviousRun.open(run));
-        assertEquals("No input samples were found in " + log, noSample.getMessage());
-    }
-
-    @Test
     void aReportOutsideTheOutputFolderIsNamedInFull() throws IOException {
         output = Files.createDirectories(dir.resolve("results"));
         reads = Files.createDirectories(dir.resolve("reads"));
@@ -169,19 +143,6 @@ class PreviousRunTest {
 
         assertEquals(elsewhere, PreviousRun.open(output).report());
         assertEquals(List.of(), PreviousRun.open(output).samples());
-    }
-
-    @Test
-    void aCopiedRunFolderOfBefore0151StillOpens() throws IOException {
-        // Copied without its dates: the log is dated before its report, which is still the run's.
-        Path run = Files.createDirectories(dir.resolve("copied"));
-        Path log = Files.writeString(run.resolve("QAlog.txt"), "In Silico PCR version: 0.15.0\nInput File(s) :\n"
-                + "/gone/T.fasta\n");
-        Files.setLastModifiedTime(log, FileTime.from(Instant.now().minusSeconds(600)));
-        Path report = Files.writeString(Files.createDirectories(run.resolve("consolidated_report")).resolve("report.tsv"),
-                "Sample\n");
-
-        assertEquals(report, PreviousRun.open(run).report());
     }
 
     @Test

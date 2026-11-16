@@ -45,6 +45,10 @@ final class QaLogWriter {
     static final String REPORT_PREFIX = "Consolidated report: ";
     /** Starts each line naming a sample the run analysed (one gel lane each). */
     static final String SAMPLE_PREFIX = "Sample analysed: ";
+    /** Starts the list of the run's input files. */
+    static final String INPUTS_MARKER = "Input File(s) :";
+    /** Starts the line that names a sample left out for a faulty input file (since 0.13.0). */
+    static final String NOT_ANALYSED_PREFIX = "Sample not analysed: ";
 
     private QaLogWriter() {
     }
@@ -72,7 +76,7 @@ final class QaLogWriter {
             writeLine(writer, REPORT_PREFIX + relative(output, report));
             // The files of the samples analysed: a folder may hold other files, and files may be
             // added to it after the run.
-            writeLine(writer, QaLogInputs.INPUTS_MARKER);
+            writeLine(writer, INPUTS_MARKER);
             for (Path file : context.samples().values().stream().flatMap(sample -> sample.files().stream())
                     .toList()) {
                 writeLine(writer, file.toAbsolutePath().toString());
@@ -132,7 +136,7 @@ final class QaLogWriter {
         List<String> lines = new ArrayList<>();
         lines.add("Input not analysed: a file of these samples is faulty, and nothing was run on them.");
         bySample.forEach((sample, problems) -> {
-            lines.add(QaLogInputs.NOT_ANALYSED_PREFIX + sample);
+            lines.add(NOT_ANALYSED_PREFIX + sample);
             problems.forEach(problem -> lines.add("  " + problem));
         });
         lines.add("");

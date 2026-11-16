@@ -24,7 +24,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -92,10 +91,7 @@ public final class ReadExtensionStage {
         Map<String, Map<String, Outcome>> outcomes = new TreeMap<>();
         Map<String, List<ReportRow>> rows = new HashMap<>();
         List<String> notes = new ArrayList<>();
-        List<Sample> fastq = samples.values().stream()
-                .filter(Sample::isFastq)
-                .sorted(Comparator.comparing(Sample::getName))
-                .toList();
+        List<Sample> fastq = PipelineContext.fastqSamples(samples);
         // One sample at a time: each extension loads the k-mers of all the baited reads.
         for (Sample sample : fastq) {
             ReadEvidence reads = evidence.get(sample.getName());
@@ -172,7 +168,6 @@ public final class ReadExtensionStage {
             }
             lengths = SequenceFileUtils.sequenceLengths(extendedFile);
             ReadLevelStage.runBlast(settings.search(), settings.search().threads(), extendedFile, hitsFile);
-            BlastTsv.keepAccepted(hitsFile, List.of(extendedFile), primers, options);
             evaluated = ReadExtensionCaller.evaluate(name, extendedHits(name, hitsFile, extendedFile, lengths, primers,
                     options, settings.search().monitor()::warning), lengths, seeds, primers, options, reach, known);
             Map<String, Integer> open = openSeedLengths(assays, seeds, evaluated, lengths);
@@ -304,7 +299,7 @@ public final class ReadExtensionStage {
         Path candidateReads = files.candidateReads();
         settings.bbtools().recruit(candidates, sample.files(), candidateReads, ReadExtensionCaller.K)
                 .run(settings.search().monitor(), "BBDuk");
-        PairSupport.Tally tally = tally(sequences, candidateReads, sample.files().size() == 2, settings);
+        PairSupport.Tally tally = tally(sequences, candidateReads, sample.isPaired(), settings);
         Map<Product, PairSupport.Verdict> verdicts = new java.util.IdentityHashMap<>();
         for (int i = 0; i < closed.size(); i++) {
             verdicts.put(closed.get(i), tally.verdict(i));
@@ -414,7 +409,7 @@ public final class ReadExtensionStage {
         Hits extended = new Hits();
         lengths.keySet().forEach(id -> extended.describe(id, ""));
         String missing = BlastHits.missingWarning(
-                BlastHits.read(hitsFile, List.of(extendedFile), extended, primers, options), List.of(extendedFile));
+                BlastTsv.keepAccepted(hitsFile, List.of(extendedFile), primers, options, extended), List.of(extendedFile));
         if (!missing.isEmpty()) {
             warning.accept(missing);
         }

@@ -24,8 +24,8 @@ class PrimerPanelTest {
 
     @Test
     void onlyAssaysWithBothPrimersCanGiveAProduct() {
-        assertEquals(List.of("lone", "qpcr"), List.copyOf(PANEL.assays().keySet()));
-        assertEquals(List.of("qpcr"), List.copyOf(PANEL.completeAssays().keySet()));
+        // lone-F alone is no assay of the panel: one map, not one of all and one of these, which steps chose between.
+        assertEquals(List.of("qpcr"), List.copyOf(PANEL.assays().keySet()));
         assertEquals(java.util.Set.of("qpcr"), PANEL.assaysWithProbe());
         assertTrue(PANEL.anyProbe());
         assertEquals(4, PANEL.length("qpcr-F"));

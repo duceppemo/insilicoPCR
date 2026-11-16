@@ -30,9 +30,9 @@ usage: java -jar insilicoPCR.jar -i <input> -o <output> -p <primers> [-t
                                  counting as mismatches; default: 5
     --bbtools-memory <GB>        FASTQ mode: memory in GB that the BBTools
                                  programs running at once share (each gets
-                                 at most 64); fewer samples run at once
-                                 rather than any getting under 4. Set it
-                                 on a computer shared with others;
+                                 at most 64 GB; fewer samples run at once
+                                 rather than any getting under 4 GB). Set
+                                 it on a computer shared with others;
                                  default: three quarters of the memory
                                  insilicoPCR leaves free on the computer
                                  (a job's limit on a cluster), at least

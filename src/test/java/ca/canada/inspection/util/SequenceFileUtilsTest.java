@@ -93,24 +93,11 @@ class SequenceFileUtilsTest {
     }
 
     @Test
-    void looksLikeSequenceFileChecksContentNotJustExtension() throws IOException {
-        assertEquals(true, SequenceFileUtils.looksLikeSequenceFile(write("ok.fasta", ">c1\nACGT\n")));
-        assertEquals(true, SequenceFileUtils.looksLikeSequenceFile(write("ok.fastq", "@r1\nACGT\n")));
-        assertEquals(false, SequenceFileUtils.looksLikeSequenceFile(write("bad.fasta", "plain text\n")));
-        assertEquals(false, SequenceFileUtils.looksLikeSequenceFile(write("empty.fasta", "")));
-        assertEquals(true, SequenceFileUtils.looksLikeSequenceFile(write("blank.fasta", "\n  \r\n>c1\nACGT\n")));
-        assertEquals(false, SequenceFileUtils.looksLikeSequenceFile(write("blanks.fasta", "\n\n")));
-        assertEquals(false, SequenceFileUtils.looksLikeSequenceFile(write("wrong.txt", ">c1\nACGT\n")));
-        assertEquals(false, SequenceFileUtils.looksLikeSequenceFile(dir)); // a directory
-    }
-
-    @Test
     void gzippedSequenceFilesAreRecognized() throws IOException {
         Path gz = dir.resolve("reads.fastq.gz");
         try (var out = new java.util.zip.GZIPOutputStream(Files.newOutputStream(gz))) {
             out.write("@r1\nACGT\n+\nIIII\n".getBytes());
         }
-        assertEquals(true, SequenceFileUtils.looksLikeSequenceFile(gz));
         assertEquals(Sample.FileType.FASTQ, SequenceFileUtils.fileType(gz));
     }
 

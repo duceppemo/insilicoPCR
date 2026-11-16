@@ -69,7 +69,10 @@ public final class BlastHitParser {
         String sseqid = BlastField.SSEQID.of(fields);
         String primerSeq = primers.sequence(sseqid);
         if (primerSeq == null) {
-            return Optional.empty();
+            // The database holds the run's primers only: BLAST changed this one's ID (makeblastdb wrote a
+            // letter outside ASCII as '#'). Skipped, every hit of the primer was lost without a word.
+            throw new IllegalStateException("BLAST names an oligo the primer file does not hold: " + sseqid
+                    + " (its ID was changed by BLAST)");
         }
 
         try {

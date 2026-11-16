@@ -124,7 +124,7 @@ Primer FASTA IDs must end with:
 
 See [Primer FASTA Format](Primer-FASTA-Format).
 
-Since 0.12.0 the command line reports a mistake in the primer file (an ID without a role suffix, characters that are not bases, a `size=` that cannot be read, two different sizes for one assay) as one `Error:` line and exits with code 1. Earlier releases printed a Java stack trace for the same mistakes.
+Since 0.12.0 the command line reports a mistake in the primer file (an ID without a role suffix, characters that are not bases, a `size=` that cannot be read, two different sizes for one assay; since 0.15.3 also an ID with a character outside ASCII, and `other=` without `size=`) as one `Error:` line and exits with code 1. Earlier releases printed a Java stack trace for the same mistakes.
 
 Since 0.12.1 a failing external tool (BLAST+, BBTools) is reported the same way: the tool's own message, then `Error:` with the stage that failed and `Cause:` with the full command line and its exit code. Copy the command line to run the tool by hand.
 

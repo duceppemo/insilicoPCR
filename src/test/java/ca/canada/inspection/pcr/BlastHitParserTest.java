@@ -39,9 +39,12 @@ class BlastHitParserTest {
     }
 
     @Test
-    void unknownPrimerIsIgnored() {
-        String blastLine = line("other-F", 0, 0, 20, 20, 101, 120, PRIMER_20, 1, 20, PRIMER_20);
-        assertTrue(BlastHitParser.parse(blastLine, PRIMERS, STRICT).isEmpty());
+    void anOligoThePrimerFileDoesNotHoldIsAnError() {
+        // Skipped, every hit of a primer whose ID BLAST changed (Caf##-F for Café-F) was lost without a word.
+        String blastLine = line("Caf##-F", 0, 0, 20, 20, 101, 120, PRIMER_20, 1, 20, PRIMER_20);
+        IllegalStateException error = org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class,
+                () -> BlastHitParser.parse(blastLine, PRIMERS, STRICT));
+        assertTrue(error.getMessage().contains("Caf##-F"), error.getMessage());
     }
 
     @Test

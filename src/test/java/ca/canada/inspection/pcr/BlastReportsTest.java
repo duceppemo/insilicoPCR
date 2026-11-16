@@ -56,6 +56,21 @@ class BlastReportsTest {
     }
 
     @Test
+    void anIdWithAByteThatIsNotUtf8IsReadAsTheFastaIs() throws IOException {
+        // blastn copies the ID's Latin-1 é; read strictly as UTF-8, the run stopped for every sample.
+        Path sampleDir = Files.createDirectories(detailedDir.resolve("sampleA"));
+        Files.write(sampleDir.resolve("sampleA.tsv"), (BlastField.HEADER + "\n" + hitLine(0).replace("contig1",
+                "Qu\u00e9bec_c1") + "\n").getBytes(java.nio.charset.StandardCharsets.ISO_8859_1));
+
+        Map<String, Sample> samples = new HashMap<>();
+        samples.put("sampleA", sample("sampleA"));
+        BlastReports.attachHits(this::report, Sample::files, samples, PRIMERS, OPTIONS, warning -> {});
+
+        // As SequenceFileUtils.openMaybeGzip reads the same header in the FASTA.
+        assertEquals("Qu\uFFFDbec_c1", samples.get("sampleA").hits().byOligo().get("assay-F").getFirst().queryID());
+    }
+
+    @Test
     void reportsOfOtherSamplesAreNotRead() throws IOException {
         // A report left in the output folder by an earlier run, with a hit that would be accepted.
         Files.writeString(Files.createDirectories(detailedDir.resolve("stale")).resolve("stale.tsv"), hitLine(0) + "\n");

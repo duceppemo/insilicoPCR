@@ -116,7 +116,7 @@ ACTG...
 CAGT...
 ```
 
-The ID ends at the first blank (space or tab); anything after it on the header line is a description. Use underscores or hyphens inside the assay name, and keep the final role suffix as the last part of the ID.
+The ID ends at the first blank (space or tab); anything after it on the header line is a description. Use underscores or hyphens inside the assay name, and keep the final role suffix as the last part of the ID. An ID holds ASCII letters, digits and punctuation only: BLAST writes any other character (`é`, `Δ`) as `#` in its database, and a primer so renamed found nothing, without a word (before 0.15.3). Such an ID is refused, naming the character; the description after the ID can hold any.
 
 Good:
 
@@ -182,6 +182,7 @@ Rules:
 - `size=` and `other=` can sit on different primers of the same assay. Giving the same word twice for one
   assay is accepted only when the values agree.
 - A size that matches both `size=` and `other=` is labelled `target`.
+- An assay that declares `other=` must declare `size=` too: without a target, none of its products could ever be positive. Such a primer file is refused (since 0.15.3).
 - A value that cannot be read (`size=434bp`, `size=450-420`) stops the run with a message naming the primer.
 - The column appears only when at least one assay declares a size, so reports of primer files without
   declarations are unchanged. The ranges used are recorded in `QAlog.txt`.

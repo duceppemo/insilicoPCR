@@ -277,14 +277,17 @@ class InputCheckTest {
     @Test
     void blankLinesBeforeTheFirstHeaderAreSkippedAsBlastSkipsThem() throws IOException {
         write("blank.fasta", "\n\r\n  \t\n>c1\nACGT\n");
+        write("comment.fasta", ";made by hand\n#v2\n>c1\nACGT\n"); // BLAST reads it too
         write("indented.fasta", "  >c1\nACGT\n");
         write("sameId.fasta", ">c1 one\nACGT\n>c1"); // the second header has no line end
+        write("noId.fasta", ">c1\nACGT\n> \nGGCC\n"); // BLAST would name it Query_2
 
         Result result = InputCheck.scan(dir, Depth.QUICK, 1);
 
-        assertEquals(Set.of("blank"), result.samples().keySet());
+        assertEquals(Set.of("blank", "comment"), result.samples().keySet());
         assertEquals(List.of(
                 "indented.fasta: not a FASTA file (the first line does not start with >)",
+                "noId.fasta: a sequence has no ID (a header line holds nothing after its >; give each sequence an ID)",
                 "sameId.fasta: two sequences share an ID (the ID c1 names more than one sequence; give each its own"
                         + " (the report and BLAST tell sequences apart by ID))"),
                 result.issues().stream().map(Issue::describe).toList());

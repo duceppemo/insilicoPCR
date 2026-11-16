@@ -62,6 +62,21 @@ class FastaScannerTest {
     }
 
     @Test
+    void commentsAreNotBasesAsBlastReadsThem() throws IOException {
+        // BLAST drops a line's rest after ;, and lines that start with # or !: counted, the bases after a
+        // comment were shifted from BLAST's positions.
+        Path fasta = Files.writeString(dir.resolve("comments.fasta"),
+                ";file comment\n#another\n>c1 a;b\nAAAAA;GGGG\n#GGGG\n!GGGG\nCC#C!\n>c2\nTT\n");
+        assertEquals(Map.of("c1", 8, "c2", 2), SequenceFileUtils.sequenceLengths(fasta));
+        StringBuilder bases = new StringBuilder();
+        try (FastaScanner scanner = new FastaScanner(List.of(fasta))) {
+            assertEquals(">c1 a;b", scanner.nextHeader(null));
+            scanner.nextHeader(base -> bases.append((char) base));
+        }
+        assertEquals("AAAAACCC", bases.toString());
+    }
+
+    @Test
     void charactersBlastDropsAreNotBases() throws IOException {
         // An alignment's gaps and other non-nucleotide characters: BLAST leaves them out of its
         // positions, so a template or a length that kept them was shifted from BLAST's.

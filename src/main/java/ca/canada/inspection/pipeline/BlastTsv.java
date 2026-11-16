@@ -1,8 +1,7 @@
 package ca.canada.inspection.pipeline;
 
 import ca.canada.inspection.pcr.BlastField;
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
+
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -69,17 +68,13 @@ final class BlastTsv {
             Path temp = path.resolveSibling(path.getFileName() + ".part");
 
             try {
-                try (BufferedWriter writer = Files.newBufferedWriter(temp, StandardCharsets.UTF_8)) {
-                    writer.write(HEADER);
-                    writer.newLine();
-
+                // BLAST's lines are copied as bytes: an ID holds whatever bytes its FASTA header did (a
+                // Latin-1 é), which a strict UTF-8 reading refused, stopping the whole run.
+                try (java.io.OutputStream out = Files.newOutputStream(temp)) {
+                    out.write((HEADER + "\n").getBytes(StandardCharsets.UTF_8));
                     if (Files.exists(path)) {
-                        try (BufferedReader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)) {
-                            String line;
-                            while ((line = reader.readLine()) != null) {
-                                writer.write(line);
-                                writer.newLine();
-                            }
+                        try (java.io.InputStream in = Files.newInputStream(path)) {
+                            in.transferTo(out);
                         }
                     }
                 }

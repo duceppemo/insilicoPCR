@@ -8,6 +8,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PrimerServiceTest {
@@ -39,6 +40,17 @@ class PrimerServiceTest {
         assertThrows(RuntimeException.class, () -> PrimerService.expand(map("assay-fwd", "ACGT"))); // bad type char
         assertThrows(RuntimeException.class, () -> PrimerService.expand(map("-F", "ACGT")));        // empty assay name
         assertThrows(RuntimeException.class, () -> PrimerService.expand(map("assay-", "ACGT")));    // dash at end
+    }
+
+    @Test
+    void primerIdsBlastCannotKeepAreRefusedSayingWhy() {
+        // makeblastdb wrote Café-F as Caf##-F and succeeded: every hit of the primer was then dropped.
+        PipelineException error = assertThrows(PipelineException.class,
+                () -> PrimerService.expand(map("Caf\u00e9-F", "ACGTACGT")));
+        assertTrue(error.getMessage().contains("(\u00e9)") && error.getMessage().contains("such as Cafe-F"),
+                error.getMessage());
+        assertEquals("stx_-F", PrimerService.asciiSuggestion("stx\u0394-F"));
+        assertDoesNotThrow(() -> PrimerService.expand(map("16S.v2_(a)-F", "ACGTACGT")));
     }
 
     @Test

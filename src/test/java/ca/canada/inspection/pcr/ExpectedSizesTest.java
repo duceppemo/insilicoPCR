@@ -109,6 +109,17 @@ class ExpectedSizesTest {
     }
 
     @Test
+    void anAssayWithOtherButNoSizeIsRefused() {
+        // No target: none of its products could ever be positive, every one "other" or "unexpected".
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> sizes("assay-F", "other=575"));
+        assertEquals("Assay assay declares other= (on assay-F) but no size=: give the size of its target product"
+                + " too (size= on one of its primers)", error.getMessage());
+        // The size may sit on another primer of the assay.
+        assertEquals(Label.OTHER, sizes("assay-F", "other=575", "assay-R", "size=434").label("assay", 575));
+    }
+
+    @Test
     void unreadableSizesAreRejectedNamingThePrimer() {
         for (String bad : List.of("size=abc", "size=", "size=434bp", "size=450-420", "size=0", "size=-5",
                 "size=1-2-3", "other=100,,200", "size=4.5")) {

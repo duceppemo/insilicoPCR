@@ -54,7 +54,7 @@ size in each cell. Then review, as needed:
 
 - `consolidated_report/report.tsv`: the same results as a table, one row per amplicon
 - the synthetic gel view
-- detailed per-sample report files (the raw BLAST hits)
+- detailed per-sample report files (the BLAST hits the rules accept)
 - console or GUI log output, and `QAlog.txt`
 
 A product of the wrong size is still reported: check `AmpliconSize` before calling a test positive, or

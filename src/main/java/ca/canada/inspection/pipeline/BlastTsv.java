@@ -1,6 +1,10 @@
 package ca.canada.inspection.pipeline;
 
+import ca.canada.inspection.pcr.AmpliconOptions;
 import ca.canada.inspection.pcr.BlastField;
+import ca.canada.inspection.pcr.BlastHitParser;
+import ca.canada.inspection.pcr.PrimerPanel;
+import ca.canada.inspection.pcr.QueryTemplates;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -10,7 +14,7 @@ import java.nio.file.StandardCopyOption;
 import java.util.List;
 import java.util.Objects;
 
-/** The BLAST TSV of a run: the search that writes it, its header, and streaming-safe file helpers. */
+/** The BLAST TSV of a run: the search that writes it, and the table it is kept as (accepted hits, under a header). */
 final class BlastTsv {
     static final String OUTFMT = BlastField.OUTFMT;
     static final String HEADER = BlastField.HEADER;
@@ -53,45 +57,69 @@ final class BlastTsv {
     private BlastTsv() {
     }
 
-    static void prependHeader(Path path) {
-        Objects.requireNonNull(path, "path");
+    /**
+     * Rewrites {@code path}, blastn's table, as the hits the rules accept ({@link BlastHitParser}), under
+     * the header: on a genome blastn lists 1.5 million alignments for a 40-assay panel (140 MB), of which a
+     * few thousand are primer sites, and the table was kept whole, then copied again to add its header.
+     *
+     * @param searched the FASTA files blastn searched, in which a hit's trimmed ends are compared
+     */
+    static void keepAccepted(Path path, List<Path> searched, PrimerPanel primers, AmpliconOptions options) {
+        keepAccepted(path, searched, primers, options, java.util.function.UnaryOperator.identity());
+    }
 
+    /**
+     * As {@link #keepAccepted(Path, List, PrimerPanel, AmpliconOptions)}, each line first put back on the
+     * sequence searched by {@code toContig} ({@link BlastQuery#toContig}, for a query searched in pieces);
+     * a hit two overlapping pieces both hold is kept once.
+     */
+    static void keepAccepted(Path path, List<Path> searched, PrimerPanel primers, AmpliconOptions options,
+                             java.util.function.UnaryOperator<String> toContig) {
+        Objects.requireNonNull(path, "path");
+        // Written beside it with the folder's usual permissions, then moved over it: a temporary file
+        // (Files.createTempFile) is readable by its owner only, and so was the hit file it became, to
+        // colleagues sharing the output folder.
+        Path temp = path.resolveSibling(path.getFileName() + ".part");
         try {
             Path parent = path.getParent();
             if (parent != null) {
                 Files.createDirectories(parent);
             }
-
-            // Written beside it with the folder's usual permissions, then moved over it: a
-            // temporary file (Files.createTempFile) is readable by its owner only, and so was
-            // the hit file it became, to colleagues sharing the output folder.
-            Path temp = path.resolveSibling(path.getFileName() + ".part");
-
             try {
-                // BLAST's lines are copied as bytes: an ID holds whatever bytes its FASTA header did (a
-                // Latin-1 é), which a strict UTF-8 reading refused, stopping the whole run.
-                try (java.io.OutputStream out = Files.newOutputStream(temp)) {
-                    out.write((HEADER + "\n").getBytes(StandardCharsets.UTF_8));
+                // Read as the searched FASTA is (leniently): an ID's byte that is not UTF-8 reads the same in both.
+                try (java.io.BufferedWriter out = Files.newBufferedWriter(temp, StandardCharsets.UTF_8);
+                     QueryTemplates templates = new QueryTemplates(searched)) {
+                    out.write(HEADER);
+                    out.write('\n');
                     if (Files.exists(path)) {
-                        try (java.io.InputStream in = Files.newInputStream(path)) {
-                            in.transferTo(out);
+                        try (java.io.BufferedReader in = new java.io.BufferedReader(new java.io.InputStreamReader(
+                                Files.newInputStream(path), StandardCharsets.UTF_8))) {
+                            java.util.Set<String> kept = new java.util.HashSet<>();
+                            String line;
+                            while ((line = in.readLine()) != null) {
+                                if (line.isBlank()) {
+                                    continue;
+                                }
+                                line = toContig.apply(line);
+                                if (BlastHitParser.parse(line, primers, options, templates).isPresent() && kept.add(line)) {
+                                    out.write(line);
+                                    out.write('\n');
+                                }
+                            }
                         }
                     }
                 }
-
                 try {
                     Files.move(temp, path, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
                 } catch (java.nio.file.AtomicMoveNotSupportedException e) {
                     Files.move(temp, path, StandardCopyOption.REPLACE_EXISTING);
                 }
-
-            } catch (IOException e) {
+            } catch (IOException | RuntimeException e) {
                 Files.deleteIfExists(temp);
                 throw e;
             }
-
         } catch (IOException e) {
-            throw new PipelineException("Could not add BLAST TSV header to: " + path, e);
+            throw new PipelineException("Could not write the BLAST hits of " + path, e);
         }
     }
 }

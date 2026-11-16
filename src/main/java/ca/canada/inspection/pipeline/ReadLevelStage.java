@@ -35,7 +35,7 @@ public final class ReadLevelStage {
      * @param monitor            where program output goes, and whether the run was cancelled
      */
     public record Settings(Path blastn, Path primerDatabase, double evalue, int threads, double minSupportFraction,
-                           RunMonitor monitor) {
+                           RunMonitor monitor, int memoryBudgetGiB) {
         public Settings {
             ReadLevelCaller.requireFraction(minSupportFraction);
             if (threads < 1) {
@@ -48,7 +48,7 @@ public final class ReadLevelStage {
         static Settings of(PipelineContext context) {
             return new Settings(context.dependencies().blastn(), context.directories().primerDatabase(),
                     context.config().evalue(), context.config().threads(), context.config().readMinFraction(),
-                    context.monitor());
+                    context.monitor(), context.childJavaMemoryBudgetGiB());
         }
     }
 
@@ -66,10 +66,12 @@ public final class ReadLevelStage {
         if (fastq.isEmpty()) {
             return Map.of();
         }
-        // Samples run in parallel; give each blastn its share of the threads.
-        int blastThreads = Math.max(1, settings.threads() / Math.min(settings.threads(), fastq.size()));
+        // Samples run in parallel, as many as the memory holds blastn searches (BlastRunner); give each
+        // blastn its share of the threads.
+        int atOnce = ChildJavaMemory.blastnAtOnce(settings.memoryBudgetGiB(), settings.threads(), fastq.size());
+        int blastThreads = Math.max(1, settings.threads() / atOnce);
         Map<String, ReadEvidence> evidence = new ConcurrentHashMap<>();
-        ParallelStageRunner.run("Read-level amplicon search", fastq, settings.threads(), settings.monitor(),
+        ParallelStageRunner.run("Read-level amplicon search", fastq, atOnce, settings.monitor(),
                 sample -> evidence.put(sample.getName(), searchSample(settings, blastThreads,
                         directories.sample(sample.getName()), sample, primers, options)),
                 ParallelStageRunner.Progress.NONE);
@@ -88,7 +90,7 @@ public final class ReadLevelStage {
             return new ReadEvidence(Map.of(), Map.of(), Map.of());
         }
         runBlast(settings, blastThreads, fasta, hitsFile);
-        BlastTsv.prependHeader(hitsFile);
+        BlastTsv.keepAccepted(hitsFile, List.of(fasta), primers, options);
         return callFromHits(name, hitsFile, fasta, reads, primers, options, settings.minSupportFraction(),
                 settings.monitor()::warning);
     }

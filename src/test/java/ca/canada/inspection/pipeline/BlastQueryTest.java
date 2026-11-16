@@ -157,4 +157,30 @@ class BlastQueryTest {
         }
         return bytes.toByteArray();
     }
+
+    @Test
+    void aSequenceLongerThanAPieceIsCopiedInOverlappingPiecesAndItsHitsPutBack() throws IOException {
+        // 2.5 pieces long: pieces at 0, 999,000 and 1,998,000, each sharing 1,000 bases with the next.
+        StringBuilder bases = new StringBuilder();
+        java.util.Random random = new java.util.Random(3);
+        while (bases.length() < 2_500_000) {
+            bases.append("ACGT".charAt(random.nextInt(4)));
+        }
+        Path fasta = Files.writeString(directory.resolve("long.fasta"), ">short one\nACGTACGT\n>chr1 long\n" + bases + "\n");
+
+        try (BlastQuery query = BlastQuery.of(fasta, directory)) {
+            java.util.Map<String, Integer> lengths = ca.canada.inspection.util.SequenceFileUtils.sequenceLengths(query.path());
+            assertEquals(java.util.Map.of("short", 8, BlastQuery.PIECE_ID + "0", 1_000_000, BlastQuery.PIECE_ID + "1",
+                    1_000_000, BlastQuery.PIECE_ID + "2", 502_000), lengths);
+            // A hit at 11-30 of the second piece is at 999,011-999,030 of chr1; a short sequence's line is as it was.
+            String line = String.join("\t", BlastQuery.PIECE_ID + "1", "a-F", "20", "0", "0", "1e-5", "40", "20", "20",
+                    "11", "30", "ACGT", "1", "20", "ACGT");
+            assertEquals(String.join("\t", "chr1", "a-F", "20", "0", "0", "1e-5", "40", "20", "20", "999011", "999030",
+                    "ACGT", "1", "20", "ACGT"), query.toContig(line));
+            assertEquals("short\ta-F", query.toContig("short\ta-F"));
+        }
+        try (java.util.stream.Stream<Path> files = Files.list(directory)) {
+            assertEquals(java.util.List.of(), files.filter(file -> file.getFileName().toString().startsWith("blast_query_")).toList());
+        }
+    }
 }

@@ -81,4 +81,13 @@ class ChildJavaMemoryTest {
         assertEquals(ChildJavaMemory.budgetGiB(), ChildJavaMemory.budgetGiB(PipelineConfig.AUTOMATIC_BBTOOLS_MEMORY));
         assertEquals(64, ChildJavaMemory.forOneChild(ChildJavaMemory.budgetGiB(200)), "each still at most 64 GB");
     }
+
+    @org.junit.jupiter.api.Test
+    void blastnSearchesRunAtOnceAsTheMemoryHolds() {
+        // One per thread took 55 to 70 GB at -t 32 with a large panel (about 2 GB each).
+        org.junit.jupiter.api.Assertions.assertEquals(12, ChildJavaMemory.blastnAtOnce(24, 32, 5000));
+        org.junit.jupiter.api.Assertions.assertEquals(8, ChildJavaMemory.blastnAtOnce(64, 8, 5000), "no more than the threads");
+        org.junit.jupiter.api.Assertions.assertEquals(3, ChildJavaMemory.blastnAtOnce(64, 8, 3), "no more than the samples");
+        org.junit.jupiter.api.Assertions.assertEquals(1, ChildJavaMemory.blastnAtOnce(1, 8, 10), "at least one");
+    }
 }

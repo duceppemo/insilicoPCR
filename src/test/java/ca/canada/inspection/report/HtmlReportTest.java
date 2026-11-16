@@ -401,4 +401,22 @@ class HtmlReportTest {
         assertTrue(page.contains("500 bp (unexpected); made by one primer alone"), "grid hover text");
         assertEquals(1, count(page, "<span class=\"an\">its+plain</span>"));
     }
+
+    @Test
+    void aLargeRunListsTheFirstAmpliconsAndPointsToTheReportForAll() throws IOException {
+        // Millions of rows made a page no browser opens, and built whole in memory, failed the run.
+        List<ca.canada.inspection.pcr.ReportRow> rows = new java.util.ArrayList<>();
+        for (int i = 0; i < HtmlReport.MAX_LISTED + 10; i++) {
+            rows.add(ca.canada.inspection.pcr.TestRows.of("S" + (i % 100), "its", 101, 534, 434, "c" + i, "", "its-F",
+                    "its-R", 0, 0, 0, 0, '+', null, 0, 0));
+        }
+        Path html = HtmlReport.write(Files.writeString(dir.resolve("report.tsv"), ""), rows, List.of(), Set.of(),
+                panel(PRIMERS, SIZES), List.of(), DETAILS, List.of(), List.of());
+        String page = Files.readString(html);
+
+        assertEquals(HtmlReport.MAX_LISTED, count(page, "<tr data-s="));
+        assertTrue(page.contains("The first 50,000 of 50,010 amplicons are listed here, and the filter searches those:"
+                + " report.tsv has every one."), "the note");
+        assertEquals(100, count(page, "<tr data-sample="), "the grid has every sample");
+    }
 }

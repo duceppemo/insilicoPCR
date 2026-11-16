@@ -63,6 +63,21 @@ public final class ChildJavaMemory {
         return 0;
     }
 
+    /**
+     * Memory a blastn search may take, in GiB: it holds a batch's hits, 1.7 GB for a 40-assay panel of 617
+     * oligos on a 4.8 Mb genome (3.1 GB with 8 threads); 2 GB for a 48 Mb contig or 20,000 reads.
+     */
+    static final int BLASTN_GIB = 2;
+
+    /**
+     * How many blastn searches run at once within {@code budgetGiB}: as many as {@code threads} or
+     * {@code items}, but no more than the budget holds at {@link #BLASTN_GIB} each, and at least one.
+     * Before 0.15.3, one per thread: {@code -t 32} took 55 to 70 GB, besides this program's own heap.
+     */
+    static int blastnAtOnce(int budgetGiB, int threads, int items) {
+        return Math.max(1, Math.min(Math.min(threads, Math.max(1, items)), budgetGiB / BLASTN_GIB));
+    }
+
     /** Heap of a child that runs alone. */
     static int forOneChild(int budgetGiB) {
         return Math.clamp(budgetGiB, 1, MAX_CHILD_GIB);

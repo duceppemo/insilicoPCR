@@ -213,13 +213,18 @@ public final class HtmlReport {
                              List<InputCheck.Issue> inputIssues, List<SplitAcrossContigs.Split> splits) {
         Path html = pathFor(reportTsv);
         ExpectedSizes sizes = primers.expectedSizes();
-        try {
-            String page = render(reportTsv.getFileName().toString(), products(rows, primers), sampleNames,
+        // Written as it is made: built whole in memory, the page of a large run (millions of amplicon rows)
+        // outgrew the largest string Java holds, after all the BLAST work, and the run failed.
+        try (java.io.Writer out = Files.newBufferedWriter(html, StandardCharsets.UTF_8)) {
+            Page page = new Page(out);
+            render(page, reportTsv.getFileName().toString(), products(rows, primers), sampleNames,
                     fastqSamples, List.copyOf(primers.completeAssays().keySet()),
                     sizes, findings, runDetails, inputIssues, splits);
-            Files.writeString(html, page, StandardCharsets.UTF_8);
+            page.flush();
         } catch (IOException e) {
             throw new UncheckedIOException("Unable to write HTML report: " + html, e);
+        } catch (UncheckedIOException e) {
+            throw new UncheckedIOException("Unable to write HTML report: " + html, e.getCause());
         }
         return html;
     }
@@ -249,7 +254,7 @@ public final class HtmlReport {
         return new Cell(State.of(verdict.kind()), products, verdict.note());
     }
 
-    static String render(String reportName, List<Product> products, Collection<String> sampleNames,
+    static void render(Page html, String reportName, List<Product> products, Collection<String> sampleNames,
                          Set<String> fastqSamples, List<String> assays, ExpectedSizes sizes,
                          List<Finding> findings, RunDetails runDetails,
                          List<InputCheck.Issue> inputIssues, List<SplitAcrossContigs.Split> splits) {
@@ -286,7 +291,6 @@ public final class HtmlReport {
         boolean anyDeclared = assayOrder.stream().anyMatch(sizes.assays()::contains);
         boolean anyUndeclared = assayOrder.stream().anyMatch(assay -> !sizes.assays().contains(assay));
 
-        StringBuilder html = new StringBuilder(64_000);
         html.append("<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n")
                 .append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n")
                 .append("<title>insilicoPCR report</title>\n<style>\n").append(page("report.css")).append("</style>\n</head>\n<body>\n")
@@ -299,20 +303,51 @@ public final class HtmlReport {
         inputSection(html, inputIssues);
         gridSection(html, grid, assayOrder, sizes, fastqSamples, totals, anyDeclared);
         assaySection(html, grid, assayOrder, sizes);
-        productSection(html, products, sizes);
+        productSection(html, products, sizes, reportName);
         readSection(html, findings);
         splitSection(html, splits);
         detailSection(html, runDetails, reportName, anyDeclared);
 
         html.append("</main>\n<script>\n").append(page("report.js")).append("</script>\n</body>\n</html>\n");
-        return html.toString();
+    }
+
+    /** The page as it is written: appended to as a StringBuilder is, and passed on to the file as it grows. */
+    static final class Page {
+        private static final int FLUSH_AT = 1 << 20;
+        private final java.io.Writer out;
+        private final StringBuilder buffer = new StringBuilder(FLUSH_AT + (1 << 16));
+
+        Page(java.io.Writer out) {
+            this.out = out;
+        }
+
+        Page append(Object value) {
+            return append(String.valueOf(value));
+        }
+
+        Page append(String text) {
+            buffer.append(text);
+            if (buffer.length() >= FLUSH_AT) {
+                flush();
+            }
+            return this;
+        }
+
+        void flush() {
+            try {
+                out.write(buffer.toString());
+                buffer.setLength(0);
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        }
     }
 
     private static List<String> headline(RunDetails runDetails, String reportName) {
         return List.of(runDetails.date(), "version " + runDetails.version(), reportName);
     }
 
-    private static void tiles(StringBuilder html, int samples, int assays, int products, Map<State, Integer> totals,
+    private static void tiles(Page html, int samples, int assays, int products, Map<State, Integer> totals,
                               boolean anyDeclared, boolean anyUndeclared, int notAnalysed) {
         html.append("<section class=\"tiles\" aria-label=\"Summary\">\n");
         tile(html, samples, samples == 1 ? "sample" : "samples", "");
@@ -348,7 +383,7 @@ public final class HtmlReport {
     }
 
     /** The samples left out of the run, and why; nothing when every input file was analysed. */
-    private static void inputSection(StringBuilder html, List<InputCheck.Issue> issues) {
+    private static void inputSection(Page html, List<InputCheck.Issue> issues) {
         if (issues.isEmpty()) {
             return;
         }
@@ -366,12 +401,12 @@ public final class HtmlReport {
         html.append("</tbody></table></div>\n</section>\n");
     }
 
-    private static void tile(StringBuilder html, int value, String label, String state) {
+    private static void tile(Page html, int value, String label, String state) {
         html.append("<div class=\"tile").append(state.isEmpty() ? "" : " t-" + state).append("\"><span class=\"n\">")
                 .append(value).append("</span><span class=\"l\">").append(escape(label)).append("</span></div>\n");
     }
 
-    private static void gridSection(StringBuilder html, Map<String, Map<String, Cell>> grid, Set<String> assays,
+    private static void gridSection(Page html, Map<String, Map<String, Cell>> grid, Set<String> assays,
                                     ExpectedSizes sizes, Set<String> fastqSamples, Map<State, Integer> totals,
                                     boolean anyDeclared) {
         html.append("<section>\n<h2>Samples by assay</h2>\n");
@@ -507,7 +542,7 @@ public final class HtmlReport {
         };
     }
 
-    private static void assaySection(StringBuilder html, Map<String, Map<String, Cell>> grid, Set<String> assays,
+    private static void assaySection(Page html, Map<String, Map<String, Cell>> grid, Set<String> assays,
                                      ExpectedSizes sizes) {
         html.append("<section>\n<h2>By assay</h2>\n<div class=\"cards\">\n");
         for (String assay : assays) {
@@ -570,7 +605,7 @@ public final class HtmlReport {
         html.append("</div>\n</section>\n");
     }
 
-    private static void productSection(StringBuilder html, List<Product> products, ExpectedSizes sizes) {
+    private static void productSection(Page html, List<Product> products, ExpectedSizes sizes, String reportName) {
         boolean probes = products.stream().anyMatch(product -> product.row().probe() != null);
         boolean labels = !sizes.isEmpty();
         html.append("<section id=\"amplicons\">\n<h2>All amplicons</h2>\n");
@@ -588,7 +623,7 @@ public final class HtmlReport {
                 .append("3′ F/R</th><th class=\"num\" title=\"Bases at the 5' end of each primer that do not pair with the template,")
                 .append(" forward / reverse; the mismatch columns do not count them\">5′ unpaired F/R</th><th>Strand</th>")
                 .append(probes ? "<th>Probe</th><th class=\"num\">Probe mismatches</th>" : "").append("</tr></thead>\n<tbody>\n");
-        for (Product product : products) {
+        for (Product product : products.subList(0, Math.min(products.size(), MAX_LISTED))) {
             String contig = product.row().contig();
             int comma = contig.indexOf(',');
             String source = comma > 0 ? contig.substring(0, comma) : contig;
@@ -633,10 +668,23 @@ public final class HtmlReport {
             }
             html.append("</tr>\n");
         }
-        html.append("</tbody></table></div>\n</section>\n");
+        html.append("</tbody></table></div>\n");
+        if (products.size() > MAX_LISTED) {
+            html.append("<p class=\"hint\">The first ").append(String.format(java.util.Locale.ROOT, "%,d", MAX_LISTED))
+                    .append(" of ").append(String.format(java.util.Locale.ROOT, "%,d", products.size()))
+                    .append(" amplicons are listed here, and the filter searches those: ")
+                    .append(escape(reportName)).append(" has every one. The grid and the counts above cover them all.</p>\n");
+        }
+        html.append("</section>\n");
     }
 
-    private static void readSection(StringBuilder html, List<Finding> findings) {
+    /**
+     * The most rows "All amplicons" lists: a run of thousands of samples has millions, a page no browser
+     * opens; report.tsv has them all, and the grid and counts cover every product.
+     */
+    static final int MAX_LISTED = 50_000;
+
+    private static void readSection(Page html, List<Finding> findings) {
         List<Finding> shown = findings.stream()
                 .filter(finding -> finding.status().isCalled() || finding.status().isWithheld())
                 .toList();
@@ -682,7 +730,7 @@ public final class HtmlReport {
     }
 
     /** Assembly samples whose product could span a break in the assembly; nothing when there are none. */
-    private static void splitSection(StringBuilder html, List<SplitAcrossContigs.Split> splits) {
+    private static void splitSection(Page html, List<SplitAcrossContigs.Split> splits) {
         if (splits.isEmpty()) {
             return;
         }
@@ -700,7 +748,7 @@ public final class HtmlReport {
         html.append("</tbody></table></div>\n</section>\n");
     }
 
-    private static void detailSection(StringBuilder html, RunDetails runDetails, String reportName,
+    private static void detailSection(Page html, RunDetails runDetails, String reportName,
                                       boolean anyDeclared) {
         html.append("<section>\n<h2>Run details</h2>\n<dl class=\"details\">\n");
         List<RunDetails.Setting> entries = new ArrayList<>();

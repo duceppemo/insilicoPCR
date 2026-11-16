@@ -16,34 +16,46 @@ class BlastTsvTest {
     @TempDir
     Path dir;
 
-    @Test
-    void headerIsPrependedAndContentPreserved() throws IOException {
-        Path tsv = Files.writeString(dir.resolve("sample.tsv"), "row1\nrow2\n");
-        BlastTsv.prependHeader(tsv);
+    private static final String PRIMER = "ACGTACGTACGTACGTACGT";
+    private static final ca.canada.inspection.pcr.PrimerPanel PRIMERS =
+            ca.canada.inspection.pcr.PrimerPanel.of(java.util.Map.of("a-F", PRIMER, "a-R", PRIMER));
 
-        List<String> lines = Files.readAllLines(tsv);
-        assertEquals(3, lines.size());
-        assertEquals(BlastTsv.HEADER, lines.get(0));
-        assertEquals(List.of("row1", "row2"), lines.subList(1, 3));
+    /** A line of blastn's table: the whole primer at 101-120 of {@code contig}, with {@code mismatches}. */
+    private static String hit(String contig, int mismatches) {
+        return String.join("\t", contig, "a-F", "20", String.valueOf(mismatches), "0", "1e-5", "40.1",
+                "20", "20", "101", "120", PRIMER, "1", "20", PRIMER);
+    }
+
+    private static void keep(Path tsv) {
+        BlastTsv.keepAccepted(tsv, List.of(), PRIMERS, ca.canada.inspection.pcr.AmpliconOptions.withMismatches(1));
     }
 
     @Test
-    void bytesThatAreNotUtf8AreCopiedAsTheyAre() throws IOException {
-        // blastn copies a FASTA ID's bytes: Québec_c1 saved as Latin-1 stopped the run here.
-        byte[] row = "Qu\u00e9bec_c1\tp-F\n".getBytes(java.nio.charset.StandardCharsets.ISO_8859_1);
-        Path tsv = Files.write(dir.resolve("latin1.tsv"), row);
-        BlastTsv.prependHeader(tsv);
+    void theTableKeepsTheAcceptedHitsUnderItsHeader() throws IOException {
+        // blastn lists every alignment (1.5 million on a genome for a 40-assay panel), a few thousand of them
+        // primer sites: the table kept them all, then was copied again to add its header.
+        Path tsv = Files.writeString(dir.resolve("sample.tsv"), hit("c1", 0) + "\n" + hit("c2", 5) + "\n\n" + hit("c3", 1) + "\n");
 
-        byte[] header = (BlastTsv.HEADER + "\n").getBytes(java.nio.charset.StandardCharsets.UTF_8);
-        byte[] expected = java.util.Arrays.copyOf(header, header.length + row.length);
-        System.arraycopy(row, 0, expected, header.length, row.length);
-        org.junit.jupiter.api.Assertions.assertArrayEquals(expected, Files.readAllBytes(tsv));
+        keep(tsv);
+
+        assertEquals(List.of(BlastTsv.HEADER, hit("c1", 0), hit("c3", 1)), Files.readAllLines(tsv));
+    }
+
+    @Test
+    void anIdThatIsNotUtf8IsReadAsTheFastaIs() throws IOException {
+        // blastn copies a FASTA ID's bytes: Québec_c1 saved as Latin-1 stopped the run when read strictly.
+        Path tsv = Files.write(dir.resolve("latin1.tsv"),
+                (hit("Qu\u00e9bec_c1", 0) + "\n").getBytes(java.nio.charset.StandardCharsets.ISO_8859_1));
+
+        keep(tsv);
+
+        assertEquals(List.of(BlastTsv.HEADER, hit("Qu\uFFFDbec_c1", 0)), Files.readAllLines(tsv));
     }
 
     @Test
     void missingFileBecomesHeaderOnly() throws IOException {
         Path tsv = dir.resolve("absent.tsv");
-        BlastTsv.prependHeader(tsv);
+        keep(tsv);
         assertEquals(List.of(BlastTsv.HEADER), Files.readAllLines(tsv));
     }
 
@@ -60,9 +72,9 @@ class BlastTsvTest {
     void theHitFileKeepsTheFolderUsualPermissions() throws IOException {
         // A temporary file is its owner's only; the hit file was too, to colleagues sharing the folder.
         Path usual = Files.writeString(dir.resolve("usual.txt"), "");
-        Path hits = Files.writeString(dir.resolve("s.tsv"), "a\tb\n");
+        Path hits = Files.writeString(dir.resolve("s.tsv"), hit("c1", 0) + "\n");
 
-        BlastTsv.prependHeader(hits);
+        keep(hits);
 
         assertEquals(Files.getPosixFilePermissions(usual), Files.getPosixFilePermissions(hits));
         assertTrue(Files.notExists(dir.resolve("s.tsv.part")));

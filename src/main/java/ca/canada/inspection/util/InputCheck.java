@@ -72,13 +72,35 @@ public final class InputCheck {
 
         /** The files and what is wrong with them. */
         public String describe() {
-            return String.join(" and ", files) + ": " + problem + (detail.isEmpty() ? "" : " (" + detail + ")");
+            return visible(String.join(" and ", files) + ": " + problem + (detail.isEmpty() ? "" : " (" + detail + ")"));
         }
 
         /** One line for the terminal and the application's output area. */
         public String line() {
-            return describe() + ". Sample " + sample + " is not analysed.";
+            return describe() + ". Sample " + visible(sample) + " is not analysed.";
         }
+    }
+
+    /**
+     * {@code text} with its control and invisible characters written as {@code \\u001b}: a file name holding
+     * an escape sequence set the terminal's title and cleared its screen when a warning named it, and one holding
+     * a line break wrote a line of its own in QAlog.txt.
+     */
+    public static String visible(String text) {
+        StringBuilder shown = new StringBuilder(text.length());
+        text.codePoints().forEach(c -> {
+            if (invisible(c)) {
+                shown.append(String.format(Locale.ROOT, "\\u%04x", c));
+            } else {
+                shown.appendCodePoint(c);
+            }
+        });
+        return shown.toString();
+    }
+
+    /** A control character, or one that shows nothing or reorders the text (zero-width, bidirectional marks). */
+    static boolean invisible(int c) {
+        return Character.isISOControl(c) || Character.getType(c) == Character.FORMAT;
     }
 
     /**
@@ -277,12 +299,13 @@ public final class InputCheck {
     private static void rejectNamesThatDifferInCase(Map<String, Sample> samples, List<Issue> issues,
                                                     Set<String> rejected) {
         Map<String, List<String>> byFolder = new LinkedHashMap<>();
-        samples.keySet().forEach(name -> byFolder.computeIfAbsent(name.toLowerCase(Locale.ROOT),
-                folder -> new ArrayList<>()).add(name));
+        // In one Unicode form too: café typed and café decomposed look alike, and share a folder on macOS.
+        samples.keySet().forEach(name -> byFolder.computeIfAbsent(java.text.Normalizer.normalize(name,
+                java.text.Normalizer.Form.NFC).toLowerCase(Locale.ROOT), folder -> new ArrayList<>()).add(name));
         byFolder.values().stream().filter(names -> names.size() > 1).forEach(names -> names.forEach(name -> {
             if (rejected.add(name)) {
                 issues.add(new Issue(name, fileNames(samples.get(name).files()),
-                        "the sample name differs only in case from another one",
+                        "the sample name differs only in case (or in its Unicode form) from another one",
                         String.join(", ", names) + " would share a results folder; rename one"));
             }
         }));
@@ -329,6 +352,11 @@ public final class InputCheck {
             if ((name.isBlank() || name.equals(".") || name.equals("..")) && rejected.add(name)) {
                 issues.add(new Issue(name, fileNames(sample.files()), "the file's name makes no sample name",
                         "the name before the extension is empty, . or ..; rename the file"));
+            } else if (name.codePoints().anyMatch(InputCheck::invisible) && rejected.add(name)) {
+                // A line break wrote lines of its own in QAlog.txt (made-up samples on reopening it), an escape
+                // sequence took over the terminal, a zero-width or right-to-left mark made two names look alike.
+                issues.add(new Issue(name, fileNames(sample.files()), "the file's name holds a control or invisible"
+                        + " character", "rename the file"));
             }
         });
     }

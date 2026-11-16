@@ -99,9 +99,20 @@ public final class ConsolidatedReport {
         return consolidatedDir.resolve(highest < 0 ? "report.tsv" : "report(" + (highest + 1) + ").tsv");
     }
 
-    /** The number in {@code (n)}, or 0 for none (report.tsv). */
-    private static int number(String parenthesised) {
-        return parenthesised == null ? 0 : Integer.parseInt(parenthesised.substring(1, parenthesised.length() - 1));
+    /** The highest report number a folder is taken to hold: a report(99999999999).tsv is not one of a run's. */
+    public static final int MAX_NUMBER = 1_000_000;
+
+    /**
+     * The number in {@code (n)}, 0 for none (report.tsv), or -1 for a number over {@link #MAX_NUMBER}: a folder
+     * holding report(99999999999).tsv failed every run after its BLAST work, and report(2147483647).tsv gave the
+     * next report a negative number, then every later run failed.
+     */
+    public static int number(String parenthesised) {
+        if (parenthesised == null) {
+            return 0;
+        }
+        String digits = parenthesised.substring(1, parenthesised.length() - 1);
+        return digits.length() > 7 || Integer.parseInt(digits) > MAX_NUMBER ? -1 : Integer.parseInt(digits);
     }
 
     private static String header(boolean probeColumns, boolean sizeColumn) {

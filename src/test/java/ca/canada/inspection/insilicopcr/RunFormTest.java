@@ -51,7 +51,7 @@ class RunFormTest {
     void aMissingPathIsAMessage() {
         RunForm.Outcome.Invalid invalid = assertInstanceOf(RunForm.Outcome.Invalid.class,
                 new RunForm(null, dir, dir, 1, 0, "1e5", AmpliconSettings.DEFAULTS, FastqSettings.DEFAULTS).toConfig());
-        assertEquals("Please enter an input file, a reference file, and an output file", invalid.message());
+        assertEquals("Please choose an input file or folder, a primer file and an output folder", invalid.message());
     }
 
     @Test

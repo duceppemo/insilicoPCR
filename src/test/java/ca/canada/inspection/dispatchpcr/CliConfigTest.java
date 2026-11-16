@@ -43,6 +43,16 @@ class CliConfigTest {
     }
 
     @Test
+    void aWrongValueIsNamedAsTheCommandLineNamesIt() {
+        // It said "minAmpliconLength (6000) is larger than maxAmpliconLength (5000)": names no option has.
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class, () -> parse("--min-length", "6000"));
+        assertEquals("--min-length (6000) is larger than -l (--max-length, 5000): no product could be reported",
+                error.getMessage());
+        assertEquals("-t (threads) must be at least 1, not 0",
+                assertThrows(IllegalArgumentException.class, () -> parse("-t", "0")).getMessage());
+    }
+
+    @Test
     void theWindowsDefaultsAreTheCommandLines() throws Exception {
         // A run from the window with its settings untouched is the run of the command line given
         // the same mismatches: a default changed on one side only would no longer pass.

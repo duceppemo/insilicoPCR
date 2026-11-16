@@ -13,8 +13,8 @@ The GUI lets users select:
 - input FASTA/FASTQ file or directory (**Select ▾** → **File…** or **Folder…**, or drag it onto the field; files and folders are told apart automatically; a field takes one file or folder, so dropping both files of a read pair is refused: drop their folder)
 - primer FASTA file
 - output directory
-- number of worker threads
-- allowed primer mismatches
+- number of worker threads (one fewer than the computer's processors at most, so the window stays responsive; the command line's `-t` default is all of them)
+- allowed primer mismatches (0 to 3; `-m` on the command line takes any number)
 - BLAST e-value
 
 Paths can also be typed or pasted into the input, primer and output fields: a leading `~` is your home folder, and a relative path is made absolute.

@@ -14,7 +14,7 @@ public final class InputValidator {
     /** What is wrong with the paths, or an empty string. */
     public static String validate(Path inputFile, Path outDir, Path primerFile) {
         if (inputFile == null || outDir == null || primerFile == null) {
-            return "Please enter an input file, a reference file, and an output file";
+            return "Please choose an input file or folder, a primer file and an output folder";
         }
         if (!Files.isDirectory(inputFile) && !SequenceFileUtils.looksLikeSequenceFile(inputFile)) {
             return "The input must be a FASTA or FASTQ file, or a folder of them";

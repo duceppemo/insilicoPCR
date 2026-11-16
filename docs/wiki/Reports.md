@@ -49,7 +49,7 @@ The outcome of a sample for an assay uses the [product sizes declared in the pri
 | Amber outline, `≈` | Other known product | Only a product declared as another known size (`other=`) |
 | Red dashed outline, `!` | Unexpected size | Only a product of a size the primer file does not declare |
 | Dotted outline, `?` | Seen in too few reads | FASTQ input: a complete amplicon is in some reads, too few to report (`WEAK_READ_SUPPORT`) |
-| Dotted outline, `?` | Not confirmed by read pairs | FASTQ input: reads extended from both primers hold a product, but the read pairs do not confirm it; not reported (`EXTENSION_NOT_SUPPORTED_BY_PAIRS`, `EXTENSION_THROUGH_UNRESOLVED_REPEAT`) |
+| Dashed outline, `⇄` | Not confirmed by read pairs | FASTQ input: reads extended from both primers hold a product, but the read pairs do not confirm it; not reported (`EXTENSION_NOT_SUPPORTED_BY_PAIRS`, `EXTENSION_THROUGH_UNRESOLVED_REPEAT`) |
 | `◇` | Primers at contig ends | FASTA input: no contig holds a product, but the primers point off the ends of two contigs, or both ends of one, and joined they would give one within `--max-length`. Neither positive nor negative: the assembly may break inside the product, or the sequence may be circular. Check with a more complete assembly, or with the reads |
 | `○` | Not checkable from reads | FASTQ input run with `--read-extension off`: both primers are in the reads, no product was found, and a product of the declared size is longer than a read or merged pair could hold. Not a reliable negative; rerun with the [read extension](#read-extension-products-longer-than-a-read) on, or confirm on an assembly |
 | `·` | No product | |

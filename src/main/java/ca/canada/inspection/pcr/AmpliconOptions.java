@@ -38,16 +38,17 @@ public record AmpliconOptions(
     public static final int DEFAULT_MAX_AMPLICON_LENGTH = 5_000;
 
     public AmpliconOptions {
-        requireNonNegative(maxTotalMismatches, "maxTotalMismatches");
-        requireNonNegative(maxProbeMismatches, "maxProbeMismatches");
-        requireNonNegative(threePrimeWindow, "threePrimeWindow");
-        requireNonNegative(maxThreePrimePenalty, "maxThreePrimePenalty");
-        requireNonNegative(maxFivePrimeTruncation, "maxFivePrimeTruncation");
-        requireNonNegative(minAmpliconLength, "minAmpliconLength");
-        requireNonNegative(maxAmpliconLength, "maxAmpliconLength");
+        // Named as the command line names them: the window's dialogs check their values first.
+        requireNonNegative(maxTotalMismatches, "-m (mismatches)");
+        requireNonNegative(maxProbeMismatches, "--probe-mismatches");
+        requireNonNegative(threePrimeWindow, "--3p-window");
+        requireNonNegative(maxThreePrimePenalty, "--3p-penalty");
+        requireNonNegative(maxFivePrimeTruncation, "--5p-truncation");
+        requireNonNegative(minAmpliconLength, "--min-length");
+        requireNonNegative(maxAmpliconLength, "-l (--max-length)");
         if (!lengthsInOrder(minAmpliconLength, maxAmpliconLength)) {
-            throw new IllegalArgumentException(
-                    "minAmpliconLength (" + minAmpliconLength + ") is larger than maxAmpliconLength (" + maxAmpliconLength + ")");
+            throw new IllegalArgumentException("--min-length (" + minAmpliconLength + ") is larger than -l"
+                    + " (--max-length, " + maxAmpliconLength + "): no product could be reported");
         }
     }
 

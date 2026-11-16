@@ -25,6 +25,19 @@
 
 ### Fixed
 
+- Input files left out without a word: a link to a file that does not exist
+  is named and its sample left out; a file named like a sequence file of a
+  kind not read (`x.fas`, `x.fasta.bz2`) is named. A file named `.fasta`,
+  `..fasta` or `...fasta` made the sample "", "." or "..", whose results went
+  to the report folder itself or above it: left out. The run's output folder
+  inside the input folder is no longer named as a subfolder of inputs not read.
+- An option given twice (`-t 2 -t 3`) ran with the first value: refused. A file
+  that cannot be opened says why ("permission denied"), not its path alone.
+  `-e 1e-400`, `--bbtools-memory -1` and the Tadpole settings are named in
+  their messages as given; `-t` above the processors is warned about. A primer
+  file with `>tox A-F` is named for its ID's missing suffix, not as a
+  duplicate to rename `tox_1`, which is refused too.
+- A run stopped by Ctrl-C or `kill` said nothing: it says it did not end.
 - FASTQ: a product longer than 1.5 to 2 kb was never found, however deep the
   sample: the read extension grew reads only through the baited reads, which
   run out about a fragment from each primer. It now baits in rounds: the

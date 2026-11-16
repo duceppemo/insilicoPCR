@@ -83,6 +83,23 @@ public final class SequenceFileUtils {
     }
 
     /**
+     * Why {@code e} stopped a file being read, in words: the file system's exceptions say only the path
+     * (an AccessDeniedException's message is the file's name, which the user knows already).
+     */
+    public static String why(java.io.IOException e) {
+        if (e instanceof java.nio.file.AccessDeniedException) {
+            return "permission denied";
+        }
+        if (e instanceof java.nio.file.NoSuchFileException) {
+            return "no such file";
+        }
+        if (e instanceof java.nio.file.FileSystemException fileSystem && fileSystem.getReason() != null) {
+            return fileSystem.getReason();
+        }
+        return String.valueOf(e.getMessage());
+    }
+
+    /**
      * Which read of a pair {@code file} is named as: 1 or 2 ({@code _R1}, {@code _R2_001}; a bare {@code _1}
      * or {@code _2} when its mate is beside it), or 0 for a file named as no pair's.
      */

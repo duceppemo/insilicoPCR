@@ -93,6 +93,8 @@ public final class PrimerService {
                 if (line.startsWith(">")) {
                     putFastaEntry(fasta, currentId, sequence, file);
                     currentId = SequenceFileUtils.fastaId(line);
+                    // The ID first: ">tox A-F" twice was "tox appears twice", with IDs to use (tox_1) refused too.
+                    validatePrimerId(currentId);
                     if (descriptions.containsKey(currentId)) {
                         // Silently keeping one of the two would miss the other's products.
                         throw new PipelineException("Primer ID " + currentId + " appears twice in the primer file "

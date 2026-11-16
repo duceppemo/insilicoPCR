@@ -63,7 +63,7 @@ public final class InSilicoPcrPipeline {
 
         monitor.info("Checking the input files (" + (config.inputCheck() == InputCheck.Depth.FULL
                 ? "every read; --input-check quick reads the first one only" : "first read only") + ")");
-        InputCheck.Result checked = InputCheck.scan(config.input(), config.inputCheck(), config.threads());
+        InputCheck.Result checked = InputCheck.scan(config.input(), config.inputCheck(), config.threads(), config.output());
         if (checked.files() == 0 && !checked.subfoldersNotRead().isEmpty()) {
             throw new PipelineException("No FASTA or FASTQ file directly in " + config.input() + ": its subfolders "
                     + checked.subfoldersNotRead().stream().map(folder -> folder.getFileName().toString())
@@ -148,6 +148,12 @@ public final class InSilicoPcrPipeline {
 
     private static void logRuntime(PipelineContext context) {
         RunMonitor monitor = context.monitor();
+        int processors = Runtime.getRuntime().availableProcessors();
+        if (context.config().threads() > processors) {
+            // -t 1000 on 64 processors: 4 BBDuk runs of 250 threads each, slower, not faster.
+            monitor.warning("Warning: -t " + context.config().threads() + " is more than the " + processors
+                    + " processors the program sees: the threads take turns on them");
+        }
         monitor.info("Application root: " + context.dependencies().appRoot());
         monitor.info("BBMap: " + context.dependencies().bbmapDirectory());
         monitor.info("BLAST: " + context.dependencies().blastBinDirectory());

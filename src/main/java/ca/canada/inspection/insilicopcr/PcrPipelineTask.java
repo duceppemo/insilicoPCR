@@ -49,6 +49,9 @@ final class PcrPipelineTask extends Task<RunResult> {
 
     @Override
     protected RunResult call() {
+        // Which run this is, in log.txt, where the runs of a folder follow one another.
+        append("Run of " + java.time.LocalDateTime.now().withNano(0).toString().replace('T', ' ') + "\nInput: "
+                + config.input() + "\nPrimers: " + config.primers() + "\nOutput: " + config.output() + "\n");
         try {
             RunResult result = new InSilicoPcrPipeline(config, new WindowMonitor()).run();
             if (isCancelled()) {
@@ -164,7 +167,8 @@ final class PcrPipelineTask extends Task<RunResult> {
 
         @Override
         public void info(String message) {
-            append("\n" + message + "\n");
+            // On a line of its own, as on the console: a blank line between every two was the window's alone.
+            append((runLog.isEmpty() || runLog.charAt(runLog.length() - 1) == '\n' ? "" : "\n") + message + "\n");
         }
 
         /** Warnings and notes start with {@code Warning:} or {@code Note:}; the window shows them as they are. */

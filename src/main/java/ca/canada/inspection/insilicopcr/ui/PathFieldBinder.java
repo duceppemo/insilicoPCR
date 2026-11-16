@@ -55,8 +55,21 @@ public final class PathFieldBinder {
      * and on Linux named a file that does not exist.
      */
     private static String unquoted(String path) {
-        if (path.length() >= 2 && path.startsWith("\"") && path.endsWith("\"")) {
+        if (path.length() >= 2 && (path.startsWith("\"") && path.endsWith("\"")
+                || path.startsWith("'") && path.endsWith("'"))) {
             return path.substring(1, path.length() - 1).strip();
+        }
+        // A file manager's "Copy" gives a file URI: file:///home/me/my%20reads. It was taken for a relative path.
+        if (path.startsWith("file:")) {
+            try {
+                return Path.of(java.net.URI.create(path)).toString();
+            } catch (IllegalArgumentException | java.nio.file.FileSystemNotFoundException e) {
+                return path;
+            }
+        }
+        // A shell's escaped spaces (my\ reads), outside Windows, where a backslash separates folders.
+        if (java.io.File.separatorChar == '/' && path.contains("\\ ")) {
+            return path.replace("\\ ", " ");
         }
         return path;
     }

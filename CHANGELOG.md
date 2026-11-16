@@ -25,6 +25,16 @@
 
 ### Fixed
 
+- The window: a message holding a long path (a faulty primer file, an empty
+  folder) did not wrap, and pushed Run and the buttons beside it out of the
+  window, the reason cut short. A run that failed or was stopped turned off the
+  View buttons of the last run that finished. An output path that is a file is
+  named before the run, which failed after its first steps. A path pasted as a
+  file URI (`file:///...`), in single quotes or with escaped spaces was taken
+  for a relative one. The window has a minimum size, Run is its default button,
+  the second progress bar counts the samples of each FASTQ step too, and its
+  log, as `log.txt`, is single-spaced, as the console's, each run under a line
+  with its date, input, primers and output.
 - FASTQ: the second baiting started from every read of the first, and with
   permissive settings (`-m 3 --5p-truncation 6`, a short k-mer) the first
   holds reads of rRNA, mitochondria and repeats that share a k-mer with a

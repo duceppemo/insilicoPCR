@@ -36,10 +36,17 @@ public final class QueryTemplates implements Function<BlastResult, TrimmedEnds.T
     /** Every record ID of the files; built only once a query is not found reading forward. */
     private Set<String> allIds;
     private final Set<String> missing = new HashSet<>();
+    /** The circular sequences' lengths as circles: their templates go on past the origin. */
+    private final java.util.Map<String, Integer> circles;
 
     public QueryTemplates(List<Path> fastaFiles) {
+        this(fastaFiles, java.util.Map.of());
+    }
+
+    public QueryTemplates(List<Path> fastaFiles, java.util.Map<String, Integer> circles) {
         this.files = List.copyOf(fastaFiles);
         this.scanner = new FastaScanner(files);
+        this.circles = java.util.Map.copyOf(circles);
     }
 
     @Override
@@ -88,7 +95,7 @@ public final class QueryTemplates implements Function<BlastResult, TrimmedEnds.T
                 PackedBases bases = new PackedBases();
                 pendingHeader = scanner.nextHeader(base -> bases.append((char) base));
                 currentId = id;
-                current = new TrimmedEnds.Template(bases);
+                current = new TrimmedEnds.Template(bases, circles.getOrDefault(id, 0));
                 return true;
             }
             header = scanner.nextHeader(null);

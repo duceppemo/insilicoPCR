@@ -80,12 +80,13 @@ class BbtoolsCommandsTest {
     }
 
     @Test
-    void assemblyRunsTadpoleWithOverwriteAndGivenSettings() {
+    void assemblyRunsTadpoleWithOverwriteAndGivenSettingsOnOneThread() {
+        // One thread whatever the run has: on several, the contigs differed between runs of the same reads.
         List<String> command = commands.assemble(Path.of("second.fq.gz"), Path.of("asm.fasta"),
                 new TadpoleOptions(25, 2, 1, 80)).arguments();
 
         assertEquals(List.of("java", "-ea", "-Xmx6g", "-XX:+ExitOnOutOfMemoryError", "-cp", "bbtools.jar", "assemble.Tadpole",
-                "in=" + abs("second.fq.gz"), "out=" + abs("asm.fasta"), "overwrite=t", "threads=4",
+                "in=" + abs("second.fq.gz"), "out=" + abs("asm.fasta"), "overwrite=t", "threads=1",
                 "k=25", "mincountseed=2", "mincov=1", "mincontig=80"), command);
     }
 

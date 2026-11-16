@@ -11,6 +11,9 @@ import java.util.Optional;
  * opposite strands, in convergent orientation (3' ends pointing toward each
  * other), and when the resulting product length falls within the configured
  * size limits.</p>
+ *
+ * <p>On a circular sequence, a pair whose plus-strand primer lies past the minus-strand one also makes
+ * a product: round the origin (since 0.15.3). Its location starts after it ends ({@code 1780-279}).</p>
  */
 public final class AmpliconCaller {
 
@@ -23,6 +26,16 @@ public final class AmpliconCaller {
      * @return the amplicon, or empty when the pair cannot amplify
      */
     public static Optional<Amplicon> call(BlastResult forward, BlastResult reverse, AmpliconOptions options) {
+        return call(forward, reverse, options, 0);
+    }
+
+    /**
+     * @param circle the sequence's length as a circle ({@link ca.canada.inspection.util.Circles}), or 0 for
+     *               a linear one
+     * @return the amplicon, or empty when the pair cannot amplify
+     */
+    public static Optional<Amplicon> call(BlastResult forward, BlastResult reverse, AmpliconOptions options,
+                                          int circle) {
         if (!forward.queryID().equals(reverse.queryID())) {
             return Optional.empty();
         }
@@ -35,9 +48,14 @@ public final class AmpliconCaller {
         BlastResult leftExtending = forward.isPlusStrand() ? reverse : forward;
 
         // Convergent orientation: the plus-strand primer must lie upstream of the
-        // minus-strand primer. Overlapping primers (very short products) are allowed.
+        // minus-strand primer. Overlapping primers (very short products) are allowed. On a circle,
+        // one past the other is upstream of it once round the origin: its positions go on from there.
+        int round = 0;
         if (rightExtending.qstart() > leftExtending.qstart() || rightExtending.qend() > leftExtending.qend()) {
-            return Optional.empty();
+            if (circle <= 0) {
+                return Optional.empty();
+            }
+            round = circle;
         }
 
         // The full primers are incorporated into the product: it is one primer, the template
@@ -48,11 +66,14 @@ public final class AmpliconCaller {
         // The location is the template's, from one primer's 5' terminus to the other's, clamped
         // at the contig start (the contig end is unknown here).
         int productStart = rightExtending.fivePrimeTerminus();
-        int end = leftExtending.fivePrimeTerminus();
+        int end = leftExtending.fivePrimeTerminus() + round;
         int rightThreePrime = rightExtending.qend() + rightExtending.threePrimeUncovered();
-        int leftThreePrime = leftExtending.qstart() - leftExtending.threePrimeUncovered();
+        int leftThreePrime = leftExtending.qstart() - leftExtending.threePrimeUncovered() + round;
         int size = rightExtending.slen() + (leftThreePrime - rightThreePrime - 1) + leftExtending.slen();
 
+        if (circle > 0 && size > circle) {
+            return Optional.empty(); // round the circle more than once
+        }
         if (size < options.minAmpliconLength()) {
             return Optional.empty();
         }
@@ -60,8 +81,17 @@ public final class AmpliconCaller {
             return Optional.empty();
         }
 
-        return Optional.of(new Amplicon(forward.queryID(), Math.max(1, productStart), end, size,
-                forward.isPlusStrand() ? '+' : '-'));
+        char strand = forward.isPlusStrand() ? '+' : '-';
+        if (circle > 0) {
+            return Optional.of(new Amplicon(forward.queryID(), onCircle(productStart, circle), onCircle(end, circle),
+                    size, strand, circle));
+        }
+        return Optional.of(new Amplicon(forward.queryID(), Math.max(1, productStart), end, size, strand, 0));
+    }
+
+    /** A position of a circle of {@code circle} bases counted on past its origin, or before it, as on it. */
+    static int onCircle(int position, int circle) {
+        return Math.floorMod(position - 1, circle) + 1;
     }
 
     /**
@@ -77,10 +107,32 @@ public final class AmpliconCaller {
      *                      their 3' ends; larger than {@code end - start + 1} when a primer hangs
      *                      off the contig start, and unlike it when a primer site has an indel
      * @param forwardStrand '+' when the forward primer matches the plus strand, '-' otherwise
+     * @param circle        the sequence's length as a circle, or 0 for a linear one; on a circle, a product
+     *                      round the origin starts after it ends ({@code start > end})
      */
-    public record Amplicon(String contig, int start, int end, int size, char forwardStrand) {
+    public record Amplicon(String contig, int start, int end, int size, char forwardStrand, int circle) {
+
+        /** Whether the product crosses the origin of its circle. */
+        public boolean roundTheOrigin() {
+            return circle > 0 && start > end;
+        }
+
+        /**
+         * Whether the stretch from {@code positionStart} to {@code positionEnd} is within the product; on a
+         * circle, a stretch may run on past the origin ({@code positionEnd} beyond the circle).
+         */
         public boolean contains(int positionStart, int positionEnd) {
-            return positionStart >= start && positionEnd <= end;
+            int from = positionStart;
+            int to = positionEnd;
+            int last = end;
+            if (roundTheOrigin()) {
+                last = end + circle;
+                if (from < start) {
+                    from += circle;
+                    to += circle;
+                }
+            }
+            return from >= start && to <= last;
         }
     }
 }

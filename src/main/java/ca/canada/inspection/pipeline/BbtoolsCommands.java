@@ -175,6 +175,12 @@ record BbtoolsCommands(String javaCommand, Path bbtoolsJar, int childMemoryGiB, 
         return withOption(bbduk(candidates, reads, output, 0), "k=" + k);
     }
 
+    /**
+     * The mini-assembly, on one thread: on several, Tadpole's contigs differed between runs of the same
+     * reads (a circle starting elsewhere, contigs numbered otherwise, one in a thousand lost or joined), and so
+     * did the report. One thread took 3 s on 45,000 baited reads (as 16 did), 79 s on 1.7 million (13 s on
+     * 16), 326 s on 9.7 million (43 s).
+     */
     Command assemble(Path reads, Path output, TadpoleOptions tadpole) {
         Path directory = directoryOf(output);
         List<String> arguments = start("assemble.Tadpole");
@@ -182,7 +188,7 @@ record BbtoolsCommands(String javaCommand, Path bbtoolsJar, int childMemoryGiB, 
                 "in=" + argument(directory, reads),
                 "out=" + argument(directory, output),
                 "overwrite=t",
-                "threads=" + threads));
+                "threads=1"));
         arguments.addAll(tadpole.arguments());
         return new Command(directory, arguments);
     }

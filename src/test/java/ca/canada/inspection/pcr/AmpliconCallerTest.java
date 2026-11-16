@@ -154,11 +154,45 @@ class AmpliconCallerTest {
 
     @Test
     void probeInsideAmpliconIsContained() {
-        Amplicon amplicon = new Amplicon("contig1", 101, 600, 500, '+');
+        Amplicon amplicon = new Amplicon("contig1", 101, 600, 500, '+', 0);
         assertTrue(amplicon.contains(150, 170));
         assertTrue(amplicon.contains(101, 600));
         assertTrue(!amplicon.contains(90, 110));
         assertTrue(!amplicon.contains(590, 610));
+    }
+
+    @Test
+    void onACircleAPairAcrossTheOriginAmplifies() {
+        // An 1,800-bp circle: forward at 1,701..1,720 (+), reverse at 81..100 (-). On the sequence as written
+        // they point off its two ends; round the origin, they make 1,701..1,800 and 1..100: 200 bp.
+        BlastResult forward = TestHits.plusHit("assay-F", "plasmid", 1701);
+        BlastResult reverse = TestHits.minusHit("assay-R", "plasmid", 81);
+
+        assertTrue(AmpliconCaller.call(forward, reverse, DEFAULTS).isEmpty(), "a linear sequence has no product");
+        Amplicon amplicon = AmpliconCaller.call(forward, reverse, DEFAULTS, 1800).orElseThrow();
+
+        assertEquals("1701-100", amplicon.start() + "-" + amplicon.end());
+        assertEquals(200, amplicon.size());
+        assertTrue(amplicon.roundTheOrigin());
+        // A probe on either side of the origin, or across it, is within the product; one outside it is not.
+        assertTrue(amplicon.contains(1750, 1770));
+        assertTrue(amplicon.contains(20, 40));
+        assertTrue(amplicon.contains(1790, 1810));
+        assertTrue(!amplicon.contains(500, 520));
+        // The size limits see the whole product.
+        assertTrue(AmpliconCaller.call(forward, reverse, AmpliconOptions.builder().mismatches(0).maxLength(199)
+                .build(), 1800).isEmpty());
+    }
+
+    @Test
+    void onACircleAPairThatWouldGoRoundMoreThanOnceDoesNot() {
+        // Forward past the reverse on a 300-bp circle, products longer than the circle: none.
+        BlastResult forward = TestHits.plusHit("assay-F", "loop", 101);
+        BlastResult reverse = TestHits.minusHit("assay-R", "loop", 581);
+        assertTrue(AmpliconCaller.call(forward, reverse, DEFAULTS, 300).isEmpty());
+        // And a convergent pair on a circle is the same product as on a linear sequence.
+        assertEquals("101-600", AmpliconCaller.call(forward, reverse, DEFAULTS, 2000).map(a -> a.start() + "-"
+                + a.end()).orElseThrow());
     }
     @Test
     void sizeLimitsAreInclusiveAtTheBoundaries() {

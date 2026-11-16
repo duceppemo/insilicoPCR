@@ -80,7 +80,16 @@ public final class BlastRunner {
 
         // A long sequence is searched in pieces: its hits are put back on it as the table is written.
         java.util.function.UnaryOperator<String> toContig;
-        try (BlastQuery blastQuery = BlastQuery.of(query, blastOutput)) {
+        // Its circles (a plasmid marked circular=true, a contig of the mini-assembly closing on itself) are
+        // searched as circles: a product across the origin is one a PCR makes.
+        Map<String, Integer> circles;
+        try {
+            circles = ca.canada.inspection.util.Circles.of(query, context.config().tadpole().k());
+        } catch (IOException | java.io.UncheckedIOException e) {
+            throw new PipelineException("Unable to prepare the BLAST query for " + query, e);
+        }
+        circles.forEach(sample.hits()::circular);
+        try (BlastQuery blastQuery = BlastQuery.of(query, blastOutput, circles)) {
             toContig = blastQuery::toContig;
             BlastTsv.runBlastn(context.monitor(), context.dependencies().blastn(), blastQuery.path(),
                     context.directories().primerDatabase(), context.config().evalue(), threads, blastTsv);

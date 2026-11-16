@@ -207,4 +207,62 @@ class BlastQueryTest {
         assertTrue(prefix.startsWith(BlastQuery.PIECE_ID) && prefix.endsWith("_") && prefix.length() > BlastQuery.PIECE_ID.length() + 1,
                 prefix);
     }
+
+    @Test
+    void aCircleGetsAJunctionPieceThatOwnsTheSitesNearItsOrigin() throws IOException {
+        // An 1,800-bp circle written with its first 2 bases again at its end, as Tadpole writes one (1,802 bases):
+        // its junction piece is its bases 1,301-1,800 then 1-500, and owns the sites starting at its own 251 to
+        // 750 (the circle's 1,551 to 1,800, then 1 to 250); the circle owns those from 251 to 1,550.
+        StringBuilder bases = new StringBuilder();
+        java.util.Random random = new java.util.Random(5);
+        while (bases.length() < 1800) {
+            bases.append("ACGT".charAt(random.nextInt(4)));
+        }
+        String circle = bases.toString();
+        Path fasta = Files.writeString(directory.resolve("circ.fasta"), ">contig_3,len=1802,class=long/medium/self-loop\n"
+                + circle + circle.substring(0, 2) + "\n>linear\nACGTACGTAC\n");
+
+        try (BlastQuery query = BlastQuery.of(fasta, directory, java.util.Map.of(
+                "contig_3,len=1802,class=long/medium/self-loop", 1800))) {
+            List<String> pieces = query.pieceIds();
+            assertEquals(1, pieces.size());
+            String junction = sequenceOf(query.path(), pieces.getFirst());
+            assertEquals(circle.substring(1300) + circle.substring(0, 500), junction);
+            String id = "contig_3,len=1802,class=long/medium/self-loop";
+            java.util.function.BiFunction<String, int[], String> hit = (contig, at) -> String.join("\t", contig, "a-F",
+                    "20", "0", "0", "1e-5", "40", "20", "20", String.valueOf(at[0]), String.valueOf(at[1]), "ACGT", "1",
+                    "20", "ACGT");
+
+            // Across the origin: the junction's, at the circle's 1,791 to 1,810.
+            assertEquals(hit.apply(id, new int[]{1791, 1810}), query.toContig(hit.apply(pieces.getFirst(),
+                    new int[]{491, 510})));
+            // Past the origin: at the circle's start (junction 601-620: 101-120), on either strand.
+            assertEquals(hit.apply(id, new int[]{120, 101}), query.toContig(hit.apply(pieces.getFirst(),
+                    new int[]{620, 601})));
+            // The circle's copies of those sites, cut by its ends or whole, are dropped...
+            assertEquals(null, query.toContig(hit.apply(id, new int[]{1791, 1802})));
+            assertEquals(null, query.toContig(hit.apply(id, new int[]{101, 120})));
+            assertEquals(null, query.toContig(hit.apply(id, new int[]{1, 10})));
+            // ...as are the junction's copies of the circle's own, cut by the junction's ends or whole.
+            assertEquals(null, query.toContig(hit.apply(pieces.getFirst(), new int[]{1, 20})));
+            assertEquals(null, query.toContig(hit.apply(pieces.getFirst(), new int[]{981, 1000})));
+            assertEquals(hit.apply(id, new int[]{900, 919}), query.toContig(hit.apply(id, new int[]{900, 919})));
+            // A linear sequence's hits, as they are.
+            assertEquals(hit.apply("linear", new int[]{1, 10}), query.toContig(hit.apply("linear", new int[]{1, 10})));
+        }
+    }
+
+    /** The bases of record {@code id} of {@code fasta}. */
+    private static String sequenceOf(Path fasta, String id) throws IOException {
+        StringBuilder bases = new StringBuilder();
+        boolean in = false;
+        for (String line : Files.readAllLines(fasta)) {
+            if (line.startsWith(">")) {
+                in = line.substring(1).split("\\s")[0].equals(id);
+            } else if (in) {
+                bases.append(line.strip());
+            }
+        }
+        return bases.toString();
+    }
 }

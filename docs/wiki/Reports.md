@@ -75,7 +75,7 @@ The consolidated report is the primary summary table: one row per predicted ampl
 |---|---|
 | `Sample` | Sample name (from the input file name) |
 | `Gene` | Assay name (primer ID without the `-F`/`-R`/`-P` suffix); for a product of two assays that share a reaction (`mix=`), their names joined by `+` (`stxQ+toxA`), since 0.15.3 |
-| `GenomeLocation` | 1-based start-end of the product on the contig |
+| `GenomeLocation` | 1-based start-end of the product on the contig; on a circular sequence, a product across its origin starts after it ends (`1780-279`, since 0.15.3) |
 | `AmpliconSize` | Product length in bp, primers included |
 | `Contig` | Contig/sequence ID the product sits on |
 | `Contig Description` | Free text from the contig FASTA header |
@@ -91,7 +91,7 @@ When at least one assay in the primer file defines a `-P` probe, the report appe
 | Column | Meaning |
 |---|---|
 | `Probe` | Probe ID |
-| `ProbeLocation` | 1-based start-end of the probe on the contig |
+| `ProbeLocation` | 1-based start-end of the probe on the contig (across a circle's origin, as for the product) |
 | `ProbeSize` | Length of the probe match |
 | `ProbeMismatches` | Mismatches + indels in the probe alignment. A degenerate probe is searched as its variants (`_0`, `_1`, ...); a product has one row, with the variants of primers and probe that match best (since 0.15.2 on contigs, as on reads since 0.13.0; before, on a contig, each variant that hit gave its own row) |
 
@@ -128,6 +128,17 @@ When at least one assay in the primer file [declares product sizes](Primer-FASTA
 
 The label is information only. Every product is reported whatever its size, with or without a declaration; an `unexpected` row is a product a real PCR would amplify too.
 
+
+### Circular sequences
+
+Since 0.15.3, a circular sequence is searched as a circle: a PCR on a plasmid, a mitochondrial genome or a complete chromosome makes the product across its origin, which on the sequence as written is in two pieces, at its two ends. A sequence is circular when
+
+- its FASTA header says so: `circular=true` (Unicycler, Flye, Bakta) or `[topology=circular]` (NCBI's submission tools), in the description after the ID;
+- or it is a contig of the FASTQ-mode mini-assembly that closes on itself: one Tadpole calls a `self-loop`, or one whose end repeats 12 or more of its first bases. Tadpole writes a circle with some of its first bases again at its end; the circle is the contig without them.
+
+A product across the origin is reported with its location starting after it ends: on a 3,000-bp plasmid, `2901-100` is 2,901 to 3,000 then 1 to 100, 200 bp. A primer or probe site across the origin is found whole. A circle is never in the HTML report's *Primers at contig ends* (`◇`): it has no ends.
+
+The mini-assembly runs on one thread, since 0.15.3: on several, its contigs differed between runs of the same reads (a circle written from another point, contigs numbered otherwise, now and then one lost or joined), and so did the report. On 45,000 baited reads it takes as long; on 1.7 million, 79 s rather than 13; on 9.7 million, 326 s rather than 43.
 ## Detailed per-sample reports
 
 The `detailed_report` folder keeps each sample's BLAST hits that the rules accept (with a header line), the ones its products are made from: useful for auditing a call. Columns follow BLAST `-outfmt "6 qseqid sseqid positive mismatch gaps evalue bitscore slen length qstart qend qseq sstart send sseq"`. Before 0.15.3 it kept every alignment blastn wrote, rejected ones included: 1.5 million lines (140 MB) for one bacterial genome and a 40-assay panel, of which a few thousand were primer sites. A sequence longer than 1 Mb (a chromosome) is searched in overlapping pieces of 1 Mb, since 0.15.3: BLAST's e-value grows with the length of the sequence searched, and on a whole chromosome a primer site within `-m 2` or `-m 3` could get one above the cut-off and be dropped, though a draft of the same genome kept it. The hits are put back on the sequence, at its own positions, so the table and the report show it whole; each hit comes from the one piece that holds it whole (the pieces share 1,000 bases, each half of the share belonging to one of them).

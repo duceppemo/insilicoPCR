@@ -25,6 +25,19 @@
 
 ### Fixed
 
+- Circular sequences: a product across the origin of a plasmid, a
+  mitochondrial genome or a complete chromosome was in two pieces at the
+  sequence's ends, and not reported. A FASTA record whose header says
+  `circular=true` or `[topology=circular]`, and a contig of the mini-assembly
+  that closes on itself, are searched as circles: a site across the origin is
+  found whole, and a product across it is reported, its location starting
+  after it ends (`2901-100`).
+- FASTQ mode: the mini-assembly gave different contigs on runs of the same
+  reads (a circle written from another point, contigs numbered otherwise, one
+  in a thousand lost or joined), and the report differed: a product across a
+  circle's origin was found on some runs only. It runs on one thread: 79 s
+  rather than 13 on 1.7 million baited reads, 326 s rather than 43 on 9.7
+  million; small read sets take as long.
 - Output safety: an output folder holding symbolic links where a run writes
   (one reused from another run, or unpacked from an archive) made the run
   write through them, overwriting or deleting the files they point to: such a

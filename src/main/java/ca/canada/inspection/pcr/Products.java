@@ -92,7 +92,7 @@ public final class Products {
         // Fetched once: both accessors copy, and a FASTQ sample searched at read level
         // has one "contig" per read.
         Map<String, String> contigs = sample.descriptions();
-        HitIndex hits = new HitIndex(blastResults);
+        HitIndex hits = new HitIndex(blastResults, sample.circles());
         // The panel's assays (by name) and their oligos (in primer-file order, the variants of a
         // degenerate oligo as expanded): the report lists products in this order on every run,
         // whatever order the hits are held in.
@@ -226,9 +226,16 @@ public final class Products {
     private static final class HitIndex {
         private final Map<String, List<BlastResult>> byOligo;
         private final Map<String, Map<String, OnContig>> byOligoAndContig = new HashMap<>();
+        private final Map<String, Integer> circles;
 
-        HitIndex(Map<String, List<BlastResult>> byOligo) {
+        HitIndex(Map<String, List<BlastResult>> byOligo, Map<String, Integer> circles) {
             this.byOligo = byOligo;
+            this.circles = circles;
+        }
+
+        /** The length of {@code contig} as a circle, or 0 for a linear sequence. */
+        int circle(String contig) {
+            return circles.getOrDefault(contig, 0);
         }
 
         List<BlastResult> of(String oligoId) {
@@ -323,12 +330,14 @@ public final class Products {
                 continue;
             }
             int longest = options.maxAmpliconLength();
-            List<BlastResult> partners = longest > 0
+            int circle = hits.circle(forwardHit.queryID());
+            // On a circle, a partner may be at the other end, across the origin.
+            List<BlastResult> partners = longest > 0 && circle == 0
                     ? hits.near(reversePrimer, forwardHit.queryID(), (long) forwardHit.qstart() - longest - PARTNER_SLACK,
                     (long) forwardHit.qstart() + longest + PARTNER_SLACK)
                     : hits.on(reversePrimer, forwardHit.queryID());
             for (BlastResult reverseHit : partners) {
-                Amplicon amplicon = AmpliconCaller.call(forwardHit, reverseHit, options).orElse(null);
+                Amplicon amplicon = AmpliconCaller.call(forwardHit, reverseHit, options, circle).orElse(null);
                 if (amplicon == null) {
                     continue;
                 }
@@ -362,8 +371,10 @@ public final class Products {
                 if (!amplicon.contains(probeStart, probeEnd)) {
                     continue;
                 }
-                rows.accept(pair.withProbe(new ReportRow.Probe(probeId, probeStart, probeEnd,
-                        probeHit.alignedMismatches())));
+                // A probe across a circle's origin ends on the circle's start, as the product does.
+                int shownEnd = amplicon.circle() > 0 ? AmpliconCaller.onCircle(probeEnd, amplicon.circle()) : probeEnd;
+                rows.accept(pair.withProbe(new ReportRow.Probe(probeId, probeStart, shownEnd,
+                        probeHit.alignedMismatches(), probeEnd - probeStart + 1)));
             }
         }
     }

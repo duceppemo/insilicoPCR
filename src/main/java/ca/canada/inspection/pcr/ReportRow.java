@@ -55,9 +55,14 @@ public record ReportRow(String sample, String assay, Site site, Binding forward,
      * @param start first base of the probe on the contig
      * @param end   last base
      */
-    public record Probe(String id, int start, int end, int mismatches) {
-        public int size() {
-            return end - start + 1;
+    /**
+     * A probe's site in a product: from {@code start} to {@code end}, {@code size} bases. On a circle a site
+     * across the origin ends on the circle's start ({@code end < start}), as a product does.
+     */
+    public record Probe(String id, int start, int end, int mismatches, int size) {
+        /** A site of {@code end - start + 1} bases. */
+        public Probe(String id, int start, int end, int mismatches) {
+            this(id, start, end, mismatches, end - start + 1);
         }
     }
 

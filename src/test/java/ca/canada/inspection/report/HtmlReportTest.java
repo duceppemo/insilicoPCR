@@ -181,6 +181,23 @@ class HtmlReportTest {
     }
 
     @Test
+    void anAssayWhoseExtendedReadsLoopInARepeatIsCountedWithTheReadEvidence() throws IOException {
+        // Its cell is "not checkable from reads", whose explanation spoke only of products too long for the reads;
+        // and the read-level section left it out.
+        Path tsv = Files.write(dir.resolve("report.tsv"), List.of(HEADER));
+        Finding repeat = new Finding("rep", "its", Status.EXTENSION_IN_TANDEM_REPEAT, Assembly.NOT_ASSEMBLED,
+                new ReadsWithOligo(40, 38, 0), 300, "extended reads loop in (CAG)n", "");
+
+        String page = Files.readString(write(tsv, List.of("rep"), Set.of("rep"), panel(PRIMERS, SIZES),
+                List.of(repeat), DETAILS));
+
+        assertTrue(page.contains("class=\"chip unchecked\""), "neither positive nor negative");
+        assertTrue(page.contains("or the extended reads loop in a tandem repeat on the way to it"), page);
+        assertTrue(page.contains("1 assay is neither positive nor negative: the reads extended from the primers loop"
+                + " in a tandem repeat"), "listed with the read-level evidence");
+    }
+
+    @Test
     void writesASelfContainedPageNextToTheReportWithEverySampleAndRow() throws IOException {
         Path tsv = Files.write(dir.resolve("report(1).tsv"), List.of(HEADER,
                 row("pos", "its", 434, "contig_1,len=900,cov=5.0", ""),
@@ -396,6 +413,9 @@ class HtmlReportTest {
 
         assertTrue(page.contains("its <span class=\"tag\" title=\"made by one primer alone: its-F on both strands,"
                 + " where its site repeats inverted\">one primer</span>"), "one primer");
+        // The product of two assays has a column, but is not an assay of the primer file (it read one more).
+        int assays = panel(PRIMERS, SIZES).assays().size();
+        assertTrue(page.contains("<span class=\"n\">" + assays + "</span><span class=\"l\">assays</span>"), page);
         assertTrue(page.contains("its+plain <span class=\"tag\" title=\"made by primers of two assays that share a"
                 + " reaction (mix=): its-F and plain-R_0\">two assays</span>"), "two assays");
         // The grid's hover text says it too, and the product of two assays has its own column.

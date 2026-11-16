@@ -70,6 +70,13 @@ class RunSettingsTest {
         // The programs' versions last: a result is audited with them.
         assertEquals("Tools: BLAST+ 2.17.0, BBTools 40.04", details.settings().getLast().label() + ": "
                 + details.settings().getLast().value());
+        // The reactions of a multiplex file, after the paths, as QAlog.txt lists them.
+        RunDetails mixed = RunSettings.details("9.9.9", config().build(), false, "-", java.util.Map.of(
+                "one", new java.util.TreeSet<>(List.of("a", "b")), "two", new java.util.TreeSet<>(List.of("c", "d")))
+                .entrySet().stream().collect(java.util.stream.Collectors.toMap(java.util.Map.Entry::getKey,
+                        java.util.Map.Entry::getValue, (x, y) -> x, java.util.TreeMap::new)));
+        assertEquals("Assays sharing a reaction (mix=): one: a, b; two: c, d", mixed.settings().get(3).label() + ": "
+                + mixed.settings().get(3).value());
     }
 
     @Test

@@ -55,10 +55,23 @@ public final class RunSettings {
 
     /** The HTML report's "Run details": the run's paths, then its settings. */
     static RunDetails details(String version, PipelineConfig config, boolean withFastq, String tools) {
+        return details(version, config, withFastq, tools, java.util.Map.of());
+    }
+
+    /**
+     * @param reactions the assays sharing each reaction (mix= in the primer file), as QAlog.txt lists them; none
+     *                  for a file of singleplex assays
+     */
+    static RunDetails details(String version, PipelineConfig config, boolean withFastq, String tools,
+                              java.util.Map<String, java.util.Set<String>> reactions) {
         List<Setting> settings = new ArrayList<>();
         settings.add(new Setting("Input", String.valueOf(config.input())));
         settings.add(new Setting("Primer file", String.valueOf(config.primers())));
         settings.add(new Setting("Output folder", String.valueOf(config.output())));
+        if (!reactions.isEmpty()) {
+            settings.add(new Setting("Assays sharing a reaction (mix=)", String.join("; ", reactions.entrySet().stream()
+                    .map(group -> group.getKey() + ": " + String.join(", ", group.getValue())).toList())));
+        }
         settings.addAll(of(config, withFastq));
         settings.add(new Setting("Tools", tools));
         return new RunDetails(DATE_FORMAT.format(LocalDateTime.now()), version, settings);

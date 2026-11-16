@@ -15,10 +15,12 @@ final class GelText {
             GelBand band = bands.getFirst();
             return "Sample: " + band.sampleName() + '\n'
                     + "Gene: " + band.geneName() + '\n'
-                    + "Amplicon size: " + band.ampliconSize() + " bp" + sizeCheck(band, "\nSize check: ");
+                    + "Amplicon size: " + band.ampliconSize() + " bp" + sizeCheck(band, "\nSize check: ")
+                    + (band.pairingTag().isEmpty() ? "" : "\nMade by: " + band.pairingTag());
         }
         String details = bands.stream()
-                .map(gelBand -> gelBand.geneName() + " — " + gelBand.ampliconSize() + " bp" + sizeCheck(gelBand, ", "))
+                .map(gelBand -> gelBand.geneName() + " — " + gelBand.ampliconSize() + " bp" + sizeCheck(gelBand, ", ")
+                        + (gelBand.pairingTag().isEmpty() ? "" : ", " + gelBand.pairingTag()))
                 .collect(Collectors.joining("\n"));
         return "Sample: " + bands.getFirst().sampleName() + '\n'
                 + "Co-migrating amplicons: " + bands.size() + '\n'
@@ -57,7 +59,8 @@ final class GelText {
         }
         return tooltip + "\n\nRows:\n" + bands.stream()
                 .map(gelBand -> gelBand.sampleName() + '\t' + gelBand.geneName() + '\t' + gelBand.ampliconSize() + " bp"
-                        + (gelBand.sizeCheck() == null ? "" : "\t" + gelBand.sizeCheck().text()))
+                        + (gelBand.sizeCheck() == null ? "" : "\t" + gelBand.sizeCheck().text())
+                        + (gelBand.pairingTag().isEmpty() ? "" : "\t" + gelBand.pairingTag()))
                 .collect(Collectors.joining("\n"));
     }
 

@@ -38,11 +38,14 @@ Since 0.13.0 every input file is checked before anything is run on it. A sample 
 | An assembly that is empty, holds header lines only, does not start with `>` (blank lines before it are skipped, as BLAST skips them, since 0.15.3), or whose gzip stream is cut short | `the file holds no sequence (header lines only)` |
 | An assembly in which two sequences share an ID (assemblies joined into one file, each with contigs named `1`, `2`, ...); since 0.15.2 (with `--input-check quick` too): before, a primer on one and a primer on the other could be paired into a product of two molecules | `two sequences share an ID (the ID 1 names more than one sequence; ...)` |
 | An assembly blastn cannot read although the input check passed it (a record whose first sequence line holds no base, as in an aligned FASTA; no base at all); since 0.15.3, found at the BLAST search, where it stopped the whole run before. Only blastn's reader refusing the file counts (exit codes 1 and 3): a blastn that fails otherwise (killed for lack of memory, a database or disk error) fails the run, as does blastn refusing every sample of the run, since the fault is then not the files' | `blastn cannot read the file (its message is in the log above: ...)` |
+| A link to a file that does not exist, named as an input file (since 0.15.3; it was left out without a word) | `the file cannot be read (a link to a file that does not exist)` |
 | A header line with nothing after its `>`, which BLAST names `Query_1` (since 0.15.3) | `a sequence has no ID (...)` |
 | Files with the same sample name that are not a read pair (`x.fasta` and `x.fastq`, `x.fasta` and `x.fna`) | `these files have the same sample name (a sample is one FASTA file, ...)` |
 | Sample names that differ only in case (`iso2.fasta`, `ISO2.fna`); their results would share a folder on Windows and macOS | `the sample name differs only in case from another one (ISO2, iso2 would share a results folder; rename one)` |
 
-A sample is left out as a whole: when one file of a read pair is faulty, the other is not run as single-end reads. A read set of one file named as one read of a pair (`x_R1.fastq.gz`, its `x_R2` not in the input, or `-i` given the `_R1` file alone) is run as single-end reads, with a warning since 0.15.3: before, half the data went unused without a word.
+A sample is left out as a whole: when one file of a read pair is faulty, the other is not run as single-end reads. A file named like a sequence file of a kind the run does not read (`x.fas`, `x.fasta.bz2`) is named in a warning, since 0.15.3 (`y.fasta.bz2 is not read: input files are named .fasta, ...`): it was left out without a word. When BBDuk refuses the reads of every read set of a run (two or more), the run fails (`Error: BBDuk could not read the reads of any sample`), assemblies beside them or not: the fault is then not the files' but the program's.
+
+A read set of one file named as one read of a pair (`x_R1.fastq.gz`, its `x_R2` not in the input, or `-i` given the `_R1` file alone) is run as single-end reads, with a warning since 0.15.3: before, half the data went unused without a word.
 
 The faults are reported in four places:
 

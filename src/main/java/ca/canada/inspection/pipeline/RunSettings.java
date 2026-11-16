@@ -89,8 +89,8 @@ public final class RunSettings {
             return "off";
         }
         return mode + ": for " + mode.description() + ", when reads carry both primers, up to "
-                + ReadExtensionCaller.MAX_SEEDS_PER_PRIMER + " reads per primer are extended through the baited"
-                + " reads (Tadpole mode=extend k=" + ReadExtensionCaller.K + " "
+                + ReadExtensionCaller.MAX_SEEDS_PER_PRIMER + " reads per primer are extended through the reads baited in rounds"
+                + " (Tadpole mode=extend k=" + ReadExtensionCaller.K + " "
                 + String.join(" ", BbtoolsCommands.EXTEND_OPTIONS) + "); a product needs at least "
                 + ReadExtensionCaller.MIN_CLOSING_READS_PER_SIDE + " extended reads seeded from one primer, and"
                 + " read pairs holding each of its windows (the largest window of " + PairSupport.MIN_WINDOW + ", "

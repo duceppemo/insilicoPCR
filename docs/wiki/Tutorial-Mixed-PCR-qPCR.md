@@ -156,7 +156,7 @@ See [GUI Overview](GUI-Overview) for the other buttons and the settings dialogs.
 
 ## 8. Things to try next
 
-- Re-run with `-m 2` and watch the same four products come out, with the same sizes and mismatch counts — the assays match their target perfectly, and near-neighbor sites still fail the 3'-end rules. Only the contig name and coordinates of the read sample change: `-m` also loosens read baiting, so the mini-assembly comes out differently.
+- Re-run with `-m 2` and watch the same four products come out, with the same sizes and mismatch counts — the assays match their target perfectly. A fifth comes out too: `hly702` on `lmono_EGDe`, 3226 bp, labelled `unexpected`, made by the same primers at two sites 3 kb apart, the forward one with 2 mismatches and 4 unpaired 5' bases (`ForwardMismatches 2`, `Forward5PrimeUnaligned 4`). A permissive `-m` lets primers pair at other places of a genome; the `SizeCheck` label tells the designed product from such one. Only the contig name and coordinates of the read sample change otherwise: `-m` also loosens read baiting, so the mini-assembly comes out differently.
 - Re-run with `-l 100`: the 112 bp qPCR product now exceeds the maximum length and disappears; `--min-length 200` would drop it too.
 - Remove the two `size=` words from the primer file and re-run: `report.tsv` loses its `SizeCheck` column and the HTML report shows the same four products in blue, as amplified with no size to compare with.
 - Declare a wrong size instead (`>hly702-F size=500`) and re-run: the 702 bp products are still reported, now labelled `unexpected`, and the HTML report no longer counts them as positive. Nothing is hidden; the label only tells the reader what the size means.

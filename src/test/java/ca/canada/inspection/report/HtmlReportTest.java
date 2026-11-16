@@ -121,7 +121,7 @@ class HtmlReportTest {
         Cell cell = HtmlReport.cell("its", List.of(), SIZES, new Finding("S", "its", Status.NOT_CLOSED_BY_EXTENSION,
                 Assembly.SPLIT_ACROSS_CONTIGS, new ReadsWithOligo(19, 7, 0), 300,
                 "no complete amplicon in the reads, which could hold amplicons up to 300 bp; extending 19"
-                        + " forward-seeded and 7 reverse-seeded read(s) through the baited reads, by up to 2000 bases"
+                        + " forward-seeded and 7 reverse-seeded read(s) through the reads baited in rounds, by up to 2000 bases"
                         + " each way, gave no product held by at least 2 extended reads seeded from one primer", ""), null);
 
         assertEquals(State.NONE, cell.state());
@@ -156,12 +156,12 @@ class HtmlReportTest {
     @Test
     void productCalledByExtensionIsShownAsCalledFromReads() throws IOException {
         String description = "FASTQ read-extension call: no read holds the product; 142 of 150 forward-seeded and"
-                + " 145 of 150 reverse-seeded reads, extended through the baited reads (k=31), hold it";
+                + " 145 of 150 reverse-seeded reads, extended through the reads baited in rounds (k=31), hold it";
         Path tsv = Files.write(dir.resolve("report.tsv"), List.of(HEADER,
                 row("long", "its", 434, "extended_read_3", description)));
         Finding called = new Finding("long", "its", Status.CALLED_BY_EXTENSION, Assembly.SPLIT_ACROSS_CONTIGS,
                 new ReadsWithOligo(6134, 5424, 0), 300, "no complete amplicon in the reads, which could hold amplicons"
-                + " up to 300 bp; reads extended through the baited reads hold a product of 434 bp (142 of 150"
+                + " up to 300 bp; reads extended through the reads baited in rounds hold a product of 434 bp (142 of 150"
                 + " forward-seeded and 145 of 150 reverse-seeded reads)", "");
         Finding notClosed = new Finding("short", "its", Status.NOT_CLOSED_BY_EXTENSION, Assembly.NOT_ASSEMBLED,
                 new ReadsWithOligo(19, 7, 0), 144, "gave no product held by at least 2 extended reads seeded from one primer", "");

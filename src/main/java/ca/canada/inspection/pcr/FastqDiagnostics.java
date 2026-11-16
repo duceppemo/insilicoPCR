@@ -296,7 +296,7 @@ public final class FastqDiagnostics {
     }
 
     /**
-     * What the extended reads show, e.g. {@code reads extended through the baited reads
+     * What the extended reads show, e.g. {@code reads extended through the reads baited in rounds
      * hold a product of 1074 bp (142 of 150 forward-seeded and 145 of 150 reverse-seeded
      * reads)}, followed by any product that too few extended reads hold.
      */
@@ -315,7 +315,7 @@ public final class FastqDiagnostics {
         }
         if (clauses.isEmpty()) {
             clauses.add("extending " + outcome.forwardSeeds() + " forward-seeded and " + outcome.reverseSeeds()
-                    + " reverse-seeded read(s) through the baited reads, by up to " + outcome.reach()
+                    + " reverse-seeded read(s) through the reads baited in rounds, by up to " + outcome.reach()
                     + " bases each way, gave no product held by at least "
                     + ReadExtensionCaller.MIN_CLOSING_READS_PER_SIDE + " extended reads seeded from one primer");
         }
@@ -353,13 +353,13 @@ public final class FastqDiagnostics {
         return String.join("; ", parts);
     }
 
-    /** E.g. {@code reads extended through the baited reads hold a product of 1074 bp (…)}. */
+    /** E.g. {@code reads extended through the reads baited in rounds hold a product of 1074 bp (…)}. */
     private static String calledByExtension(List<ReadExtensionCaller.Product> products) {
         List<String> parts = new ArrayList<>();
         for (ReadExtensionCaller.Product product : products) {
             parts.add("a product of " + product.sizeSummary() + " bp (" + product.supportSummary() + ")");
         }
-        return "reads extended through the baited reads hold " + String.join(" and ", parts);
+        return "reads extended through the reads baited in rounds hold " + String.join(" and ", parts);
     }
 
     private static String join(Set<Integer> sizes) {

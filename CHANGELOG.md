@@ -264,6 +264,12 @@
 
 ### Changed
 
+- Documentation: the exit codes and what a stopped run says are on the
+  command-line page; `--bbtools-memory` is described as the memory of the
+  BLAST searches too, assemblies' included; the baiting limits, the files kept
+  per FASTQ sample, the new input warnings and primer-file refusals are
+  documented; the FAQ, the tutorial's `-m 2` run and the indel rule (an indel
+  near a primer's 3' end still shifts the size) are corrected.
 - The window checks the input as the run does, by the files' names, and says
   what the run says: it judged them by their content, in words of its own. A
   folder whose files are all faulty now starts the run, which names each file

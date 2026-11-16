@@ -206,7 +206,7 @@ class FastqDiagnosticsTest {
         assertEquals(Status.CALLED_BY_EXTENSION, finding.status());
         assertEquals(Assembly.NOT_ASSEMBLED, finding.assembly());
         assertEquals("no complete amplicon in the reads, which could hold amplicons up to 240 bp; reads extended"
-                + " through the baited reads hold a product of 1074 bp (142 of 150 forward-seeded and 145 of 150"
+                + " through the reads baited in rounds hold a product of 1074 bp (142 of 150 forward-seeded and 145 of 150"
                 + " reverse-seeded reads); too few to report: 1303 bp in 0 of 150 forward-seeded and 1 of 150"
                 + " reverse-seeded reads", finding.readDetail());
         assertTrue(finding.message().contains("called by extending reads"), finding.message());
@@ -219,7 +219,7 @@ class FastqDiagnosticsTest {
 
         assertEquals(Status.NOT_CLOSED_BY_EXTENSION, none.status());
         assertEquals("no complete amplicon in the reads, which could hold amplicons up to 240 bp; extending 150"
-                + " forward-seeded and 150 reverse-seeded read(s) through the baited reads, by up to 2000 bases each"
+                + " forward-seeded and 150 reverse-seeded read(s) through the reads baited in rounds, by up to 2000 bases each"
                 + " way, gave no product held by at least 2 extended reads seeded from one primer",
                 none.readDetail());
 
@@ -254,7 +254,7 @@ class FastqDiagnosticsTest {
         assertEquals(Status.CALLED_BY_EXTENSION, finding.status());
         assertEquals(Assembly.OTHER_PRODUCT_ONLY, finding.assembly());
         assertEquals("reports 181 bp only", finding.assemblyDetail());
-        assertEquals("reads extended through the baited reads hold a product of 1074 bp (12 of 150 forward-seeded and"
+        assertEquals("reads extended through the reads baited in rounds hold a product of 1074 bp (12 of 150 forward-seeded and"
                 + " 9 of 150 reverse-seeded reads)", finding.readDetail());
 
         // Nothing new from the extension: the assay is reported already, and nothing needs explaining.
@@ -271,7 +271,7 @@ class FastqDiagnosticsTest {
                 Map.of("assay", extensionOutcome(new int[]{1074, 142, 145}))).getFirst();
 
         assertEquals(Status.CALLED_BY_EXTENSION, finding.status());
-        assertTrue(finding.readDetail().startsWith("reads extended through the baited reads hold a product of 1074 bp"),
+        assertTrue(finding.readDetail().startsWith("reads extended through the reads baited in rounds hold a product of 1074 bp"),
                 finding.readDetail());
     }
 

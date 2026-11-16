@@ -510,7 +510,7 @@ public final class ReadExtensionCaller {
      */
     public static ReportRow reportRow(Product product, String seedDescription) {
         StringBuilder description = new StringBuilder(ROW_PREFIX).append(": no read holds the product; ")
-                .append(product.supportSummary()).append(", extended through the baited reads (k=").append(K)
+                .append(product.supportSummary()).append(", extended through the reads baited in rounds (k=").append(K)
                 .append("), hold it");
         if (product.sizes().size() > 1) {
             description.append(" at ").append(product.sizeSummary()).append(" bp");

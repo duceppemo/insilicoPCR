@@ -97,7 +97,7 @@ A FASTQ-mode negative is weaker evidence than an assembly-mode one: the mini-ass
 
 These cases remain negative by design (see also the figure on [Limitations](Limitations)):
 
-- **The amplicon is longer than a read or merged pair** (about 580 bp for 2 x 300 bp reads) **and the reads could not be joined.** No read can hold such a product, so the reads carrying its primers are extended through the baited reads; see [Read extension](Reports#read-extension-products-longer-than-a-read). When too few reads carry the primers, the extension stops before joining them and the diagnostics say `NOT_CLOSED_BY_EXTENSION`, with the number of reads extended. Run the assay on an assembly of the reads.
+- **The amplicon is longer than a read or merged pair** (about 580 bp for 2 x 300 bp reads) **and the reads could not be joined.** No read can hold such a product, so the reads carrying its primers are extended through the reads baited in rounds; see [Read extension](Reports#read-extension-products-longer-than-a-read). When too few reads carry the primers, the extension stops before joining them and the diagnostics say `NOT_CLOSED_BY_EXTENSION`, with the number of reads extended. Run the assay on an assembly of the reads.
 - **Extended reads hold the product, but the read pairs do not confirm it.** The diagnostics say `EXTENSION_NOT_SUPPORTED_BY_PAIRS` (some stretch of the product lies inside no read pair, or the pairs are too few: about 20x and less) or `EXTENSION_THROUGH_UNRESOLVED_REPEAT` (the product passes through a repeat longer than the read pairs, where a real product and a wrong turn of the extension look the same). The product is withheld on purpose; the HTML report marks the sample "not confirmed by read pairs". Confirm on an assembly, of long reads for the repeat case.
 - **The run used `--read-extension off`.** The diagnostics then say `NOT_IN_READS` with the longest amplicon the reads could have held, and when the primer file declares the assay's size, the HTML report marks the sample "not checkable from reads" instead of negative.
 - **`WEAK_READ_SUPPORT`**: complete amplicons are in the reads, but in under `--read-min-fraction` (default 30%) of the reads covering the locus. This is the signature of contamination, and also of a locus of which only some copies match the primers and probe. Read the counts in `ReadDetail`, and lower `--read-min-fraction` if the sample is known to be mixed.
@@ -108,7 +108,7 @@ Releases before 0.11.0 could spend hours in the read-level search after `blastn`
 
 ## An assay is never reported although its primers match
 
-Check the primer FASTA headers. In releases before 0.11.0, any text after the primer ID (`>assay-F forward primer`) became part of the ID, no BLAST hit matched it, and the assay was silently negative in every sample. Since 0.11.0 the ID ends at the first blank and the rest is a description.
+Check the primer FASTA headers. In releases before 0.11.0, any text after the primer ID (`>assay-F forward primer`) became part of the ID, no BLAST hit matched it, and the assay was silently negative in every sample. Since 0.11.0 the ID ends at the first blank and the rest is a description. Before 0.15.3, a probe named for its dye, `stxQ-FAM`, was read as a second forward primer: its assay lost its probe requirement, and a product of `stxQ-FAM` with `stxQ-R` could be reported; such an ID is refused now.
 
 ## A product has an unexpected size
 
@@ -124,7 +124,7 @@ Primer FASTA IDs must end with:
 
 See [Primer FASTA Format](Primer-FASTA-Format).
 
-Since 0.12.0 the command line reports a mistake in the primer file (an ID without a role suffix, characters that are not bases, a `size=` that cannot be read, two different sizes for one assay; since 0.15.3 also an ID with a character outside ASCII, and `other=` without `size=`) as one `Error:` line and exits with code 1. Earlier releases printed a Java stack trace for the same mistakes.
+Since 0.12.0 the command line reports a mistake in the primer file (an ID without a role suffix, characters that are not bases, a `size=` that cannot be read, two different sizes for one assay; since 0.15.3 also an ID with a character outside ASCII, and `other=` without `size=`; an ID whose role letter is followed by more letters, such as `stxQ-FAM`, `toxA-Rev` or `toxA-F2`, or written in lower case, `toxA-f`: `Primer ID must follow the <assay>-F / <assay>-R / <assay>-P naming convention: stxQ-FAM (the role letter ends the ID, or comes before an underscore: ...)`; an oligo of fewer than 7 bases: `Primer toxA-F is 6 bases long: BLAST finds no site of an oligo under 7 bases...`; a character that is not a base, named: `Primer sequence of toxA-F holds characters that are not bases (*)`) as one `Error:` line and exits with code 1. Earlier releases printed a Java stack trace for the same mistakes.
 
 Since 0.12.1 a failing external tool (BLAST+, BBTools) is reported the same way: the tool's own message, then `Error:` with the stage that failed and `Cause:` with the full command line and its exit code. Copy the command line to run the tool by hand.
 

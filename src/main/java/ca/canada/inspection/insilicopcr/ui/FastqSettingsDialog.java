@@ -66,7 +66,7 @@ public final class FastqSettingsDialog {
                 List.of(ReadExtensionCaller.Mode.values()), current.readExtension(),
                 "Finds products longer than a read or merged pair (--read-extension). When reads carry both primers "
                         + "of an assay, up to " + ReadExtensionCaller.MAX_SEEDS_PER_PRIMER + " reads per primer are "
-                        + "extended through the baited reads, and a product that at least "
+                        + "extended through the reads baited in rounds, and a product that at least "
                         + ReadExtensionCaller.MIN_CLOSING_READS_PER_SIDE + " reads extended from one primer hold, and "
                         + "that the sample's read pairs confirm, is reported.\nunreported: " + ReadExtensionCaller.Mode.UNREPORTED.description()
                         + ".\ntarget: " + ReadExtensionCaller.Mode.TARGET.description()

@@ -10,7 +10,7 @@ Each FASTA record ID must end with a role suffix.
 | `-R` | Reverse primer |
 | `-P` | Probe |
 
-The text before the final suffix is treated as the assay, gene, or target name. The role letter ends the ID, or comes before an underscore (`toxB-F_2`, a second forward primer): an ID such as `stxQ-FAM`, a probe named for its dye, or `toxA-Rev`, is refused with a message, since 0.15.3 (before, the letter after the last `-` was read, so `stxQ-FAM` was a second forward primer, and its assay lost its probe). An oligo must have at least 7 bases, BLAST's shortest word: a shorter one never has a hit, and is refused.
+The text before the final suffix is treated as the assay, gene, or target name. The role letter ends the ID, or comes before an underscore (`toxB-F_2`, a second forward primer): an ID such as `stxQ-FAM`, a probe named for its dye, `toxA-Rev`, `toxA-F2` or a lower-case role letter, `toxA-f`, is refused with a message, since 0.15.3 (before, the letter after the last `-` was read, so `stxQ-FAM` was a second forward primer, and its assay lost its probe). An oligo must have at least 7 bases, BLAST's shortest word: a shorter one never has a hit, and is refused.
 
 For example:
 

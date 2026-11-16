@@ -113,6 +113,9 @@ public record AssayVerdict(Kind kind, String note) {
             // The reads were extended, so the product's length is no longer what hides it.
             case NOT_CLOSED_BY_EXTENSION ->
                     new AssayVerdict(Kind.NONE, "Both primers are in the reads: " + finding.readDetail());
+            // A product through a tandem repeat is neither shown nor ruled out by the reads.
+            case EXTENSION_IN_TANDEM_REPEAT -> new AssayVerdict(Kind.UNCHECKED, "Both primers are in the reads, but "
+                    + finding.readDetail() + ". Confirm on an assembly of long reads, or by PCR.");
             case NOT_IN_READS -> notInReads(assay, sizes, finding);
             // A called assay has a product row, decided above; only some primers in the reads is no product.
             case CALLED_FROM_READS, CALLED_BY_EXTENSION, PARTIAL_BAIT -> new AssayVerdict(Kind.NONE, "");

@@ -52,14 +52,22 @@ public final class FastqDiagnostics {
         NOT_CLOSED_BY_EXTENSION("primers found in reads, but neither a read nor the extended reads hold a"
                 + " complete amplicon"),
         /**
-         * Reads extended from both primers hold a product, but the sample's read pairs do
+         * As {@link #NOT_CLOSED_BY_EXTENSION}, but the extended reads run into a tandem repeat
+         * ((AT)n, (CAG)n, a VNTR) and loop in it: the extension, which follows the better-supported
+         * branch, never finds the way out of one longer than a k-mer. Inconclusive: a product
+         * through it is neither shown nor ruled out (before 0.15.3, a plain negative).
+         */
+        EXTENSION_IN_TANDEM_REPEAT("primers found in reads, but the reads extended from them run into a tandem"
+                + " repeat they cannot cross; inconclusive"),
+        /**
+         * Extended reads hold a product, but the sample's read pairs do
          * not span it everywhere, or are too few to tell: the mark of a wrong turn through
          * a repeat. Not reported.
          */
         EXTENSION_NOT_SUPPORTED_BY_PAIRS("extended reads join the primers, but read pairs do not support the"
                 + " product; not reported"),
         /**
-         * Reads extended from both primers hold a product that passes through a repeat
+         * Extended reads hold a product that passes through a repeat
          * longer than the read pairs, where a real product and a wrong turn look the same.
          * Not reported.
          */
@@ -222,10 +230,12 @@ public final class FastqDiagnostics {
             } else {
                 // Nothing in the reads: all the extension holds is new to the sample.
                 status = !added.isEmpty() ? Status.CALLED_BY_EXTENSION
-                        : unconfirmed.isEmpty() ? Status.NOT_CLOSED_BY_EXTENSION
-                        : withheldStatus(unconfirmed);
+                        : !unconfirmed.isEmpty() ? withheldStatus(unconfirmed)
+                        : outcome.tandemRepeat() != null ? Status.EXTENSION_IN_TANDEM_REPEAT
+                        : Status.NOT_CLOSED_BY_EXTENSION;
                 readDetail = "no complete amplicon in the reads, which could hold amplicons up to " + checkable
-                        + " bp; " + describe(outcome);
+                        + " bp; " + describe(outcome) + (status == Status.EXTENSION_IN_TANDEM_REPEAT
+                        ? "; " + outcome.tandemRepeat() : "");
             }
             AssemblyFinding assembly = classifyAssembly(group, sample, contigLengths);
             // The report may still show the assay's primers in a product that is not its designed pair's: the
@@ -307,7 +317,7 @@ public final class FastqDiagnostics {
             clauses.add("extending " + outcome.forwardSeeds() + " forward-seeded and " + outcome.reverseSeeds()
                     + " reverse-seeded read(s) through the baited reads, by up to " + outcome.reach()
                     + " bases each way, gave no product held by at least "
-                    + ReadExtensionCaller.MIN_CLOSING_READS_PER_SIDE + " extended reads seeded from each primer");
+                    + ReadExtensionCaller.MIN_CLOSING_READS_PER_SIDE + " extended reads seeded from one primer");
         }
         if (!tooFew.isEmpty()) {
             List<String> parts = new ArrayList<>();

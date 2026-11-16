@@ -54,6 +54,7 @@ public final class FastqDiagnosticsStage {
                 lines.add("Note: " + notInReads + " FASTQ-mode negative(s) have both primers in the reads but no"
                         + " complete amplicon in any read; see " + file);
             }
+            withStatus(Status.EXTENSION_IN_TANDEM_REPEAT).forEach(finding -> lines.add("Warning: " + finding.message()));
             int notClosed = withStatus(Status.NOT_CLOSED_BY_EXTENSION).size();
             if (notClosed > 0) {
                 lines.add("Note: " + notClosed + " FASTQ-mode negative(s) have both primers in the reads, but neither"
@@ -100,10 +101,17 @@ public final class FastqDiagnosticsStage {
             unsupported.addAll(withStatus(Status.EXTENSION_THROUGH_UNRESOLVED_REPEAT));
             if (!unsupported.isEmpty()) {
                 lines.add("FASTQ mode WARNING: " + unsupported.size() + " assay(s) have a product that extended reads"
-                        + " of both primers hold but read pairs do not confirm; NOT reported (a wrong turn through a"
+                        + " hold but read pairs do not confirm; NOT reported (a wrong turn through a"
                         + " repeat looks like this, and so does a real product through a repeat longer than the read"
                         + " pairs):");
                 unsupported.forEach(finding -> lines.add("  " + finding.message()));
+            }
+            List<Finding> inRepeat = withStatus(Status.EXTENSION_IN_TANDEM_REPEAT);
+            if (!inRepeat.isEmpty()) {
+                lines.add("FASTQ mode WARNING: " + inRepeat.size() + " assay(s) have both primers in the reads, but the"
+                        + " reads extended from them run into a tandem repeat they cannot cross; inconclusive (confirm on"
+                        + " an assembly of long reads, or by PCR):");
+                inRepeat.forEach(finding -> lines.add("  " + finding.message()));
             }
             List<Finding> notClosed = withStatus(Status.NOT_CLOSED_BY_EXTENSION);
             if (!notClosed.isEmpty()) {

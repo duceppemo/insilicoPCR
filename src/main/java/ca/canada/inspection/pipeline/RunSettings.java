@@ -92,7 +92,7 @@ public final class RunSettings {
                 + ReadExtensionCaller.MAX_SEEDS_PER_PRIMER + " reads per primer are extended through the baited"
                 + " reads (Tadpole mode=extend k=" + ReadExtensionCaller.K + " "
                 + String.join(" ", BbtoolsCommands.EXTEND_OPTIONS) + "); a product needs at least "
-                + ReadExtensionCaller.MIN_CLOSING_READS_PER_SIDE + " extended reads seeded from each primer, and"
+                + ReadExtensionCaller.MIN_CLOSING_READS_PER_SIDE + " extended reads seeded from one primer, and"
                 + " read pairs holding each of its windows (the largest window of " + PairSupport.MIN_WINDOW + ", "
                 + (PairSupport.MIN_WINDOW + PairSupport.WINDOW_STEP) + ", ... bases whose median is held by "
                 + PairSupport.MIN_MEDIAN_FRAGMENTS + " pairs; none held by fewer than "

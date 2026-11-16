@@ -197,25 +197,28 @@ public final class ReadExtensionStage {
             latest = current;
             latestReads = readFasta(extendedFile, lengths.keySet());
             latestHits = Files.isRegularFile(hitsFile) ? linesOf(hitsFile) : List.of();
-            // Assays closed this round keep this round's extended reads and products.
-            Set<String> closedNow = new HashSet<>();
-            current.forEach((assay, outcome) -> {
-                if (!outcome.closed().isEmpty()) {
-                    settled.put(assay, outcome);
-                    closedNow.add(assay);
+            // Assays done this round keep this round's extended reads and outcome: those closed, and those whose
+            // extended reads loop in a tandem repeat, which they cannot cross (they take no more rounds).
+            Set<String> doneNow = new HashSet<>();
+            for (Map.Entry<String, Outcome> entry : current.entrySet()) {
+                String assay = entry.getKey();
+                if (!entry.getValue().closed().isEmpty()
+                        || ReadExtensionCaller.tandemRepeat(readsOf(assay, open, latestReads)) != null) {
+                    settled.put(assay, entry.getValue());
+                    doneNow.add(assay);
                 }
-            });
-            Set<String> closedSeeds = new HashSet<>();
-            open.stream().filter(seed -> closedNow.contains(seed.assay())).forEach(seed -> closedSeeds.add(seed.id()));
-            for (String id : closedSeeds) {
+            }
+            Set<String> doneSeeds = new HashSet<>();
+            open.stream().filter(seed -> doneNow.contains(seed.assay())).forEach(seed -> doneSeeds.add(seed.id()));
+            for (String id : doneSeeds) {
                 String read = latestReads.get(id);
                 if (read != null) {
                     settledReads.put(id, read);
                 }
             }
-            latestHits.stream().filter(line -> closedSeeds.contains(line.substring(0, Math.max(0, line.indexOf('\t')))))
+            latestHits.stream().filter(line -> doneSeeds.contains(line.substring(0, Math.max(0, line.indexOf('\t')))))
                     .forEach(settledHits::add);
-            open = open.stream().filter(seed -> !closedNow.contains(seed.assay())).toList();
+            open = open.stream().filter(seed -> !doneNow.contains(seed.assay())).toList();
             if (open.isEmpty() || round == MAX_ROUNDS) {
                 break;
             }
@@ -244,6 +247,15 @@ public final class ReadExtensionStage {
         evaluated.putAll(settled);
         Map<String, String> finalReads = new java.util.LinkedHashMap<>(latestReads);
         finalReads.putAll(settledReads);
+        // What the extended reads of an assay not closed ran into, for its diagnostics.
+        for (Map.Entry<String, Outcome> entry : evaluated.entrySet()) {
+            if (entry.getValue().closed().isEmpty()) {
+                String repeat = ReadExtensionCaller.tandemRepeat(readsOf(entry.getKey(), seeds, finalReads));
+                if (repeat != null) {
+                    entry.setValue(entry.getValue().withTandemRepeat(repeat));
+                }
+            }
+        }
         List<String> finalHits = new ArrayList<>(settledHits);
         latestHits.stream().filter(line -> !line.equals(BlastTsv.HEADER) && !settledReads.containsKey(
                 line.substring(0, Math.max(0, line.indexOf('\t'))))).forEach(finalHits::add);
@@ -271,6 +283,18 @@ public final class ReadExtensionStage {
     static final int MAX_ROUNDS = 20;
     /** Bases at each end of an extended read from which a round baits: more than a fragment, so mates reach past it. */
     static final int END_LENGTH = 500;
+
+    /** The extended reads of {@code assay}'s seeds among {@code seeds}, by seed. */
+    private static Map<String, String> readsOf(String assay, List<Seed> seeds, Map<String, String> extended) {
+        Map<String, String> reads = new HashMap<>();
+        for (Seed seed : seeds) {
+            String read = extended.get(seed.id());
+            if (seed.assay().equals(assay) && read != null) {
+                reads.put(seed.id(), read);
+            }
+        }
+        return reads;
+    }
 
     /** Where each open seed lies in its extended read: bases added before it and after it ({-1, -1}: not found). */
     static Map<String, int[]> sides(List<Seed> open, Map<String, String> seedBases, Map<String, String> extended) {
@@ -356,7 +380,7 @@ public final class ReadExtensionStage {
     }
 
     /**
-     * Checks every product that extended reads of both primers hold against the sample's
+     * Checks every product that extended reads hold against the sample's
      * read pairs ({@link PairSupport}): a wrong turn through a repeat is closed from both
      * sides too, but no read pair of the sample spans it. The pairs are taken from the
      * sample's own reads, with BBDuk, not from the baited reads, which thin out away

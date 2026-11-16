@@ -49,7 +49,7 @@ class RunSettingsTest {
         // As the command runs it, not a copy that could drift from it.
         assertTrue(extension.contains("Tadpole mode=extend k=31 " + String.join(" ", BbtoolsCommands.EXTEND_OPTIONS)),
                 extension);
-        assertTrue(extension.contains("at least 2 extended reads seeded from each primer"), extension);
+        assertTrue(extension.contains("at least 2 extended reads seeded from one primer"), extension);
         assertTrue(extension.contains("read pairs holding each of its windows (the largest window of 100, 150, ..."
                 + " bases whose median is held by 10 pairs; none held by fewer than 2 or 10% of the median), and no"
                 + " repeat that long with another copy in the sample"), extension);

@@ -42,6 +42,15 @@
     (`SampleFiles`), not from a copy of the longest name.
   - FASTQ input from an installation whose path has an accented letter and a
     `#` or `%` failed inside BBTools; the run stops at once saying why.
+- `scripts/release-windows.ps1` under Windows PowerShell 5.1 (which
+  `release-windows.bat` started) ran `./mvnw`, the Unix script, and could then
+  package a jar an earlier build left; Maven's exit code was not checked. It
+  needs PowerShell 7 (`pwsh`, which the `.bat` now starts when installed) and
+  stops when Maven fails.
+- Windows test harness: the two cases killing a run passed as "skipped" when no
+  program was seen to be killed, so they could stop testing without anyone
+  knowing; they fail then. New cases: sample names Windows cannot give a
+  folder, and an input whose every file is faulty.
 
 ### Changed
 

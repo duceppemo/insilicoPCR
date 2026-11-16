@@ -360,6 +360,28 @@ Check-Run 'bom-genome' $r $out 'none' | Out-Null
 $p = Get-Products (Join-Path $out 'consolidated_report\report.tsv')
 if ($p -eq 'isolate_01 stxQ 118 target; isolate_01 toxA 312 target') { Record 'bom-genome-products' 'PASS' '' 0 '' } else { Record 'bom-genome-products' 'FAIL' '' 0 "products: '$p'" }
 
+# Sample names Windows cannot give a results folder: the sample is left out, the others are run.
+$d = Join-Path $Work 'data\odd-names'
+New-Item -ItemType Directory -Force $d | Out-Null
+Copy-Item "$Examples\genomes\isolate_01.fasta" "$d\isolate_01.fasta"
+Copy-Item "$Examples\genomes\isolate_02.fasta" "$d\trailing space .fasta"
+# A file cannot be named con.fasta on Windows, but nul_R1.fastq.gz can, and its sample is "nul".
+Copy-Item "$Examples\reads\isolate_01_R1.fastq.gz" "$d\nul_R1.fastq.gz"
+Copy-Item "$Examples\reads\isolate_01_R2.fastq.gz" "$d\nul_R2.fastq.gz"
+$out = Join-Path $d 'out'
+$r = Run-Case 'sample-names-windows-cannot-use' $Java (App-Args @('-i', $d, '-p', "$DataPlain\primers.fasta", '-o', $out, '-t', '2'))
+Check-Run 'sample-names-windows-cannot-use' $r $out 'none' 0 'the sample name ends with a space' | Out-Null
+$p = Get-Products (Join-Path $out 'consolidated_report\report.tsv')
+$ok = $p -eq 'isolate_01 stxQ 118 target; isolate_01 toxA 312 target' -and $r.All -like '*keeps for a device*'
+Record 'sample-names-windows-cannot-use-products' $(if ($ok) { 'PASS' } else { 'FAIL' }) '' 0 "products: '$p'"
+
+# Every input file faulty: no report, exit code 1, for a workflow manager to see.
+$d = Join-Path $Work 'data\all-faulty'
+New-Item -ItemType Directory -Force $d | Out-Null
+Set-Content -Encoding ASCII "$d\headers.fasta" ">c1`n>c2`n"
+$r = Run-Case 'all-inputs-faulty' $Java (App-Args @('-i', $d, '-p', "$DataPlain\primers.fasta", '-o', "$d\out", '-t', '2'))
+Check-Run 'all-inputs-faulty' $r "$d\out" 'none' 1 'every input file is faulty' | Out-Null
+
 # Plain data, awkward output folders.
 foreach ($o in @('out\Données (résultats)', 'out\数据 Δ result', 'out\R&D 100% !bang')) {
     $out = Join-Path $Work $o
@@ -629,14 +651,18 @@ public static class FakeData {
         }
         Start-Sleep -Milliseconds 700
         $children = @(Get-Descendants $p.Id)
-        Stop-Process -Id $p.Id -Force
+        $endedFirst = $p.HasExited
+        Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
         Start-Sleep -Seconds 4
         $alive = @($children | Where-Object { Get-Process -Id $_.ProcessId -ErrorAction SilentlyContinue })
         $names = ($children | ForEach-Object { "$($_.Name)($($_.ProcessId))" }) -join ', '
         $aliveNames = ($alive | ForEach-Object { "$($_.Name)($($_.ProcessId))" }) -join ', '
         $dir = Join-Path $Results $k.Case
         $children | Select-Object ProcessId, Name, CommandLine | Format-List | Out-String -Width 4000 | Set-Content -Encoding UTF8 (Join-Path $dir 'children.txt')
-        if (-not $children) { Record $k.Case 'SKIP' '' 0 "no $($k.Wait) child seen" }
+        # Only the program waited for proves anything: a case that never saw it, or whose run had
+        # ended before the kill, tested nothing, and fails rather than passing unseen.
+        if ($endedFirst) { Record $k.Case 'FAIL' $p.ExitCode 0 "the run ended before it could be killed (children seen: $names)" }
+        elseif (-not ($children | Where-Object Name -eq $k.Wait)) { Record $k.Case 'FAIL' '' 0 "no $($k.Wait) child seen within 60 s (children seen: $names)" }
         elseif ($alive) { Record $k.Case 'FAIL' 'killed' 0 "still running 4 s after insilicoPCR was killed: $aliveNames (children were: $names)" }
         else { Record $k.Case 'PASS' 'killed' 0 "children stopped with it: $names" }
         foreach ($a in $alive) { Stop-Process -Id $a.ProcessId -Force -ErrorAction SilentlyContinue }

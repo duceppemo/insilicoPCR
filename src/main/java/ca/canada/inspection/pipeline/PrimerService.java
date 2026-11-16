@@ -175,7 +175,8 @@ public final class PrimerService {
      */
     private static void validatePrimerId(String id) {
         if (PrimerId.parse(id) == null) {
-            throw new PipelineException("Primer ID must follow the <assay>-F / <assay>-R / <assay>-P naming convention: " + id);
+            throw new PipelineException("Primer ID must follow the <assay>-F / <assay>-R / <assay>-P naming convention: " + id
+                    + " (the role letter ends the ID, or comes before an underscore: toxA-F, toxA-F_2, toxA-P)");
         }
         // makeblastdb writes any other character as '#' (and still succeeds): the hits of the primer then
         // name one the run does not know, and the assay was negative everywhere, without a word.
@@ -218,10 +219,22 @@ public final class PrimerService {
         }
         String normalized = sequence.trim().toUpperCase();
         if (!VALID_PRIMER_SEQUENCE.matcher(normalized).matches()) {
-            throw new PipelineException("Primer sequence contains incompatible characters:\n" + id + "\n" + sequence);
+            String other = normalized.codePoints().filter(c -> !VALID_PRIMER_SEQUENCE.matcher(Character.toString(c)).matches())
+                    .distinct().collect(StringBuilder::new, StringBuilder::appendCodePoint, StringBuilder::append)
+                    .toString();
+            throw new PipelineException("Primer sequence of " + id + " holds characters that are not bases (" + other
+                    + "): " + sequence);
+        }
+        if (normalized.length() < MIN_OLIGO_LENGTH) {
+            throw new PipelineException("Primer " + id + " is " + normalized.length() + (normalized.length() == 1
+                    ? " base" : " bases") + " long: BLAST finds no site of an oligo under " + MIN_OLIGO_LENGTH
+                    + " bases (its shortest word), and the assay would be negative everywhere");
         }
         return normalized;
     }
+
+    /** The shortest oligo searched: blastn-short's word size; a shorter one never has a hit. */
+    static final int MIN_OLIGO_LENGTH = 7;
 
     /**
      * Most variants one degenerate oligo may expand to: 4^8, eight N. More would make a BLAST

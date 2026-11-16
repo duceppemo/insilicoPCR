@@ -53,10 +53,12 @@ public final class BlastHitParser {
      */
     public static Optional<BlastResult> parse(String line, PrimerPanel primers, AmpliconOptions options,
                                               Function<BlastResult, TrimmedEnds.Template> templates) {
+        int fivePrimeFree = options.maxFivePrimeTruncation();
         return toHit(line, primers)
                 .map(hit -> TrimmedEnds.needsTemplate(hit, options)
-                        ? TrimmedEnds.extend(hit, templates.apply(hit))
+                        ? TrimmedEnds.extend(hit, templates.apply(hit), fivePrimeFree)
                         : hit)
+                .map(hit -> PrimerId.isProbe(hit.subjectID()) ? hit : hit.withFivePrimeFree(fivePrimeFree))
                 .filter(hit -> accepts(hit, options));
     }
 
@@ -113,7 +115,8 @@ public final class BlastHitParser {
         }
         // Unaligned 3' bases left here could not be compared with the template (beyond
         // its end, or no template given): count them as mismatches, like aligned ones.
-        return hit.primerMismatches() <= options.maxTotalMismatches()
+        return hit.fivePrimeUncovered() <= options.maxFivePrimeTruncation()
+                && hit.primerMismatches() <= options.maxTotalMismatches()
                 && hit.threePrimePenalty(options.threePrimeWindow()) <= options.maxThreePrimePenalty();
     }
 
@@ -128,7 +131,9 @@ public final class BlastHitParser {
         if (PrimerId.isProbe(hit.subjectID())) {
             return hit.alignedMismatches() <= options.maxProbeMismatches();
         }
-        return hit.alignedMismatches() <= options.maxTotalMismatches()
-                && hit.fivePrimeUncovered() <= options.maxFivePrimeTruncation();
+        // A primer's aligned mismatches past its first --5p-truncation bases count, whatever the trimmed
+        // bases are; its trimmed 5' bases past them are compared with the template (TrimmedEnds), so
+        // their number decides only when the template does not have them (accepts).
+        return hit.alignedMismatchesPast(options.maxFivePrimeTruncation()) <= options.maxTotalMismatches();
     }
 }

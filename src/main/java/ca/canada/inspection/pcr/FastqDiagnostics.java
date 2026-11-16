@@ -161,6 +161,7 @@ public final class FastqDiagnostics {
                                        ReadEvidence reads, Map<String, Integer> contigLengths,
                                        Map<String, ReadExtensionCaller.Outcome> extension) {
         Map<String, Set<Integer>> assembled = Products.sizes(sample, primers, options);
+        Map<String, Set<String>> otherProducts = otherProducts(Products.of(sample, primers, options));
         List<Finding> findings = new ArrayList<>();
 
         for (Map.Entry<String, PrimerId.Assay> entry : primers.completeAssays().entrySet()) {
@@ -227,8 +228,13 @@ public final class FastqDiagnostics {
                         + " bp; " + describe(outcome);
             }
             AssemblyFinding assembly = classifyAssembly(group, sample, contigLengths);
+            // The report may still show the assay's primers in a product that is not its designed pair's: the
+            // finding said "only the forward primer in the reads" beside a report row of the assay.
+            Set<String> others = otherProducts.get(assay);
+            String assemblyDetail = others == null ? assembly.detail()
+                    : assembly.detail() + "; the report's " + String.join(", ", others) + " (not the designed pair)";
             findings.add(new Finding(sample.getName(), assay, status, assembly.kind(), counts, checkable,
-                    readDetail, assembly.detail()));
+                    readDetail, assemblyDetail));
         }
         return findings;
     }
@@ -348,6 +354,29 @@ public final class FastqDiagnostics {
 
     private static String join(Set<Integer> sizes) {
         return sizes.stream().map(String::valueOf).collect(Collectors.joining(","));
+    }
+
+    /**
+     * By assay, the products of {@code rows} its primers make that are not its designed pair's: of one of
+     * them alone ("its 500 bp product is of one primer alone"), or with another assay of its reaction.
+     */
+    private static Map<String, Set<String>> otherProducts(List<ReportRow> rows) {
+        Map<String, Set<String>> others = new java.util.TreeMap<>();
+        for (ReportRow row : rows) {
+            if (row.pairing() == ReportRow.Pairing.DESIGNED) {
+                continue;
+            }
+            String text = row.pairing() == ReportRow.Pairing.ONE_PRIMER
+                    ? row.size() + " bp product is of one primer alone"
+                    : row.size() + " bp " + row.assay() + " product is of two assays";
+            for (String primer : List.of(row.forwardPrimer(), row.reversePrimer())) {
+                PrimerId id = PrimerId.parse(primer);
+                if (id != null) {
+                    others.computeIfAbsent(id.assay(), ignored -> new java.util.TreeSet<>()).add(text);
+                }
+            }
+        }
+        return others;
     }
 
     private record AssemblyFinding(Assembly kind, String detail) {

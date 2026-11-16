@@ -25,6 +25,23 @@
 
 ### Fixed
 
+- An insertion or deletion in a primer site changed `AmpliconSize` by its
+  length, though the primer, not the site, is copied into the product: the
+  size is both primers in full and the template between their 3' ends.
+  `GenomeLocation` stays the template's span.
+- One mismatch at a primer's 5th base was counted against `-m`, while two
+  there (bases 1 and 5) were not, BLAST trimming those off: within
+  `--5p-truncation`, a 5' mismatch or indel is a 5' unpaired base, aligned or
+  not. Bases BLAST trims past the allowance are compared with the template and
+  count when they differ; a site so trimmed was rejected outright.
+- A primer ID whose role letter is followed by more letters (`stxQ-FAM`, a probe
+  named for its dye; `toxA-Rev`) was read by its first letter: `stxQ-FAM` was a
+  second forward primer, the assay lost its probe, and a product of it with
+  `stxQ-R` was reported. Such an ID is refused, as is an oligo of fewer than 7
+  bases, which BLAST never finds; a sequence character that is not a base is
+  named.
+- FASTQ diagnostics: a finding for an assay the report shows a product of one
+  primer alone (or of two assays) for names it.
 - A primer site within `-m 2` or `-m 3` on a long sequence (a chromosome) could
   be dropped without a word: BLAST's e-value grows with the length of the
   sequence searched, and such a site's went over the cut-off on a whole

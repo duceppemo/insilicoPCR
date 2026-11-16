@@ -293,6 +293,23 @@ class FastqDiagnosticsTest {
     }
 
     @Test
+    void aProductOfOnePrimerAloneInTheReportIsNamedBesideTheFinding() {
+        // The mini-assembly holds assay-F on both strands, facing: the report has an assay row, a product of
+        // the forward primer alone, while the finding said no read carries the reverse primer, and no more.
+        Sample sample = fastqSample();
+        sample.hits().add("assay-F", TestHits.plusHit("assay-F", "contig_0", 101));
+        sample.hits().add("assay-F", TestHits.minusHit("assay-F", "contig_0", 581));
+        sample.hits().add("assay-P", TestHits.plusHit("assay-P", "contig_0", 300));
+
+        Finding finding = FastqDiagnostics.assess(sample, PRIMERS, DEFAULTS, noReadCall(Map.of("assay-F", 20L)),
+                Map.of("contig_0", 2000), Map.of()).getFirst();
+
+        assertEquals(Status.PARTIAL_BAIT, finding.status());
+        assertTrue(finding.assemblyDetail().endsWith("; the report's 500 bp product is of one primer alone (not the"
+                + " designed pair)"), finding.assemblyDetail());
+    }
+
+    @Test
     void productTheReadPairsDoNotSupportIsWithheldWithTheReason() {
         // A wrong turn through a repeat: closed from both sides, but no read pair spans one window.
         ReadExtensionCaller.Product wrongTurn = new ReadExtensionCaller.Product("assay", 727, Set.of(727), 44, 52,

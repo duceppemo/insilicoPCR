@@ -22,17 +22,17 @@ class PrimerServiceTest {
 
     @Test
     void degeneratePrimerExpandsToAllCombinations() {
-        Map<String, String> expanded = PrimerService.expand(map("assay-F", "ARYT"));
+        Map<String, String> expanded = PrimerService.expand(map("assay-F", "ARYTACG"));
         assertEquals(4, expanded.size()); // R -> A/G, Y -> T/C
         assertTrue(expanded.containsKey("assay-F_0"));
-        assertTrue(expanded.values().containsAll(java.util.List.of("AATT", "AACT", "AGTT", "AGCT")),
+        assertTrue(expanded.values().containsAll(java.util.List.of("AATTACG", "AACTACG", "AGTTACG", "AGCTACG")),
                 "unexpected expansions: " + expanded.values());
     }
 
     @Test
     void lowercaseSequencesAreNormalized() {
-        Map<String, String> expanded = PrimerService.expand(map("assay-F", "acgt"));
-        assertEquals("ACGT", expanded.get("assay-F"));
+        Map<String, String> expanded = PrimerService.expand(map("assay-F", "acgtacg"));
+        assertEquals("ACGTACG", expanded.get("assay-F"));
     }
 
     @Test
@@ -71,7 +71,7 @@ class PrimerServiceTest {
     @Test
     void loadAndPrepareReadsMultiLineFastaExpandsAndWritesDatabase() throws java.io.IOException {
         java.nio.file.Path primerFile = java.nio.file.Files.writeString(dir.resolve("primers.fasta"),
-                ">assay-F\nACGT\nacgt\n\n>assay-R\nACRT\n");
+                ">assay-F\nACGT\nacgt\n\n>assay-R\nACRTACG\n");
         java.nio.file.Path input = java.nio.file.Files.writeString(dir.resolve("in.fasta"), ">c\nACGT\n");
         java.nio.file.Path out = dir.resolve("out");
         var config = PipelineConfig.builder(input, out, primerFile).build();
@@ -83,8 +83,8 @@ class PrimerServiceTest {
         assertTrue(prepared.expectedSizes().isEmpty());
 
         assertEquals("ACGTACGT", primers.get("assay-F")); // lines joined, uppercased
-        assertEquals("ACAT", primers.get("assay-R_0"));   // R expanded to A/G
-        assertEquals("ACGT", primers.get("assay-R_1"));
+        assertEquals("ACATACG", primers.get("assay-R_0"));   // R expanded to A/G
+        assertEquals("ACGTACG", primers.get("assay-R_1"));
         String db = java.nio.file.Files.readString(directories.primerDatabase());
         assertTrue(db.contains(">assay-R_0"));
     }
@@ -99,11 +99,22 @@ class PrimerServiceTest {
                 Map.entry("H", "ATC".toCharArray()), Map.entry("V", "ACG".toCharArray()),
                 Map.entry("N", "ATCG".toCharArray()));
         for (var entry : expected.entrySet()) {
-            Map<String, String> expanded = PrimerService.expand(map("x-F", "A" + entry.getKey()));
+            Map<String, String> expanded = PrimerService.expand(map("x-F", "AAAAAA" + entry.getKey()));
             assertEquals(entry.getValue().length, expanded.size(), "code " + entry.getKey());
         }
         // Two Ns expand to 16 combinations.
-        assertEquals(16, PrimerService.expand(map("x-F", "NN")).size());
+        assertEquals(16, PrimerService.expand(map("x-F", "AAAAANN")).size());
+    }
+
+    @Test
+    void anOligoShorterThanBlastsWordIsRefusedAndABadCharacterNamed() {
+        // BLAST finds no site of an oligo under 7 bases: the assay was negative everywhere, without a word.
+        PipelineException shortOne = assertThrows(PipelineException.class, () -> PrimerService.expand(map("x-F", "ACGTAC")));
+        assertTrue(shortOne.getMessage().startsWith("Primer x-F is 6 bases long: BLAST finds no site"), shortOne.getMessage());
+        assertEquals(1, PrimerService.expand(map("x-F", "ACGTACG")).size());
+        PipelineException bad = assertThrows(PipelineException.class, () -> PrimerService.expand(map("x-F", "ACGT.ACG")));
+        assertTrue(bad.getMessage().startsWith("Primer sequence of x-F holds characters that are not bases (.)"),
+                bad.getMessage());
     }
 
     @Test
@@ -116,13 +127,13 @@ class PrimerServiceTest {
         // Before, the whole header was the ID: BLAST named the primer "assay-F", no hit
         // matched "assay-F forward primer", and the assay was silently never reported.
         java.nio.file.Path primerFile = java.nio.file.Files.writeString(dir.resolve("described.fasta"),
-                ">assay-F forward primer, Smith 2010\nACGT\n>assay-R\treverse\nACGT\n");
+                ">assay-F forward primer, Smith 2010\nACGTACG\n>assay-R\treverse\nACGTACG\n");
 
         PrimerService.PrimerFile file = PrimerService.read(primerFile);
 
         assertEquals(java.util.List.of("assay-F", "assay-R"), java.util.List.copyOf(file.sequences().keySet()));
         assertTrue(file.expectedSizes().isEmpty());
-        assertEquals(Map.of("assay-F", "ACGT", "assay-R", "ACGT"), PrimerService.expand(file.sequences()));
+        assertEquals(Map.of("assay-F", "ACGTACG", "assay-R", "ACGTACG"), PrimerService.expand(file.sequences()));
     }
 
     @Test
@@ -142,7 +153,7 @@ class PrimerServiceTest {
     @Test
     void productSizesDeclaredInHeadersAreRead() throws java.io.IOException {
         java.nio.file.Path primerFile = java.nio.file.Files.writeString(dir.resolve("sized.fasta"),
-                ">its-F size=420-450 other=575\nACGT\n>its-R\nACRT\n>plain-F\nACGT\n>plain-R\nACGT\n");
+                ">its-F size=420-450 other=575\nACGTACG\n>its-R\nACRTACG\n>plain-F\nACGTACG\n>plain-R\nACGTACG\n");
         java.nio.file.Path input = java.nio.file.Files.writeString(dir.resolve("in2.fasta"), ">c\nACGT\n");
         var config = PipelineConfig.builder(input, dir.resolve("out2"), primerFile).build();
 
@@ -187,7 +198,7 @@ class PrimerServiceTest {
 
         PipelineException error = assertThrows(PipelineException.class, () -> PrimerService.read(primerFile));
 
-        assertTrue(error.getMessage().endsWith("naming convention: assay_R"), error.getMessage());
+        assertTrue(error.getMessage().contains("naming convention: assay_R (the role letter ends the ID"), error.getMessage());
     }
 
     @org.junit.jupiter.api.Test

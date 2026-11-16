@@ -16,10 +16,13 @@ import ca.canada.inspection.model.BlastResult;
  *       bases that differ count as probe mismatches;</li>
  *   <li>primers, 3' end: the same, so one 3' mismatch counts once instead of once
  *       per trimmed base (in the total budget and the 3' penalty alike);</li>
- *   <li>primers, 5' end: left unaligned, so {@code --5p-truncation} decides as
- *       before and the mismatch budget does not count them (5'-tailed primers do not
- *       pair there on purpose); only the number of those bases that do not pair is
- *       recorded, for the report.</li>
+ *   <li>primers, 5' end: the first {@code --5p-truncation} bases are left unaligned,
+ *       and the mismatch budget does not count them (5'-tailed primers do not pair
+ *       there on purpose); only the number of those bases that do not pair is
+ *       recorded, for the report. Trimmed bases past them are added back like the
+ *       3' end's, their mismatches counted: BLAST trims through a mismatch near
+ *       the 5' end with another before it, and a site of two mismatches there was
+ *       rejected where a site of one, past them, was not.</li>
  * </ul>
  * <p>Ambiguous template bases (N, IUPAC codes) do not pair. Bases beyond the end of
  * the template cannot be compared: they stay unaligned and are treated as before.</p>
@@ -68,6 +71,14 @@ public final class TrimmedEnds {
      *                 {@code null} leaves the hit unchanged
      */
     public static BlastResult extend(BlastResult hit, Template template) {
+        return extend(hit, template, Integer.MAX_VALUE);
+    }
+
+    /**
+     * As {@link #extend(BlastResult, Template)}, a primer's trimmed 5' bases past its first
+     * {@code fivePrimeFree} ({@code --5p-truncation}) added back as alignment columns.
+     */
+    public static BlastResult extend(BlastResult hit, Template template, int fivePrimeFree) {
         if (template == null || hit.primerSeq() == null || hit.primerSeq().length() != hit.slen()
                 || hit.fivePrimeUncovered() + hit.threePrimeUncovered() == 0) {
             return hit;
@@ -78,25 +89,28 @@ public final class TrimmedEnds {
         // The query side left of qstart holds the oligo's 5' end on the plus strand, its 3' end on the minus strand.
         Side left = side(hit, template, plus, true);
         Side right = side(hit, template, plus, false);
-        boolean extendLeft = probe || !plus;
-        boolean extendRight = probe || plus;
-
+        // Bases added back on each side, nearest the alignment first: all compared ones, but on a primer's
+        // 5' side only those past its first fivePrimeFree bases.
+        int addLeft = left.compared();
+        int addRight = right.compared();
         int fivePrimeUnpaired = -1;
         if (!probe) {
             Side fivePrime = plus ? left : right;
-            fivePrimeUnpaired = fivePrime.wanted() - fivePrime.compared() + fivePrime.mismatches();
+            int added = Math.min(fivePrime.compared(), Math.max(0, fivePrime.wanted() - fivePrimeFree));
+            fivePrimeUnpaired = fivePrime.wanted() - fivePrime.compared() + fivePrime.mismatchesBeyond(added);
+            if (plus) {
+                addLeft = added;
+            } else {
+                addRight = added;
+            }
         }
-        int addLeft = extendLeft ? left.compared() : 0;
-        int addRight = extendRight ? right.compared() : 0;
         if (addLeft == 0 && addRight == 0 && fivePrimeUnpaired < 0) {
             return hit;
         }
 
-        int extraMismatches = (extendLeft ? left.mismatches() : 0) + (extendRight ? right.mismatches() : 0);
-        String qseq = hit.qseq() == null ? null
-                : (extendLeft ? left.query() : "") + hit.qseq() + (extendRight ? right.query() : "");
-        String sseq = hit.sseq() == null ? null
-                : (extendLeft ? left.subject() : "") + hit.sseq() + (extendRight ? right.subject() : "");
+        int extraMismatches = left.mismatchesWithin(addLeft) + right.mismatchesWithin(addRight);
+        String qseq = hit.qseq() == null ? null : left.query(addLeft) + hit.qseq() + right.query(addRight);
+        String sseq = hit.sseq() == null ? null : left.subject(addLeft) + hit.sseq() + right.subject(addRight);
         return new BlastResult(
                 hit.queryID(),
                 hit.subjectID(),
@@ -117,13 +131,37 @@ public final class TrimmedEnds {
     /**
      * Trimmed bases on one query side of the alignment.
      *
-     * @param wanted     oligo bases BLAST left out on this side
-     * @param compared   how many of them the template has (contiguous from the alignment edge)
-     * @param mismatches how many of the compared ones do not pair
-     * @param query      template bases of the compared positions, left to right
-     * @param subject    oligo bases of the compared positions as aligned to the query's plus strand
+     * @param left     whether the side is left of the alignment
+     * @param wanted   oligo bases BLAST left out on this side
+     * @param compared how many of them the template has (contiguous from the alignment edge)
+     * @param unpaired for each compared base, nearest the alignment first, whether it does not pair
+     * @param query    template bases of the compared positions, left to right
+     * @param subject  oligo bases of the compared positions as aligned to the query's plus strand
      */
-    private record Side(int wanted, int compared, int mismatches, String query, String subject) {
+    private record Side(boolean left, int wanted, int compared, boolean[] unpaired, String query, String subject) {
+        /** Unpaired bases among the {@code count} nearest the alignment. */
+        int mismatchesWithin(int count) {
+            int mismatches = 0;
+            for (int k = 0; k < count; k++) {
+                mismatches += unpaired[k] ? 1 : 0;
+            }
+            return mismatches;
+        }
+
+        /** Unpaired bases among the compared ones past the {@code count} nearest the alignment. */
+        int mismatchesBeyond(int count) {
+            return mismatchesWithin(compared) - mismatchesWithin(count);
+        }
+
+        /** Template bases of the {@code count} positions nearest the alignment, left to right. */
+        String query(int count) {
+            return left ? query.substring(compared - count) : query.substring(0, count);
+        }
+
+        /** Oligo bases of the {@code count} positions nearest the alignment, left to right. */
+        String subject(int count) {
+            return left ? subject.substring(compared - count) : subject.substring(0, count);
+        }
     }
 
     private static Side side(BlastResult hit, Template template, boolean plus, boolean leftSide) {
@@ -136,7 +174,7 @@ public final class TrimmedEnds {
         }
         char[] query = new char[compared];
         char[] subject = new char[compared];
-        int mismatches = 0;
+        boolean[] unpaired = new boolean[compared];
         // Query position qstart - k pairs with oligo position sstart - k (plus) or sstart + k (minus);
         // qend + k pairs with send + k (plus) or send - k (minus).
         for (int k = 1; k <= compared; k++) {
@@ -149,9 +187,9 @@ public final class TrimmedEnds {
             int index = leftSide ? compared - k : k - 1;
             query[index] = q;
             subject[index] = s;
-            mismatches += pairs(q, s) ? 0 : 1;
+            unpaired[k - 1] = !pairs(q, s);
         }
-        return new Side(wanted, compared, mismatches, new String(query), new String(subject));
+        return new Side(leftSide, wanted, compared, unpaired, new String(query), new String(subject));
     }
 
     private static char oligoBaseInQueryOrientation(BlastResult hit, int oligoPosition, boolean plus) {

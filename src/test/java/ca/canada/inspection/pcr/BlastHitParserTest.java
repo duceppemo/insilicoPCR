@@ -90,10 +90,52 @@ class BlastHitParserTest {
     }
 
     @Test
-    void internalMismatchOutsideWindowUsesTotalBudget() {
-        // Mismatch at primer position 5: fine with -m 1, rejected with -m 0.
+    void aMismatchWithinTheFivePrimeAllowanceIsAnUnpairedFivePrimeBase() {
+        // One mismatch at base 5, which BLAST keeps aligned: it was counted against -m 0, while two there
+        // (bases 1 and 5), which BLAST trims off, were not. Within --5p-truncation 5 it is a 5' base that does
+        // not pair, and the report says so.
         StringBuilder qseq = new StringBuilder(PRIMER_20);
         qseq.setCharAt(4, 'T' == qseq.charAt(4) ? 'A' : 'T');
+        String blastLine = line("assay-F", 1, 0, 20, 20, 101, 120, qseq.toString(), 1, 20, PRIMER_20);
+
+        Optional<BlastResult> hit = BlastHitParser.parse(blastLine, PRIMERS, STRICT);
+        assertTrue(hit.isPresent());
+        assertEquals(0, hit.get().primerMismatches());
+        assertEquals(1, hit.get().fivePrimeUnpairedBases());
+        // With --5p-truncation 4, base 5 is past the allowance: a mismatch again.
+        assertTrue(BlastHitParser.parse(blastLine, PRIMERS, new AmpliconOptions(0, 0, 5, 0, 4, 0, 5000)).isEmpty());
+    }
+
+    @Test
+    void trimmedFivePrimeBasesPastTheAllowanceAreComparedNotRejected() {
+        // Mismatches at bases 4 and 7: BLAST trims the first 7 bases. They were rejected, 7 being over
+        // --5p-truncation 5, while a site with base 7's mismatch alone passed -m 1. Base 4 is within the
+        // allowance; base 7, compared with the template, is one mismatch.
+        StringBuilder site = new StringBuilder(PRIMER_20);
+        for (int index : new int[]{3, 6}) {
+            site.setCharAt(index, site.charAt(index) == 'A' ? 'C' : 'A');
+        }
+        String flank = "GGGGGGGGGGGGGGGGGGGG";
+        TrimmedEnds.Template template = TrimmedEnds.Template.whole(flank + site + flank);
+        String aligned = PRIMER_20.substring(7);
+        String blastLine = line("assay-F", 0, 0, 20, 13, 28, 40, aligned, 8, 20, aligned);
+
+        Optional<BlastResult> hit = BlastHitParser.parse(blastLine, PRIMERS, new AmpliconOptions(1, 1, 5, 0, 5, 0, 5000),
+                any -> template);
+        assertTrue(hit.isPresent());
+        assertEquals(1, hit.get().primerMismatches());
+        assertEquals(1, hit.get().fivePrimeUnpairedBases(), "base 4");
+        assertEquals(21, hit.get().fivePrimeTerminus(), "5 bases left unaligned before 26");
+        assertTrue(BlastHitParser.parse(blastLine, PRIMERS, STRICT, any -> template).isEmpty(), "-m 0");
+        // Without the template the bases cannot be compared: 7 unaligned, over the allowance.
+        assertTrue(BlastHitParser.parse(blastLine, PRIMERS, new AmpliconOptions(1, 1, 5, 0, 5, 0, 5000)).isEmpty());
+    }
+
+    @Test
+    void internalMismatchOutsideWindowUsesTotalBudget() {
+        // Mismatch at primer position 6, past --5p-truncation 5: fine with -m 1, rejected with -m 0.
+        StringBuilder qseq = new StringBuilder(PRIMER_20);
+        qseq.setCharAt(5, 'T' == qseq.charAt(5) ? 'A' : 'T');
         String blastLine = line("assay-F", 1, 0, 20, 20, 101, 120, qseq.toString(), 1, 20, PRIMER_20);
 
         assertTrue(BlastHitParser.parse(blastLine, PRIMERS, STRICT).isEmpty());

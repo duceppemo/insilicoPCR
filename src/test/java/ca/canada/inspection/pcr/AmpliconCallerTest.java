@@ -4,6 +4,8 @@ import ca.canada.inspection.model.BlastResult;
 import ca.canada.inspection.pcr.AmpliconCaller.Amplicon;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -24,6 +26,26 @@ class AmpliconCallerTest {
         assertEquals(500, amplicon.size());
         assertEquals('+', amplicon.forwardStrand());
         assertEquals("101-600", amplicon.start() + "-" + amplicon.end());
+    }
+
+    @Test
+    void anIndelInAPrimerSiteIsNotInTheProduct() {
+        // The primer is copied into the product, not the site it binds: a base the site has more (forward,
+        // 100..120 for 20 primer bases) or fewer (reverse, 581..599) leaves the product 500 bp, the size of
+        // the same pair on sites without them. Before 0.15.3 the size was the sites' span, 501 and 499.
+        String primer = TestHits.PRIMER_20;
+        String withInsertion = primer.substring(0, 10) + "A" + primer.substring(10);
+        BlastResult insertion = TestHits.plusHit("assay-F", "contig1", 100, withInsertion,
+                primer.substring(0, 10) + "-" + primer.substring(10));
+        BlastResult deletion = TestHits.minusHit("assay-R", "contig1", 581,
+                primer.substring(0, 10) + "-" + primer.substring(11), primer);
+        BlastResult forward = TestHits.plusHit("assay-F", "contig1", 101);
+        BlastResult reverse = TestHits.minusHit("assay-R", "contig1", 581);
+
+        Amplicon longerSite = AmpliconCaller.call(insertion, reverse, DEFAULTS).orElseThrow();
+        assertEquals(List.of(100, 600, 500), List.of(longerSite.start(), longerSite.end(), longerSite.size()));
+        Amplicon shorterSite = AmpliconCaller.call(forward, deletion, DEFAULTS).orElseThrow();
+        assertEquals(List.of(101, 599, 500), List.of(shorterSite.start(), shorterSite.end(), shorterSite.size()));
     }
 
     @Test

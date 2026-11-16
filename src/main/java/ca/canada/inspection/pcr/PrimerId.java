@@ -58,6 +58,12 @@ public record PrimerId(String assay, Role role) {
         if (lastDash <= 0 || lastDash == id.length() - 1) {
             return null;
         }
+        // The letter ends the ID or comes before an underscore (toxB-F_2, a degenerate primer's X-F_0):
+        // stxQ-FAM, a probe named for its dye, was read as a second forward primer, and toxA-Rev a reverse one.
+        int after = lastDash + 2;
+        if (after < id.length() && id.charAt(after) != '_') {
+            return null;
+        }
         return Role.of(id.charAt(lastDash + 1));
     }
 

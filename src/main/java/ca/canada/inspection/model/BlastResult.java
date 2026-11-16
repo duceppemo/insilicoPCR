@@ -26,7 +26,8 @@ public record BlastResult(
 		String qseq,
 		String sseq,
 		String primerSeq,
-		int fivePrimeUnpaired
+		int fivePrimeUnpaired,
+		int fivePrimeFree
 ) {
 	/** A hit whose unaligned 5' bases were not compared with the template. */
 	public BlastResult(String queryID, String subjectID, int mismatch, int gaps,
@@ -34,6 +35,56 @@ public record BlastResult(
 					   String qseq, String sseq, String primerSeq) {
 		this(queryID, subjectID, mismatch, gaps, qstart, qend, sstart, send, slen, length,
 				qseq, sseq, primerSeq, -1);
+	}
+
+	/** A hit whose aligned 5' mismatches all count ({@link #withFivePrimeFree}). */
+	public BlastResult(String queryID, String subjectID, int mismatch, int gaps,
+					   int qstart, int qend, int sstart, int send, int slen, int length,
+					   String qseq, String sseq, String primerSeq, int fivePrimeUnpaired) {
+		this(queryID, subjectID, mismatch, gaps, qstart, qend, sstart, send, slen, length,
+				qseq, sseq, primerSeq, fivePrimeUnpaired, 0);
+	}
+
+	/**
+	 * Mismatches and indels of the alignment at the oligo's positions past its first {@code n} (from its
+	 * 5' end): those a primer's budget counts when {@code n} is {@code --5p-truncation}. All of them when
+	 * the aligned bases are not known, or do not hold as many as the hit's counts say.
+	 */
+	public int alignedMismatchesPast(int n) {
+		if (n <= 0 || qseq == null || sseq == null || qseq.length() != sseq.length()) {
+			return alignedMismatches();
+		}
+		int direction = isPlusStrand() ? 1 : -1;
+		int position = sstart; // the oligo position of the next oligo base in the alignment
+		int past = 0;
+		int all = 0;
+		for (int i = 0; i < sseq.length(); i++) {
+			char q = Character.toUpperCase(qseq.charAt(i));
+			char s = Character.toUpperCase(sseq.charAt(i));
+			boolean oligoBase = s != '-';
+			// A gap in the oligo (a template base it lacks) sits after the oligo base before it.
+			int at = oligoBase ? position : position - direction;
+			if (q != s) {
+				all++;
+				past += at > n ? 1 : 0;
+			}
+			if (oligoBase) {
+				position += direction;
+			}
+		}
+		return all == alignedMismatches() ? past : alignedMismatches();
+	}
+
+	/**
+	 * This primer hit with its mismatches and indels in its first {@code n} 5' bases ({@code --5p-truncation})
+	 * counted as 5' bases that do not pair, not as mismatches: as if BLAST had left them out of the
+	 * alignment, as it does when two are near the 5' end, not one (before 0.15.3 one there was rejected at
+	 * {@code -m 0}, two were not).
+	 */
+	public BlastResult withFivePrimeFree(int n) {
+		int free = alignedMismatches() - alignedMismatchesPast(n);
+		return free == fivePrimeFree ? this : new BlastResult(queryID, subjectID, mismatch, gaps, qstart, qend,
+				sstart, send, slen, length, qseq, sseq, primerSeq, fivePrimeUnpaired, free);
 	}
 
 	/**
@@ -61,11 +112,12 @@ public record BlastResult(
 
 	/**
 	 * Mismatches as a primer's budget ({@code -m}) counts them, and as the report gives them: those
-	 * in the alignment, and the 3' bases left out of it, which do not pair with the template (or
-	 * lie beyond its end). The one place this count is written.
+	 * in the alignment past its first {@code --5p-truncation} 5' bases ({@link #withFivePrimeFree}), and
+	 * the 3' bases left out of it, which do not pair with the template (or lie beyond its end). The one
+	 * place this count is written.
 	 */
 	public int primerMismatches() {
-		return alignedMismatches() + threePrimeUncovered();
+		return alignedMismatches() - fivePrimeFree + threePrimeUncovered();
 	}
 
 	/**
@@ -104,11 +156,12 @@ public record BlastResult(
 
 	/**
 	 * Number of 5' primer bases that do not pair with the template: the unaligned
-	 * 5' bases that differ from it, or all of them when they were not compared.
-	 * Bases beyond the end of the template count as unpaired.
+	 * 5' bases that differ from it, or all of them when they were not compared, and the
+	 * aligned mismatches and indels within {@code --5p-truncation} of the 5' end
+	 * ({@link #withFivePrimeFree}). Bases beyond the end of the template count as unpaired.
 	 */
 	public int fivePrimeUnpairedBases() {
-		return fivePrimeUnpaired >= 0 ? fivePrimeUnpaired : fivePrimeUncovered();
+		return (fivePrimeUnpaired >= 0 ? fivePrimeUnpaired : fivePrimeUncovered()) + fivePrimeFree;
 	}
 
 	/**

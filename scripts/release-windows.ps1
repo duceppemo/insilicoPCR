@@ -96,6 +96,9 @@ Copy-Item "runtime\windows\blast" (Join-Path $StageDir "runtime\windows\blast") 
 if (Test-Path "README.md") { Copy-Item "README.md" (Join-Path $StageDir "README.md") -Force }
 if (Test-Path "CHANGELOG.md") { Copy-Item "CHANGELOG.md" (Join-Path $StageDir "CHANGELOG.md") -Force }
 if (Test-Path "LICENSE") { Copy-Item "LICENSE" (Join-Path $StageDir "LICENSE") -Force }
+# The bundled programs' and libraries' licenses: their redistribution requires them.
+Copy-Item "THIRD-PARTY-NOTICES.md" (Join-Path $StageDir "THIRD-PARTY-NOTICES.md") -Force
+Copy-Item "third_party" (Join-Path $StageDir "third_party") -Recurse -Force
 if (Test-Path "LICENSE.txt") { Copy-Item "LICENSE.txt" (Join-Path $StageDir "LICENSE.txt") -Force }
 if (Test-Path "docs\runtime-layout.md") { Copy-Item "docs\runtime-layout.md" (Join-Path $StageDir "runtime-layout.md") -Force }
 

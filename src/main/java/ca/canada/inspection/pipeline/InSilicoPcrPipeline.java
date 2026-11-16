@@ -82,6 +82,7 @@ public final class InSilicoPcrPipeline {
                 ChildJavaMemory.budgetGiB(config.bbtoolsMemoryGiB()), issues, monitor);
         logRuntime(context);
         RunSettings.lines(config, context.hasFastqSamples()).forEach(monitor::info);
+        monitor.info("  Tools: " + dependencies.versions());
         // Before any program runs: on Windows, a path too long fails them all, with an obscure error.
         WindowsPathLimit.check(directories, sampleMap.values());
         WindowsCodePage.check(config, dependencies, sampleMap.values());

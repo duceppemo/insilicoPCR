@@ -62,11 +62,14 @@ class RunSettingsTest {
 
     @Test
     void theHtmlReportGetsThePathsThenTheSettings() {
-        RunDetails details = RunSettings.details("9.9.9", config().build(), false);
+        RunDetails details = RunSettings.details("9.9.9", config().build(), false, "BLAST+ 2.17.0, BBTools 40.04");
 
         assertEquals("9.9.9", details.version());
         assertEquals(List.of("Input", "Primer file", "Output folder", "Primer mismatches (-m)"),
                 details.settings().subList(0, 4).stream().map(RunDetails.Setting::label).toList());
+        // The programs' versions last: a result is audited with them.
+        assertEquals("Tools: BLAST+ 2.17.0, BBTools 40.04", details.settings().getLast().label() + ": "
+                + details.settings().getLast().value());
     }
 
     @Test

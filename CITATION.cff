@@ -5,6 +5,7 @@ type: software
 authors:
   - family-names: Duceppe
     given-names: Marc-Olivier
+    affiliation: "Canadian Food Inspection Agency"
 repository-code: "https://github.com/duceppemo/insilicoPCR"
 url: "https://github.com/duceppemo/insilicoPCR"
 license: MIT

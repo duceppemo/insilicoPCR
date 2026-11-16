@@ -72,6 +72,10 @@ cp -R "$ROOT/runtime/linux/blast" "$STAGE_DIR/runtime/linux/blast"
 cp "$ROOT/README.md" "$STAGE_DIR/" 2>/dev/null || true
 cp "$ROOT/CHANGELOG.md" "$STAGE_DIR/" 2>/dev/null || true
 cp "$ROOT/LICENSE" "$STAGE_DIR/" 2>/dev/null || true
+# The bundled programs' and libraries' licenses: their redistribution requires them.
+cp "$ROOT/THIRD-PARTY-NOTICES.md" "$STAGE_DIR/"
+cp -R "$ROOT/third_party" "$STAGE_DIR/third_party"
+rm -rf "$STAGE_DIR/third_party/nghttp2" # a library of the Windows BLAST+ only
 cp "$ROOT/LICENSE.txt" "$STAGE_DIR/" 2>/dev/null || true
 cp "$ROOT/docs/runtime-layout.md" "$STAGE_DIR/" 2>/dev/null || true
 
@@ -103,8 +107,20 @@ find "$STAGE_DIR/runtime/linux/blast/bin" -type f -exec chmod +x {} \; 2>/dev/nu
 ARCHIVE="$RELEASE_DIR/insilicoPCR-${VERSION}-linux-x64.zip"
 rm -f "$ARCHIVE" "$ARCHIVE.sha256"
 
+# The versions bundled, for whoever audits a result.
+{
+  echo "insilicoPCR $VERSION"
+  echo "Java: $("$STAGE_DIR/runtime/linux/jdk/bin/java" -version 2>&1 | head -n 2 | tail -n 1)"
+  echo "BLAST+: $("$STAGE_DIR/runtime/linux/blast/bin/blastn" -version 2>&1 | head -n 1)"
+  echo "BBTools: $("$STAGE_DIR/runtime/linux/jdk/bin/java" -cp "$STAGE_DIR/runtime/common/bbmap/bbtools.jar" jgi.BBDuk --version 2>&1 | grep -o 'BBTools version [0-9.]*' | head -n 1 || true)"
+  echo "JavaFX: $(ls "$STAGE_DIR/lib" | sed -n 's/^javafx-base-\(.*\)-linux.jar$/\1/p' | head -n 1)"
+} > "$STAGE_DIR/VERSIONS.txt"
+
+# The same commit gives the same archive: entries in one order, each dated by the commit (not by the build).
 cd "$ROOT/build"
-zip -qr "$ARCHIVE" "$(basename "$STAGE_DIR")"
+EPOCH="${SOURCE_DATE_EPOCH:-$(git -C "$ROOT" log -1 --format=%ct 2>/dev/null || date +%s)}"
+find "$(basename "$STAGE_DIR")" -exec touch -h -d "@$EPOCH" {} +
+find "$(basename "$STAGE_DIR")" | LC_ALL=C sort | zip -qX "$ARCHIVE" -@
 
 cd "$RELEASE_DIR"
 sha256sum "$(basename "$ARCHIVE")" > "$(basename "$ARCHIVE").sha256"

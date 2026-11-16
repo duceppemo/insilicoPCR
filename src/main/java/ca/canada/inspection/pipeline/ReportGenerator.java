@@ -84,7 +84,8 @@ public final class ReportGenerator {
         splits.forEach(split -> monitor.warning("Warning: " + split.message()));
         Path html = HtmlReport.write(report, rows, context.samples().keySet(), fastqSampleNames(context.samples()),
                 context.primers(), diagnostics.findings(),
-                RunSettings.details(Version.VERSION, context.config(), context.hasFastqSamples()),
+                RunSettings.details(Version.VERSION, context.config(), context.hasFastqSamples(),
+                        context.dependencies().versions()),
                 context.inputIssues(), splits);
         written.add(html);
         monitor.info("HTML report written to " + html);

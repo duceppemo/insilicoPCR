@@ -87,6 +87,8 @@ class EndToEndTest {
         assertEquals(result.samples(), PreviousRun.open(output).samples());
         assertTrue(Files.size(output.resolve("consolidated_report").resolve("report.html")) > 0);
         assertTrue(Files.readString(output.resolve("QAlog.txt")).contains("isolate_05.fasta"));
+        assertTrue(Files.readString(output.resolve("QAlog.txt")).matches("(?s).*\\n  Tools: BLAST\\+ 2\\.\\d+\\.\\d+, BBTools \\d+\\.\\d+, Java \\d.*"),
+                "the programs' versions in QAlog.txt");
         assertFalse(Files.readString(output.resolve("QAlog.txt")).contains("Primers at contig ends"));
         try (Stream<Path> files = Files.walk(output)) {
             assertEquals(List.of(), files.filter(file -> file.getFileName().toString().startsWith("blast_query_"))

@@ -639,13 +639,16 @@ public static class FakeData {
     Record 'lock-first-run' $(if ($r.Exit -eq 0) { 'PASS' } else { 'FAIL' }) $r.Exit $r.Seconds "finished after the second was refused; products: $(Get-Products (Join-Path $out 'consolidated_report\report.tsv'))"
 
     # Killed as Task Manager's End task does (TerminateProcess): its programs must not run on.
+    # Waited for by name and by what its command line says it does: the run first asks blastn.exe
+    # and BBTools' java.exe their versions (-version, --version), children that end at once.
     foreach ($k in @(
-            @{ Case = 'kill-during-bbtools'; Input = "$big\reads"; Wait = 'java.exe' },
-            @{ Case = 'kill-during-blastn'; Input = "$big\genomes"; Wait = 'blastn.exe' })) {
+            @{ Case = 'kill-during-bbtools'; Input = "$big\reads"; Wait = 'java.exe'; Doing = '\sin1?=' },
+            @{ Case = 'kill-during-blastn'; Input = "$big\genomes"; Wait = 'blastn.exe'; Doing = '\s-query\s' })) {
         $out = Join-Path $Work "out\$($k.Case)"
         $p = Start-Case $k.Case $Java (App-Args @('-i', $k.Input, '-p', "$DataPlain\primers.fasta", '-o', $out, '-t', '2', '--input-check', 'quick'))
         $children = @()
-        for ($i = 0; $i -lt 1200 -and -not ($children | Where-Object Name -eq $k.Wait); $i++) {
+        $working = { param($list) @($list | Where-Object { $_.Name -eq $k.Wait -and $_.CommandLine -match $k.Doing }) }
+        for ($i = 0; $i -lt 1200 -and -not (& $working $children); $i++) {
             Start-Sleep -Milliseconds 50
             $children = @(Get-Descendants $p.Id)
         }
@@ -662,7 +665,7 @@ public static class FakeData {
         # Only the program waited for proves anything: a case that never saw it, or whose run had
         # ended before the kill, tested nothing, and fails rather than passing unseen.
         if ($endedFirst) { Record $k.Case 'FAIL' $p.ExitCode 0 "the run ended before it could be killed (children seen: $names)" }
-        elseif (-not ($children | Where-Object Name -eq $k.Wait)) { Record $k.Case 'FAIL' '' 0 "no $($k.Wait) child seen within 60 s (children seen: $names)" }
+        elseif (-not (& $working $children)) { Record $k.Case 'FAIL' '' 0 "no $($k.Wait) child at work seen within 60 s (children seen: $names)" }
         elseif ($alive) { Record $k.Case 'FAIL' 'killed' 0 "still running 4 s after insilicoPCR was killed: $aliveNames (children were: $names)" }
         else { Record $k.Case 'PASS' 'killed' 0 "children stopped with it: $names" }
         foreach ($a in $alive) { Stop-Process -Id $a.ProcessId -Force -ErrorAction SilentlyContinue }

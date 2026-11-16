@@ -68,14 +68,14 @@ public record RuntimeDependencies(AppPaths.RuntimeLayout layout) {
             return "unknown (" + missing.getMessage() + ")";
         }
         return VERSIONS.computeIfAbsent(blast + "|" + bbtools, ignored -> "BLAST+ "
-                + firstMatch(List.of(blast, "-version"), "blastn: ([0-9.]+)")
+                + firstMatch(List.of(blast, "-version"), "blastn: ([0-9.]+)", 20)
                 + ", BBTools " + firstMatch(List.of(javaCommand(), "-cp", bbtools, "jgi.BBDuk", "--version"),
-                "BBTools version ([0-9.]+)")
+                "BBTools version ([0-9.]+)", 20)
                 + ", Java " + Runtime.version() + " (" + System.getProperty("java.vendor", "?") + ")");
     }
 
-    /** The first group of {@code pattern} in what {@code command} prints within 20 seconds, or "unknown". */
-    private static String firstMatch(List<String> command, String pattern) {
+    /** The first group of {@code pattern} in what {@code command} prints within {@code seconds}, or "unknown". */
+    static String firstMatch(List<String> command, String pattern, int seconds) {
         try {
             Process process = new ProcessBuilder(command).redirectErrorStream(true).start();
             process.getOutputStream().close();
@@ -88,7 +88,7 @@ public record RuntimeDependencies(AppPaths.RuntimeLayout layout) {
                         return new byte[0];
                     }
                 });
-                if (!process.waitFor(20, java.util.concurrent.TimeUnit.SECONDS)) {
+                if (!process.waitFor(seconds, java.util.concurrent.TimeUnit.SECONDS)) {
                     process.destroyForcibly();
                     return "unknown";
                 }

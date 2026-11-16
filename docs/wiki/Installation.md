@@ -58,7 +58,7 @@ Each portable release includes:
 - OpenJDK 26 runtime
 - JavaFX 26.0.1 runtime
 - BBTools/BBMap 40.04 (BBDuk, BBMerge and Tadpole, used in FASTQ mode)
-- NCBI BLAST+ 2.17.0+
+- NCBI BLAST+ 2.17.0 (Linux) or 2.15.0 (Windows)
 - platform launcher script
 
 No separate Java, JavaFX, BBMap, or BLAST+ installation is required.

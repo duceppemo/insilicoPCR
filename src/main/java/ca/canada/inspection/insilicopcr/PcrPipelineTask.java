@@ -163,12 +163,20 @@ final class PcrPipelineTask extends Task<RunResult> {
     }
 
     private final class WindowMonitor implements RunMonitor {
-        private final Consumer<String> programOutput = line -> append("\n" + line);
+        // Under the log's lock: the samples' programs write at once, and a line's start was checked by one thread
+        // while another wrote.
+        private final Consumer<String> programOutput = line -> {
+            synchronized (runLog) {
+                append("\n" + line);
+            }
+        };
 
         @Override
         public void info(String message) {
             // On a line of its own, as on the console: a blank line between every two was the window's alone.
-            append((runLog.isEmpty() || runLog.charAt(runLog.length() - 1) == '\n' ? "" : "\n") + message + "\n");
+            synchronized (runLog) {
+                append((runLog.isEmpty() || runLog.charAt(runLog.length() - 1) == '\n' ? "" : "\n") + message + "\n");
+            }
         }
 
         /** Warnings and notes start with {@code Warning:} or {@code Note:}; the window shows them as they are. */

@@ -226,7 +226,7 @@ public final class FastqProcessor {
      */
     private static void secondBait(PipelineContext context, BbtoolsCommands commands, Sample sample, int threads) {
         SampleFiles files = context.directories().sample(sample.getName());
-        int anchors = BaitAnchors.write(context, files, threads);
+        int anchors = BaitAnchors.write(context, files, sample.isPaired(), threads);
         context.monitor().info("Sample " + sample.getName() + ": " + anchors + " first-bait read(s) hold an accepted"
                 + " primer site");
         run(context, "BBDuk", commands.secondBait(

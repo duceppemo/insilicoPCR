@@ -242,7 +242,11 @@ public final class ReadLevelCaller {
 
         Map<String, List<ReportRow>> rowsByAssay = new TreeMap<>();
         for (ReportRow row : Products.of(sampleName, reads, primers, options)) {
-            rowsByAssay.computeIfAbsent(row.assay(), ignored -> new ArrayList<>()).add(row);
+            // An assay's forward with its reverse primer only: a read folding back on one primer, or two
+            // reads' worth of two assays, is no call (an A+B product had no primers to count support from).
+            if (row.pairing() == ReportRow.Pairing.DESIGNED) {
+                rowsByAssay.computeIfAbsent(row.assay(), ignored -> new ArrayList<>()).add(row);
+            }
         }
         Map<String, PrimerId.Assay> groups = primers.assays();
 

@@ -47,4 +47,15 @@ class MixGroupsTest {
         assertEquals("stxQ+toxA", MixGroups.crossAssayName("toxA", "stxQ"));
         assertEquals("stxQ+toxA", MixGroups.crossAssayName("stxQ", "toxA"));
     }
+
+    @Test
+    void anAssayNamedAsAProductOfTwoAssaysIsRefused() {
+        MixGroups mix = MixGroups.fromHeaders(Map.of("a-F", "mix=one", "b-F", "mix=one"));
+
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> mix.checkNames(Set.of("a", "b", "a+b")));
+        assertEquals("Assay a+b is named as the products of a and b, which share the reaction one (mix=): rename it",
+                error.getMessage());
+        mix.checkNames(Set.of("a", "b", "c+d")); // another name with a +: fine
+    }
 }

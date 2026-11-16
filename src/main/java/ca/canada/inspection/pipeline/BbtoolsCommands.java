@@ -109,10 +109,13 @@ record BbtoolsCommands(String javaCommand, Path bbtoolsJar, int childMemoryGiB, 
      * the substitutions allowed ({@code mismatches}), nor above the shortest oligo. A k as long as the
      * primer could not match across an indel either: the read's k-mer then spans one base more of the
      * template than the primer has. Each substitution allowed keeps one more base: 3 in a 16-mer matched
-     * random reads, which baited 68 times the reads of a run at -m 3 and ran 3 times as long.
+     * random reads, which baited 68 times the reads of a run at -m 3 and ran 3 times as long. When indels
+     * are allowed ({@code mismatches} above 0), at most one base shorter than the shortest oligo, so that
+     * a deletion in a read can be matched, even where the floor would ask for the whole oligo.
      */
     static int firstBaitK(int shortestOligo, int fivePrimeTruncation, int mismatches) {
-        return Math.min(shortestOligo, Math.max(MIN_BAIT_K + mismatches, shortestOligo - fivePrimeTruncation));
+        int longest = mismatches > 0 ? shortestOligo - 1 : shortestOligo;
+        return Math.min(longest, Math.max(MIN_BAIT_K + mismatches, shortestOligo - fivePrimeTruncation));
     }
 
     /** The most insertions and deletions BBDuk matches k-mers within ({@code edist}): it refuses more. */

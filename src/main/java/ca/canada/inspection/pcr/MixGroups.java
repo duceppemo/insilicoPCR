@@ -65,6 +65,11 @@ public final class MixGroups {
         return groupOf.isEmpty() ? NONE : new MixGroups(groupOf);
     }
 
+    /** Whether the primer file declares no reaction: every assay is run on its own. */
+    public boolean isEmpty() {
+        return groupOf.isEmpty();
+    }
+
     /** The group of {@code assay}, or {@code null} when it is run on its own. */
     public String groupOf(String assay) {
         return groupOf.get(assay);
@@ -81,6 +86,25 @@ public final class MixGroups {
         Map<String, Set<String>> groups = new TreeMap<>();
         groupOf.forEach((assay, group) -> groups.computeIfAbsent(group, ignored -> new TreeSet<>()).add(assay));
         return groups;
+    }
+
+    /**
+     * @throws IllegalArgumentException when a product of two assays would be named as one of {@code assays}
+     *                                  ({@code a} and {@code b} in one reaction, and an assay {@code a+b}):
+     *                                  its rows would be read as that assay's, with its declared sizes
+     */
+    public void checkNames(Set<String> assays) {
+        groups().forEach((group, members) -> {
+            for (String first : members) {
+                for (String second : members) {
+                    String name = crossAssayName(first, second);
+                    if (!first.equals(second) && assays.contains(name)) {
+                        throw new IllegalArgumentException("Assay " + name + " is named as the products of " + first
+                                + " and " + second + ", which share the reaction " + group + " (mix=): rename it");
+                    }
+                }
+            }
+        });
     }
 
     /** For QAlog.txt: the reactions the primer file declares and their assays; none when it declares none. */

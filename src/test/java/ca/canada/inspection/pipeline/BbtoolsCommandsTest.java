@@ -31,7 +31,11 @@ class BbtoolsCommandsTest {
         assertEquals(14, BbtoolsCommands.firstBaitK(14, 5, 0), "a primer shorter than 16: its own length");
         // Each substitution allowed keeps one more base: 3 in a 16-mer baited 68 times the reads (PCN, -m 3).
         assertEquals(19, BbtoolsCommands.firstBaitK(22, 6, 3));
-        assertEquals(22, BbtoolsCommands.firstBaitK(22, 6, 8), "never longer than the shortest oligo");
+        // A k as long as the oligo could not match a deletion (BBDuk extends a k-mer past its end): one
+        // base shorter when indels are allowed, as for 18-nt primers at -m 2 (floor 18).
+        assertEquals(21, BbtoolsCommands.firstBaitK(22, 6, 8));
+        assertEquals(17, BbtoolsCommands.firstBaitK(18, 5, 2));
+        assertEquals(18, BbtoolsCommands.firstBaitK(18, 0, 0), "no indel allowed: the whole oligo");
     }
 
     @Test

@@ -389,6 +389,9 @@ public final class ReadExtensionCaller {
         Hits contained = ReadLevelCaller.withContainedHits(extended, lengths);
         Map<String, List<ReportRow>> rowsByAssay = new HashMap<>();
         for (ReportRow row : Products.of(sampleName, contained, primers, options)) {
+            if (row.pairing() != ReportRow.Pairing.DESIGNED) {
+                continue; // as for a read: an assay's forward with its reverse primer only
+            }
             Seed seed = seedById.get(row.contig());
             String assay = row.assay();
             // Only the assay the read was seeded for: a seed can wander through another assay's locus.

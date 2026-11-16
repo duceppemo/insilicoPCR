@@ -52,11 +52,17 @@ public final class Products {
             implements Hits.Key<List<ReportRow>> {
     }
 
-    /** The product sizes of {@code sample}, per assay; an assay without a product is absent. */
+    /**
+     * The sizes of the products {@code sample}'s assays make as designed (a forward with a reverse primer),
+     * per assay; an assay without one is absent. A product of one primer alone, or of two assays, is no
+     * sign of the assay's own product: the FASTQ steps and the split check ask about that one.
+     */
     public static Map<String, Set<Integer>> sizes(Sample sample, PrimerPanel primers, AmpliconOptions options) {
         Map<String, Set<Integer>> sizes = new TreeMap<>();
         for (ReportRow row : of(sample, primers, options)) {
-            sizes.computeIfAbsent(row.assay(), ignored -> new TreeSet<>()).add(row.size());
+            if (row.pairing() == ReportRow.Pairing.DESIGNED) {
+                sizes.computeIfAbsent(row.assay(), ignored -> new TreeSet<>()).add(row.size());
+            }
         }
         return sizes;
     }
@@ -91,6 +97,7 @@ public final class Products {
         // degenerate oligo as expanded): the report lists products in this order on every run,
         // whatever order the hits are held in.
         Set<String> assaysWithProbe = primers.assaysWithProbe();
+        List<ReportRow> found = new ArrayList<>();
         for (Map.Entry<String, PrimerId.Assay> assayEntry : primers.completeAssays().entrySet()) {
             String assayName = assayEntry.getKey();
             PrimerId.Assay group = assayEntry.getValue();
@@ -112,9 +119,47 @@ public final class Products {
                     }
                 }
             }
-            bestPerProduct(assayRows).forEach(rows);
+            bestPerProduct(assayRows).forEach(found::add);
         }
-        crossAssayProducts(rows, sampleName, contigs, hits, options, primers);
+        crossAssayProducts(found::add, sampleName, contigs, hits, options, primers);
+        oncePerReaction(found, primers.mixGroups()).forEach(rows);
+    }
+
+    /**
+     * {@code rows} with each product of a multiplex reported once. Two assays of one reaction may repeat a
+     * shared primer under each one's ID: the one molecule it makes was reported under each assay and again
+     * as a product of the two. At one place (contig, start, end, size) in one reaction, the row kept is
+     * the assay's designed product if one is, else a product of one primer, else of two assays; between
+     * equals, the first assay by name. Rows of assays run on their own are all kept: each is its own tube.
+     */
+    private static List<ReportRow> oncePerReaction(List<ReportRow> rows, MixGroups mix) {
+        if (mix.isEmpty()) {
+            return rows;
+        }
+        java.util.Comparator<ReportRow> preference = java.util.Comparator.comparing(ReportRow::pairing)
+                .thenComparing(ReportRow::assay);
+        Map<List<Object>, ReportRow> kept = new HashMap<>();
+        for (ReportRow row : rows) {
+            List<Object> place = place(row, mix);
+            if (place != null) {
+                kept.merge(place, row, (one, other) -> preference.compare(other, one) < 0 ? other : one);
+            }
+        }
+        List<ReportRow> once = new ArrayList<>();
+        for (ReportRow row : rows) {
+            List<Object> place = place(row, mix);
+            if (place == null || kept.get(place) == row) {
+                once.add(row);
+            }
+        }
+        return once;
+    }
+
+    /** Where {@code row}'s product is in its reaction, or {@code null} for an assay run on its own. */
+    private static List<Object> place(ReportRow row, MixGroups mix) {
+        PrimerId primer = PrimerId.parse(row.forwardPrimer());
+        String reaction = primer == null ? null : mix.groupOf(primer.assay());
+        return reaction == null ? null : List.of(reaction, row.contig(), row.start(), row.end(), row.size());
     }
 
     /**

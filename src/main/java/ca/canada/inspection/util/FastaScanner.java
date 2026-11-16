@@ -40,12 +40,10 @@ public final class FastaScanner implements AutoCloseable {
             if (c == '\n' || c == '\r') {
                 atLineStart = true;
                 comment = false;
-            } else if (comment) {
-                // the rest of a comment line
-            } else if (atLineStart && c == '>') {
+            } else if (!comment && atLineStart && c == '>') {
                 return headerLine();
-            } else if (isComment(c, atLineStart)) {
-                comment = true;
+            } else if (comment || isComment(c, atLineStart)) {
+                comment = true; // to the line's end
                 atLineStart = false;
             } else {
                 atLineStart = false;

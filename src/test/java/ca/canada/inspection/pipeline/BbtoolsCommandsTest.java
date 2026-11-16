@@ -22,13 +22,31 @@ class BbtoolsCommandsTest {
     private final List<Path> paired = List.of(Path.of("s_R1.fastq.gz"), Path.of("s_R2.fastq.gz"));
 
     @Test
+    void theFirstBaitsKLeavesTheTolerated5PrimeBasesOut() {
+        // A primer whose 5' bases do not match baited no read with k as long as the primer, though the
+        // assembly's search accepts the hit (--5p-truncation); nor could an indel be matched.
+        assertEquals(16, BbtoolsCommands.firstBaitK(20, 5, 0), "not below 16");
+        assertEquals(19, BbtoolsCommands.firstBaitK(24, 5, 0));
+        assertEquals(24, BbtoolsCommands.firstBaitK(24, 0, 0), "--5p-truncation 0: the whole primer");
+        assertEquals(14, BbtoolsCommands.firstBaitK(14, 5, 0), "a primer shorter than 16: its own length");
+        // Each substitution allowed keeps one more base: 3 in a 16-mer baited 68 times the reads (PCN, -m 3).
+        assertEquals(19, BbtoolsCommands.firstBaitK(22, 6, 3));
+        assertEquals(22, BbtoolsCommands.firstBaitK(22, 6, 8), "never longer than the shortest oligo");
+    }
+
+    @Test
     void firstBaitUsesPrimerDatabaseShortestPrimerAndMismatchBudget() {
         List<String> command = commands.firstBait(Path.of("primers.fasta"), paired, Path.of("out.fq.gz"), 17, 2).arguments();
 
         assertTrue(command.contains("jgi.BBDuk"));
         assertTrue(command.contains("ref=" + abs("primers.fasta")));
         assertTrue(command.contains("k=17"));
+        // Substitutions, and edits too: -m counts indels.
         assertTrue(command.contains("hdist=2"));
+        assertTrue(command.contains("edist=2"));
+        // BBDuk refuses an edit distance over 2 ("requires 15,000,000x the time and memory").
+        List<String> three = commands.firstBait(Path.of("primers.fasta"), paired, Path.of("out.fq.gz"), 17, 3).arguments();
+        assertTrue(three.contains("hdist=3") && three.contains("edist=2"), three.toString());
         assertTrue(command.contains("in1=" + abs("s_R1.fastq.gz")));
         assertTrue(command.contains("in2=" + abs("s_R2.fastq.gz")));
         assertTrue(command.contains("outm=" + abs("out.fq.gz")));

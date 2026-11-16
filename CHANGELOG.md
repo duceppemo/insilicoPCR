@@ -22,6 +22,19 @@
 
 ### Fixed
 
+- FASTQ: a primer site with an indel, or with mismatches in its 5' bases that
+  `--5p-truncation` lets a hit on an assembly leave unaligned, baited no read:
+  BBDuk's first bait matched k-mers as long as the shortest primer, with
+  substitutions only, and the assay was negative from reads (nor listed in the
+  diagnostics) though positive on an assembly. The k-mers are shorter by
+  `--5p-truncation`, at least 16 plus `-m` bases, and up to 2 insertions or
+  deletions are allowed besides `-m` substitutions (`edist`, the most BBDuk
+  takes). On the Brucella read set (`-m 0`) the calls and run time are
+  unchanged; on a nematode read set at `-m 3`, the reads baited (126,260
+  against 125,694), the run time (230 s against 224) and the call are about the
+  same. A k-mer floor of 16 alone, at `-m 3`,
+  baited 68 times the reads and ran 3 times as long: each substitution allowed
+  keeps one more base.
 - A primer whose ID held a letter outside ASCII (`Café-F`, `stxΔ-F`) found
   nothing, and its assay was negative in every sample without a word:
   makeblastdb writes such a letter as `#` and still succeeds, and the hits then

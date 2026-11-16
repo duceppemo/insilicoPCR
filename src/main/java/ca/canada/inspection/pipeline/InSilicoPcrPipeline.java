@@ -79,12 +79,13 @@ public final class InSilicoPcrPipeline {
         WindowsCodePage.check(config, dependencies, sampleMap.values());
         done(Step.INPUT_CHECK);
 
+        // The primers' BLAST database first: the baiting of the reads searches its first catch for them.
+        BlastDatabaseBuilder.build(context);
+        done(Step.BLAST_DATABASE);
+
         // FASTQ samples: baited and assembled into a mini-assembly, searched like an assembly.
         FastqProcessor.process(context);
         done(Step.READS);
-
-        BlastDatabaseBuilder.build(context);
-        done(Step.BLAST_DATABASE);
 
         BlastRunner.run(context);
         ContigService.load(context);

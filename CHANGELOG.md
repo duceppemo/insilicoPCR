@@ -25,6 +25,13 @@
 
 ### Fixed
 
+- FASTQ: the second baiting started from every read of the first, and with
+  permissive settings (`-m 3 --5p-truncation 6`, a short k-mer) the first
+  holds reads of rRNA, mitochondria and repeats that share a k-mer with a
+  primer and no site: the second took their whole families, a third of a
+  15-million-pair library (17 minutes, 19 GB). It starts from the reads of the
+  first that hold a primer site the rules accept (searched with blastn, which
+  the primers' database, built first now, allows).
 - FASTQ: at a locus of two product sizes (two alleles, a mixture of strains,
   paralogs), the reads extended from the forward primer followed one branch
   and those from the reverse primer the other, and with 2 extended reads

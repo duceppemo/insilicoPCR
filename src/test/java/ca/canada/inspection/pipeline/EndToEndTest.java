@@ -673,8 +673,11 @@ class EndToEndTest {
         PipelineConfig config = config(reads, output);
         PipelineDirectories directories = PipelineDirectories.create(output);
         PrimerPanel primers = PrimerService.loadAndPrepare(config, directories);
-        return new PipelineContext(config, new RuntimeDependencies(layout), directories,
+        PipelineContext context = new PipelineContext(config, new RuntimeDependencies(layout), directories,
                 InputCheck.scan(reads, InputCheck.Depth.QUICK, 2).samples(), primers, budgetGiB, List.of(), monitor);
+        // The baiting searches its first catch for the primers: their database comes first, as in a run.
+        BlastDatabaseBuilder.build(context);
+        return context;
     }
 
     /** The {@code threads=} of each run of a BBTools program, sorted; Tadpole logs itself as Tadpole1 or 2. */

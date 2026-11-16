@@ -189,7 +189,7 @@ public final class FastqProcessor {
                                 int kLength) {
         switch (step) {
             case FIRST_BAIT -> bait(context, commands, sample, kLength);
-            case SECOND_BAIT -> secondBait(context, commands, sample);
+            case SECOND_BAIT -> secondBait(context, commands, sample, commands.threads());
             case ASSEMBLY -> assemble(context, commands, sample);
             case MERGE -> merge(context, commands, sample);
         }
@@ -218,10 +218,19 @@ public final class FastqProcessor {
         ));
     }
 
-    private static void secondBait(PipelineContext context, BbtoolsCommands commands, Sample sample) {
+    /**
+     * Second pass: the reads overlapping those of the first pass in which a primer site is accepted
+     * ({@link BaitAnchors}), not every read of the first pass. With -m 3 and a short k-mer the first pass
+     * holds reads of rRNA, mitochondria and repeats that share a k-mer with a primer and no site, and the
+     * second pass took their whole families: a third of a 15-million-pair library, 17 minutes and 19 GB.
+     */
+    private static void secondBait(PipelineContext context, BbtoolsCommands commands, Sample sample, int threads) {
         SampleFiles files = context.directories().sample(sample.getName());
+        int anchors = BaitAnchors.write(context, files, threads);
+        context.monitor().info("Sample " + sample.getName() + ": " + anchors + " first-bait read(s) hold an accepted"
+                + " primer site");
         run(context, "BBDuk", commands.secondBait(
-                files.targetMatches(),
+                files.baitAnchors(),
                 sample.files(),
                 files.doubleTargetMatches()
         ));

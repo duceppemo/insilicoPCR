@@ -103,15 +103,18 @@ public final class Products {
             PrimerId.Assay group = assayEntry.getValue();
             boolean probeRequired = assaysWithProbe.contains(assayName);
             List<ReportRow> assayRows = new ArrayList<>();
-            for (String forwardPrimer : group.forward()) {
-                for (String reversePrimer : group.reverse()) {
+            // The oligos with a hit only: a pair of 256-variant primers made 65,536 pairs a sample to look at.
+            List<String> forward = group.forward().stream().filter(hits::has).toList();
+            List<String> reverse = group.reverse().stream().filter(hits::has).toList();
+            for (String forwardPrimer : forward) {
+                for (String reversePrimer : reverse) {
                     pairs(assayRows::add, sampleName, contigs, hits, assayName, group,
                             forwardPrimer, reversePrimer, options, probeRequired, false);
                 }
             }
             // One primer alone, on both strands where a sequence repeats inverted: a product of the tube
             // as well, reported under its assay (ReportRow#onePrimer marks it).
-            for (List<String> role : List.of(group.forward(), group.reverse())) {
+            for (List<String> role : List.of(forward, reverse)) {
                 for (String plusStrand : role) {
                     for (String minusStrand : role) {
                         pairs(assayRows::add, sampleName, contigs, hits, assayName, group,
@@ -177,8 +180,8 @@ public final class Products {
             }
             String name = MixGroups.crossAssayName(first, second);
             List<ReportRow> named = byName.computeIfAbsent(name, ignored -> new ArrayList<>());
-            for (String plusStrand : primersOf(firstGroup)) {
-                for (String minusStrand : primersOf(secondGroup)) {
+            for (String plusStrand : primersOf(firstGroup, hits)) {
+                for (String minusStrand : primersOf(secondGroup, hits)) {
                     // No probe asked for: a product two assays make is in the tube whichever probe sees it.
                     pairs(named::add, sampleName, contigs, hits, name, firstGroup, plusStrand, minusStrand,
                             options, false, true);
@@ -189,9 +192,10 @@ public final class Products {
     }
 
     /** The primers of an assay, forward then reverse: not its probe, which primes nothing. */
-    private static List<String> primersOf(PrimerId.Assay group) {
+    private static List<String> primersOf(PrimerId.Assay group, HitIndex hits) {
         List<String> primers = new ArrayList<>(group.forward());
         primers.addAll(group.reverse());
+        primers.removeIf(primer -> !hits.has(primer));
         return primers;
     }
 
@@ -221,7 +225,7 @@ public final class Products {
      */
     private static final class HitIndex {
         private final Map<String, List<BlastResult>> byOligo;
-        private final Map<String, Map<String, List<BlastResult>>> byOligoAndContig = new HashMap<>();
+        private final Map<String, Map<String, OnContig>> byOligoAndContig = new HashMap<>();
 
         HitIndex(Map<String, List<BlastResult>> byOligo) {
             this.byOligo = byOligo;
@@ -231,17 +235,81 @@ public final class Products {
             return byOligo.getOrDefault(oligoId, List.of());
         }
 
+        /** Whether {@code oligoId} has a hit at all: of a degenerate primer's variants, most have none. */
+        boolean has(String oligoId) {
+            return !of(oligoId).isEmpty();
+        }
+
         /** Hits of {@code oligoId} on {@code contig}, in the order BLAST reported them. */
         List<BlastResult> on(String oligoId, String contig) {
+            OnContig hits = onContig(oligoId, contig);
+            return hits == null ? List.of() : hits.inOrder();
+        }
+
+        /**
+         * Hits of {@code oligoId} on {@code contig} starting from {@code from} to {@code to}, in the order
+         * BLAST reported them: a primer pairs only with hits within a product's length of it, and on a
+         * chromosome with tens of thousands of hits, comparing each with every other took seconds a sample.
+         */
+        List<BlastResult> near(String oligoId, String contig, long from, long to) {
+            OnContig hits = onContig(oligoId, contig);
+            return hits == null ? List.of() : hits.between(from, to);
+        }
+
+        private OnContig onContig(String oligoId, String contig) {
             return byOligoAndContig.computeIfAbsent(oligoId, id -> {
                 Map<String, List<BlastResult>> byContig = new HashMap<>();
                 for (BlastResult hit : of(id)) {
                     byContig.computeIfAbsent(hit.queryID(), ignored -> new ArrayList<>()).add(hit);
                 }
-                return byContig;
-            }).getOrDefault(contig, List.of());
+                Map<String, OnContig> indexed = new HashMap<>();
+                byContig.forEach((name, list) -> indexed.put(name, new OnContig(list)));
+                return indexed;
+            }).get(contig);
         }
     }
+
+    /** One oligo's hits on one contig: in BLAST's order, and by start for the hits near a place. */
+    private static final class OnContig {
+        private final List<BlastResult> inOrder;
+        /** Indices into {@link #inOrder}, by start. */
+        private final int[] byStart;
+
+        OnContig(List<BlastResult> inOrder) {
+            this.inOrder = List.copyOf(inOrder);
+            this.byStart = java.util.stream.IntStream.range(0, inOrder.size()).boxed()
+                    .sorted(java.util.Comparator.comparingInt(i -> inOrder.get(i).qstart()))
+                    .mapToInt(Integer::intValue).toArray();
+        }
+
+        List<BlastResult> inOrder() {
+            return inOrder;
+        }
+
+        List<BlastResult> between(long from, long to) {
+            int low = 0;
+            int high = byStart.length;
+            while (low < high) { // the first hit starting at from or after
+                int middle = (low + high) >>> 1;
+                if (inOrder.get(byStart[middle]).qstart() < from) {
+                    low = middle + 1;
+                } else {
+                    high = middle;
+                }
+            }
+            List<Integer> found = new ArrayList<>();
+            for (int i = low; i < byStart.length && inOrder.get(byStart[i]).qstart() <= to; i++) {
+                found.add(byStart[i]);
+            }
+            found.sort(null); // back in BLAST's order: the report lists products in it
+            List<BlastResult> near = new ArrayList<>(found.size());
+            found.forEach(index -> near.add(inOrder.get(index)));
+            return near;
+        }
+    }
+
+    /** How far beyond the longest product a partner's start may lie: its length and 5' bases left unaligned. */
+    private static final int PARTNER_SLACK = 1_000;
 
     private static void pairs(Consumer<ReportRow> rows, String sampleName, Map<String, String> contigs,
                                                HitIndex hits,
@@ -254,7 +322,12 @@ public final class Products {
             if (plusStrandFirst && !forwardHit.isPlusStrand()) {
                 continue;
             }
-            for (BlastResult reverseHit : hits.on(reversePrimer, forwardHit.queryID())) {
+            int longest = options.maxAmpliconLength();
+            List<BlastResult> partners = longest > 0
+                    ? hits.near(reversePrimer, forwardHit.queryID(), (long) forwardHit.qstart() - longest - PARTNER_SLACK,
+                    (long) forwardHit.qstart() + longest + PARTNER_SLACK)
+                    : hits.on(reversePrimer, forwardHit.queryID());
+            for (BlastResult reverseHit : partners) {
                 Amplicon amplicon = AmpliconCaller.call(forwardHit, reverseHit, options).orElse(null);
                 if (amplicon == null) {
                     continue;

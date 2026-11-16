@@ -48,9 +48,12 @@
   needed from each side, neither product was called: the assay read as a
   negative. 2 extended reads of one primer, either one, close a product now;
   the check against the sample's read pairs still decides whether it is
-  reported.
+  reported, and an assay takes more extension rounds until a product the pairs
+  support closes (a wrong turn closed from one side does not end its search).
 - FASTQ: a product through a tandem repeat ((AT)n, (CAG)n, a VNTR) was a plain
-  negative: the extended reads loop in the repeat, which they cannot cross.
+  negative: the extended reads loop in the repeat, which they cannot cross
+  (their ends facing the product are looked at: a repeat beside a primer, on
+  the side away from the product, is not one to cross).
   Such an assay is `EXTENSION_IN_TANDEM_REPEAT`, inconclusive, and takes no
   more extension rounds.
 - Input files left out without a word: a link to a file that does not exist

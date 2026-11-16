@@ -253,13 +253,14 @@ public final class ReadExtensionCaller {
     }
 
     /** Bases at the end of an extended read that must repeat a unit for it to end in a tandem repeat. */
-    static final int TANDEM_STRETCH = 150;
+    public static final int TANDEM_STRETCH = 150;
     /** The longest unit looked for: microsatellites and short VNTRs. */
     static final int MAX_TANDEM_UNIT = 60;
 
     /**
-     * What the extended reads {@code reads} (by seed) of an assay with no closed product ran into, or
-     * {@code null}: most of them end in a tandem repeat ({@link #TANDEM_STRETCH} bases repeating one unit
+     * What the extended reads of an assay with no closed product ran into, or {@code null}, from {@code reads},
+     * their ends facing the product, by seed (the last {@link #TANDEM_STRETCH} bases of each are looked at): most
+     * of them end in a tandem repeat ({@link #TANDEM_STRETCH} bases repeating one unit
      * of up to {@link #MAX_TANDEM_UNIT}). The extension follows the better-supported branch, and in a tandem
      * repeat longer than a k-mer the repeat's own k-mers outnumber the way out: it loops to the end of its
      * reach, and the assay looked like a plain negative.
@@ -268,8 +269,7 @@ public final class ReadExtensionCaller {
         int inRepeat = 0;
         Map<Integer, Integer> units = new java.util.TreeMap<>();
         for (String read : reads.values()) {
-            int unit = Math.max(tandemUnit(read.substring(0, Math.min(read.length(), TANDEM_STRETCH))),
-                    tandemUnit(read.substring(Math.max(0, read.length() - TANDEM_STRETCH))));
+            int unit = tandemUnit(read.substring(Math.max(0, read.length() - TANDEM_STRETCH)));
             if (unit > 0) {
                 inRepeat++;
                 units.merge(unit, 1, Integer::sum);

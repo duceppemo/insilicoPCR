@@ -34,12 +34,12 @@ final class BaitAnchors {
      *
      * @return how many reads of the first baiting hold an accepted primer site
      */
-    static int write(PipelineContext context, SampleFiles files, int threads) {
+    static int write(PipelineContext context, SampleFiles files, boolean paired, int threads) {
         Path firstBait = files.targetMatches();
         Path query = files.baitAnchorsQuery();
         Path hits = files.baitAnchorsHits();
         try {
-            boolean paired = isInterleaved(firstBait);
+            // The sample's own word: mates named apart (fastq-dump's SRR1.1.1 and SRR1.1.2) are not alike by name.
             int records = writeQuery(firstBait, query);
             Hits accepted = new Hits();
             if (records > 0) {
@@ -114,21 +114,6 @@ final class BaitAnchors {
                     }
                 }
             }
-        }
-    }
-
-    /**
-     * Whether the first baiting of a read pair: BBDuk writes the mates one after the other, and names
-     * them alike (a name ending /1 then /2, or the same name).
-     */
-    private static boolean isInterleaved(Path fastq) throws IOException {
-        try (BufferedReader in = open(fastq)) {
-            String first = in.readLine();
-            for (int i = 0; i < 3 && first != null; i++) {
-                in.readLine();
-            }
-            String second = in.readLine();
-            return first != null && second != null && ReadPool.key(first) == ReadPool.key(second);
         }
     }
 

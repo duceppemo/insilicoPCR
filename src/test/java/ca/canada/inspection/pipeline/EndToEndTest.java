@@ -438,6 +438,63 @@ class EndToEndTest {
         return both;
     }
 
+    /** A 14 kb genome with a 2,500 bp product at 5,001-7,500, its primers {@code forward} and {@code reverse}. */
+    private static StringBuilder genomeWithLongProduct(java.util.Random random, String forward, String reverse) {
+        StringBuilder genome = new StringBuilder();
+        while (genome.length() < 14_000) {
+            genome.append("ACGT".charAt(random.nextInt(4)));
+        }
+        genome.replace(5_000, 5_020, forward);
+        genome.replace(7_480, 7_500, reverseComplement(reverse));
+        return genome;
+    }
+
+    private void assertLongProductCalled(String name, CharSequence genome, String forward, String reverse,
+                                         java.util.Random random) throws IOException {
+        Path input = Files.createDirectory(directory.resolve(name + "-reads"));
+        simulatePairs(genome, 40, random, input, name);
+        Path primers = Files.writeString(directory.resolve(name + "-primers.fasta"), ">long-F\n" + forward
+                + "\n>long-R\n" + reverse + "\n");
+        Path output = directory.resolve(name + "-results");
+
+        pipeline(PipelineConfig.builder(input, output, primers).threads(2).build()).run();
+
+        assertEquals(List.of(name + " long 2500 "), products(report(output)), () -> {
+            try {
+                return Files.readString(output.resolve("consolidated_report").resolve("report_fastq_diagnostics.tsv"));
+            } catch (IOException e) {
+                return e.toString();
+            }
+        });
+    }
+
+    @Test
+    void aTandemRepeatOutsideTheProductDoesNotStopTheExtension() throws IOException {
+        // (AG)100 200 to 400 bases before the forward primer: the forward seeds' reads, extended both ways, loop in
+        // it on the side away from the product. Their outer ends were taken for the product's: the assay left the
+        // rounds at once, inconclusive, and the 2,500 bp product was not found.
+        java.util.Random random = new java.util.Random(29);
+        String forward = "GATCGGAAGAGCACACGTCT";
+        String reverse = "CTTGCCAGTAGCGTCATACG";
+        StringBuilder genome = genomeWithLongProduct(random, forward, reverse);
+        genome.replace(4_600, 4_800, "AG".repeat(100));
+        assertLongProductCalled("outrep", genome, forward, reverse, random);
+    }
+
+    @Test
+    void aWrongTurnClosedFromOneSideDoesNotStopTheSearchForTheProduct() throws IOException {
+        // Elsewhere, a copy of the 200 bases after the forward primer, followed by the reverse primer's site: reads
+        // extended from the reverse primer there run into the copy and close a short product that does not exist.
+        // It settled the assay at once, the read pairs then rejecting it, and the real 2,500 bp was not looked for.
+        java.util.Random random = new java.util.Random(31);
+        String forward = "GATCGGAAGAGCACACGTCT";
+        String reverse = "CTTGCCAGTAGCGTCATACG";
+        StringBuilder genome = genomeWithLongProduct(random, forward, reverse);
+        String copy = genome.substring(5_020, 5_220);
+        genome.replace(11_000, 11_220, copy + reverseComplement(reverse));
+        assertLongProductCalled("wrongturn", genome, forward, reverse, random);
+    }
+
     @Test
     void readsExtendedIntoATandemRepeatAreInconclusiveNotNegative() throws IOException {
         // A 600 bp product with (CAG)30 in its middle: the extension, which follows the better-supported branch,

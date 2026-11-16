@@ -25,7 +25,7 @@ public final class BlastRunner {
         // As many searches at once as the memory holds; the threads left over go to each of them.
         int threads = context.config().threads();
         int atOnce = ChildJavaMemory.blastnAtOnce(context.childJavaMemoryBudgetGiB(), threads, samples.size());
-        int each = Math.max(1, threads / atOnce);
+        int each = ChildJavaMemory.blastnThreads(threads, atOnce);
         if (atOnce < Math.min(threads, samples.size())) {
             context.monitor().info("BLAST: " + atOnce + (atOnce == 1 ? " search" : " searches") + " at a time, each with "
                     + each + (each == 1 ? " thread" : " threads") + " (about " + ChildJavaMemory.BLASTN_GIB
@@ -103,7 +103,12 @@ public final class BlastRunner {
         } catch (IOException e) {
             throw new PipelineException("Unable to prepare the BLAST query for " + query, e);
         }
-        BlastTsv.keepAccepted(blastTsv, List.of(query), context.primers(), context.config().ampliconOptions(),
-                toContig);
+        // The hits the rules accept, kept in the sample's table and taken for its products, in one pass.
+        java.util.Set<String> missing = BlastTsv.keepAccepted(blastTsv, List.of(query), context.primers(),
+                context.config().ampliconOptions(), toContig, sample.hits());
+        String warning = ca.canada.inspection.pcr.BlastHits.missingWarning(missing, List.of(query));
+        if (!warning.isEmpty()) {
+            context.monitor().warning(warning);
+        }
     }
 }

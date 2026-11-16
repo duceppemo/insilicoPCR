@@ -98,7 +98,7 @@ public final class Products {
         // whatever order the hits are held in.
         Set<String> assaysWithProbe = primers.assaysWithProbe();
         List<ReportRow> found = new ArrayList<>();
-        for (Map.Entry<String, PrimerId.Assay> assayEntry : primers.completeAssays().entrySet()) {
+        for (Map.Entry<String, PrimerId.Assay> assayEntry : primers.assays().entrySet()) {
             String assayName = assayEntry.getKey();
             PrimerId.Assay group = assayEntry.getValue();
             boolean probeRequired = assaysWithProbe.contains(assayName);
@@ -174,7 +174,7 @@ public final class Products {
                                            HitIndex hits, AmpliconOptions options, PrimerPanel primers) {
         MixGroups mix = primers.mixGroups();
         Map<String, List<ReportRow>> byName = new java.util.LinkedHashMap<>();
-        primers.completeAssays().forEach((first, firstGroup) -> primers.completeAssays().forEach((second, secondGroup) -> {
+        primers.assays().forEach((first, firstGroup) -> primers.assays().forEach((second, secondGroup) -> {
             if (!mix.shareAReaction(first, second)) {
                 return;
             }

@@ -35,19 +35,39 @@ public final class BlastHits {
         // Decoded leniently, as the searched FASTA is (SequenceFileUtils.openMaybeGzip): a sequence ID with a
         // byte that is not UTF-8 reads the same way in both, instead of stopping the run here.
         try (BufferedReader reader = new BufferedReader(new java.io.InputStreamReader(Files.newInputStream(tsv),
-                StandardCharsets.UTF_8));
-             QueryTemplates templates = new QueryTemplates(searched)) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                if (line.isBlank() || line.equals(BlastField.HEADER)) {
-                    continue;
-                }
-                BlastHitParser.parse(line, primers, options, templates)
-                        .ifPresent(hit -> into.add(hit.subjectID(), hit));
-            }
-            return templates.missing();
+                StandardCharsets.UTF_8))) {
+            return read(reader, searched, into, primers, options, java.util.function.UnaryOperator.identity(), line -> {
+            });
         } catch (IOException e) {
             throw new UncheckedIOException("Unable to read BLAST report: " + tsv, e);
+        }
+    }
+
+    /**
+     * Adds the accepted hits of {@code lines}, blastn's table, to {@code into}, and gives each one's line,
+     * put back on the sequence searched by {@code toContig} first, to {@code accepted}: the one loop that
+     * judges hits, as a table is filtered and its hits taken in one pass.
+     *
+     * @param toContig a line as on the sequence searched, or {@code null} for a line to pass over (a query
+     *                 searched in pieces: the hit of a piece that does not own it)
+     * @return the sequences of trimmed hits not found in {@code searched} ({@link #missingWarning})
+     */
+    public static Set<String> read(BufferedReader lines, List<Path> searched, Hits into, PrimerPanel primers,
+                                   AmpliconOptions options, java.util.function.UnaryOperator<String> toContig,
+                                   java.util.function.Consumer<String> accepted) throws IOException {
+        try (QueryTemplates templates = new QueryTemplates(searched)) {
+            String line;
+            while ((line = lines.readLine()) != null) {
+                if (line.isBlank() || line.equals(BlastField.HEADER) || (line = toContig.apply(line)) == null) {
+                    continue;
+                }
+                String kept = line;
+                BlastHitParser.parse(line, primers, options, templates).ifPresent(hit -> {
+                    into.add(hit.subjectID(), hit);
+                    accepted.accept(kept);
+                });
+            }
+            return templates.missing();
         }
     }
 

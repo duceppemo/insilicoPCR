@@ -78,7 +78,7 @@ class EndToEndTest {
         }
         Path output = directory.resolve("results");
 
-        RunResult result = new InSilicoPcrPipeline(config(genomes, output)).run();
+        RunResult result = pipeline(config(genomes, output)).run();
 
         assertEquals(lines(EXAMPLE.resolve("report.tsv")), lines(report(output)));
         assertEquals(report(output), result.report());
@@ -123,7 +123,7 @@ class EndToEndTest {
         Files.writeString(genomes.resolve("big.fasta"), fasta);
         Path output = directory.resolve("chromosome-results");
 
-        new InSilicoPcrPipeline(config(genomes, output)).run();
+        pipeline(config(genomes, output)).run();
 
         // Where it is on the sequence: 101 bases into the stretch copied from 3901.
         int start = site + (4001 - 3901) + 1;
@@ -165,7 +165,7 @@ class EndToEndTest {
                 + randomBases.apply(2_000) + "\n");
         Path output = directory.resolve("cut-results");
 
-        new InSilicoPcrPipeline(PipelineConfig.builder(genomes, output, PRIMERS).threads(2)
+        pipeline(PipelineConfig.builder(genomes, output, PRIMERS).threads(2)
                 .ampliconOptions(ca.canada.inspection.pcr.AmpliconOptions.withMismatches(1)).build()).run();
 
         // Gene, size, primers, mismatches and 5' unaligned bases: the same for both.
@@ -193,7 +193,7 @@ class EndToEndTest {
         Recorder monitor = new Recorder();
         Path output = directory.resolve("broken-results");
 
-        new InSilicoPcrPipeline(config(genomes, output), monitor).run();
+        pipeline(config(genomes, output), monitor).run();
 
         assertEquals(List.of("isolate_01 stxQ 118 target"), products(report(output)));
         List<String> warnings = monitor.warnings.stream().filter(line -> line.contains("contig")).toList();
@@ -215,7 +215,7 @@ class EndToEndTest {
         Recorder monitor = new Recorder();
         Path output = directory.resolve("reads-results");
 
-        new InSilicoPcrPipeline(config(EXAMPLE.resolve("reads"), output), monitor).run();
+        pipeline(config(EXAMPLE.resolve("reads"), output), monitor).run();
 
         assertEquals(List.of("isolate_01 stxQ 118 target", "isolate_01 toxA 312 target"), products(report(output)));
         // As the application shows them: no program wrote to the console, every step was reported.
@@ -235,7 +235,7 @@ class EndToEndTest {
         Recorder monitor = new Recorder();
         Path output = directory.resolve("two-samples-results");
 
-        new InSilicoPcrPipeline(config(reads, output), monitor).run();
+        pipeline(config(reads, output), monitor).run();
 
         // Two threads: both samples at once with one thread each, or, on a small heap, one after the other.
         ChildJavaMemory.Share share = ChildJavaMemory.share(ChildJavaMemory.budgetGiB(), 2, 2);
@@ -307,7 +307,7 @@ class EndToEndTest {
                 .build();
         Recorder monitor = new Recorder();
 
-        new InSilicoPcrPipeline(config, monitor).run();
+        pipeline(config, monitor).run();
 
         Path sampleDir = output.resolve("detailed_report").resolve("isolate_01");
         assertTrue(Files.size(new SampleFiles(sampleDir, "isolate_01").extendedReads()) > 0, "no extended reads");
@@ -373,7 +373,7 @@ class EndToEndTest {
                 + reverse + "\n");
         Path output = directory.resolve("long-results");
 
-        new InSilicoPcrPipeline(PipelineConfig.builder(input, output, primers).threads(2).build()).run();
+        pipeline(PipelineConfig.builder(input, output, primers).threads(2).build()).run();
 
         assertEquals(List.of("long long 2500 "), products(report(output)), () -> {
             try {
@@ -413,7 +413,7 @@ class EndToEndTest {
         Recorder monitor = new Recorder();
         Path output = directory.resolve("broken-results");
 
-        new InSilicoPcrPipeline(config(input, output), monitor).run();
+        pipeline(config(input, output), monitor).run();
 
         for (String expected : List.of("Warning: headers.fasta: the file holds no sequence",
                 "Warning: nolibrary_R1.fastq.gz: the file holds no read",
@@ -441,7 +441,7 @@ class EndToEndTest {
         Recorder monitor = new Recorder();
         Path output = directory.resolve("equals-results");
 
-        new InSilicoPcrPipeline(config(input, output), monitor).run();
+        pipeline(config(input, output), monitor).run();
 
         assertTrue(monitor.warnings.stream().anyMatch(line -> line.startsWith("Warning: run=2_R1.fastq.gz")
                 && line.contains("BBDuk cannot read the reads") && line.contains("equals sign")), monitor.warnings.toString());
@@ -456,7 +456,7 @@ class EndToEndTest {
         Path input = Files.createDirectory(directory.resolve("allgapped"));
         Files.writeString(input.resolve("gapped.fasta"), ">c1\n" + "-".repeat(60) + "\nACGTACGTACGTACGT\n");
 
-        PipelineException error = assertThrows(PipelineException.class, () -> new InSilicoPcrPipeline(
+        PipelineException error = assertThrows(PipelineException.class, () -> pipeline(
                 config(input, directory.resolve("allgapped-results")), new Recorder()).run());
 
         assertEquals("BLAST failed", error.getMessage());
@@ -471,7 +471,7 @@ class EndToEndTest {
                 .threads(2).build();
 
         PipelineException error = assertThrows(PipelineException.class,
-                () -> new InSilicoPcrPipeline(config, monitor).run());
+                () -> pipeline(config, monitor).run());
 
         assertTrue(error.getMessage().contains("toxA-R is missing"), error.getMessage());
         assertEquals(List.of(Step.DEPENDENCIES), monitor.steps);
@@ -491,7 +491,7 @@ class EndToEndTest {
 
         // Stopped as the input check ends: no later step starts, and no report or QAlog is written.
         assertThrows(CancellationException.class,
-                () -> new InSilicoPcrPipeline(config(EXAMPLE.resolve("genomes"), output), monitor).run());
+                () -> pipeline(config(EXAMPLE.resolve("genomes"), output), monitor).run());
         assertFalse(Files.exists(output.resolve("consolidated_report").resolve("report.tsv")));
         assertFalse(Files.exists(output.resolve("QAlog.txt")));
         assertEquals(List.of(Step.DEPENDENCIES, Step.PRIMERS, Step.INPUT_CHECK), monitor.steps);
@@ -511,7 +511,7 @@ class EndToEndTest {
         };
 
         assertThrows(CancellationException.class,
-                () -> new InSilicoPcrPipeline(config(EXAMPLE.resolve("genomes"), output), monitor).run());
+                () -> pipeline(config(EXAMPLE.resolve("genomes"), output), monitor).run());
         assertFalse(Files.exists(report));
         assertFalse(Files.exists(output.resolve("consolidated_report").resolve("report.html")));
         assertFalse(Files.exists(output.resolve("QAlog.txt")));
@@ -579,6 +579,15 @@ class EndToEndTest {
                 .map(line -> line.replaceFirst(".*\\b(threads=\\d+).*", "$1"))
                 .sorted()
                 .toList();
+    }
+
+    /** A run reporting to the console, its programs untracked: the front ends track theirs. */
+    private static InSilicoPcrPipeline pipeline(PipelineConfig config) {
+        return new InSilicoPcrPipeline(config, RunMonitor.CONSOLE);
+    }
+
+    private static InSilicoPcrPipeline pipeline(PipelineConfig config, RunMonitor monitor) {
+        return new InSilicoPcrPipeline(config, monitor);
     }
 
     private static PipelineConfig config(Path input, Path output) {

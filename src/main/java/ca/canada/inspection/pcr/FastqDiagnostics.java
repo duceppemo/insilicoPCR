@@ -164,7 +164,7 @@ public final class FastqDiagnostics {
         Map<String, Set<String>> otherProducts = otherProducts(Products.of(sample, primers, options));
         List<Finding> findings = new ArrayList<>();
 
-        for (Map.Entry<String, PrimerId.Assay> entry : primers.completeAssays().entrySet()) {
+        for (Map.Entry<String, PrimerId.Assay> entry : primers.assays().entrySet()) {
             String assay = entry.getKey();
             PrimerId.Assay group = entry.getValue();
             ReadsWithOligo counts = new ReadsWithOligo(reads.readsCarrying(group.forward()),

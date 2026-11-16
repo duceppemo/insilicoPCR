@@ -17,7 +17,6 @@ public final class PrimerPanel {
 
     private final Map<String, String> sequences;
     private final Map<String, PrimerId.Assay> assays;
-    private final Map<String, PrimerId.Assay> completeAssays;
     private final Set<String> assaysWithProbe;
     private final ExpectedSizes expectedSizes;
     private final MixGroups mixGroups;
@@ -28,10 +27,11 @@ public final class PrimerPanel {
         Map<String, PrimerId.Assay> grouped = new LinkedHashMap<>();
         PrimerId.byAssay(this.sequences.keySet()).forEach((assay, primers) -> grouped.put(assay, new PrimerId.Assay(
                 List.copyOf(primers.forward()), List.copyOf(primers.reverse()), List.copyOf(primers.probe()))));
+        // Those that can give a product, a forward and a reverse primer: PrimerService rejects a primer file with
+        // any other, and a panel built in a test may hold fewer primers (two maps, of all and of these, differed
+        // in tests only, and the steps used either).
+        grouped.values().removeIf(primers -> !primers.isComplete());
         this.assays = Collections.unmodifiableMap(grouped);
-        Map<String, PrimerId.Assay> complete = new LinkedHashMap<>(grouped);
-        complete.values().removeIf(primers -> !primers.isComplete());
-        this.completeAssays = Collections.unmodifiableMap(complete);
         Set<String> withProbe = new TreeSet<>();
         assays.forEach((assay, primers) -> {
             if (primers.hasProbe()) {
@@ -77,18 +77,9 @@ public final class PrimerPanel {
         return sequence == null ? 0 : sequence.length();
     }
 
-    /** The assays, by name in name order, with their oligo IDs by role. */
+    /** The assays that can give a product (a forward and a reverse primer), by name in name order, with their oligo IDs by role. */
     public Map<String, PrimerId.Assay> assays() {
         return assays;
-    }
-
-    /**
-     * The assays that can give a product: a forward and a reverse primer. {@code PrimerService}
-     * rejects a primer file with any other, so in a run these are all of them; a panel built in
-     * a test may hold fewer primers.
-     */
-    public Map<String, PrimerId.Assay> completeAssays() {
-        return completeAssays;
     }
 
     /**

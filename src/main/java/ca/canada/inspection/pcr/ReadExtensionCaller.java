@@ -263,7 +263,7 @@ public final class ReadExtensionCaller {
             return List.of();
         }
         List<String> assays = new ArrayList<>();
-        primers.completeAssays().forEach((assay, group) -> {
+        primers.assays().forEach((assay, group) -> {
             if (reads.readsCarrying(group.forward()) == 0 || reads.readsCarrying(group.reverse()) == 0) {
                 return;
             }

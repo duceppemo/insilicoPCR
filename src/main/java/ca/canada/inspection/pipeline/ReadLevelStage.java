@@ -11,7 +11,6 @@ import ca.canada.inspection.pcr.ReadLevelCaller.ReadEvidence;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -59,17 +58,14 @@ public final class ReadLevelStage {
     public static Map<String, ReadEvidence> run(Settings settings, PipelineDirectories directories,
                                                 Map<String, Sample> samples,
                                                 PrimerPanel primers, AmpliconOptions options) {
-        List<Sample> fastq = samples.values().stream()
-                .filter(Sample::isFastq)
-                .sorted(Comparator.comparing(Sample::getName))
-                .toList();
+        List<Sample> fastq = PipelineContext.fastqSamples(samples);
         if (fastq.isEmpty()) {
             return Map.of();
         }
         // Samples run in parallel, as many as the memory holds blastn searches (BlastRunner); give each
         // blastn its share of the threads.
         int atOnce = ChildJavaMemory.blastnAtOnce(settings.memoryBudgetGiB(), settings.threads(), fastq.size());
-        int blastThreads = Math.max(1, settings.threads() / atOnce);
+        int blastThreads = ChildJavaMemory.blastnThreads(settings.threads(), atOnce);
         Map<String, ReadEvidence> evidence = new ConcurrentHashMap<>();
         ParallelStageRunner.run("Read-level amplicon search", fastq, atOnce, settings.monitor(),
                 sample -> evidence.put(sample.getName(), searchSample(settings, blastThreads,
@@ -83,20 +79,20 @@ public final class ReadLevelStage {
         String name = sample.getName();
         Path fasta = files.baitedReadsFasta();
         Path hitsFile = files.baitedReadsHits();
-        boolean paired = sample.files().size() == 2;
+        boolean paired = sample.isPaired();
         BaitedReads.ReadSet reads = BaitedReads.write(readInputs(files, paired), paired, fasta);
         if (reads.lengths().isEmpty()) {
             deleteQuietly(hitsFile); // no stale hits from an earlier run in this folder
             return new ReadEvidence(Map.of(), Map.of(), Map.of());
         }
         runBlast(settings, blastThreads, fasta, hitsFile);
-        BlastTsv.keepAccepted(hitsFile, List.of(fasta), primers, options);
         return callFromHits(name, hitsFile, fasta, reads, primers, options, settings.minSupportFraction(),
                 settings.monitor()::warning);
     }
 
     /**
-     * Calls amplicons from the primer hits on a sample's baited reads.
+     * Calls amplicons from the primer hits on a sample's baited reads, the hits file rewritten as the
+     * hits the rules accept ({@link BlastTsv#keepAccepted}).
      *
      * @param hitsFile BLAST hits of the primers on the reads of {@code fasta}
      * @param fasta    the reads searched, as written by {@link BaitedReads#write}
@@ -108,7 +104,7 @@ public final class ReadLevelStage {
         Hits readHits = new Hits();
         reads.descriptions().forEach(readHits::describe);
         String missing = BlastHits.missingWarning(
-                BlastHits.read(hitsFile, List.of(fasta), readHits, primers, options), List.of(fasta));
+                BlastTsv.keepAccepted(hitsFile, List.of(fasta), primers, options, readHits), List.of(fasta));
         if (!missing.isEmpty()) {
             warning.accept(missing);
         }

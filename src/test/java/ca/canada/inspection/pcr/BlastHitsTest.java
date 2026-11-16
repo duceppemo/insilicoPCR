@@ -14,7 +14,8 @@ import static ca.canada.inspection.pcr.TestHits.PRIMER_20;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class BlastReportsTest {
+/** {@link BlastHits#read}: the one loop that judges a table's hits, as each sample's table is read. */
+class BlastHitsTest {
 
     private static final PrimerPanel PRIMERS = PrimerPanel.of(Map.of("assay-F", PRIMER_20));
     private static final AmpliconOptions OPTIONS = AmpliconOptions.withMismatches(0);
@@ -31,6 +32,18 @@ class BlastReportsTest {
         return String.join("\t",
                 "contig1", "assay-F", "20", String.valueOf(mismatches), "0", "1e-5", "40.1",
                 "20", "20", "101", "120", PRIMER_20, "1", "20", PRIMER_20);
+    }
+
+    /** Each sample's table read for its hits, the missing sequences told to {@code warning}. */
+    private void attach(Map<String, Sample> samples, PrimerPanel primers, AmpliconOptions options,
+                        java.util.function.Consumer<String> warning) {
+        samples.forEach((name, sample) -> {
+            String missing = BlastHits.missingWarning(BlastHits.read(report(name), sample.files(), sample.hits(), primers,
+                    options), sample.files());
+            if (!missing.isEmpty()) {
+                warning.accept(missing);
+            }
+        });
     }
 
     private Sample sample(String name) {
@@ -50,7 +63,7 @@ class BlastReportsTest {
 
         Map<String, Sample> samples = new HashMap<>();
         samples.put("sampleA", sample("sampleA"));
-        BlastReports.attachHits(this::report, Sample::files, samples, PRIMERS, OPTIONS, warning -> {});
+        attach(samples, PRIMERS, OPTIONS, warning -> {});
 
         assertEquals(1, samples.get("sampleA").hits().byOligo().get("assay-F").size());
     }
@@ -64,45 +77,17 @@ class BlastReportsTest {
 
         Map<String, Sample> samples = new HashMap<>();
         samples.put("sampleA", sample("sampleA"));
-        BlastReports.attachHits(this::report, Sample::files, samples, PRIMERS, OPTIONS, warning -> {});
+        attach(samples, PRIMERS, OPTIONS, warning -> {});
 
         // As SequenceFileUtils.openMaybeGzip reads the same header in the FASTA.
         assertEquals("Qu\uFFFDbec_c1", samples.get("sampleA").hits().byOligo().get("assay-F").getFirst().queryID());
     }
 
     @Test
-    void reportsOfOtherSamplesAreNotRead() throws IOException {
-        // A report left in the output folder by an earlier run, with a hit that would be accepted.
-        Files.writeString(Files.createDirectories(detailedDir.resolve("stale")).resolve("stale.tsv"), hitLine(0) + "\n");
-        Files.writeString(Files.createDirectories(detailedDir.resolve("sampleA")).resolve("sampleA.tsv"), "");
-        Map<String, Sample> samples = new HashMap<>();
-        samples.put("sampleA", sample("sampleA"));
-
-        BlastReports.attachHits(this::report, Sample::files, samples, PRIMERS, OPTIONS, warning -> {});
-        assertTrue(samples.get("sampleA").hits().byOligo().isEmpty());
-    }
-
-    @Test
-    void theReportIsReadForTheSampleWhateverItsFileIsCalled() throws IOException {
-        // The file ISO2.FASTA is the sample ISO2: its report is ISO2/ISO2.tsv (it was looked
-        // for under the file name, and its hits dropped, before 0.15.1).
-        Path report = report("ISO2");
-        assertEquals(detailedDir.resolve("ISO2").resolve("ISO2.tsv"), report);
-        Files.createDirectories(report.getParent());
-        Files.writeString(report, hitLine(0) + "\n");
-        Sample sample = sample("ISO2");
-        sample.addFile(detailedDir.resolve("ISO2.FASTA"));
-        Map<String, Sample> samples = Map.of("ISO2", sample);
-
-        BlastReports.attachHits(this::report, Sample::files, samples, PRIMERS, OPTIONS, warning -> {});
-        assertEquals(1, sample.hits().byOligo().get("assay-F").size());
-    }
-
-    @Test
     void aMissingReportFailsLoudly() {
         Map<String, Sample> samples = Map.of("ghost", sample("ghost"));
         org.junit.jupiter.api.Assertions.assertThrows(java.io.UncheckedIOException.class,
-                () -> BlastReports.attachHits(this::report, Sample::files, samples, PRIMERS, OPTIONS, warning -> {}));
+                () -> attach(samples, PRIMERS, OPTIONS, warning -> {}));
     }
 
     @Test
@@ -126,7 +111,7 @@ class BlastReportsTest {
         PrimerPanel primers = PrimerPanel.of(Map.of("assay-P", probe));
 
         // Before the fix this hit was rejected at any probe budget (3 unaligned bases).
-        BlastReports.attachHits(this::report, Sample::files, samples, primers, new AmpliconOptions(0, 1, 5, 0, 5, 0, 5000), warning -> {});
+        attach(samples, primers, new AmpliconOptions(0, 1, 5, 0, 5, 0, 5000), warning -> {});
         var hit = samples.get("sampleB").hits().byOligo().get("assay-P").getFirst();
         assertEquals(1, hit.mismatch());
         assertEquals(21, hit.qstart());
@@ -136,7 +121,7 @@ class BlastReportsTest {
         Sample again = sample("sampleB");
         again.addFile(fasta);
         strict.put("sampleB", again);
-        BlastReports.attachHits(this::report, Sample::files, strict, primers, new AmpliconOptions(0, 0, 5, 0, 5, 0, 5000), warning -> {});
+        attach(strict, primers, new AmpliconOptions(0, 0, 5, 0, 5, 0, 5000), warning -> {});
         assertTrue(strict.get("sampleB").hits().byOligo().isEmpty());
     }
 
@@ -155,7 +140,7 @@ class BlastReportsTest {
         sample.addFile(fasta);
         java.util.List<String> warnings = new java.util.ArrayList<>();
 
-        BlastReports.attachHits(this::report, Sample::files, Map.of("sampleC", sample), PrimerPanel.of(Map.of("assay-P", probe)),
+        attach(Map.of("sampleC", sample), PrimerPanel.of(Map.of("assay-P", probe)),
                 new AmpliconOptions(0, 1, 5, 0, 5, 0, 5000), warnings::add);
 
         assertEquals(1, warnings.size(), warnings.toString());

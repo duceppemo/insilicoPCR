@@ -58,5 +58,16 @@ public class Sample {
 	/** The accepted hits on the sample's sequences, and their descriptions. */
 	public Hits hits() { return hits; }
 
+	/**
+
+	 * Whether the sample is a read pair, two FASTQ files: the one rule for whether its pairs are merged,
+
+	 * its merged and unmerged reads searched, and its reads tallied as pairs (it was written in four places).
+
+	 */
+
+	public boolean isPaired() { return isFastq() && sampleFiles.size() == 2; }
+
+
 	public boolean isFastq() { return fileType == FileType.FASTQ; }
 }

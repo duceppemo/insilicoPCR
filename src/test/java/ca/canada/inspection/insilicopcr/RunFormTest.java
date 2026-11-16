@@ -81,8 +81,9 @@ class RunFormTest {
 
         RunForm.Outcome.Invalid invalid = assertInstanceOf(RunForm.Outcome.Invalid.class, new RunForm(input.getParent(),
                 dir.resolve("out"), primers, 1, 0, "1e5", AmpliconSettings.DEFAULTS, FastqSettings.DEFAULTS).toConfig());
-        assertEquals("The input folder holds no FASTA/FASTQ file directly, only in subfolders, which are not read:"
-                + " choose one of them, or move their files up into one folder", invalid.message());
+        // The run's words: the window had its own.
+        assertEquals(ca.canada.inspection.util.InputCheck.noInputFiles(input.getParent()), invalid.message());
+        org.junit.jupiter.api.Assertions.assertTrue(invalid.message().contains("its subfolders S1 hold some, but subfolders are not read"), invalid.message());
     }
 
     @Test

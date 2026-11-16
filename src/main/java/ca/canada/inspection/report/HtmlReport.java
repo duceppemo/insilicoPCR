@@ -30,7 +30,7 @@ import java.util.stream.Collectors;
 
 /**
  * Writes the consolidated report as one self-contained HTML page (no network, no
- * external files), next to the TSV it is built from.
+ * external files), next to the TSV, from the same rows.
  *
  * <p>The page answers "which samples are positive for which assay" at a glance: a
  * sample by assay grid, a summary per assay, then every amplicon. It hides nothing
@@ -221,7 +221,7 @@ public final class HtmlReport {
             try (java.io.Writer out = Files.newBufferedWriter(part, StandardCharsets.UTF_8)) {
                 Page page = new Page(out);
                 render(page, reportTsv.getFileName().toString(), products(rows, primers), sampleNames,
-                        fastqSamples, List.copyOf(primers.completeAssays().keySet()),
+                        fastqSamples, List.copyOf(primers.assays().keySet()),
                         sizes, findings, runDetails, inputIssues, splits);
                 page.flush();
             }

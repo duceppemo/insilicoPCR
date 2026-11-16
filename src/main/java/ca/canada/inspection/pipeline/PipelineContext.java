@@ -38,4 +38,10 @@ public record PipelineContext(
     public boolean hasFastqSamples() {
         return samples.values().stream().anyMatch(Sample::isFastq);
     }
+
+    /** The FASTQ samples of {@code samples}, by name: the order the read steps go through them in. */
+    static java.util.List<Sample> fastqSamples(java.util.Map<String, Sample> samples) {
+        return samples.values().stream().filter(Sample::isFastq)
+                .sorted(java.util.Comparator.comparing(Sample::getName)).toList();
+    }
 }

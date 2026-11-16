@@ -4,7 +4,6 @@ import ca.canada.inspection.pcr.PrimerPanel;
 import ca.canada.inspection.pcr.Products;
 import ca.canada.inspection.model.Sample;
 import ca.canada.inspection.pcr.AmpliconOptions;
-import ca.canada.inspection.pcr.BlastReports;
 import ca.canada.inspection.report.ConsolidatedReport;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -41,8 +40,9 @@ class IoFailureTest {
     void aMissingBlastReportIsAMessage() {
         Sample sample = new Sample("s");
 
-        RuntimeException error = assertThrows(RuntimeException.class, () -> BlastReports.attachHits(
-                name -> SampleFiles.of(dir, name).blastReport(), Sample::files, Map.of("s", sample), PrimerPanel.of(Map.of()), AmpliconOptions.withMismatches(0), warning -> {}));
+        RuntimeException error = assertThrows(RuntimeException.class, () -> ca.canada.inspection.pcr.BlastHits.read(
+                SampleFiles.of(dir, "s").blastReport(), sample.files(), sample.hits(), PrimerPanel.of(Map.of()),
+                AmpliconOptions.withMismatches(0)));
 
         assertTrue(RunFailure.isForTheUser(error), error.toString());
         assertEquals("Error: Unable to read BLAST report: " + dir.resolve("s").resolve("s.tsv"),

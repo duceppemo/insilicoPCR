@@ -233,6 +233,14 @@
 
 ### Changed
 
+- The window checks the input as the run does, by the files' names, and says
+  what the run says: it judged them by their content, in words of its own. A
+  folder whose files are all faulty now starts the run, which names each file
+  and why, as on the command line.
+- **Open Previous Run** no longer reopens a run of a version before 0.15.1,
+  whose `QAlog.txt` names neither its report nor its samples: the code that
+  worked them out from the folder's dates and the logged input list is gone.
+  It says so, and to open the run's `report.html` or run it again.
 - CI: the Linux job fails when a test that needs BLAST+, BBTools, the example
   files (Git LFS), Chrome or a display skipped itself or did not run
   (`scripts/ci/require-tests-ran.sh`): nothing failed then, and they could be

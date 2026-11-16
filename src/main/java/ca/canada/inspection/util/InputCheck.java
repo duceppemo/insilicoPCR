@@ -107,7 +107,7 @@ public final class InputCheck {
             // One read of a pair, its mate not given: run as single-end reads, half the data unused, without a word.
             samples.values().stream().filter(sample -> sample.isFastq() && sample.files().size() == 1).forEach(sample -> {
                 Path file = sample.files().getFirst();
-                int mate = SequenceFileUtils.mateNumber(file);
+                int mate = SequenceFileUtils.mate(file);
                 if (mate > 0) {
                     lines.add(file.getFileName() + " is named as read " + mate + " of a pair, but its mate is not in the"
                             + " input: sample " + sample.getName() + " is run as single-end reads");
@@ -172,7 +172,7 @@ public final class InputCheck {
         }
         if (depth == Depth.FULL) {
             samples.forEach((name, sample) -> {
-                if (!rejected.contains(name) && sample.isFastq() && sample.files().size() == 2) {
+                if (!rejected.contains(name) && sample.isPaired()) {
                     Path first = sample.files().get(0);
                     Path second = sample.files().get(1);
                     long firstReads = faults.get(first).records();
@@ -335,6 +335,28 @@ public final class InputCheck {
 
     private static List<String> fileNames(List<Path> files) {
         return files.stream().map(file -> file.getFileName().toString()).toList();
+    }
+
+    /**
+     * What to say when {@code input} holds no input file: a mistyped -i, or a folder of per-sample folders.
+     * The run and the window say the same ({@code InputValidator}).
+     *
+     * @return the message, or {@code null} when it holds one
+     */
+    public static String noInputFiles(Path input) {
+        if (!candidates(input).isEmpty()) {
+            return null;
+        }
+        List<Path> subfolders = subfoldersWithSequenceFiles(input, null);
+        if (!subfolders.isEmpty()) {
+            return "No FASTA or FASTQ file directly in " + input + ": its subfolders " + subfolders.stream()
+                    .map(folder -> folder.getFileName().toString()).collect(java.util.stream.Collectors.joining(", "))
+                    + " hold some, but subfolders are not read. Give one of them as the input, or move their files up"
+                    + " into one folder.";
+        }
+        // Most likely a mistyped -i: a run of nothing would end as if it had worked (exit 0).
+        return "No FASTA or FASTQ file in " + input + ": nothing to analyse (input files are named "
+                + String.join(", ", SequenceFileUtils.ACCEPTED_EXTENSIONS) + ")";
     }
 
     /** The files of {@code input} named like sequence files, in path order. */

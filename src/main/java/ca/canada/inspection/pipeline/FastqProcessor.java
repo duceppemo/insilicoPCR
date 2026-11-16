@@ -4,7 +4,6 @@ import ca.canada.inspection.model.Sample;
 import ca.canada.inspection.util.InputCheck;
 
 import java.nio.file.Path;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -33,7 +32,7 @@ public final class FastqProcessor {
         }
 
         boolean appliesTo(Sample sample) {
-            return this != MERGE || sample.files().size() == 2;
+            return this != MERGE || sample.isPaired();
         }
     }
 
@@ -202,10 +201,7 @@ public final class FastqProcessor {
     }
 
     private static List<Sample> fastqSamples(PipelineContext context) {
-        return context.samples().values().stream()
-                .filter(Sample::isFastq)
-                .sorted(Comparator.comparing(Sample::getName))
-                .toList();
+        return PipelineContext.fastqSamples(context.samples());
     }
 
     private static void bait(PipelineContext context, BbtoolsCommands commands, Sample sample, int kLength) {

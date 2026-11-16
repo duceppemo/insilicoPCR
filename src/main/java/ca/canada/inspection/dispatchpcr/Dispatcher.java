@@ -4,6 +4,7 @@ import ca.canada.inspection.insilicopcr.MainRun;
 import ca.canada.inspection.pcr.AmpliconOptions;
 import ca.canada.inspection.pcr.ReadExtensionCaller;
 import ca.canada.inspection.pcr.ReadLevelCaller;
+import ca.canada.inspection.pipeline.ChildJavaMemory;
 import ca.canada.inspection.pipeline.ExternalProcessTracker;
 import ca.canada.inspection.pipeline.InSilicoPcrPipeline;
 import ca.canada.inspection.pipeline.PipelineConfig;
@@ -193,10 +194,8 @@ public final class Dispatcher {
                         + " size= and show no product of that size yet), off (none); default: "
                         + ReadExtensionCaller.Mode.DEFAULT).build());
         options.addOption(Option.builder().longOpt("bbtools-memory").hasArg().argName("GB")
-                .desc("FASTQ mode: memory in GB that the BBTools programs running at once share (each gets at most"
-                        + " 64); fewer samples run at once rather than any getting under 4. Set it on a computer"
-                        + " shared with others; default: three quarters of the memory insilicoPCR leaves free on the"
-                        + " computer (a job's limit on a cluster), at least half of its own heap").build());
+                .desc("FASTQ mode: memory in GB that the BBTools programs running at once share (" + ChildJavaMemory.limits()
+                        + "). Set it on a computer shared with others; default: " + ChildJavaMemory.automatic()).build());
         options.addOption(Option.builder().longOpt("input-check").hasArg().argName("full|quick")
                 .desc("How the input files are checked before the run. full: every read of every FASTQ file"
                         + " is read, and the two files of a pair must hold the same number of reads. quick: the"

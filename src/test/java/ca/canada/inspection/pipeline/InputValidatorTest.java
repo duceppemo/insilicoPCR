@@ -1,5 +1,6 @@
 package ca.canada.inspection.pipeline;
 
+import ca.canada.inspection.util.InputCheck;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -46,11 +47,13 @@ class InputValidatorTest {
     }
 
     @Test
-    void nonFastaInputIsReported() throws IOException {
+    void anInputNotNamedAsASequenceFileIsReportedAsTheRunReportsIt() throws IOException {
+        // The window judged a file by its content and the run by its name, each saying it its own way.
+        Path notes = Files.writeString(dir.resolve("notes.txt"), ">c1\nACGT\n");
         Path notFasta = Files.writeString(dir.resolve("notes.fasta"), "this is not fasta\n");
         Path primers = primers();
-        assertEquals("The input must be a FASTA or FASTQ file, or a folder of them",
-                InputValidator.validate(notFasta, dir, primers));
+        assertEquals(InputCheck.noInputFiles(notes), InputValidator.validate(notes, dir, primers));
+        assertTrue(InputValidator.validate(notes, dir, primers).startsWith("No FASTA or FASTQ file in "));
         assertTrue(InputValidator.validate(primers, dir, notFasta).contains("has a sequence before its first header"));
     }
 
@@ -83,7 +86,7 @@ class InputValidatorTest {
     void emptyInputDirectoryIsReported() throws IOException {
         Path inputDir = Files.createDirectories(dir.resolve("empty"));
         Path primers = primers();
-        assertTrue(InputValidator.validate(inputDir, dir, primers).contains("at least one"));
+        assertTrue(InputValidator.validate(inputDir, dir, primers).startsWith("No FASTA or FASTQ file in "));
     }
 
     @Test
@@ -98,11 +101,13 @@ class InputValidatorTest {
     }
 
     @Test
-    void aFolderOfFaultyFilesOnlyIsReported() throws IOException {
+    void aFolderOfFaultyFilesOnlyIsLeftToTheRunWhichNamesEachFile() throws IOException {
+        // As on the command line: the run's input check names each file and why (InputCheck), where the window
+        // said only that the folder held no valid file.
         Path inputDir = Files.createDirectories(dir.resolve("allbad"));
         Files.writeString(inputDir.resolve("empty_R1.fastq"), "");
         Path primers = primers();
-        assertTrue(InputValidator.validate(inputDir, dir, primers).contains("at least one"));
+        assertEquals("", InputValidator.validate(inputDir, dir, primers));
     }
 
     @Test

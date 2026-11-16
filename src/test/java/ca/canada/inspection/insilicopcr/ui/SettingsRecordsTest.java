@@ -110,7 +110,8 @@ class SettingsRecordsTest {
         assertTrue(FastqSettingsDialog.summary(custom).contains("k=25"));
         assertTrue(FastqSettingsDialog.summary(custom).contains("\nRead extension: unreported\n"));
         assertTrue(FastqSettingsDialog.summary(custom).endsWith("BBTools memory: automatic: three quarters of the"
-                + " memory insilicoPCR leaves free, at least half of its heap"));
+                + " memory insilicoPCR leaves free on the computer (a job's limit on a cluster), at least half of its own"
+                + " heap"), FastqSettingsDialog.summary(custom));
 
         FastqSettings noExtension = new FastqSettings(TadpoleOptions.DEFAULTS, 0.3, ReadExtensionCaller.Mode.OFF, ca.canada.inspection.pipeline.PipelineConfig.AUTOMATIC_BBTOOLS_MEMORY);
         assertEquals(ReadExtensionCaller.Mode.UNREPORTED, FastqSettings.DEFAULTS.readExtension());

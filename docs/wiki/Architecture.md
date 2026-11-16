@@ -33,7 +33,7 @@ Each package depends only on those below it in this table, so there are no cycle
 | `util` | Input checks, sequence file helpers, the version (`Version`, filled in from `pom.xml` at build time) | `model` |
 | `model` | `Sample` (its name, files and type, and its `Hits`), `Hits` (accepted primer hits on a set of sequences, with their descriptions) and `BlastResult` | nothing |
 
-The GUI runs the same pipeline: `insilicopcr.PcrPipelineTask` runs `InSilicoPcrPipeline` on a background thread and gives it a `RunMonitor` that sends messages, program output and progress to the window; cancelling the task (the window closing) kills the external programs, and the task appends what the run showed to `log.txt` however it ends. The command line gives it `RunMonitor.CONSOLE`. A finished run returns a `RunResult` (its report, HTML report and samples), which the window's buttons use; `QAlog.txt` names the same report and samples, which `PreviousRun` reads back to reopen the run. Every external program (BLAST+, BBTools) is started by one class, `pipeline.ExternalProgram`.
+The GUI runs the same pipeline: `insilicopcr.PcrPipelineTask` runs `InSilicoPcrPipeline` on a background thread and gives it a `RunMonitor` that sends messages, program output and progress to the window; cancelling the task (the window closing) kills the external programs, and the task appends what the run showed to `log.txt` however it ends. The command line gives it the console (`Dispatcher.consoleMonitor()`: `RunMonitor.CONSOLE` with its external programs tracked, and stopped when the program is). A finished run returns a `RunResult` (its report, HTML report and samples), which the window's buttons use; `QAlog.txt` names the same report and samples, which `PreviousRun` reads back to reopen the run. Every external program (BLAST+, BBTools) is started by one class, `pipeline.ExternalProgram`.
 
 ## Pipeline stages (`ca.canada.inspection.pipeline`)
 
@@ -45,7 +45,7 @@ The GUI runs the same pipeline: `insilicopcr.PcrPipelineTask` runs `InSilicoPcrP
 | Primers | `PrimerService` | Read the primer FASTA (every assay needs `-F` and `-R`), expand degenerate bases, write `primer_tmp.fasta`; first, so that a mistake there is found before the input is read |
 | Input check | `util.InputCheck` | Find the samples and check their files |
 | Reads | `FastqProcessor`, `BbtoolsCommands`, `ChildJavaMemory` | FASTQ samples: two rounds of BBDuk baiting, Tadpole mini-assembly, BBMerge of baited pairs. Each BBTools command runs in the folder of the file it writes and names its files relative to it (`BbtoolsCommands.Command`): BBTools reads a comma in a file argument as a list of files |
-| BLAST database, BLAST | `BlastDatabaseBuilder`, `BlastRunner`, `ContigService`, `pcr.BlastReports` | `makeblastdb` on the primers; `blastn` of every sample, one thread each, several samples at a time; the accepted hits attached to their samples |
+| BLAST database, BLAST | `BlastDatabaseBuilder`, `BlastRunner`, `BlastQuery`, `BlastTsv`, `ContigService` | `makeblastdb` on the primers; `blastn` of every sample, several samples at a time within the memory budget (a sequence over 1 Mb in overlapping pieces); each table filtered to the accepted hits as they are attached to their sample, in one pass |
 | Read search, read extension | `ReadLevelStage`, `ReadExtensionStage`, `BaitedReads` | FASTQ samples: amplicons called on the baited reads; reads extended for products longer than a read. `BaitedReads` owns the baited reads written as FASTA (written by the read search, read back by both); FASTQ files are read by `util.FastqRecords`, multi-line FASTA by `util.FastaScanner` |
 | Reports | `ReportGenerator`, `FastqDiagnosticsStage`, `QaLogWriter` | Writes `report.tsv`, the FASTQ diagnostics, the HTML report, the `--gel` image and, last, `QAlog.txt`; returns the `RunResult`; runs no program |
 
@@ -63,9 +63,8 @@ The pipeline delegates the scientific decisions to one JavaFX-free package:
 | `PrimerPanel` | The primers of a run, read once by `PrimerService`: each oligo's sequence (degenerate ones expanded), the assays they form, which have a probe, and the product sizes the file declares; passed to every step that needs the primers |
 | `AmpliconOptions` | Immutable knobs: mismatch budget, 3' window/penalty, 5' truncation allowance, product size limits |
 | `BlastField` | The columns of the BLAST TSV, in order: the `-outfmt` blastn is given, the header and the parser's fields |
-| `BlastHits` | The one reader of a BLAST TSV into a sample (contigs, baited reads, extended reads), with the warning for trimmed hits whose sequence is missing from the searched file |
+| `BlastHits` | The one loop that judges a BLAST table's hits (contigs, baited reads, extended reads), as `BlastTsv.keepAccepted` filters the table and takes its hits in one pass; with the warning for trimmed hits whose sequence is missing from the searched file |
 | `BlastHitParser` | Parses one BLAST TSV line and applies the hit acceptance rules (mismatch budget, 3'-end coverage, weighted 3' penalty; probes exempt from 3' rules; trimmed probe ends and primer 3' ends compared with the template by `TrimmedEnds`, the template read alongside the report by `QueryTemplates`) |
-| `BlastReports` | Reads the BLAST report of each of the run's samples (where the pipeline says it is) and attaches their accepted hits |
 | `AmpliconCaller` | Pairs forward/reverse hits: same contig, opposite strands, convergent orientation, size limits |
 | `TrimmedEnds` | Compares the oligo bases BLAST trimmed off the ends of an alignment with the template: probe ends and primer 3' ends count only where they do not pair |
 | `QueryTemplates` | Reads the contig or read a hit lies on from the FASTA that was searched, one query at a time and at one byte per base (`PackedBases`), for `TrimmedEnds` |
@@ -127,7 +126,7 @@ The order a run goes through, from the entry point to the files it writes. It is
 ```text
 Dispatcher
    ↓
-GUI (PcrPipelineTask + window RunMonitor)  /  CLI (RunMonitor.CONSOLE)
+GUI (PcrPipelineTask + window RunMonitor)  /  CLI (Dispatcher.consoleMonitor)
    ↓
 Shared pipeline (InSilicoPcrPipeline)
    ↓

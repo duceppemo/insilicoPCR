@@ -62,8 +62,9 @@ public record BlastResult(
 			char q = Character.toUpperCase(qseq.charAt(i));
 			char s = Character.toUpperCase(sseq.charAt(i));
 			boolean oligoBase = s != '-';
-			// A gap in the oligo (a template base it lacks) sits after the oligo base before it.
-			int at = oligoBase ? position : position - direction;
+			// A gap in the oligo (a template base it lacks) sits between two oligo bases: it is counted at the one
+			// on its 3' side, on either strand (the plus strand counted it at the 3' side, the minus at the 5').
+			int at = oligoBase ? position : Math.max(position, position - direction);
 			if (q != s) {
 				all++;
 				past += at > n ? 1 : 0;

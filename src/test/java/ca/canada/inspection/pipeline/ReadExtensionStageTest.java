@@ -227,4 +227,113 @@ class ReadExtensionStageTest {
                 + BbtoolsCommands.outOfMemoryMessage("Tadpole", "", 4) + ")"), result.notes());
         assertTrue(result.rows().isEmpty());
     }
+
+    @Test
+    void aRoundBaitsAgainFromTheEndsThatGrewOnly() throws IOException {
+        // An end that did not grow, baited again, brings back the reads it brought before: rounds went on
+        // re-reading the sample for nothing, and the same reads entered the pool again.
+        List<ca.canada.inspection.pcr.ReadExtensionCaller.Seed> open = List.of(
+                new ca.canada.inspection.pcr.ReadExtensionCaller.Seed("s1", "read_0", "long", ca.canada.inspection.pcr.PrimerId.Role.FORWARD),
+                new ca.canada.inspection.pcr.ReadExtensionCaller.Seed("s2", "read_1", "long", ca.canada.inspection.pcr.PrimerId.Role.REVERSE));
+        Map<String, String> seeds = Map.of("s1", "GATTACA", "s2", "CCCCGGG");
+        Map<String, String> before = Map.of("s1", "AA" + "GATTACA" + "TT", "s2", "A" + "CCCCGGG" + "T");
+        Map<String, String> after = Map.of("s1", "AAAA" + "GATTACA" + "TT", "s2", "A" + "CCCCGGG" + "T");
+        Path ends = dir.resolve("ends.fasta");
+
+        Map<String, int[]> first = ReadExtensionStage.sides(open, seeds, before);
+        Map<String, int[]> second = ReadExtensionStage.sides(open, seeds, after);
+
+        assertTrue(ReadExtensionStage.writeGrownEnds(second, first, after, ends));
+        assertEquals(List.of(">s1_start", "AAAAGATTACATT"), Files.readAllLines(ends));
+        assertTrue(!ReadExtensionStage.writeGrownEnds(second, second, after, ends), "nothing grew");
+    }
+
+    /** The value of {@code name=} among a BBTools command's arguments, or of the argument after {@code name}. */
+    private static Path argument(List<String> command, String name) {
+        for (int i = 0; i < command.size(); i++) {
+            if (command.get(i).startsWith(name + "=")) {
+                return Path.of(command.get(i).substring(name.length() + 1));
+            }
+            if (command.get(i).equals(name) && i + 1 < command.size()) {
+                return Path.of(command.get(i + 1));
+            }
+        }
+        throw new AssertionError(name + " not in " + command);
+    }
+
+    @Test
+    void aRoundThatFailsKeepsWhatTheRoundsBeforeItFound() throws IOException {
+        // Tadpole, blastn and BBDuk stood in for. Round 1 extends both seeds by 40 bases each way, with no product;
+        // the round's bait brings one new pair; Tadpole fails in round 2. The run goes on, the sample's
+        // extension with what round 1 found, and a note says where it stopped (it lost every round before).
+        int[] tadpoleRuns = {0};
+        List<String> started = new java.util.ArrayList<>();
+        RunMonitor monitor = new RunMonitor() {
+            @Override
+            public void runProgram(Path directory, List<String> command, String program) {
+                started.add(program);
+                try {
+                    switch (program) {
+                        case "Tadpole" -> {
+                            if (++tadpoleRuns[0] == 2) {
+                                throw new ProgramFailedException(program, 1, false, "Tadpole failed with exit code 1");
+                            }
+                            StringBuilder out = new StringBuilder();
+                            List<String> seeds = Files.readAllLines(directory.resolve(argument(command, "in")));
+                            for (int i = 0; i + 1 < seeds.size(); i += 2) {
+                                out.append(seeds.get(i)).append('\n').append("C".repeat(40)).append(seeds.get(i + 1))
+                                        .append("G".repeat(40)).append('\n');
+                            }
+                            Files.writeString(directory.resolve(argument(command, "out")), out);
+                        }
+                        case "BBDuk" -> {
+                            try (var gz = new java.util.zip.GZIPOutputStream(Files.newOutputStream(
+                                    directory.resolve(argument(command, "outm"))))) {
+                                gz.write("@new/1\nACGT\n+\nIIII\n@new/2\nACGT\n+\nIIII\n".getBytes());
+                            }
+                        }
+                        default -> Files.writeString(argument(command, "-out"), ""); // blastn: no hit
+                    }
+                } catch (IOException e) {
+                    throw new java.io.UncheckedIOException(e);
+                }
+            }
+
+            @Override
+            public void info(String message) {
+            }
+        };
+        Sample sample = new Sample("S");
+        sample.setFileType(Sample.FileType.FASTQ);
+        PipelineDirectories directories = new PipelineDirectories(dir, dir.resolve("detailed_report"),
+                dir.resolve(PipelineDirectories.CONSOLIDATED));
+        SampleFiles files = directories.sample("S");
+        Files.createDirectories(files.directory());
+        sample.addFile(Files.writeString(dir.resolve("S.fastq"), "@r\nACGT\n+\nIIII\n"));
+        Files.writeString(files.doubleTargetMatches(), "");
+        Files.writeString(files.baitedReadsFasta(), ">read_0 a/1\nACGTACGT\n>read_1 a/2\nTTTTGGGG\n");
+        ReadEvidence evidence = new ReadEvidence(Map.of("long-F", Set.of("read_0"), "long-R", Set.of("read_1")),
+                Map.of(), Map.of());
+        ReadExtensionStage.Settings settings = new ReadExtensionStage.Settings(
+                new ReadLevelStage.Settings(Path.of("blastn"), Path.of("primer_tmp.fasta"), 1e5, 1, 0.3, monitor, 4),
+                new BbtoolsCommands("java", Path.of("bbtools.jar"), 4, 1), ReadExtensionCaller.Mode.UNREPORTED);
+
+        ReadExtensionStage.Result result = ReadExtensionStage.run(settings, directories, Map.of("S", sample), PRIMERS,
+                AmpliconOptions.withMismatches(0), Map.of("S", evidence));
+
+        assertEquals(List.of("Tadpole", "blastn", "BBDuk", "Tadpole"), started);
+        assertEquals(List.of("read extension of sample S stopped at round 2 (Tadpole failed with exit code 1); the"
+                + " products of the rounds before are kept"), result.notes());
+        assertTrue(result.outcomes().get("S").containsKey("long"), result.outcomes().toString());
+        // The pair the round baited is kept, once, and the extended reads of round 1 with it.
+        assertEquals(2, Files.readAllLines(files.extendedReads()).stream().filter(line -> line.startsWith(">")).count());
+    }
+
+    @Test
+    void aPoolFileThatEndsInsideAReadIsAnError() throws IOException {
+        Path cut = Files.writeString(dir.resolve("cut.fq"), "@r1\nACGT\n+\n");
+        java.io.UncheckedIOException error = assertThrows(java.io.UncheckedIOException.class, () -> ReadPool.of(cut));
+        assertTrue(error.getMessage().startsWith("Unable to read " + cut), error.getMessage());
+        assertEquals(ReadPool.key("@pair/1 x"), ReadPool.key("pair/2"), "the mates of a pair are one name");
+    }
 }

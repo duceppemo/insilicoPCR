@@ -88,6 +88,11 @@ public record SampleFiles(Path directory, String name) {
         return directory.resolve(name + "_extensionEnds.fasta");
     }
 
+    /** The seeds a round of the extension extends: those of the assays not closed yet. */
+    Path extensionRoundSeeds() {
+        return directory.resolve(name + "_extensionRoundSeeds.fasta");
+    }
+
     /** The sample's reads (pairs kept together) sharing a k-mer with the ends of one round's extended reads. */
     Path extensionRoundReads() {
         return directory.resolve(name + "_extensionRoundReads.fastq.gz");
@@ -114,6 +119,6 @@ public record SampleFiles(Path directory, String name) {
         return List.of(blastReport(), targetMatches(), doubleTargetMatches(), assembly(), mergedReads(),
                 unmergedReads(), baitedReadsFasta(), baitedReadsHits(), extensionSeeds(), extendedReads(),
                 extensionCandidates(), candidateReads(), extendedReadsHits(), extensionEnds(), extensionRoundReads(),
-                extensionReads());
+                extensionReads(), extensionRoundSeeds());
     }
 }

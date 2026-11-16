@@ -91,8 +91,9 @@ public final class FastqCheck {
         } catch (IOException e) {
             return new Result(Fault.UNREADABLE, 0, "cannot be read: " + e.getMessage());
         }
+        // Past a byte order mark (a file saved by a Windows editor): BBTools reads such a file too.
         try (InputStream raw = Files.newInputStream(file);
-             InputStream in = gzipped ? new GZIPInputStream(raw, 1 << 16) : raw) {
+             InputStream in = SequenceFileUtils.withoutByteOrderMark(gzipped ? new GZIPInputStream(raw, 1 << 16) : raw)) {
             byte[] block = new byte[1 << 16];
             int read;
             while ((read = in.read(block)) >= 0) {

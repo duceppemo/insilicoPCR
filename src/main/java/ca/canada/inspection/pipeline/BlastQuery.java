@@ -1,5 +1,7 @@
 package ca.canada.inspection.pipeline;
 
+import ca.canada.inspection.util.SequenceFileUtils;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -52,7 +54,7 @@ final class BlastQuery implements AutoCloseable {
             return new BlastQuery(fasta, false);
         }
         Path plain = Files.createTempFile(scratchDirectory, PREFIX, ".fasta");
-        try (InputStream in = withoutByteOrderMark(gzipped ? new GZIPInputStream(Files.newInputStream(fasta))
+        try (InputStream in = SequenceFileUtils.withoutByteOrderMark(gzipped ? new GZIPInputStream(Files.newInputStream(fasta))
                 : Files.newInputStream(fasta))) {
             Files.copy(in, plain, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
@@ -62,28 +64,13 @@ final class BlastQuery implements AutoCloseable {
         return new BlastQuery(plain, true);
     }
 
-    /** The UTF-8 byte order mark, which Notepad writes at the start of a file. */
-    private static final byte[] BYTE_ORDER_MARK = {(byte) 0xEF, (byte) 0xBB, (byte) 0xBF};
-
     /**
      * Whether {@code fasta} starts with a byte order mark: blastn takes it for a line of data and stops
      * ("CFastaReader: Near line 1, there's a line that doesn't look like plausible data"), and the
      * input check, which reads past it, had let the file through.
      */
     static boolean startsWithByteOrderMark(Path fasta) throws IOException {
-        try (InputStream in = Files.newInputStream(fasta)) {
-            return java.util.Arrays.equals(in.readNBytes(BYTE_ORDER_MARK.length), BYTE_ORDER_MARK);
-        }
-    }
-
-    /** {@code in} past the byte order mark it starts with, if any. */
-    private static InputStream withoutByteOrderMark(InputStream in) throws IOException {
-        java.io.BufferedInputStream buffered = new java.io.BufferedInputStream(in);
-        buffered.mark(BYTE_ORDER_MARK.length);
-        if (!java.util.Arrays.equals(buffered.readNBytes(BYTE_ORDER_MARK.length), BYTE_ORDER_MARK)) {
-            buffered.reset();
-        }
-        return buffered;
+        return SequenceFileUtils.startsWithByteOrderMark(fasta);
     }
 
     /** The file to pass to {@code blastn -query}. */

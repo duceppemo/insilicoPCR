@@ -2,6 +2,30 @@
 
 ## Unreleased
 
+### Fixed
+
+- A product made by several variants of a degenerate primer named a variant
+  whose first base does not pair, rather than one that pairs over its whole
+  length, when the two had no mismatch in their alignments: BLAST leaves a
+  mismatch at a primer's first bases out of the alignment, so it counted
+  nowhere. The variant with fewer unpaired 5' bases is named now
+  (`Forward5PrimeUnaligned` / `Reverse5PrimeUnaligned` show it), on contigs and
+  from reads alike.
+- Input check:
+  - An assembly starting with blank lines was refused as "not a FASTA file";
+    BLAST reads it, and so does the check now.
+  - A FASTQ file saved with a byte order mark (by a Windows editor) was refused
+    as "not a FASTQ file", although 0.15.2 said such files were read; it is,
+    and BBTools reads it too.
+  - Each assembly was read twice, once for its form and once for its sequence
+    IDs; it is read once, and a gzipped one cut short is named as such ("the
+    gzip stream ends early") at either `--input-check` depth.
+- FASTQ diagnostics: a read support just under the threshold was printed
+  rounded up to it ("89 of 300 informative read(s) (30%) ... needs ... 30%");
+  such a share is printed to a tenth, rounded down (29.6%).
+- The bases a hit's trimmed ends are compared with: each query that is in no
+  searched file cost a further read through every file; it is looked up once.
+
 ### Changed
 
 - CI: the ZIPs of builds that are not a release (pull requests, pushes to

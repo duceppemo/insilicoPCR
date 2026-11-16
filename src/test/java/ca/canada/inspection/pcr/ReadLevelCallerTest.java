@@ -304,6 +304,17 @@ class ReadLevelCallerTest {
     }
 
     @Test
+    void aShareBelowTheThresholdDoesNotReadAsReachingIt() {
+        // 89 of 300 is 29.67%: "30%" next to "needs ... 30%" read as a contradiction.
+        assertEquals("29.6%", ReadLevelCaller.percentBelow(89 / 300.0, 0.3));
+        assertEquals("29.9%", ReadLevelCaller.percentBelow(0.2999, 0.3));
+        // Any other share is a whole percent, as before.
+        assertEquals("18%", ReadLevelCaller.percentBelow(3 / 17.0, 0.3));
+        assertEquals("30%", ReadLevelCaller.percentBelow(0.3, 0.3));
+        assertEquals("67%", ReadLevelCaller.percentBelow(2 / 3.0, 0.3));
+    }
+
+    @Test
     void editDistanceCountsSubstitutionsAndIndels() {
         assertEquals(0, ReadLevelCaller.editDistance("ACGTACGT", "ACGTACGT", 8));
         assertEquals(1, ReadLevelCaller.editDistance("ACGTACGT", "ACGAACGT", 8));

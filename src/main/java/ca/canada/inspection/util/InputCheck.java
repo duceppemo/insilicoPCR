@@ -273,7 +273,7 @@ public final class InputCheck {
 
     static FileFault check(Path file, Depth depth) {
         return SequenceFileUtils.hasExtension(file, SequenceFileUtils.FASTQ_EXTENSIONS)
-                ? fastq(file, depth) : fasta(file, depth);
+                ? fastq(file, depth) : fasta(file);
     }
 
     private static FileFault fastq(Path file, Depth depth) {
@@ -289,13 +289,16 @@ public final class InputCheck {
         return new FileFault(problem, result.detail(), result.records());
     }
 
+    /** The longest part of a header line kept to find its ID: the ID ends at the first blank. */
+    private static final int HEADER_KEPT = 1 << 16;
+
     /**
-     * A FASTA file must start with a header and hold at least one line of sequence. A
-     * gzipped one is read to its end at {@link Depth#FULL}: assemblies are small, and a
-     * stream cut short would otherwise stop the run at the BLAST search.
+     * A FASTA file must start with a header, after any blank lines (BLAST skips them too), hold
+     * at least one line of sequence, and give each sequence its own ID. It is read to its end, at
+     * either depth, in one pass: the IDs are in every header, and a gzipped file cut short is
+     * found here rather than at the BLAST search.
      */
-    private static FileFault fasta(Path file, Depth depth) {
-        boolean gzipped = file.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(".gz");
+    private static FileFault fasta(Path file) {
         boolean sequenceSeen = false;
         try {
             if (Files.size(file) == 0) {
@@ -305,43 +308,54 @@ public final class InputCheck {
             // as one string, for every file being checked at once.
             try (BufferedReader reader = SequenceFileUtils.openMaybeGzip(file)) {
                 char[] block = new char[1 << 16];
-                boolean first = true;
+                Set<String> ids = new HashSet<>();
+                boolean beforeFirstHeader = true;
                 boolean atLineStart = true;
-                boolean inHeader = false;
+                StringBuilder header = null; // the header line being read, '>' included
                 int read;
-                scan:
                 while ((read = reader.read(block)) >= 0) {
                     if (Thread.currentThread().isInterrupted()) {
                         return new FileFault("the file cannot be read", "the check was interrupted", 0);
                     }
                     for (int i = 0; i < read; i++) {
                         char c = block[i];
-                        if (first) {
-                            first = false;
-                            if (c != '>') {
+                        if (c == '\n' || c == '\r') {
+                            if (header != null) {
+                                FileFault repeated = repeatedId(ids, header);
+                                if (repeated != null) {
+                                    return repeated;
+                                }
+                                header = null;
+                            }
+                            atLineStart = true;
+                        } else if (header != null) {
+                            if (header.length() < HEADER_KEPT) {
+                                header.append(c);
+                            }
+                        } else if (atLineStart && c == '>') {
+                            beforeFirstHeader = false;
+                            atLineStart = false;
+                            header = new StringBuilder(">");
+                        } else if (beforeFirstHeader) {
+                            if (!Character.isWhitespace(c)) {
                                 return new FileFault("not a FASTA file", "the first line does not start with >", 0);
                             }
-                        }
-                        if (c == '\n' || c == '\r') {
-                            atLineStart = true;
-                            inHeader = false;
-                        } else if (atLineStart && c == '>') {
-                            atLineStart = false;
-                            inHeader = true;
+                            atLineStart = false; // a blank before a > is not a header
                         } else {
                             atLineStart = false;
-                            if (!inHeader && !Character.isWhitespace(c)) {
+                            if (!Character.isWhitespace(c)) {
                                 sequenceSeen = true;
-                                if (!gzipped || depth == Depth.QUICK) {
-                                    break scan;
-                                }
-                                // A gzipped file is read on to its end, to see that the stream is whole.
-                                break;
                             }
                         }
                     }
                 }
-                if (first) {
+                if (header != null) {
+                    FileFault repeated = repeatedId(ids, header); // a last line without a line end
+                    if (repeated != null) {
+                        return repeated;
+                    }
+                }
+                if (beforeFirstHeader) {
                     return new FileFault("the file holds no sequence", "the file is empty", 0);
                 }
             }
@@ -355,29 +369,22 @@ public final class InputCheck {
         if (!sequenceSeen) {
             return new FileFault("the file holds no sequence", "header lines only", 0);
         }
-        // At either depth: headers only, quick on an assembly, and what it prevents is a wrong product.
-        return repeatedId(file);
+        return FileFault.NONE;
     }
 
     /**
      * Two sequences of one file with one ID (assemblies joined into one file, each with contigs
      * named 1, 2, ...): BLAST takes them, but its hits name the ID only, so a primer on one and a
      * primer on the other would be paired into a product of two molecules.
+     *
+     * @return the fault when {@code header}'s ID is already in {@code ids}, else {@code null}
      */
-    private static FileFault repeatedId(Path file) {
-        Set<String> ids = new HashSet<>();
-        try (FastaScanner scanner = new FastaScanner(List.of(file))) {
-            String header;
-            while ((header = scanner.nextHeader(null)) != null) {
-                String id = SequenceFileUtils.fastaId(header);
-                if (!ids.add(id)) {
-                    return new FileFault("two sequences share an ID", "the ID " + id + " names more than one"
-                            + " sequence; give each its own (the report and BLAST tell sequences apart by ID)", 0);
-                }
-            }
-        } catch (IOException e) {
-            return new FileFault("the file cannot be read", String.valueOf(e.getMessage()), 0);
+    private static FileFault repeatedId(Set<String> ids, CharSequence header) {
+        String id = SequenceFileUtils.fastaId(header.toString());
+        if (ids.add(id)) {
+            return null;
         }
-        return FileFault.NONE;
+        return new FileFault("two sequences share an ID", "the ID " + id + " names more than one"
+                + " sequence; give each its own (the report and BLAST tell sequences apart by ID)", 0);
     }
 }

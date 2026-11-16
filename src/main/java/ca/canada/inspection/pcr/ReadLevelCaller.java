@@ -163,7 +163,7 @@ public final class ReadLevelCaller {
 
         public String supportSummary() {
             return supportingReads + " of " + informativeReads + " informative read(s) ("
-                    + percent(supportFraction()) + ")";
+                    + percentBelow(supportFraction(), minSupportFraction) + ")";
         }
 
         /** The observed sizes, e.g. {@code 131,132}. */
@@ -325,6 +325,19 @@ public final class ReadLevelCaller {
 
     static String percent(double fraction) {
         return Math.round(100 * fraction) + "%";
+    }
+
+    /**
+     * {@code fraction} as a percentage that does not read as reaching {@code threshold} when it
+     * does not: 89 of 300 reads (29.67%) against 30% is {@code 29.6%}, not {@code 30%}. Any other
+     * share is rounded to a whole percent, as {@link #percent} does.
+     */
+    static String percentBelow(double fraction, double threshold) {
+        if (fraction >= threshold || Math.round(100 * fraction) < Math.round(100 * threshold)) {
+            return percent(fraction);
+        }
+        // Rounded down to a tenth: below the threshold, it stays below it in print.
+        return String.format(java.util.Locale.ROOT, "%.1f%%", Math.floor(1000 * fraction) / 10);
     }
 
     private static ReadCall call(String assay, List<ReportRow> rows, Evidence evidence) {

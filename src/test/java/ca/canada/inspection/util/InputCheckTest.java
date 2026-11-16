@@ -250,10 +250,34 @@ class InputCheckTest {
     @Test
     void aGzippedAssemblyIsReadToItsEndWhateverItsSize() throws IOException {
         gzip("big.fasta.gz", ">c1\n" + "ACGTTGCA".repeat(30_000) + "\n>c2\nGGCC\n");
+        // The same, cut short: the first sequence line is whole, the stream is not.
+        gzip("cut.fasta.gz", ">c1\n" + "ACGTTGCA".repeat(30_000) + "\n>c2\nGGCC\n");
+        byte[] whole = Files.readAllBytes(dir.resolve("cut.fasta.gz"));
+        Files.write(dir.resolve("cut.fasta.gz"), java.util.Arrays.copyOf(whole, whole.length / 2));
 
-        Result result = InputCheck.scan(dir, Depth.FULL, 1);
+        for (Depth depth : Depth.values()) {
+            Result result = InputCheck.scan(dir, depth, 1);
 
-        assertEquals(Set.of("big"), result.samples().keySet());
+            assertEquals(Set.of("big"), result.samples().keySet(), depth.toString());
+            assertEquals(List.of("cut.fasta.gz: the file cannot be read (the gzip stream ends early: the file is incomplete)"),
+                    result.issues().stream().map(Issue::describe).toList(), depth.toString());
+        }
+    }
+
+    @Test
+    void blankLinesBeforeTheFirstHeaderAreSkippedAsBlastSkipsThem() throws IOException {
+        write("blank.fasta", "\n\r\n  \t\n>c1\nACGT\n");
+        write("indented.fasta", "  >c1\nACGT\n");
+        write("sameId.fasta", ">c1 one\nACGT\n>c1"); // the second header has no line end
+
+        Result result = InputCheck.scan(dir, Depth.QUICK, 1);
+
+        assertEquals(Set.of("blank"), result.samples().keySet());
+        assertEquals(List.of(
+                "indented.fasta: not a FASTA file (the first line does not start with >)",
+                "sameId.fasta: two sequences share an ID (the ID c1 names more than one sequence; give each its own"
+                        + " (the report and BLAST tell sequences apart by ID))"),
+                result.issues().stream().map(Issue::describe).toList());
     }
 
     @Test

@@ -33,7 +33,7 @@ Since 0.13.0 every input file is checked before anything is run on it. A sample 
 | A read that is not four lines of the expected kind: no `@` header, no `+` line, a quality line of another length, a character that is not a base or a quality score, a blank line between reads | `a read is not well formed (read 10 (line 40): the quality line has 100 characters for 150 bases)` |
 | Not a FASTQ file under a `.fastq` name | `not a FASTQ file` |
 | The two files of a read pair with different numbers of reads | `the two files of the pair hold different numbers of reads (695 and 600)` |
-| An assembly that is empty, holds header lines only, does not start with `>`, or whose gzip stream is cut short | `the file holds no sequence (header lines only)` |
+| An assembly that is empty, holds header lines only, does not start with `>` (blank lines before it are skipped, as BLAST skips them, since 0.15.3), or whose gzip stream is cut short | `the file holds no sequence (header lines only)` |
 | An assembly in which two sequences share an ID (assemblies joined into one file, each with contigs named `1`, `2`, ...); since 0.15.2 (with `--input-check quick` too): before, a primer on one and a primer on the other could be paired into a product of two molecules | `two sequences share an ID (the ID 1 names more than one sequence; ...)` |
 | Files with the same sample name that are not a read pair (`x.fasta` and `x.fastq`, `x.fasta` and `x.fna`) | `these files have the same sample name (a sample is one FASTA file, ...)` |
 | Sample names that differ only in case (`iso2.fasta`, `ISO2.fna`); their results would share a folder on Windows and macOS | `the sample name differs only in case from another one (ISO2, iso2 would share a results folder; rename one)` |

@@ -18,7 +18,7 @@ public interface RunMonitor {
 
     /** The steps of a run, in order, for a progress bar. */
     enum Step {
-        DEPENDENCIES, PRIMERS, INPUT_CHECK, READS, BLAST_DATABASE, BLAST, READ_SEARCH, READ_EXTENSION, REPORTS;
+        DEPENDENCIES, PRIMERS, INPUT_CHECK, BLAST_DATABASE, READS, BLAST, READ_SEARCH, READ_EXTENSION, REPORTS;
 
         /** Share of the run done once this step is done, from 0 to 1. */
         public double doneFraction() {

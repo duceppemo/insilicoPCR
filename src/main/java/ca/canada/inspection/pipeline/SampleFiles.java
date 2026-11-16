@@ -26,6 +26,21 @@ public record SampleFiles(Path directory, String name) {
         return directory.resolve(name + "_targetMatches.fastq.gz");
     }
 
+    /** The reads of the first baiting that hold an accepted primer site, with their mates: the second baiting's start. */
+    Path baitAnchors() {
+        return directory.resolve(name + "_baitAnchors.fastq.gz");
+    }
+
+    /** The first baiting's reads as FASTA, searched for the primers (removed after). */
+    Path baitAnchorsQuery() {
+        return directory.resolve(name + "_baitAnchors.query.fasta");
+    }
+
+    /** The primer hits on {@link #baitAnchorsQuery} (removed after). */
+    Path baitAnchorsHits() {
+        return directory.resolve(name + "_baitAnchors.blast.txt");
+    }
+
     Path doubleTargetMatches() {
         return directory.resolve(name + "_doubleTargetMatches.fastq.gz");
     }
@@ -116,7 +131,8 @@ public record SampleFiles(Path directory, String name) {
         if (!fastq) {
             return List.of(blastReport());
         }
-        return List.of(blastReport(), targetMatches(), doubleTargetMatches(), assembly(), mergedReads(),
+        return List.of(blastReport(), targetMatches(), baitAnchors(), baitAnchorsQuery(), baitAnchorsHits(),
+                doubleTargetMatches(), assembly(), mergedReads(),
                 unmergedReads(), baitedReadsFasta(), baitedReadsHits(), extensionSeeds(), extendedReads(),
                 extensionCandidates(), candidateReads(), extendedReadsHits(), extensionEnds(), extensionRoundReads(),
                 extensionReads(), extensionRoundSeeds());

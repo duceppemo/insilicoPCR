@@ -133,8 +133,10 @@ The `detailed_report` folder keeps each sample's BLAST hits that the rules accep
 ## FASTQ mode and false negatives
 
 FASTQ input is not assembled into a genome. The reads are baited twice with BBDuk (reads carrying a primer
-k-mer, then reads overlapping those), the baited reads are micro-assembled with Tadpole, and the primers are
-BLASTed against the resulting contigs. The mini-assembly can **omit the target region** or **break inside the
+k-mer, then reads overlapping those of them that hold a primer site the rules accept, found with blastn: since
+0.15.3, before which the second baiting started from every read of the first, and with permissive settings took
+whole families of rRNA, mitochondrial and repeat reads that share a short k-mer with a primer and hold no site),
+the baited reads are micro-assembled with Tadpole, and the primers are BLASTed against the resulting contigs. The mini-assembly can **omit the target region** or **break inside the
 amplicon**, so the forward and reverse primers land on different contigs. Recruitment only reaches about one
 fragment length beyond each primer, so amplicons longer than roughly two fragment lengths always end up split.
 Baiting allows `-m` substitutions (at most 3, BBDuk's limit: `-m 4` and more stopped every run with reads before 0.15.3) and up to 2 indels on k-mers shorter than the primers by `--5p-truncation` (at least

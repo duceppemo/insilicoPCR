@@ -12,9 +12,9 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.zip.GZIPInputStream;
 
 /**
@@ -45,21 +45,45 @@ final class BlastQuery implements AutoCloseable {
     static final int PIECE_LENGTH = 1_000_000;
     /** How much two pieces of a sequence share: more than any oligo, so each primer site is whole in one. */
     static final int PIECE_OVERLAP = 1_000;
-    /** The ID of a piece in the query: this, then its number ({@link #toContig} names its sequence again). */
+    /**
+     * The start of a piece's ID in the query, before a token no sequence of the file starts with and the
+     * piece's number ({@link #toContig} names its sequence again): a contig of the user's named like a piece
+     * had its hits moved onto the long sequence, or stopped the run.
+     */
     static final String PIECE_ID = "insilicoPCR_piece_";
 
     private final Path path;
     private final boolean temporary;
-    /** Each piece of the query by its number: its sequence's ID, and where in it the piece starts. */
-    private final List<Piece> pieces;
+    /** Each piece of the query by its ID: its sequence's ID, where in it the piece starts, what it owns. */
+    private final Map<String, Piece> pieces;
 
-    private record Piece(String contig, int offset) {
+    /**
+     * A piece of {@code contig} starting after its {@code offset} bases, which owns the hits starting from
+     * {@code ownedFrom} to {@code ownedTo} of it (its own positions): each half of an overlap is the hits of
+     * one piece only. The other piece holds them too, but may hold one cut by its end, which BLAST aligns
+     * with 5' bases trimmed off: a mismatch it left out passed as an unaligned 5' base, a site of one
+     * mismatch had none, and one hit was listed twice.
+     */
+    private record Piece(String contig, int offset, int ownedFrom, int ownedTo) {
+        /** Owns no more than half the overlap with the piece before it. */
+        static Piece of(String contig, int offset) {
+            return new Piece(contig, offset, offset == 0 ? 1 : PIECE_OVERLAP / 2 + 1, Integer.MAX_VALUE);
+        }
+
+        /** The same piece, with a piece after it, which owns the second half of their overlap. */
+        Piece followed() {
+            return new Piece(contig, offset, ownedFrom, PIECE_LENGTH - PIECE_OVERLAP / 2);
+        }
+
+        boolean owns(int qstart) {
+            return qstart >= ownedFrom && qstart <= ownedTo;
+        }
     }
 
-    private BlastQuery(Path path, boolean temporary, List<Piece> pieces) {
+    private BlastQuery(Path path, boolean temporary, Map<String, Piece> pieces) {
         this.path = path;
         this.temporary = temporary;
-        this.pieces = List.copyOf(pieces);
+        this.pieces = Map.copyOf(pieces);
     }
 
     /**
@@ -77,18 +101,18 @@ final class BlastQuery implements AutoCloseable {
      */
     static BlastQuery of(Path fasta, Path scratchDirectory, boolean tooLong) throws IOException {
         boolean gzipped = fasta.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(".gz");
-        boolean pieces;
+        Map<String, Integer> lengths;
         try {
-            pieces = SequenceFileUtils.sequenceLengths(fasta).values().stream().anyMatch(length -> length > PIECE_LENGTH);
+            lengths = SequenceFileUtils.sequenceLengths(fasta);
         } catch (UncheckedIOException e) {
             throw new IOException("Unable to " + (gzipped ? "decompress " : "read ") + fasta + ": "
                     + e.getCause().getMessage(), e.getCause());
         }
-        if (pieces) {
-            return inPieces(fasta, scratchDirectory);
+        if (lengths.values().stream().anyMatch(length -> length > PIECE_LENGTH)) {
+            return inPieces(fasta, scratchDirectory, pieceIdPrefix(lengths.keySet()));
         }
         if (!gzipped && !tooLong && !startsWithByteOrderMark(fasta)) {
-            return new BlastQuery(fasta, false, List.of());
+            return new BlastQuery(fasta, false, Map.of());
         }
         Path plain = Files.createTempFile(scratchDirectory, PREFIX, ".fasta");
         // The raw stream is a resource of its own: closed even when the gzip header cannot be read.
@@ -99,7 +123,18 @@ final class BlastQuery implements AutoCloseable {
             Files.deleteIfExists(plain);
             throw new IOException("Unable to " + (gzipped ? "decompress " : "copy ") + fasta + ": " + e.getMessage(), e);
         }
-        return new BlastQuery(plain, true, List.of());
+        return new BlastQuery(plain, true, Map.of());
+    }
+
+    /** {@link #PIECE_ID} and a token: the start of no ID of {@code ids}. */
+    static String pieceIdPrefix(java.util.Set<String> ids) {
+        java.util.Random random = new java.util.Random();
+        while (true) {
+            String prefix = PIECE_ID + Integer.toHexString(random.nextInt(0x10000000, Integer.MAX_VALUE)) + "_";
+            if (ids.stream().noneMatch(id -> id.startsWith(prefix))) {
+                return prefix;
+            }
+        }
     }
 
     /**
@@ -108,14 +143,14 @@ final class BlastQuery implements AutoCloseable {
      * input check reads it (gzipped or not, past a byte order mark), its bases only: their positions are
      * BLAST's.
      */
-    private static BlastQuery inPieces(Path fasta, Path scratchDirectory) throws IOException {
+    private static BlastQuery inPieces(Path fasta, Path scratchDirectory, String idPrefix) throws IOException {
         Path copy = Files.createTempFile(scratchDirectory, PREFIX, ".fasta");
-        List<Piece> pieces = new ArrayList<>();
+        Map<String, Piece> pieces = new java.util.HashMap<>();
         try (FastaScanner scanner = new FastaScanner(List.of(fasta));
              Writer out = Files.newBufferedWriter(copy, StandardCharsets.UTF_8)) {
             String header = scanner.nextHeader(null);
             while (header != null) {
-                PieceWriter sequence = new PieceWriter(out, header, pieces);
+                PieceWriter sequence = new PieceWriter(out, header, idPrefix, pieces);
                 header = scanner.nextHeader(sequence::accept);
                 sequence.finish();
             }
@@ -131,15 +166,19 @@ final class BlastQuery implements AutoCloseable {
         private final Writer out;
         private final String header;
         private final String contig;
-        private final List<Piece> pieces;
+        private final String idPrefix;
+        private final Map<String, Piece> pieces;
         private final StringBuilder window = new StringBuilder();
         private int offset;
         private boolean split;
+        /** The ID of the piece written last, of this sequence. */
+        private String last;
 
-        PieceWriter(Writer out, String header, List<Piece> pieces) {
+        PieceWriter(Writer out, String header, String idPrefix, Map<String, Piece> pieces) {
             this.out = out;
             this.header = header;
             this.contig = SequenceFileUtils.fastaId(header);
+            this.idPrefix = idPrefix;
             this.pieces = pieces;
         }
 
@@ -162,8 +201,12 @@ final class BlastQuery implements AutoCloseable {
         }
 
         private void piece() {
-            write(">" + PIECE_ID + pieces.size(), window);
-            pieces.add(new Piece(contig, offset));
+            if (last != null) {
+                pieces.put(last, pieces.get(last).followed());
+            }
+            last = idPrefix + pieces.size();
+            write(">" + last, window);
+            pieces.put(last, Piece.of(contig, offset));
         }
 
         private void write(String headerLine, CharSequence bases) {
@@ -182,20 +225,43 @@ final class BlastQuery implements AutoCloseable {
 
     /**
      * {@code line}, a line of blastn's table for this query, as on the sequence searched: a piece's hit
-     * named by its sequence's ID, at its positions there. Any other line as it is.
+     * named by its sequence's ID, at its positions there, or {@code null} when the piece does not own it
+     * (the piece next to it does: {@link Piece}). Any other line as it is.
      */
     String toContig(String line) {
-        if (pieces.isEmpty() || !line.startsWith(PIECE_ID)) {
+        if (pieces.isEmpty()) {
+            return line;
+        }
+        int tab = line.indexOf('\t');
+        Piece piece = tab < 0 ? null : pieces.get(line.substring(0, tab));
+        if (piece == null) {
             return line;
         }
         String[] fields = line.split("\t", -1);
-        int tab = fields[BlastField.QSEQID.ordinal()].length();
-        Piece piece = pieces.get(Integer.parseInt(line.substring(PIECE_ID.length(), tab)));
-        fields[BlastField.QSEQID.ordinal()] = piece.contig();
-        for (BlastField position : List.of(BlastField.QSTART, BlastField.QEND)) {
-            fields[position.ordinal()] = String.valueOf(Integer.parseInt(fields[position.ordinal()]) + piece.offset());
+        if (fields.length <= BlastField.QEND.ordinal()) {
+            return line; // not a hit: the parser rejects it
         }
+        int qstart;
+        int qend;
+        try {
+            qstart = Integer.parseInt(fields[BlastField.QSTART.ordinal()]);
+            qend = Integer.parseInt(fields[BlastField.QEND.ordinal()]);
+        } catch (NumberFormatException e) {
+            return line;
+        }
+        if (!piece.owns(Math.min(qstart, qend))) {
+            return null;
+        }
+        fields[BlastField.QSEQID.ordinal()] = piece.contig();
+        fields[BlastField.QSTART.ordinal()] = String.valueOf(qstart + piece.offset());
+        fields[BlastField.QEND.ordinal()] = String.valueOf(qend + piece.offset());
         return String.join("\t", fields);
+    }
+
+    /** The IDs of the pieces of the query, in their order ({@link #toContig}). */
+    List<String> pieceIds() {
+        return pieces.keySet().stream().sorted(java.util.Comparator.comparingInt(
+                id -> Integer.parseInt(id.substring(id.lastIndexOf('_') + 1)))).toList();
     }
 
     /**

@@ -115,6 +115,34 @@ class HtmlReportScriptTest {
     }
 
     @Test
+    void aCellOfASampleBeyondTheRowsListedSaysWhereItsRowsAre() throws Exception {
+        // The page lists the first 50,000 amplicons: a click on a later sample's cell found none, and said "0 of
+        // 50000 shown" as if it had none.
+        List<ReportRow> rows = new ArrayList<>();
+        for (int i = 0; i < HtmlReport.MAX_LISTED; i++) {
+            rows.add(TestRows.row("S" + (i % 50), "16S", 1, 1500, "c" + i, ""));
+        }
+        rows.add(TestRows.row("Zlast", "16S", 1, 1500, "z", ""));
+        List<String> samples = new ArrayList<>();
+        for (int i = 0; i < 50; i++) {
+            samples.add("S" + i);
+        }
+        samples.add("Zlast");
+        PrimerPanel primers = PrimerPanel.of(Map.of("16S-F", "ACGTACGTACGTACGTACGT", "16S-R", "ACGTACGTACGTACGTACGT"));
+        Path page = HtmlReport.write(Files.writeString(dir.resolve("report.tsv"), ""), rows, samples, Set.of(), primers,
+                List.of(), new RunDetails("2026-11-16 12:00", "9.9.9", List.of()), List.of(), List.of());
+
+        String out = run(page, """
+                  document.querySelector('#grid button.chip[data-s="Zlast"][data-a="16S"]').click();
+                  out.push(document.getElementById('rowCount').textContent);
+                  document.querySelector('#grid button.chip[data-s="S7"][data-a="16S"]').click();
+                  out.push(document.getElementById('rowCount').textContent);
+                """);
+
+        assertEquals("Zlast · 16S: not among the amplicons listed here; report.tsv has them|S7 · 16S: 1000 of 50000 shown", out);
+    }
+
+    @Test
     void theSampleFilterIgnoresBlanksAroundWhatIsTyped() throws Exception {
         String out = run(report(), """
                   type('sampleFilter', ' S11 '); await wait(400);

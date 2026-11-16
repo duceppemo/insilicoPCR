@@ -23,6 +23,7 @@ import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -418,5 +419,29 @@ class HtmlReportTest {
         assertTrue(page.contains("The first 50,000 of 50,010 amplicons are listed here, and the filter searches those:"
                 + " report.tsv has every one."), "the note");
         assertEquals(100, count(page, "<tr data-sample="), "the grid has every sample");
+    }
+
+    @Test
+    void aPageThatFailsPartWayLeavesNoPageCutShort() throws IOException {
+        // Streamed straight into report.html, a failure part way left the start of a page where it is looked for.
+        Path tsv = Files.writeString(dir.resolve("report.tsv"), "");
+        List<String> failing = new java.util.AbstractList<>() {
+            @Override
+            public String get(int index) {
+                throw new IllegalStateException("part way");
+            }
+
+            @Override
+            public int size() {
+                return 3;
+            }
+        };
+
+        assertThrows(IllegalStateException.class, () -> HtmlReport.write(tsv, List.of(), failing, Set.of(),
+                panel(PRIMERS, SIZES), List.of(), DETAILS, List.of(), List.of()));
+
+        try (java.util.stream.Stream<Path> files = Files.list(dir)) {
+            assertEquals(List.of("report.tsv"), files.map(file -> file.getFileName().toString()).toList());
+        }
     }
 }

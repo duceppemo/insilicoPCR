@@ -19,7 +19,7 @@ Every run writes `report.html` next to `report.tsv` (`report(1).html` next to `r
 is one self-contained file: open it in any browser, offline, or send it to a colleague. It follows the
 browser's light or dark theme and prints. It shows exactly the rows of the TSV and hides none (on a run of more
 than 50,000 amplicons, "All amplicons" lists the first 50,000, saying so, while the grid and the counts cover every
-one: since 0.15.3, before which such a page, millions of rows, could not be opened, or even written); a printout shows
+one, and a click on a grid cell whose rows are past them says `report.tsv` has them: since 0.15.3, before which such a page, millions of rows, could not be opened, or even written); a printout shows
 every row, whatever the filter boxes or a click on a cell left on screen (before 0.15.2 it left out the rows they
 hid, without saying so). After a click on a cell, the browser's Back button shows every row again.
 
@@ -128,7 +128,7 @@ The label is information only. Every product is reported whatever its size, with
 
 ## Detailed per-sample reports
 
-The `detailed_report` folder keeps each sample's BLAST hits that the rules accept (with a header line), the ones its products are made from: useful for auditing a call. Columns follow BLAST `-outfmt "6 qseqid sseqid positive mismatch gaps evalue bitscore slen length qstart qend qseq sstart send sseq"`. Before 0.15.3 it kept every alignment blastn wrote, rejected ones included: 1.5 million lines (140 MB) for one bacterial genome and a 40-assay panel, of which a few thousand were primer sites. A sequence longer than 1 Mb (a chromosome) is searched in overlapping pieces of 1 Mb, since 0.15.3: BLAST's e-value grows with the length of the sequence searched, and on a whole chromosome a primer site within `-m 2` or `-m 3` could get one above the cut-off and be dropped, though a draft of the same genome kept it. The hits are put back on the sequence, at its own positions, so the table and the report show it whole.
+The `detailed_report` folder keeps each sample's BLAST hits that the rules accept (with a header line), the ones its products are made from: useful for auditing a call. Columns follow BLAST `-outfmt "6 qseqid sseqid positive mismatch gaps evalue bitscore slen length qstart qend qseq sstart send sseq"`. Before 0.15.3 it kept every alignment blastn wrote, rejected ones included: 1.5 million lines (140 MB) for one bacterial genome and a 40-assay panel, of which a few thousand were primer sites. A sequence longer than 1 Mb (a chromosome) is searched in overlapping pieces of 1 Mb, since 0.15.3: BLAST's e-value grows with the length of the sequence searched, and on a whole chromosome a primer site within `-m 2` or `-m 3` could get one above the cut-off and be dropped, though a draft of the same genome kept it. The hits are put back on the sequence, at its own positions, so the table and the report show it whole; each hit comes from the one piece that holds it whole (the pieces share 1,000 bases, each half of the share belonging to one of them).
 
 ## FASTQ mode and false negatives
 

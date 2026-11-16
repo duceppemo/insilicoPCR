@@ -214,19 +214,37 @@ public final class HtmlReport {
         Path html = pathFor(reportTsv);
         ExpectedSizes sizes = primers.expectedSizes();
         // Written as it is made: built whole in memory, the page of a large run (millions of amplicon rows)
-        // outgrew the largest string Java holds, after all the BLAST work, and the run failed.
-        try (java.io.Writer out = Files.newBufferedWriter(html, StandardCharsets.UTF_8)) {
-            Page page = new Page(out);
-            render(page, reportTsv.getFileName().toString(), products(rows, primers), sampleNames,
-                    fastqSamples, List.copyOf(primers.completeAssays().keySet()),
-                    sizes, findings, runDetails, inputIssues, splits);
-            page.flush();
+        // outgrew the largest string Java holds, after all the BLAST work, and the run failed. Written beside
+        // it, then moved over it: a failure part way left a page cut short where the page is looked for.
+        Path part = html.resolveSibling(html.getFileName() + ".part");
+        try {
+            try (java.io.Writer out = Files.newBufferedWriter(part, StandardCharsets.UTF_8)) {
+                Page page = new Page(out);
+                render(page, reportTsv.getFileName().toString(), products(rows, primers), sampleNames,
+                        fastqSamples, List.copyOf(primers.completeAssays().keySet()),
+                        sizes, findings, runDetails, inputIssues, splits);
+                page.flush();
+            }
+            Files.move(part, html, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
+            deleteQuietly(part);
             throw new UncheckedIOException("Unable to write HTML report: " + html, e);
         } catch (UncheckedIOException e) {
+            deleteQuietly(part);
             throw new UncheckedIOException("Unable to write HTML report: " + html, e.getCause());
+        } catch (RuntimeException e) {
+            deleteQuietly(part);
+            throw e;
         }
         return html;
+    }
+
+    private static void deleteQuietly(Path file) {
+        try {
+            Files.deleteIfExists(file);
+        } catch (IOException ignored) {
+            // the failure being reported matters more
+        }
     }
 
     /** The HTML page of a consolidated report: {@code report(1).html} for {@code report(1).tsv}. */
@@ -616,7 +634,10 @@ public final class HtmlReport {
         html.append("<div class=\"tools\"><input type=\"search\" id=\"rowFilter\" placeholder=\"Filter by sample, assay,")
                 .append(" size…\" aria-label=\"Filter amplicons\"><button type=\"button\" id=\"showAll\" hidden>")
                 .append("Show all</button><span id=\"rowCount\" class=\"hint\" aria-live=\"polite\"></span></div>\n")
-                .append("<div class=\"scroll\"><table class=\"rows\" id=\"rows\">\n<thead><tr><th>Sample</th><th>Assay</th>")
+                // Past the rows listed, a click on a grid cell finds none: the page says where they are.
+                .append("<div class=\"scroll\"><table class=\"rows\" id=\"rows\"")
+                .append(products.size() > MAX_LISTED ? " data-capped=\"" + escape(reportName) + "\"" : "")
+                .append(">\n<thead><tr><th>Sample</th><th>Assay</th>")
                 .append("<th class=\"num\">Size (bp)</th>").append(labels ? "<th>Size check</th>" : "")
                 .append("<th>Found on</th><th>Location</th><th class=\"num\" title=\"Forward / reverse primer mismatches\">")
                 .append("Mismatches F/R</th><th class=\"num\" title=\"Imperfections in the 3' window, forward / reverse\">")

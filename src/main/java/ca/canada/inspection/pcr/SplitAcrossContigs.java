@@ -88,8 +88,14 @@ public final class SplitAcrossContigs {
                 lengths = contigLengths.get();
             }
             Split best = null;
+            // A circle is whole: a product across its origin is searched (AmpliconCaller), and none joins it to
+            // another sequence.
+            Map<String, Integer> circles = sample.hits().circles();
             for (BlastResult f : forward) {
                 for (BlastResult r : reverse) {
+                    if (circles.containsKey(f.queryID()) || circles.containsKey(r.queryID())) {
+                        continue;
+                    }
                     Split split = split(sample.getName(), assay, f, r, lengths, group.hasProbe());
                     if (split != null && (best == null || split.minimumSize() < best.minimumSize())) {
                         best = split;

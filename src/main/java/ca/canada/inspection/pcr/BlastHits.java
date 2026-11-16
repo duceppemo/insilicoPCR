@@ -55,7 +55,7 @@ public final class BlastHits {
     public static Set<String> read(BufferedReader lines, List<Path> searched, Hits into, PrimerPanel primers,
                                    AmpliconOptions options, java.util.function.UnaryOperator<String> toContig,
                                    java.util.function.Consumer<String> accepted) throws IOException {
-        try (QueryTemplates templates = new QueryTemplates(searched)) {
+        try (QueryTemplates templates = new QueryTemplates(searched, into.circles())) {
             String line;
             while ((line = lines.readLine()) != null) {
                 if (line.isBlank() || line.equals(BlastField.HEADER) || (line = toContig.apply(line)) == null) {

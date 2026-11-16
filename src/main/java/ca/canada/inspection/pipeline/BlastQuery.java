@@ -33,6 +33,10 @@ import java.util.zip.GZIPInputStream;
  * aligned with 2 mismatches, say) got an e-value above the cut-off and was dropped, which a draft of
  * the same genome, in contigs of a megabase or less, kept. On a 48 Mb chromosome: none of 5,689 such
  * sites whole, all of them in pieces, for 3 times the search time (as for the draft).</p>
+ *
+ * <p>A circular sequence ({@link ca.canada.inspection.util.Circles}) gets one more piece, its junction:
+ * its last bases then its first ones, so that a primer site across its origin is found whole (since
+ * 0.15.3). Each site near the origin is owned by the junction, the others by the sequence.</p>
  */
 final class BlastQuery implements AutoCloseable {
     private static final String PREFIX = "blast_query_";
@@ -51,28 +55,33 @@ final class BlastQuery implements AutoCloseable {
      * had its hits moved onto the long sequence, or stopped the run.
      */
     static final String PIECE_ID = "insilicoPCR_piece_";
+    /** How many bases of a circle's end, and of its start, its junction piece holds (at most half the circle). */
+    static final int JUNCTION = PIECE_OVERLAP / 2;
 
     private final Path path;
     private final boolean temporary;
     /** Each piece of the query by its ID: its sequence's ID, where in it the piece starts, what it owns. */
     private final Map<String, Piece> pieces;
+    /** For each circular sequence, the positions from and to which it owns the hits starting there itself. */
+    private final Map<String, int[]> circleOwned;
 
     /**
      * A piece of {@code contig} starting after its {@code offset} bases, which owns the hits starting from
      * {@code ownedFrom} to {@code ownedTo} of it (its own positions): each half of an overlap is the hits of
      * one piece only. The other piece holds them too, but may hold one cut by its end, which BLAST aligns
      * with 5' bases trimmed off: a mismatch it left out passed as an unaligned 5' base, a site of one
-     * mismatch had none, and one hit was listed twice.
+     * mismatch had none, and one hit was listed twice. A circle's junction piece has the circle's length,
+     * {@code circle}: its positions past the origin go on from the circle's start.
      */
-    private record Piece(String contig, int offset, int ownedFrom, int ownedTo) {
+    private record Piece(String contig, int offset, int ownedFrom, int ownedTo, int circle) {
         /** Owns no more than half the overlap with the piece before it. */
         static Piece of(String contig, int offset) {
-            return new Piece(contig, offset, offset == 0 ? 1 : PIECE_OVERLAP / 2 + 1, Integer.MAX_VALUE);
+            return new Piece(contig, offset, offset == 0 ? 1 : PIECE_OVERLAP / 2 + 1, Integer.MAX_VALUE, 0);
         }
 
         /** The same piece, with a piece after it, which owns the second half of their overlap. */
         Piece followed() {
-            return new Piece(contig, offset, ownedFrom, PIECE_LENGTH - PIECE_OVERLAP / 2);
+            return new Piece(contig, offset, ownedFrom, PIECE_LENGTH - PIECE_OVERLAP / 2, circle);
         }
 
         boolean owns(int qstart) {
@@ -80,10 +89,11 @@ final class BlastQuery implements AutoCloseable {
         }
     }
 
-    private BlastQuery(Path path, boolean temporary, Map<String, Piece> pieces) {
+    private BlastQuery(Path path, boolean temporary, Map<String, Piece> pieces, Map<String, int[]> circleOwned) {
         this.path = path;
         this.temporary = temporary;
         this.pieces = Map.copyOf(pieces);
+        this.circleOwned = Map.copyOf(circleOwned);
     }
 
     /**
@@ -91,7 +101,19 @@ final class BlastQuery implements AutoCloseable {
      * {@code scratchDirectory} when its name ends with {@code .gz}.
      */
     static BlastQuery of(Path fasta, Path scratchDirectory) throws IOException {
-        return of(fasta, scratchDirectory, WindowsPathLimit.tooLong(fasta));
+        return of(fasta, scratchDirectory, Map.of());
+    }
+
+    /**
+     * The query for {@code fasta}, whose sequences {@code circles} (their lengths as circles, by ID) are
+     * searched as circles.
+     */
+    static BlastQuery of(Path fasta, Path scratchDirectory, Map<String, Integer> circles) throws IOException {
+        return of(fasta, scratchDirectory, WindowsPathLimit.tooLong(fasta), circles);
+    }
+
+    static BlastQuery of(Path fasta, Path scratchDirectory, boolean tooLong) throws IOException {
+        return of(fasta, scratchDirectory, tooLong, Map.of());
     }
 
     /**
@@ -99,7 +121,8 @@ final class BlastQuery implements AutoCloseable {
      *                cannot open a path of 260 characters or more ("File is not accessible"), which Java
      *                reads and writes, so a FASTA file in a deep folder is searched from a copy
      */
-    static BlastQuery of(Path fasta, Path scratchDirectory, boolean tooLong) throws IOException {
+    static BlastQuery of(Path fasta, Path scratchDirectory, boolean tooLong, Map<String, Integer> circles)
+            throws IOException {
         boolean gzipped = fasta.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(".gz");
         Map<String, Integer> lengths;
         try {
@@ -108,11 +131,11 @@ final class BlastQuery implements AutoCloseable {
             throw new IOException("Unable to " + (gzipped ? "decompress " : "read ") + fasta + ": "
                     + e.getCause().getMessage(), e.getCause());
         }
-        if (lengths.values().stream().anyMatch(length -> length > PIECE_LENGTH)) {
-            return inPieces(fasta, scratchDirectory, pieceIdPrefix(lengths.keySet()));
+        if (!circles.isEmpty() || lengths.values().stream().anyMatch(length -> length > PIECE_LENGTH)) {
+            return inPieces(fasta, scratchDirectory, pieceIdPrefix(lengths.keySet()), circles);
         }
         if (!gzipped && !tooLong && !startsWithByteOrderMark(fasta)) {
-            return new BlastQuery(fasta, false, Map.of());
+            return new BlastQuery(fasta, false, Map.of(), Map.of());
         }
         Path plain = Files.createTempFile(scratchDirectory, PREFIX, ".fasta");
         // The raw stream is a resource of its own: closed even when the gzip header cannot be read.
@@ -123,7 +146,7 @@ final class BlastQuery implements AutoCloseable {
             Files.deleteIfExists(plain);
             throw new IOException("Unable to " + (gzipped ? "decompress " : "copy ") + fasta + ": " + e.getMessage(), e);
         }
-        return new BlastQuery(plain, true, Map.of());
+        return new BlastQuery(plain, true, Map.of(), Map.of());
     }
 
     /** {@link #PIECE_ID} and a token: the start of no ID of {@code ids}. */
@@ -143,14 +166,16 @@ final class BlastQuery implements AutoCloseable {
      * input check reads it (gzipped or not, past a byte order mark), its bases only: their positions are
      * BLAST's.
      */
-    private static BlastQuery inPieces(Path fasta, Path scratchDirectory, String idPrefix) throws IOException {
+    private static BlastQuery inPieces(Path fasta, Path scratchDirectory, String idPrefix,
+                                       Map<String, Integer> circles) throws IOException {
         Path copy = Files.createTempFile(scratchDirectory, PREFIX, ".fasta");
         Map<String, Piece> pieces = new java.util.HashMap<>();
+        Map<String, int[]> circleOwned = new java.util.HashMap<>();
         try (FastaScanner scanner = new FastaScanner(List.of(fasta));
              Writer out = Files.newBufferedWriter(copy, StandardCharsets.UTF_8)) {
             String header = scanner.nextHeader(null);
             while (header != null) {
-                PieceWriter sequence = new PieceWriter(out, header, idPrefix, pieces);
+                PieceWriter sequence = new PieceWriter(out, header, idPrefix, pieces, circles, circleOwned);
                 header = scanner.nextHeader(sequence::accept);
                 sequence.finish();
             }
@@ -158,7 +183,7 @@ final class BlastQuery implements AutoCloseable {
             Files.deleteIfExists(copy);
             throw new IOException("Unable to copy " + fasta + " in pieces: " + e.getMessage(), e);
         }
-        return new BlastQuery(copy, true, pieces);
+        return new BlastQuery(copy, true, pieces, circleOwned);
     }
 
     /** Writes one sequence of the copy: whole, or in pieces once it passes {@link #PIECE_LENGTH}. */
@@ -173,16 +198,41 @@ final class BlastQuery implements AutoCloseable {
         private boolean split;
         /** The ID of the piece written last, of this sequence. */
         private String last;
+        /** The sequence's length as a circle, or 0 for a linear one. */
+        private final int circle;
+        /** How many bases of the circle's end, then of its start, its junction piece holds. */
+        private final int junction;
+        private final Map<String, int[]> circleOwned;
+        private final StringBuilder head = new StringBuilder();
+        /** The circle's last bases read so far (a contig's start repeated at its end left out). */
+        private final StringBuilder tail = new StringBuilder();
+        private int count;
 
-        PieceWriter(Writer out, String header, String idPrefix, Map<String, Piece> pieces) {
+        PieceWriter(Writer out, String header, String idPrefix, Map<String, Piece> pieces,
+                    Map<String, Integer> circles, Map<String, int[]> circleOwned) {
             this.out = out;
             this.header = header;
             this.contig = SequenceFileUtils.fastaId(header);
             this.idPrefix = idPrefix;
             this.pieces = pieces;
+            this.circle = circles.getOrDefault(contig, 0);
+            this.junction = Math.min(JUNCTION, circle / 2);
+            this.circleOwned = circleOwned;
         }
 
         void accept(int base) {
+            if (circle > 0) {
+                count++;
+                if (count <= junction) {
+                    head.append((char) base);
+                }
+                if (count <= circle) {
+                    tail.append((char) base);
+                    if (tail.length() > 2 * junction) {
+                        tail.delete(0, tail.length() - junction);
+                    }
+                }
+            }
             window.append((char) base);
             if (window.length() == PIECE_LENGTH) {
                 piece();
@@ -197,6 +247,15 @@ final class BlastQuery implements AutoCloseable {
                 write(header, window);
             } else if (window.length() > PIECE_OVERLAP) {
                 piece(); // the rest, beyond the last piece's overlap
+            }
+            if (circle > 0 && junction > 0 && count >= circle) {
+                // Junction positions 1 to 2J are the circle's circle-J+1 to circle+J; each owns half of what
+                // it shares with the sequence, which holds whole the sites the junction cuts, and the other way.
+                int half = junction / 2;
+                String id = idPrefix + pieces.size();
+                write(">" + id, tail.substring(tail.length() - junction) + head);
+                pieces.put(id, new Piece(contig, circle - junction, half + 1, junction + half, circle));
+                circleOwned.put(contig, new int[]{half + 1, circle - junction + half});
             }
         }
 
@@ -233,8 +292,13 @@ final class BlastQuery implements AutoCloseable {
             return line;
         }
         int tab = line.indexOf('\t');
-        Piece piece = tab < 0 ? null : pieces.get(line.substring(0, tab));
-        if (piece == null) {
+        if (tab < 0) {
+            return line;
+        }
+        String id = line.substring(0, tab);
+        Piece piece = pieces.get(id);
+        int[] owned = circleOwned.get(piece == null ? id : piece.contig());
+        if (piece == null && owned == null) {
             return line;
         }
         String[] fields = line.split("\t", -1);
@@ -249,12 +313,28 @@ final class BlastQuery implements AutoCloseable {
         } catch (NumberFormatException e) {
             return line;
         }
-        if (!piece.owns(Math.min(qstart, qend))) {
-            return null;
+        if (piece != null) {
+            if (!piece.owns(Math.min(qstart, qend))) {
+                return null;
+            }
+            qstart += piece.offset();
+            qend += piece.offset();
+            // A junction's site past the origin is at the circle's start.
+            if (piece.circle() > 0 && Math.min(qstart, qend) > piece.circle()) {
+                qstart -= piece.circle();
+                qend -= piece.circle();
+            }
+            fields[BlastField.QSEQID.ordinal()] = piece.contig();
         }
-        fields[BlastField.QSEQID.ordinal()] = piece.contig();
-        fields[BlastField.QSTART.ordinal()] = String.valueOf(qstart + piece.offset());
-        fields[BlastField.QEND.ordinal()] = String.valueOf(qend + piece.offset());
+        // Of a circle, the sequence owns the sites away from the origin; its junction piece, the others.
+        if (owned != null && (piece == null || piece.circle() == 0)) {
+            int at = Math.min(qstart, qend);
+            if (at < owned[0] || at > owned[1]) {
+                return null;
+            }
+        }
+        fields[BlastField.QSTART.ordinal()] = String.valueOf(qstart);
+        fields[BlastField.QEND.ordinal()] = String.valueOf(qend);
         return String.join("\t", fields);
     }
 

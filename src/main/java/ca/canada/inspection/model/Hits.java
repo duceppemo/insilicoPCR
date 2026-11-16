@@ -17,6 +17,8 @@ import java.util.function.Supplier;
 public final class Hits {
     private final HashMap<String, ArrayList<BlastResult>> byOligo = new HashMap<>();
     private final HashMap<String, String> descriptions = new HashMap<>();
+    /** The circular sequences, each with its length as a circle ({@link ca.canada.inspection.util.Circles}). */
+    private final HashMap<String, Integer> circles = new HashMap<>();
     /** Results worked out from the hits and descriptions (the products), until either changes. */
     private final HashMap<Key<?>, Object> derived = new HashMap<>();
 
@@ -30,6 +32,17 @@ public final class Hits {
     public synchronized void describe(String id, String description) {
         descriptions.put(id, description);
         derived.clear();
+    }
+
+    /** Records that sequence {@code id} is a circle of {@code length} bases: its products may cross its origin. */
+    public synchronized void circular(String id, int length) {
+        circles.put(id, length);
+        derived.clear();
+    }
+
+    /** The circular sequences' lengths as circles, by sequence ID; a copy. */
+    public synchronized Map<String, Integer> circles() {
+        return Map.copyOf(circles);
     }
 
     /** The hits of each oligo, by oligo ID; a copy, in no particular order. */
@@ -60,6 +73,7 @@ public final class Hits {
     public synchronized Hits filtered(Predicate<BlastResult> keep) {
         Hits kept = new Hits();
         kept.descriptions.putAll(descriptions);
+        kept.circles.putAll(circles);
         byOligo.forEach((oligo, hits) -> hits.stream().filter(keep).forEach(hit -> kept.add(oligo, hit)));
         return kept;
     }

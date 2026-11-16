@@ -270,7 +270,8 @@ class EndToEndTest {
         assertTrue(monitor.messages.contains("Completed sample big"), monitor.messages.toString());
         // Run again from the assembly on: no baiting twice.
         assertEquals(4, executed(monitor, "jgi.BBDuk").size());
-        assertEquals(List.of("threads=1", "threads=2"), executed(monitor, "assemble.Tadpole"));
+        // The assembly, on one thread however many the sample has: the same contigs on every run.
+        assertEquals(List.of("threads=1", "threads=1"), executed(monitor, "assemble.Tadpole"));
         // Only "small" is left to merge at once: it runs alone, with everything, and so does "big" after it.
         assertEquals(List.of("threads=2", "threads=2"), executed(monitor, "jgi.BBMerge"));
         assertTrue(monitor.messages.contains("BBTools: one sample at a time, with 2 threads and -Xmx8g"),
@@ -468,6 +469,78 @@ class EndToEndTest {
                 return e.toString();
             }
         });
+    }
+
+    /** The cells of {@code columns} of each row of {@code report}, joined by blanks, in the report's order. */
+    private static List<String> cells(Path report, String... columns) throws IOException {
+        List<String> rows = lines(report);
+        List<String> header = List.of(rows.getFirst().split("\t", -1));
+        return rows.stream().skip(1).map(row -> row.split("\t", -1)).map(row -> java.util.Arrays.stream(columns)
+                .map(column -> row[header.indexOf(column)]).collect(java.util.stream.Collectors.joining(" "))).toList();
+    }
+
+    @Test
+    void aProductAcrossTheOriginOfACircularSequenceIsReported() throws IOException {
+        // A 3,000-bp plasmid marked circular=true: forward at 2,901-2,920, reverse at 81-100, a probe across the
+        // origin (2,991-3,000 then 1-10). Written from its origin, the product was in two pieces and not reported;
+        // the same sequence unmarked is linear, and has none.
+        java.util.Random random = new java.util.Random(41);
+        StringBuilder plasmid = new StringBuilder();
+        while (plasmid.length() < 3_000) {
+            plasmid.append("ACGT".charAt(random.nextInt(4)));
+        }
+        String forward = "GATCGGAAGAGCACACGTCT";
+        String reverse = "CTTGCCAGTAGCGTCATACG";
+        String probe = "TGGCAATCCGATTACGGACT";
+        plasmid.replace(2_900, 2_920, forward);
+        plasmid.replace(80, 100, reverseComplement(reverse));
+        plasmid.replace(2_990, 3_000, probe.substring(0, 10));
+        plasmid.replace(0, 10, probe.substring(10));
+        Path input = Files.createDirectory(directory.resolve("circle-in"));
+        Files.writeString(input.resolve("plasmid.fasta"), ">pA length=3000 circular=true\n" + plasmid + "\n");
+        Files.writeString(input.resolve("linear.fasta"), ">pA length=3000\n" + plasmid + "\n");
+        Path primers = Files.writeString(directory.resolve("circle-primers.fasta"), ">circ-F\n" + forward
+                + "\n>circ-R\n" + reverse + "\n>circ-P\n" + probe + "\n");
+        Path output = directory.resolve("circle-out");
+
+        // At a strict e-value: the probe's site, cut in two halves of 10 bases by the origin, is found whole (on the
+        // circle's junction) or not at all. At the default one, its halves are found too, the bases one cuts off
+        // compared with the circle's other end.
+        pipeline(PipelineConfig.builder(input, output, primers).threads(2).evalue(1e-3).build()).run();
+
+        assertEquals(List.of("plasmid circ 2901-100 200 circ-P 2991-10 20"), cells(report(output), "Sample", "Gene",
+                "GenomeLocation", "AmpliconSize", "Probe", "ProbeLocation", "ProbeSize"));
+    }
+
+    @Test
+    void theMiniAssemblysCircleIsSearchedAcrossItsOrigin() throws IOException {
+        // Reads of a 1,500-bp circle (baited whole), its 1,300-bp product across the origin (forward at 1,101, reverse
+        // ending at 900): the assembly writes the circle from a point of its own, within the product here, with its
+        // first 26 bases again at its end (1,526 bases, not called a self-loop), and the product was in pieces on it,
+        // found on extended reads only (and whole or not, from run to run, on several threads).
+        java.util.Random random = new java.util.Random(51);
+        StringBuilder circle = new StringBuilder();
+        while (circle.length() < 1_500) {
+            circle.append("ACGT".charAt(random.nextInt(4)));
+        }
+        String forward = "GATCGGAAGAGCACACGTCT";
+        String reverse = "CTTGCCAGTAGCGTCATACG";
+        circle.replace(1_100, 1_120, forward);
+        circle.replace(880, 900, reverseComplement(reverse));
+        Path input = Files.createDirectory(directory.resolve("loop-reads"));
+        simulatePairs(circle + circle.substring(0, 400), 40, random, input, "loop"); // fragments across the origin
+        Path primers = Files.writeString(directory.resolve("loop-primers.fasta"), ">mt-F\n" + forward + "\n>mt-R\n"
+                + reverse + "\n");
+        Path output = directory.resolve("loop-results");
+
+        pipeline(PipelineConfig.builder(input, output, primers).threads(2).build()).run();
+
+        List<String> rows = cells(report(output), "Sample", "Gene", "AmpliconSize", "Contig", "GenomeLocation");
+        assertEquals(1, rows.size(), rows::toString);
+        assertTrue(rows.getFirst().startsWith("loop mt 1300 contig_"), rows::toString);
+        // Round the contig's origin: it starts after it ends.
+        String[] location = rows.getFirst().substring(rows.getFirst().lastIndexOf(' ') + 1).split("-");
+        assertTrue(Integer.parseInt(location[0]) > Integer.parseInt(location[1]), rows::toString);
     }
 
     @Test

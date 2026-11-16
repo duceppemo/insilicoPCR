@@ -177,8 +177,11 @@ public final class ReportTsv {
         int[] location = fields.span(ReportColumn.LOCATION);
         int[] probeLocation = fields.span(ReportColumn.PROBE_LOCATION);
         String probeId = fields.text(ReportColumn.PROBE);
+        // Its size as written: a site across a circle's origin ends before it starts.
         ReportRow.Probe probe = probeId.isEmpty() ? null : new ReportRow.Probe(probeId,
-                probeLocation[0], probeLocation[1], fields.numberOrZero(ReportColumn.PROBE_MISMATCHES));
+                probeLocation[0], probeLocation[1], fields.numberOrZero(ReportColumn.PROBE_MISMATCHES),
+                probeLocation[1] >= probeLocation[0] ? probeLocation[1] - probeLocation[0] + 1
+                        : fields.numberOrZero(ReportColumn.PROBE_SIZE));
         String strand = fields.text(ReportColumn.STRAND);
         String description = fields.text(ReportColumn.CONTIG_DESCRIPTION);
         return new ReportRow(fields.text(ReportColumn.SAMPLE), fields.text(ReportColumn.GENE),

@@ -33,20 +33,30 @@ public final class TrimmedEnds {
     }
 
     /** The bases of a whole query sequence (contig or read), position 1 first. */
-    public record Template(CharSequence bases) {
+    public record Template(CharSequence bases, int circle) {
+
+        /** A linear sequence. */
+        public Template(CharSequence bases) {
+            this(bases, 0);
+        }
 
         /** A whole sequence. */
         public static Template whole(String sequence) {
             return new Template(sequence);
         }
 
+        /**
+         * Whether there is a base at {@code position}: within the sequence, or anywhere on a circle
+         * ({@code circle > 0}, its length as one), whose positions go on past its origin, either way.
+         */
         boolean has(int position) {
-            return position >= 1 && position <= bases.length();
+            return circle > 0 || position >= 1 && position <= bases.length();
         }
 
         /** The base at {@code position}, upper case; U read as T, as BLAST pairs it. */
         char base(int position) {
-            char base = Character.toUpperCase(bases.charAt(position - 1));
+            int at = circle > 0 ? Math.floorMod(position - 1, circle) : position - 1;
+            char base = Character.toUpperCase(bases.charAt(at));
             return base == 'U' ? 'T' : base;
         }
     }

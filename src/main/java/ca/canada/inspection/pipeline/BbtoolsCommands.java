@@ -268,15 +268,22 @@ record BbtoolsCommands(String javaCommand, Path bbtoolsJar, int childMemoryGiB, 
             argument = real.toString();
         }
         if (argument.contains(",")) {
-            throw new PipelineException("BBTools reads a comma in a file name as a list of files, and cannot read "
+            throw new UnusablePath("BBTools reads a comma in a file name as a list of files, and cannot read "
                     + absolute + ": remove the comma from the name of the file or of its folder");
         }
         if (argument.contains("=")) {
             // in1=/data/run=3/a.fq: BBTools reads the path from the last '=', "3/a.fq".
-            throw new PipelineException("BBTools reads an equals sign in a file name as the start of the value, and"
+            throw new UnusablePath("BBTools reads an equals sign in a file name as the start of the value, and"
                     + " cannot read " + absolute + ": remove the '=' from the name of the file or of its folder");
         }
         return argument;
+    }
+
+    /** A file BBTools cannot be given, its path holding a comma or an equals sign. */
+    static final class UnusablePath extends PipelineException {
+        UnusablePath(String message) {
+            super(message);
+        }
     }
 
     /** Whether BBTools would read {@code path} as something else: a list (a comma), or a value from its '='. */

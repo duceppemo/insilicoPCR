@@ -96,11 +96,11 @@ public final class FastqProcessor {
                     monitor.warning("Warning: " + e.program() + " ran out of memory on sample " + sample.getName()
                             + " with -Xmx" + share.memoryGiB() + "g; it will be run again after the other samples,"
                             + " alone, with -Xmx" + alone.memoryGiB() + "g");
-                } catch (PipelineException e) {
+                } catch (BbtoolsCommands.UnusablePath e) {
                     if (step != ReadStep.FIRST_BAIT) {
                         throw e;
                     }
-                    refused.put(sample.getName(), e); // a file BBTools cannot be given (BbtoolsCommands.argument)
+                    refused.put(sample.getName(), e); // a read file BBTools cannot be given
                 } finally {
                     if (extra) {
                         spare.release();
@@ -111,7 +111,7 @@ public final class FastqProcessor {
                 monitor.info(step.completed);
             }
         }
-        leaveOut(context, refused);
+        leaveOut(context, refused, samples.size());
 
         List<Sample> again = samples.stream().filter(sample -> setAside.containsKey(sample.getName())).toList();
         if (again.isEmpty()) {
@@ -147,12 +147,14 @@ public final class FastqProcessor {
     }
 
     /** Leaves the samples of {@code refused} out of the run, named in warnings and in its input issues. */
-    private static void leaveOut(PipelineContext context, Map<String, PipelineException> refused) {
+    private static void leaveOut(PipelineContext context, Map<String, PipelineException> refused, int readSets) {
         if (refused.isEmpty()) {
             return;
         }
-        if (refused.size() == context.samples().size()) {
-            // Every sample's reads refused: the fault is not the files'.
+        // Every read set refused, or every sample: the fault is not the files' (a BBTools that cannot run, an
+        // argument it rejects). Counted among the read sets: assemblies beside them ran, and a run of reads
+        // that all went missing ended as if it had worked.
+        if (refused.size() == context.samples().size() || refused.size() == readSets && readSets > 1) {
             throw new PipelineException("BBDuk could not read the reads of any sample",
                     refused.values().iterator().next());
         }

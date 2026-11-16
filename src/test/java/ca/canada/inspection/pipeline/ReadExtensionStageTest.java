@@ -227,4 +227,24 @@ class ReadExtensionStageTest {
                 + BbtoolsCommands.outOfMemoryMessage("Tadpole", "", 4) + ")"), result.notes());
         assertTrue(result.rows().isEmpty());
     }
+
+    @Test
+    void aRoundBaitsAgainFromTheEndsThatGrewOnly() throws IOException {
+        // An end that did not grow, baited again, brings back the reads it brought before: rounds went on
+        // re-reading the sample for nothing, and the same reads entered the pool again.
+        List<ca.canada.inspection.pcr.ReadExtensionCaller.Seed> open = List.of(
+                new ca.canada.inspection.pcr.ReadExtensionCaller.Seed("s1", "read_0", "long", ca.canada.inspection.pcr.PrimerId.Role.FORWARD),
+                new ca.canada.inspection.pcr.ReadExtensionCaller.Seed("s2", "read_1", "long", ca.canada.inspection.pcr.PrimerId.Role.REVERSE));
+        Map<String, String> seeds = Map.of("s1", "GATTACA", "s2", "CCCCGGG");
+        Map<String, String> before = Map.of("s1", "AA" + "GATTACA" + "TT", "s2", "A" + "CCCCGGG" + "T");
+        Map<String, String> after = Map.of("s1", "AAAA" + "GATTACA" + "TT", "s2", "A" + "CCCCGGG" + "T");
+        Path ends = dir.resolve("ends.fasta");
+
+        Map<String, int[]> first = ReadExtensionStage.sides(open, seeds, before);
+        Map<String, int[]> second = ReadExtensionStage.sides(open, seeds, after);
+
+        assertTrue(ReadExtensionStage.writeGrownEnds(second, first, after, ends));
+        assertEquals(List.of(">s1_start", "AAAAGATTACATT"), Files.readAllLines(ends));
+        assertTrue(!ReadExtensionStage.writeGrownEnds(second, second, after, ends), "nothing grew");
+    }
 }

@@ -451,6 +451,23 @@ class EndToEndTest {
     }
 
     @Test
+    void whenBbdukRefusesEveryReadSetTheRunFailsWhateverAssembliesBesideThem() throws IOException {
+        // Every read set left out with an assembly beside them ran to the end, exit 0: a BBTools that cannot run
+        // looked like reads that are all faulty.
+        Path input = Files.createDirectory(directory.resolve("all-refused"));
+        Files.copy(EXAMPLE.resolve("genomes").resolve("isolate_03.fasta"), input.resolve("isolate_03.fasta"));
+        for (String name : List.of("a=1", "b=2")) {
+            Files.copy(EXAMPLE.resolve("reads").resolve("isolate_01_R1.fastq.gz"), input.resolve(name + "_R1.fastq.gz"));
+            Files.copy(EXAMPLE.resolve("reads").resolve("isolate_01_R2.fastq.gz"), input.resolve(name + "_R2.fastq.gz"));
+        }
+
+        PipelineException error = assertThrows(PipelineException.class,
+                () -> pipeline(config(input, directory.resolve("all-refused-results"))).run());
+
+        assertEquals("BBDuk could not read the reads of any sample", error.getMessage());
+    }
+
+    @Test
     void whenBlastnRefusesEveryAssemblyTheRunFailsAsBefore() throws IOException {
         // Not one faulty file among good ones, which would be left out: blastn itself, its database, the disk.
         Path input = Files.createDirectory(directory.resolve("allgapped"));

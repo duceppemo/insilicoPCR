@@ -41,9 +41,11 @@
 - FASTQ: a product longer than 1.5 to 2 kb was never found, however deep the
   sample: the read extension grew reads only through the baited reads, which
   run out about a fragment from each primer. It now baits in rounds: the
-  sample's reads sharing a k-mer with the ends of the extended reads of an
-  assay not yet closed, then extends again, until it closes, the reads stop
-  growing, or 20 rounds. Products of 1.5 to 4.9 kb in 30x and 80x reads, all
+  sample's reads sharing a k-mer with the ends that grew of the extended reads
+  of an assay not yet closed, each read once, then extends that assay's seeds
+  again, until it closes, no end grows or no read is new, or 20 rounds; an
+  assay closed in a round keeps that round's products, and a round that fails
+  keeps what the rounds before it found. Products of 1.5 to 4.9 kb in 30x and 80x reads, all
   missed before, are found.
 - FASTQ: one sample's reads stopped the whole run when BBDuk could not read
   them, every other sample with it: `-m 4` or more (BBDuk takes at most 3
@@ -52,7 +54,8 @@
   BBDuk takes), an `=` in a file's path (BBTools reads a value from it), a
   file cut short past the quick input check. The input check now names the
   first three; the others leave their sample out with a warning, as an
-  assembly blastn refuses does. An `=` in the output folder's path works.
+  assembly blastn refuses does (when every read set is refused, the run
+  fails, assemblies beside them or not: the fault is then not the files'). An `=` in the output folder's path works.
 - A read set of one file named as one read of a pair (`_R1`, its mate missing,
   or given alone with `-i`) ran as single-end reads without a word: warned.
 - An insertion or deletion in a primer site changed `AmpliconSize` by its

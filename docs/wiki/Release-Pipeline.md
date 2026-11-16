@@ -17,7 +17,7 @@ Releases are fully automated: pushing a `v*` tag builds the Linux and Windows po
 7. Create SHA256 checksum files.
 8. Smoke test: run the ZIP that was just built, on Linux and on Windows.
 9. Windows test harness: run the Windows ZIP through the situations a Windows user meets (see below).
-10. Publish release artifacts for version tags, once the steps above passed.
+10. Publish release artifacts for version tags, once the steps above passed. The release's notes are `docs/release-notes/<version>.md`, when there is one (its highlights and what changes on upgrading), above the list of pull requests GitHub writes. Only this job may write to the repository; the workflow's other jobs, which run a pull request's code, only read it.
 
 ## Version number
 

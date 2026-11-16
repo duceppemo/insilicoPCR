@@ -24,10 +24,10 @@ usage: java -jar insilicoPCR.jar -i <input> -o <output> -p <primers> [-t
                                  the terminus; +1 for indels); default: 0
     --3p-window <n>              Bases at the primer 3' end checked with
                                  the weighted 3' penalty; default: 5
-    --5p-truncation <n>          Maximum primer bases allowed to be
-                                 unaligned at the harmless 5' end (one
-                                 5'-proximal mismatch makes BLAST trim the
-                                 whole tail); default: 5
+    --5p-truncation <n>          Bases at a primer's harmless 5' end that
+                                 may differ from the template (or be left
+                                 out of BLAST's alignment) without
+                                 counting as mismatches; default: 5
     --bbtools-memory <GB>        FASTQ mode: memory in GB that the BBTools
                                  programs running at once share (each gets
                                  at most 64); fewer samples run at once
@@ -118,7 +118,7 @@ usage: java -jar insilicoPCR.jar -i <input> -o <output> -p <primers> [-t
 | `--min-length` | `0` | Minimum amplicon length in bp |
 | `--3p-window` | `5` | Number of bases at the primer 3' end checked with the weighted penalty |
 | `--3p-penalty` | `0` | Maximum tolerated weighted 3'-end penalty |
-| `--5p-truncation` | `5` | Maximum primer bases allowed unaligned at the 5' end |
+| `--5p-truncation` | `5` | Bases at a primer's 5' end that may differ from the template (or be left out of BLAST's alignment) without counting as mismatches |
 | `--input-check` | `full` | How the input files are checked before the run: `full` reads every read of every FASTQ file and compares the read counts of the two files of a pair; `quick` reads the first read only. A sample with a faulty file is left out with a warning. See [Input check](Running-Analyses#input-check) |
 | `-g`, `--gel` | off | Also write the synthetic gel image as PNG (needs a graphical environment) |
 | `--tadpole-k` | `31` | FASTQ mode: Tadpole k-mer length |

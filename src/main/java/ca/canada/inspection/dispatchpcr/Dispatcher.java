@@ -150,8 +150,8 @@ public final class Dispatcher {
                 .desc("Allowed mismatches+indels per hydrolysis probe; probes bind hotter than primers"
                         + " and tolerate roughly one more mismatch; default: same as -m").build());
         options.addOption(Option.builder().longOpt("5p-truncation").hasArg().argName("n")
-                .desc("Maximum primer bases allowed to be unaligned at the harmless 5' end"
-                        + " (one 5'-proximal mismatch makes BLAST trim the whole tail); default: "
+                .desc("Bases at a primer's harmless 5' end that may differ from the template (or be left"
+                        + " out of BLAST's alignment) without counting as mismatches; default: "
                         + AmpliconOptions.DEFAULT_FIVE_PRIME_TRUNCATION).build());
         options.addOption(Option.builder().longOpt("tadpole-k").hasArg().argName("n")
                 .desc("FASTQ mode: Tadpole k-mer length; default: " + TadpoleOptions.DEFAULT_K).build());

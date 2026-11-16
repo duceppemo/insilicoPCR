@@ -18,7 +18,6 @@ class PrimerIdTest {
         assertEquals(new PrimerId("toxA", Role.FORWARD), PrimerId.parse("toxA-F"));
         assertEquals(new PrimerId("16S-v4", Role.REVERSE), PrimerId.parse("16S-v4-R"));
         assertEquals(new PrimerId("assay", Role.PROBE), PrimerId.parse("assay-P_3")); // an expanded probe
-        assertEquals(new PrimerId("assay", Role.FORWARD), PrimerId.parse("assay-Fwd"));
     }
 
     @Test
@@ -34,6 +33,18 @@ class PrimerIdTest {
         assertEquals(Role.PROBE, PrimerId.roleOf("assay-P_3"));
         assertNull(PrimerId.roleOf("plain"));
         assertNull(PrimerId.roleOf("assay-"));
+    }
+
+    @Test
+    void theRoleLetterEndsTheIdOrComesBeforeAnUnderscore() {
+        // stxQ-FAM, a probe named for its dye, was a second forward primer: the assay lost its probe, and a
+        // product of stxQ-FAM with stxQ-R was reported.
+        for (String id : List.of("stxQ-FAM", "toxA-Rev", "toxA-R2", "toxA-R.1", "toxA-forward")) {
+            assertEquals(null, PrimerId.parse(id), id);
+        }
+        assertEquals(PrimerId.Role.REVERSE, PrimerId.roleOf("toxA-R_x"));
+        assertEquals(PrimerId.Role.FORWARD, PrimerId.roleOf("toxB-F_2"));
+        assertEquals(PrimerId.Role.PROBE, PrimerId.roleOf("stxQ-P"));
     }
 
     @Test

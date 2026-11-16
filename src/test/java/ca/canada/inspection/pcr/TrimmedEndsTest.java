@@ -203,8 +203,8 @@ class TrimmedEndsTest {
         assertTrue(asksForTemplate(plusLine(template, 3, 15), options), "trimmed probe");
         assertFalse(asksForTemplate(plusLine(template, 1, 15), options), "nothing trimmed");
         assertTrue(asksForTemplate(asPrimer(plusLine(template, 1, 13)), options), "trimmed primer 3' end");
-        assertFalse(asksForTemplate(asPrimer(plusLine(template, 7, 15)), options),
-                "6 trimmed 5' bases exceed --5p-truncation 5 whatever they pair with");
+        assertTrue(asksForTemplate(asPrimer(plusLine(template, 7, 15)), options),
+                "6 trimmed 5' bases: the one past --5p-truncation 5 is compared");
         String overBudget = FLANK_L + mutate(PROBE, 8) + FLANK_R;
         assertFalse(asksForTemplate(asPrimer(plusLine(overBudget, 1, 13)), options),
                 "an aligned mismatch already exceeds -m 0");

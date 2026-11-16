@@ -30,7 +30,9 @@ Since 0.13.0 every input file is checked before anything is run on it. A sample 
 | Empty file, or an empty gzip stream (a library that gave no read) | `the file holds no read (the file is empty)` |
 | Not gzip, or a gzip stream that is damaged or cut short (an interrupted download or copy) | `the file cannot be read (the gzip stream ends early, after 331 complete reads: the file is incomplete)` |
 | A file that ends inside a read | `the file is incomplete (it ends inside read 501, after 500 complete reads)` |
-| A read that is not four lines of the expected kind: no `@` header, no `+` line, a quality line of another length, a character that is not a base or a quality score, a blank line between reads | `a read is not well formed (read 10 (line 40): the quality line has 100 characters for 150 bases)` |
+| A read that is not four lines of the expected kind: no `@` header, no `+` line, a quality line of another length, a character that is not a base or a quality score, a blank line between reads. A base is a letter BBDuk reads: an IUPAC code, `U` or `X`, in either case (since 0.15.3; `J`, `Z`, `.`, `-` or `*` passed the check before, and BBDuk stopped the whole run on them) | `a read is not well formed (read 10 (line 40): the quality line has 100 characters for 150 bases)` |
+| A gzipped read file named in upper case (`.GZ`, `.Gz`): BBTools reads a gzipped file only by a lower-case `.gz`, and read such a file as text, stopping the whole run (since 0.15.3) | `the file cannot be read (BBTools reads a gzipped file only by a lower-case .gz: rename it s_R1.FASTQ.gz)` |
+| Reads BBDuk cannot read although the input check passed them (a file cut short past the first read, with `--input-check quick`; a file whose path holds `=`, which BBTools reads as the start of a value); since 0.15.3, found at the first baiting, where it stopped the whole run before. A BBDuk that runs out of memory is run again alone, as before | `BBDuk cannot read the reads (its message is in the log above: ...)` |
 | Not a FASTQ file under a `.fastq` name | `not a FASTQ file` |
 | The two files of a read pair with different numbers of reads | `the two files of the pair hold different numbers of reads (695 and 600)` |
 | An assembly that is empty, holds header lines only, does not start with `>` (blank lines before it are skipped, as BLAST skips them, since 0.15.3), or whose gzip stream is cut short | `the file holds no sequence (header lines only)` |
@@ -40,7 +42,7 @@ Since 0.13.0 every input file is checked before anything is run on it. A sample 
 | Files with the same sample name that are not a read pair (`x.fasta` and `x.fastq`, `x.fasta` and `x.fna`) | `these files have the same sample name (a sample is one FASTA file, ...)` |
 | Sample names that differ only in case (`iso2.fasta`, `ISO2.fna`); their results would share a folder on Windows and macOS | `the sample name differs only in case from another one (ISO2, iso2 would share a results folder; rename one)` |
 
-A sample is left out as a whole: when one file of a read pair is faulty, the other is not run as single-end reads.
+A sample is left out as a whole: when one file of a read pair is faulty, the other is not run as single-end reads. A read set of one file named as one read of a pair (`x_R1.fastq.gz`, its `x_R2` not in the input, or `-i` given the `_R1` file alone) is run as single-end reads, with a warning since 0.15.3: before, half the data went unused without a word.
 
 The faults are reported in four places:
 

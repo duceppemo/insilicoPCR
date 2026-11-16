@@ -122,11 +122,13 @@ class BbtoolsCommandsTest {
 
     @Test
     void extensionFollowsTheBetterSupportedBranchBothWays() {
-        List<String> command = commands.extend(Path.of("seeds.fasta"), Path.of("second.fq.gz"),
-                Path.of("extended.fasta"), 31, 2000).arguments();
+        // Through the baited reads, and in later rounds the reads baited from the extended reads' ends too.
+        List<String> command = commands.extend(Path.of("seeds.fasta"), List.of(Path.of("second.fq.gz"),
+                Path.of("rounds.fq.gz")), Path.of("extended.fasta"), 31, 2000).arguments();
 
         assertEquals(List.of("java", "-ea", "-Xmx6g", "-XX:+ExitOnOutOfMemoryError", "-cp", "bbtools.jar", "assemble.Tadpole",
-                "in=" + abs("seeds.fasta"), "out=" + abs("extended.fasta"), "mode=extend", "el=2000", "er=2000", "extra=" + abs("second.fq.gz"),
+                "in=" + abs("seeds.fasta"), "out=" + abs("extended.fasta"), "mode=extend", "el=2000", "er=2000",
+                "extra=" + abs("second.fq.gz") + "," + abs("rounds.fq.gz"),
                 "k=31", "branchmult1=1", "branchmult2=1", "mincountextend=2", "overwrite=t", "threads=4"), command);
     }
 
@@ -206,6 +208,31 @@ class BbtoolsCommandsTest {
         assertEquals("BBTools reads a comma in a file name as a list of files, and cannot read "
                 + reads.toAbsolutePath().normalize() + ": remove the comma from the name of the file or of its folder",
                 error.getMessage());
+    }
+
+    @Test
+    void anEqualsSignAboveTheOutputIsLeftOutAndOneInAnInputIsAClearError(@TempDir Path dir) {
+        // BBTools reads a value from the last '=': -o out=eq made it look for the primers in "eq/...", and a
+        // read file in a folder run=3 was "3/s.fastq.gz". Every run with reads failed.
+        Path run = dir.resolve("out=eq");
+        Path sampleDir = run.resolve("detailed_report").resolve("s");
+        BbtoolsCommands.Command command = commands.firstBait(run.resolve("primer_tmp.fasta"),
+                List.of(dir.resolve("reads").resolve("s.fastq.gz")), sampleDir.resolve("s_targetMatches.fastq.gz"), 17, 0);
+        assertTrue(command.arguments().contains("ref=" + Path.of("..", "..", "primer_tmp.fasta")), command::toString);
+
+        Path reads = dir.resolve("run=3").resolve("s.fastq.gz");
+        PipelineException error = assertThrows(PipelineException.class,
+                () -> commands.secondBait(dir.resolve("out").resolve("first.fq.gz"), List.of(reads),
+                        dir.resolve("out").resolve("second.fq.gz")));
+        assertTrue(error.getMessage().startsWith("BBTools reads an equals sign in a file name"), error.getMessage());
+    }
+
+    @Test
+    void baitingAllowsAtMostTheSubstitutionsBbdukTakes() {
+        // BBDuk refuses hdist above 3: -m 4 failed every run with reads.
+        List<String> command = commands.firstBait(Path.of("primers.fasta"), List.of(Path.of("r.fq.gz")),
+                Path.of("out.fq.gz"), 20, 4).arguments();
+        assertTrue(command.contains("hdist=3") && command.contains("edist=2"), command::toString);
     }
 
     @Test

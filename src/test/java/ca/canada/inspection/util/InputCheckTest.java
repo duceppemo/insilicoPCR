@@ -37,6 +37,20 @@ class InputCheckTest {
     }
 
     @Test
+    void oneReadOfAPairWithoutItsMateIsRunAsSingleEndSayingSo() throws IOException {
+        // The mate missing from the folder, or a run given the R1 file alone: half the data was unused unseen.
+        write("lone_R1.fastq", READ);
+        write("pair_R1.fastq", READ);
+        write("pair_R2.fastq", READ);
+        write("numbered_1.fastq", READ); // bare _1 without _2: a sample's own name, not a mate
+
+        assertEquals(List.of("lone_R1.fastq is named as read 1 of a pair, but its mate is not in the input: sample lone"
+                + " is run as single-end reads"), InputCheck.scan(dir, Depth.FULL, 2).warnings());
+        assertEquals(List.of("pair_R1.fastq is named as read 1 of a pair, but its mate is not in the input: sample pair"
+                + " is run as single-end reads"), InputCheck.scan(dir.resolve("pair_R1.fastq"), Depth.FULL, 2).warnings());
+    }
+
+    @Test
     void goodFilesMakeTheSamplesAndNothingIsSaid() throws IOException {
         write("genome.fasta", ">c1\nACGT\n");
         gzip("zipped.fna.gz", ">c1\nACGT\n");

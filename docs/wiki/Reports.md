@@ -137,7 +137,7 @@ k-mer, then reads overlapping those), the baited reads are micro-assembled with 
 BLASTed against the resulting contigs. The mini-assembly can **omit the target region** or **break inside the
 amplicon**, so the forward and reverse primers land on different contigs. Recruitment only reaches about one
 fragment length beyond each primer, so amplicons longer than roughly two fragment lengths always end up split.
-Baiting allows `-m` substitutions and up to 2 indels on k-mers shorter than the primers by `--5p-truncation` (at least
+Baiting allows `-m` substitutions (at most 3, BBDuk's limit: `-m 4` and more stopped every run with reads before 0.15.3) and up to 2 indels on k-mers shorter than the primers by `--5p-truncation` (at least
 16 plus `-m` bases; since 0.15.3, before which they were as long as the shortest primer, substitutions only): a primer
 site with more differences may still bait no read, a [known gap](Limitations#known-gaps) that the diagnostics do not
 list.
@@ -205,6 +205,12 @@ of its primers**, the reads themselves are therefore extended (which assays exac
    spread evenly over the input (all variants of a degenerate primer count as one primer).
 2. Tadpole extends each seed both ways through the k-mers (k = 31) of all the baited reads, by up to the maximum
    amplicon length (`-l`; 5000 bases with `-l 0`), and at a branch always follows the better-supported path.
+   The baited reads run out about a fragment from each primer, so this is done in rounds (since 0.15.3): while
+   an assay has no product closed and its extended reads still grow, the sample's reads sharing a k-mer with the
+   last 500 bases at each end of its extended reads are baited, with their mates, and every seed is extended
+   again through all the reads baited so far; at most 20 rounds. Before, a product longer than 1.5 to 2 kb never
+   closed, however deep the sample. Kept: `_extensionEnds.fasta` (the ends of the last round) and
+   `_extensionReads.fastq.gz` (the reads the rounds baited).
 3. The extended reads are searched like contigs: same hit filters, amplicon rules and probe requirement.
 4. A product must be held by at least **2 extended reads seeded from the forward primer and at least 2 seeded
    from the reverse primer**. Sizes within 10 bp of each other are one product, taken at its most frequent
@@ -297,7 +303,8 @@ summarized in `QAlog.txt`, and noted on the console or in the GUI log. Files kep
 (the reads searched, renamed `read_<n>` with the original name as description) and `_baitedReads.blast.txt`
 (their BLAST hits the rules accept: since 0.15.3, as in the sample's own table; before, every alignment, half a
 million lines for one sample), and, when reads were extended, `_extensionSeeds.fasta`, `_extendedReads.fasta`,
-`_extendedReads.blast.txt`, `_extensionCandidates.fasta` and `_extensionCandidateReads.fastq.gz`.
+`_extendedReads.blast.txt`, `_extensionCandidates.fasta`, `_extensionCandidateReads.fastq.gz`, `_extensionEnds.fasta`
+and `_extensionReads.fastq.gz`.
 
 | Column | Meaning |
 |---|---|

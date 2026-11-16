@@ -102,6 +102,15 @@ public final class InputCheck {
         public List<String> warnings() {
             List<String> lines = new ArrayList<>();
             issues.forEach(issue -> lines.add(issue.line()));
+            // One read of a pair, its mate not given: run as single-end reads, half the data unused, without a word.
+            samples.values().stream().filter(sample -> sample.isFastq() && sample.files().size() == 1).forEach(sample -> {
+                Path file = sample.files().getFirst();
+                int mate = SequenceFileUtils.mateNumber(file);
+                if (mate > 0) {
+                    lines.add(file.getFileName() + " is named as read " + mate + " of a pair, but its mate is not in the"
+                            + " input: sample " + sample.getName() + " is run as single-end reads");
+                }
+            });
             // A sample in a per-sample folder (as sequencers' software writes them) was left out without a word.
             subfoldersNotRead.forEach(folder -> lines.add("the folder " + folder + " holds sequence files, which are"
                     + " not read: only the files directly in " + input + " are. Give that folder as an input of its own,"

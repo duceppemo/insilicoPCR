@@ -120,6 +120,11 @@ record BbtoolsCommands(String javaCommand, Path bbtoolsJar, int childMemoryGiB, 
 
     /** The most insertions and deletions BBDuk matches k-mers within ({@code edist}): it refuses more. */
     static final int MAX_BAIT_INDELS = 2;
+    /**
+     * The most substitutions BBDuk matches k-mers within ({@code hdist}): it refuses more, and {@code -m 4}
+     * failed every run with reads. A primer site of more is baited when some k-mer of it holds 3 or fewer.
+     */
+    static final int MAX_BAIT_SUBSTITUTIONS = 3;
 
     /**
      * First pass: keep reads sharing a k-mer with any primer, within {@code mismatches} substitutions
@@ -188,7 +193,7 @@ record BbtoolsCommands(String javaCommand, Path bbtoolsJar, int childMemoryGiB, 
      * ({@code branchmult=1}): Tadpole's defaults stop there, which is what breaks the
      * mini-assembly inside a multi-copy locus, where near-balanced variants are the rule.
      */
-    Command extend(Path seeds, Path reads, Path output, int k, int reach) {
+    Command extend(Path seeds, List<Path> reads, Path output, int k, int reach) {
         Path directory = directoryOf(output);
         List<String> arguments = start("assemble.Tadpole");
         arguments.addAll(List.of(
@@ -197,7 +202,7 @@ record BbtoolsCommands(String javaCommand, Path bbtoolsJar, int childMemoryGiB, 
                 "mode=extend",
                 "el=" + reach,
                 "er=" + reach,
-                "extra=" + argument(directory, reads),
+                "extra=" + String.join(",", reads.stream().map(file -> argument(directory, file)).toList()),
                 "k=" + k));
         arguments.addAll(EXTEND_OPTIONS);
         arguments.addAll(List.of("overwrite=t", "threads=" + threads));
@@ -244,15 +249,15 @@ record BbtoolsCommands(String javaCommand, Path bbtoolsJar, int childMemoryGiB, 
 
     /**
      * {@code file} as an argument of a command running in {@code directory}: its absolute path, or,
-     * when that has a comma, its path relative to the folder. The relative path is worked out
+     * when that has a comma or an equals sign, its path relative to the folder. The relative path is worked out
      * from both as they are on disk, symbolic links resolved: the system resolves {@code ..} from
      * the real folder a program runs in, not from the path it was reached by.
      *
-     * @throws PipelineException when it still has a comma, which BBTools would split it at
+     * @throws PipelineException when it still has a comma or an equals sign, which BBTools would split it at
      */
     static String argument(Path directory, Path file) {
         Path absolute = file.toAbsolutePath().normalize();
-        if (absolute.toString().indexOf(',') < 0) {
+        if (!splitByBbtools(absolute.toString())) {
             return absolute.toString();
         }
         Path real = onDisk(absolute);
@@ -266,7 +271,17 @@ record BbtoolsCommands(String javaCommand, Path bbtoolsJar, int childMemoryGiB, 
             throw new PipelineException("BBTools reads a comma in a file name as a list of files, and cannot read "
                     + absolute + ": remove the comma from the name of the file or of its folder");
         }
+        if (argument.contains("=")) {
+            // in1=/data/run=3/a.fq: BBTools reads the path from the last '=', "3/a.fq".
+            throw new PipelineException("BBTools reads an equals sign in a file name as the start of the value, and"
+                    + " cannot read " + absolute + ": remove the '=' from the name of the file or of its folder");
+        }
         return argument;
+    }
+
+    /** Whether BBTools would read {@code path} as something else: a list (a comma), or a value from its '='. */
+    private static boolean splitByBbtools(String path) {
+        return path.indexOf(',') >= 0 || path.indexOf('=') >= 0;
     }
 
     /** {@code path} with its symbolic links resolved, as far as it exists (an output may not, yet). */
@@ -287,7 +302,7 @@ record BbtoolsCommands(String javaCommand, Path bbtoolsJar, int childMemoryGiB, 
         List<String> arguments = start("jgi.BBDuk");
         arguments.addAll(List.of(
                 "ref=" + argument(directory, ref),
-                "hdist=" + hdist,
+                "hdist=" + Math.min(hdist, MAX_BAIT_SUBSTITUTIONS),
                 "threads=" + threads,
                 "overwrite=t",
                 SAME_ORDER));

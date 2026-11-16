@@ -1,6 +1,7 @@
 package ca.canada.inspection.pipeline;
 
 import ca.canada.inspection.model.Sample;
+import ca.canada.inspection.util.InputCheck;
 
 import java.nio.file.Path;
 import java.util.Comparator;
@@ -57,10 +58,13 @@ public final class FastqProcessor {
 
         // Samples that ran out of memory, by name, with the step they ran out of it in.
         Map<String, ReadStep> setAside = new ConcurrentHashMap<>();
+        // Samples whose reads BBDuk could not read, by name, with its failure: left out of the run.
+        Map<String, PipelineException> refused = new ConcurrentHashMap<>();
         ChildJavaMemory.Share previous = null;
         for (ReadStep step : ReadStep.values()) {
             List<Sample> stepSamples = samples.stream()
-                    .filter(sample -> !setAside.containsKey(sample.getName()) && step.appliesTo(sample))
+                    .filter(sample -> !setAside.containsKey(sample.getName()) && !refused.containsKey(sample.getName())
+                            && step.appliesTo(sample))
                     .toList();
             // The samples of a step that run at once share the threads and the memory.
             ChildJavaMemory.Share share = ChildJavaMemory.share(budget, threads, stepSamples.size());
@@ -82,6 +86,10 @@ public final class FastqProcessor {
                 try {
                     runStep(step, context, extra ? withSpare : commands, sample, kLength);
                 } catch (ProgramFailedException e) {
+                    if (refusedTheReads(step == ReadStep.FIRST_BAIT, e)) {
+                        refused.put(sample.getName(), e);
+                        return;
+                    }
                     if (!runAgainAlone || !BbtoolsCommands.ranOutOfMemory(e)) {
                         throw outOfMemoryOrAsIs(e, sample, share);
                     }
@@ -89,6 +97,11 @@ public final class FastqProcessor {
                     monitor.warning("Warning: " + e.program() + " ran out of memory on sample " + sample.getName()
                             + " with -Xmx" + share.memoryGiB() + "g; it will be run again after the other samples,"
                             + " alone, with -Xmx" + alone.memoryGiB() + "g");
+                } catch (PipelineException e) {
+                    if (step != ReadStep.FIRST_BAIT) {
+                        throw e;
+                    }
+                    refused.put(sample.getName(), e); // a file BBTools cannot be given (BbtoolsCommands.argument)
                 } finally {
                     if (extra) {
                         spare.release();
@@ -99,6 +112,7 @@ public final class FastqProcessor {
                 monitor.info(step.completed);
             }
         }
+        leaveOut(context, refused);
 
         List<Sample> again = samples.stream().filter(sample -> setAside.containsKey(sample.getName())).toList();
         if (again.isEmpty()) {
@@ -120,6 +134,37 @@ public final class FastqProcessor {
             }
             monitor.info("Completed sample " + sample.getName());
         }
+    }
+
+    /**
+     * Whether {@code failure} is BBDuk refusing a sample's reads in the first bait, the first program to read
+     * them ({@code firstBait}): a character the input check let through that BBDuk does not take, a file it reads otherwise
+     * (a gzipped one named .GZ), a file truncated past the quick input check. It failed the whole run, the
+     * other samples with it; as a FASTA file blastn refuses, the sample is left out. Out of memory is not
+     * the file's fault (the sample is run again alone), nor a killed program (exit code 137 and up).
+     */
+    static boolean refusedTheReads(boolean firstBait, ProgramFailedException failure) {
+        return firstBait && !BbtoolsCommands.ranOutOfMemory(failure) && failure.exitCode() == 1;
+    }
+
+    /** Leaves the samples of {@code refused} out of the run, named in warnings and in its input issues. */
+    private static void leaveOut(PipelineContext context, Map<String, PipelineException> refused) {
+        if (refused.isEmpty()) {
+            return;
+        }
+        if (refused.size() == context.samples().size()) {
+            // Every sample's reads refused: the fault is not the files'.
+            throw new PipelineException("BBDuk could not read the reads of any sample",
+                    refused.values().iterator().next());
+        }
+        refused.keySet().stream().sorted().forEach(name -> {
+            Sample sample = context.samples().remove(name);
+            InputCheck.Issue issue = new InputCheck.Issue(name, sample.files().stream()
+                    .map(file -> file.getFileName().toString()).toList(), "BBDuk cannot read the reads",
+                    "its message is in the log above: " + refused.get(name).getMessage());
+            context.inputIssues().add(issue);
+            context.monitor().warning("Warning: " + issue.line());
+        });
     }
 
     private static String describe(ChildJavaMemory.Share share) {

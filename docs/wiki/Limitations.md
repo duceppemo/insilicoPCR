@@ -16,7 +16,7 @@ The reads are baited and mini-assembled; an assay the mini-assembly misses is ca
 
 **2. Long repeat in the product** (`EXTENSION_THROUGH_UNRESOLVED_REPEAT`). The product passes through a repeat that has another copy in the sample and is longer than the read pairs can bridge (about 300 to 350 bp at 60x, 200 to 250 bp at 20x). A real product and a wrong turn into the other copy look the same there, so the product is withheld, real or not. An assembly of long reads settles it.
 
-**3. Few reads carry the primers** (`NOT_CLOSED_BY_EXTENSION`). The product is longer than a read, and too few reads carry the primers for the reads extended from each side to meet. A negative, weaker than one on an assembly. Sequence deeper, or run the assay on an assembly.
+**3. The extended reads do not meet** (`NOT_CLOSED_BY_EXTENSION`). The product is longer than a read, and the reads extended from each side do not meet within the maximum product length: too few reads carry the primers, or the extension stops (a gap in coverage, a branch it cannot follow). A negative, weaker than one on an assembly. Sequence deeper, or run the assay on an assembly. Before 0.15.3 the extension reached only about a fragment past the reads that carry the primers, and a product longer than 1.5 to 2 kb ended here whatever the depth; it now baits more reads in rounds (see [Reports](Reports#read-extension-products-longer-than-a-read)).
 
 **4. Too few read pairs to confirm** (`EXTENSION_NOT_SUPPORTED_BY_PAIRS`). The extended reads hold a product, but some stretch of it lies inside no read pair, or the pairs are too few (about 20x and less). Withheld; confirm it on an assembly.
 

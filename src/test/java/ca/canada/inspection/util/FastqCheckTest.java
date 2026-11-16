@@ -112,6 +112,35 @@ class FastqCheckTest {
     }
 
     @Test
+    void aReadTakesTheLettersBbdukTakesAndNoOther() throws IOException {
+        // BBDuk stops on J, Z, '.', '-' or '*' in a read, and the run stopped with it, the check having let them by.
+        assertEquals(Fault.NONE, check("iupac.fastq", "@r\nACGTUNRYKMSWBDHVXacgtunx\n+\nIIIIIIIIIIIIIIIIIIIIIIII\n").fault());
+        for (char c : new char[]{'J', 'Z', '.', '-', '*'}) {
+            Result result = check("c.fastq", "@r\nAC" + c + "T\n+\nIIII\n");
+            assertEquals(Fault.MALFORMED, result.fault(), String.valueOf(c));
+            assertEquals("read 1 (line 2): the sequence line holds a character that is not a base ('" + c + "')",
+                    result.detail());
+        }
+    }
+
+    @Test
+    void aGzippedFileNamedInUpperCaseIsNotReadable() throws IOException {
+        // BBTools reads a gzipped file by its lower-case .gz only: X.FASTQ.GZ was read as text, and the run stopped.
+        java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream();
+        try (java.util.zip.GZIPOutputStream out = new java.util.zip.GZIPOutputStream(bytes)) {
+            out.write(READ_1.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        }
+        for (String name : new String[]{"s_R1.FASTQ.GZ", "s_R1.fastq.GZ", "s_R1.fq.Gz"}) {
+            Result result = FastqCheck.check(java.nio.file.Files.write(dir.resolve(name), bytes.toByteArray()));
+            assertEquals(Fault.UNREADABLE, result.fault(), name);
+            assertTrue(result.detail().startsWith("BBTools reads a gzipped file only by a lower-case .gz: rename it s_R1."),
+                    result.detail());
+        }
+        assertEquals(Fault.NONE, FastqCheck.check(java.nio.file.Files.write(dir.resolve("s_R1.FASTQ.gz"),
+                bytes.toByteArray())).fault());
+    }
+
+    @Test
     void aBlankLineBetweenReadsIsMalformed() throws IOException {
         Result result = check("gap.fastq", READ_1 + "\n" + READ_2);
 

@@ -91,10 +91,19 @@ public final class MixGroups {
     /**
      * @throws IllegalArgumentException when a product of two assays would be named as one of {@code assays}
      *                                  ({@code a} and {@code b} in one reaction, and an assay {@code a+b}):
-     *                                  its rows would be read as that assay's, with its declared sizes
+     *                                  its rows would be read as that assay's, with its declared sizes; or when
+     *                                  an assay of a reaction has {@code +} in its ID: {@code a} with {@code b+c}
+     *                                  and {@code a+b} with {@code c} were both {@code a+b+c}
      */
     public void checkNames(Set<String> assays) {
         groups().forEach((group, members) -> {
+            for (String member : members) {
+                if (member.contains("+")) {
+                    throw new IllegalArgumentException("Assay " + member + " shares the reaction " + group + " (mix=)"
+                            + " and has '+' in its ID, which joins the names of two assays in a product of both: rename"
+                            + " it");
+                }
+            }
             for (String first : members) {
                 for (String second : members) {
                     String name = crossAssayName(first, second);

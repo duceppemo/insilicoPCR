@@ -103,7 +103,7 @@ public final class ConsolidatedReport {
     public static final int MAX_NUMBER = 1_000_000;
 
     /**
-     * The number in {@code (n)}, 0 for none (report.tsv), or -1 for a number over {@link #MAX_NUMBER}: a folder
+     * The number in {@code (n)}, 0 for none (report.tsv), or -1 for {@link #MAX_NUMBER} or more: a folder
      * holding report(99999999999).tsv failed every run after its BLAST work, and report(2147483647).tsv gave the
      * next report a negative number, then every later run failed.
      */
@@ -112,7 +112,9 @@ public final class ConsolidatedReport {
             return 0;
         }
         String digits = parenthesised.substring(1, parenthesised.length() - 1);
-        return digits.length() > 7 || Integer.parseInt(digits) > MAX_NUMBER ? -1 : Integer.parseInt(digits);
+        // At the cap itself too: its next report would be past it, never counted, and written again (round 11
+        // left report(1000000).tsv counted, and every run after the next failed).
+        return digits.length() > 7 || Integer.parseInt(digits) >= MAX_NUMBER ? -1 : Integer.parseInt(digits);
     }
 
     private static String header(boolean probeColumns, boolean sizeColumn) {

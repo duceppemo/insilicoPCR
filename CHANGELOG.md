@@ -32,6 +32,26 @@
 
 ### Fixed
 
+- Round 12 fixes:
+  - The output folder's link check refused folders holding links where a run
+    does not write (an input folder inside it with linked reads, a `.venv`):
+    only the entries a run writes, and its two report folders, are checked.
+  - A probe across a circle's origin whose 5' bases BLAST left unaligned
+    started before position 1 (`ProbeLocation` `-2-23`): it starts at the
+    circle's end (`2998-23`).
+  - `report(1000000).tsv` was counted, the next report never was, and every
+    run after the next failed: numbers from a million on are ignored.
+  - In a `mix=` reaction, an assay ID with `+` is refused: `a` with `b+c` and
+    `a+b` with `c` were both reported as `a+b+c`.
+  - FASTQ: a read extension whose read-pair check failed in a later round lost
+    the products of the rounds before it; they are kept, with a note.
+  - FASTQ diagnostics gave a primer on a circle a distance to the contig end
+    (`-8 bp`): it says the circle's length, at the hit's positions on it.
+  - A Tadpole self-loop is trimmed of the 2 or k - 1 bases Tadpole repeats
+    only; other matches of its ends are chance (a product across its origin
+    came out short by them). A sequence marked circular is one at any length
+    (under 100 bp it was searched as linear).
+  - The Linux ZIP is dated in UTC (two time zones gave two archives).
 - Circular sequences: a product across the origin of a plasmid, a
   mitochondrial genome or a complete chromosome was in two pieces at the
   sequence's ends, and not reported. A FASTA record whose header says

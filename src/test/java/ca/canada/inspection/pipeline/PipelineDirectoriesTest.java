@@ -23,4 +23,24 @@ class PipelineDirectoriesTest {
         java.nio.file.Path link = java.nio.file.Files.createSymbolicLink(dir.resolve("link"), real);
         org.junit.jupiter.api.Assertions.assertDoesNotThrow(() -> PipelineDirectories.create(link));
     }
+
+    @org.junit.jupiter.api.Test
+    @org.junit.jupiter.api.condition.DisabledOnOs(org.junit.jupiter.api.condition.OS.WINDOWS)
+    void linksWhereARunDoesNotWriteAreNoConcernOfIts(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir)
+            throws java.io.IOException {
+        // An input folder inside the output folder, its reads linked from a shared store, and a .venv: refused
+        // before 0.15.3, the message saying "where a run writes".
+        java.nio.file.Path store = java.nio.file.Files.writeString(dir.resolve("store.fasta"), ">c\nACGT\n");
+        java.nio.file.Path output = java.nio.file.Files.createDirectories(dir.resolve("project"));
+        java.nio.file.Path reads = java.nio.file.Files.createDirectories(output.resolve("reads"));
+        java.nio.file.Files.createSymbolicLink(reads.resolve("isolate.fasta"), store);
+        java.nio.file.Files.createDirectories(output.resolve(".venv").resolve("bin"));
+        java.nio.file.Files.createSymbolicLink(output.resolve(".venv").resolve("bin").resolve("python"), store);
+
+        org.junit.jupiter.api.Assertions.assertDoesNotThrow(() -> PipelineDirectories.create(output));
+
+        // Where a run writes, at its top: refused.
+        java.nio.file.Files.createSymbolicLink(output.resolve("QAlog.txt"), store);
+        org.junit.jupiter.api.Assertions.assertThrows(PipelineException.class, () -> PipelineDirectories.create(output));
+    }
 }

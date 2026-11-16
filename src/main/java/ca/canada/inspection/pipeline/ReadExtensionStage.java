@@ -195,9 +195,6 @@ public final class ReadExtensionStage {
                         + "); the products of the rounds before are kept");
                 break;
             }
-            latest = current;
-            latestReads = readFasta(extendedFile, lengths.keySet());
-            latestHits = Files.isRegularFile(hitsFile) ? linesOf(hitsFile) : List.of();
             // Assays done this round keep this round's extended reads and outcome: those with a closed product the
             // read pairs support, and those whose extended reads loop, towards the product, in a tandem repeat they
             // cannot cross (they take no more rounds). A closed product the pairs do not support (a wrong turn,
@@ -208,8 +205,23 @@ public final class ReadExtensionStage {
                     closedNow.put(assay, outcome);
                 }
             });
-            Map<String, Outcome> checkedNow = closedNow.isEmpty() ? Map.of()
-                    : checkAgainstReadPairs(settings, closedNow, extendedFile, files, sample);
+            Map<String, Outcome> checkedNow;
+            try {
+                checkedNow = closedNow.isEmpty() ? Map.of()
+                        : checkAgainstReadPairs(settings, closedNow, extendedFile, files, sample);
+            } catch (PipelineException | UncheckedIOException e) {
+                // As a round that fails before it (it lost the sample's whole extension, the rounds before it too).
+                if (round == 1) {
+                    throw e;
+                }
+                stopIfCancelled(settings);
+                notes.add("read extension of sample " + name + " stopped at round " + round + " (" + e.getMessage()
+                        + "); the products of the rounds before are kept");
+                break;
+            }
+            latest = current;
+            latestReads = readFasta(extendedFile, lengths.keySet());
+            latestHits = Files.isRegularFile(hitsFile) ? linesOf(hitsFile) : List.of();
             Set<String> doneNow = new HashSet<>();
             for (Map.Entry<String, Outcome> entry : current.entrySet()) {
                 String assay = entry.getKey();

@@ -386,6 +386,25 @@ class FastqDiagnosticsTest {
     }
 
     @Test
+    void aHitOnACircleHasNoContigEndToMeasure() {
+        // A self-loop of 1,500 bases (1,502 written): the forward site across its origin, at 1,491-1,510, read
+        // "-8 bp to contig end"; the reverse primer on another contig.
+        String loop = "contig_3,len=1502,class=long/medium/self-loop";
+        String other = "contig_60,len=439,cov=53.2";
+        Sample sample = fastqSample();
+        sample.hits().circular(loop, 1500);
+        sample.hits().add("assay-F", TestHits.plusHit("assay-F", loop, 1491));
+        sample.hits().add("assay-R", TestHits.minusHit("assay-R", other, 15));
+
+        Finding finding = assess(sample, noReadCall(ALL_IN_READS), Map.of(loop, 1502, other, 439)).getFirst();
+
+        assertTrue(finding.assemblyDetail().contains("assay-F contig_3:1491-10(+), on a circle of 1500 bp"),
+                finding.assemblyDetail());
+        assertTrue(finding.assemblyDetail().contains("assay-R contig_60:15-34(-), 14 bp to contig end"),
+                finding.assemblyDetail());
+    }
+
+    @Test
     void primersOnOneContigWithoutValidAmpliconAreNoValidPair() {
         Sample sample = fastqSample();
         // Same strand: cannot amplify.

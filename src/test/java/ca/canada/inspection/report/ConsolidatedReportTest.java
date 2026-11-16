@@ -281,6 +281,9 @@ class ConsolidatedReportTest {
         // report report(-2147483648).tsv, and every later run failed.
         java.nio.file.Files.writeString(dir.resolve("report(99999999999).tsv"), "");
         java.nio.file.Files.writeString(dir.resolve("report(2147483647).tsv"), "");
+        // The cap itself too: report(1000000).tsv counted made the next report(1000001).tsv, never counted, written
+        // again by every run after.
+        java.nio.file.Files.writeString(dir.resolve("report(1000000).tsv"), "");
         org.junit.jupiter.api.Assertions.assertEquals(dir.resolve("report.tsv"), ConsolidatedReport.nextAvailableReportFile(dir));
         java.nio.file.Files.writeString(dir.resolve("report(4).tsv"), "");
         org.junit.jupiter.api.Assertions.assertEquals(dir.resolve("report(5).tsv"), ConsolidatedReport.nextAvailableReportFile(dir));

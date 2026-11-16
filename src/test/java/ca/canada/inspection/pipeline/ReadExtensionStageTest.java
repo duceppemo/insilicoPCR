@@ -387,6 +387,87 @@ class ReadExtensionStageTest {
     }
 
     @Test
+    void aRoundWhoseReadPairCheckFailsKeepsWhatTheRoundsBeforeItFound() throws IOException {
+        // Round 1 extends both seeds with no product and baits a new pair; round 2 closes a 1,074-bp product, and
+        // checking it against the read pairs (BBDuk) fails. It lost the sample's whole extension, round 1's too.
+        int[] tadpoleRuns = {0};
+        int[] bbdukRuns = {0};
+        List<String> started = new java.util.ArrayList<>();
+        RunMonitor monitor = new RunMonitor() {
+            @Override
+            public void runProgram(Path directory, List<String> command, String program) {
+                started.add(program);
+                try {
+                    switch (program) {
+                        case "Tadpole" -> {
+                            boolean closing = ++tadpoleRuns[0] == 2;
+                            StringBuilder out = new StringBuilder();
+                            List<String> seeds = Files.readAllLines(directory.resolve(argument(command, "in")));
+                            for (int i = 0; i + 1 < seeds.size(); i += 2) {
+                                out.append(seeds.get(i)).append('\n').append(closing ? "A".repeat(1300)
+                                        : "C".repeat(40) + seeds.get(i + 1) + "G".repeat(40)).append('\n');
+                            }
+                            Files.writeString(directory.resolve(argument(command, "out")), out);
+                        }
+                        case "BBDuk" -> {
+                            if (++bbdukRuns[0] == 2) {
+                                throw new ProgramFailedException(program, 1, false, "BBDuk failed with exit code 1");
+                            }
+                            try (var gz = new java.util.zip.GZIPOutputStream(Files.newOutputStream(
+                                    directory.resolve(argument(command, "outm"))))) {
+                                gz.write("@new/1\nACGT\n+\nIIII\n@new/2\nACGT\n+\nIIII\n".getBytes());
+                            }
+                        }
+                        default -> { // blastn: in round 2, both primers on each extended read
+                            StringBuilder table = new StringBuilder();
+                            if (tadpoleRuns[0] == 2) {
+                                for (String line : Files.readAllLines(argument(command, "-query"))) {
+                                    if (line.startsWith(">")) {
+                                        String id = line.substring(1).split("\\s")[0];
+                                        table.append(hit(id, "long-F", 101, 120, 1, 20))
+                                                .append(hit(id, "long-R", 1155, 1174, 20, 1));
+                                    }
+                                }
+                            }
+                            Files.writeString(argument(command, "-out"), table);
+                        }
+                    }
+                } catch (IOException e) {
+                    throw new java.io.UncheckedIOException(e);
+                }
+            }
+
+            @Override
+            public void info(String message) {
+            }
+        };
+        Sample sample = new Sample("S");
+        sample.setFileType(Sample.FileType.FASTQ);
+        PipelineDirectories directories = new PipelineDirectories(dir, dir.resolve("detailed_report"),
+                dir.resolve(PipelineDirectories.CONSOLIDATED));
+        SampleFiles files = directories.sample("S");
+        Files.createDirectories(files.directory());
+        sample.addFile(Files.writeString(dir.resolve("S.fastq"), "@r\nACGT\n+\nIIII\n"));
+        Files.writeString(files.doubleTargetMatches(), "");
+        Files.writeString(files.baitedReadsFasta(), ">read_0 a/1\nACGTACGT\n>read_1 a/2\nTTTTGGGG\n"
+                + ">read_2 b/1\nACGTACGA\n>read_3 b/2\nTTTTGGGC\n");
+        ReadEvidence evidence = new ReadEvidence(Map.of("long-F", Set.of("read_0", "read_2"),
+                "long-R", Set.of("read_1", "read_3")), Map.of(), Map.of());
+        ReadExtensionStage.Settings settings = new ReadExtensionStage.Settings(
+                new ReadLevelStage.Settings(Path.of("blastn"), Path.of("primer_tmp.fasta"), 1e5, 1, 0.3, monitor, 4),
+                new BbtoolsCommands("java", Path.of("bbtools.jar"), 4, 1), ReadExtensionCaller.Mode.UNREPORTED);
+
+        ReadExtensionStage.Result result = ReadExtensionStage.run(settings, directories, Map.of("S", sample), PRIMERS,
+                AmpliconOptions.withMismatches(0), Map.of("S", evidence));
+
+        assertEquals(List.of("Tadpole", "blastn", "BBDuk", "Tadpole", "blastn", "BBDuk"), started);
+        assertEquals(List.of("read extension of sample S stopped at round 2 (BBDuk failed with exit code 1); the"
+                + " products of the rounds before are kept"), result.notes());
+        // Round 1's outcome (open, no product), not round 2's unchecked product.
+        assertTrue(result.outcomes().get("S").get("long").closed().isEmpty(), result.outcomes().toString());
+    }
+
+    @Test
     void aPoolFileThatEndsInsideAReadIsAnError() throws IOException {
         Path cut = Files.writeString(dir.resolve("cut.fq"), "@r1\nACGT\n+\n");
         java.io.UncheckedIOException error = assertThrows(java.io.UncheckedIOException.class, () -> ReadPool.of(cut));

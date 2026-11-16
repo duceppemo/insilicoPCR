@@ -412,8 +412,9 @@ public final class FastqDiagnostics {
         Set<String> shared = contigsOf(reverseHits);
         shared.retainAll(contigsOf(forwardHits));
         if (shared.isEmpty()) {
-            return new AssemblyFinding(Assembly.SPLIT_ACROSS_CONTIGS,
-                    "forward " + describe(forwardHits, contigLengths) + "; reverse " + describe(reverseHits, contigLengths));
+            Map<String, Integer> circles = sample.hits().circles();
+            return new AssemblyFinding(Assembly.SPLIT_ACROSS_CONTIGS, "forward " + describe(forwardHits, contigLengths,
+                    circles) + "; reverse " + describe(reverseHits, contigLengths, circles));
         }
         return new AssemblyFinding(Assembly.NO_VALID_PAIR,
                 "shared contig(s): " + String.join(", ", shared.stream().map(FastqDiagnostics::shortName).sorted().toList()));
@@ -422,18 +423,25 @@ public final class FastqDiagnostics {
     /**
      * Lists hits as {@code primer contig:start-end(strand), N bp to contig end}, where the
      * distance is measured in the primer's extension direction: the side the amplicon
-     * would lie on, and so where the assembly broke when the pair is split.
+     * would lie on, and so where the assembly broke when the pair is split. A circle has no end: a hit on one is
+     * {@code primer contig:start-end(strand), on a circle of N bp}, at its positions on the circle (a hit across
+     * the origin read "-13 bp to contig end").
      */
-    private static String describe(List<BlastResult> hits, Map<String, Integer> contigLengths) {
+    private static String describe(List<BlastResult> hits, Map<String, Integer> contigLengths,
+                                   Map<String, Integer> circles) {
         List<String> parts = new ArrayList<>();
         for (BlastResult hit : hits.subList(0, Math.min(MAX_LISTED_HITS, hits.size()))) {
+            Integer circle = circles.get(hit.queryID());
             StringBuilder part = new StringBuilder()
                     .append(hit.subjectID()).append(' ')
                     .append(shortName(hit.queryID())).append(':')
-                    .append(hit.qstart()).append('-').append(hit.qend())
+                    .append(circle == null ? hit.qstart() : AmpliconCaller.onCircle(hit.qstart(), circle)).append('-')
+                    .append(circle == null ? hit.qend() : AmpliconCaller.onCircle(hit.qend(), circle))
                     .append('(').append(hit.isPlusStrand() ? '+' : '-').append(')');
             Integer length = contigLengths.get(hit.queryID());
-            if (length != null) {
+            if (circle != null) {
+                part.append(", on a circle of ").append(circle).append(" bp");
+            } else if (length != null) {
                 int toEnd = SplitAcrossContigs.toEnd(hit, length);
                 part.append(", ").append(toEnd).append(" bp to contig end (contig ").append(length).append(" bp)");
             }

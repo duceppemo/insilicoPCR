@@ -70,8 +70,8 @@ final class BlastTsv {
 
     /**
      * As {@link #keepAccepted(Path, List, PrimerPanel, AmpliconOptions)}, each line first put back on the
-     * sequence searched by {@code toContig} ({@link BlastQuery#toContig}, for a query searched in pieces);
-     * a hit two overlapping pieces both hold is kept once.
+     * sequence searched by {@code toContig} ({@link BlastQuery#toContig}, for a query searched in pieces),
+     * which drops it ({@code null}) when the piece next to it owns the hit.
      */
     static void keepAccepted(Path path, List<Path> searched, PrimerPanel primers, AmpliconOptions options,
                              java.util.function.UnaryOperator<String> toContig) {
@@ -94,14 +94,12 @@ final class BlastTsv {
                     if (Files.exists(path)) {
                         try (java.io.BufferedReader in = new java.io.BufferedReader(new java.io.InputStreamReader(
                                 Files.newInputStream(path), StandardCharsets.UTF_8))) {
-                            java.util.Set<String> kept = new java.util.HashSet<>();
                             String line;
                             while ((line = in.readLine()) != null) {
-                                if (line.isBlank()) {
+                                if (line.isBlank() || (line = toContig.apply(line)) == null) {
                                     continue;
                                 }
-                                line = toContig.apply(line);
-                                if (BlastHitParser.parse(line, primers, options, templates).isPresent() && kept.add(line)) {
+                                if (BlastHitParser.parse(line, primers, options, templates).isPresent()) {
                                     out.write(line);
                                     out.write('\n');
                                 }

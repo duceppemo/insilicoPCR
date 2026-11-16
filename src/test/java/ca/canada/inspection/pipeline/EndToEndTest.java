@@ -137,6 +137,52 @@ class EndToEndTest {
     }
 
     @Test
+    void aPrimerSiteCutByTheStartOfAPieceGetsTheVerdictItGetsInAShortContig() throws IOException {
+        // toxA-F starts at 999,000 of a long sequence, a base before the second piece (999,001 on): that piece
+        // holds it cut, and BLAST trims its first 5 bases there, past a mismatch at its base 5. Kept, the cut copy
+        // passed as a site of no mismatch, with 5 unaligned 5' bases; the same site in a short contig has one.
+        StringBuilder isolate = new StringBuilder();
+        for (String line : lines(EXAMPLE.resolve("genomes").resolve("isolate_01.fasta"))) {
+            if (!line.startsWith(">")) {
+                isolate.append(line.strip());
+            }
+        }
+        StringBuilder stretch = new StringBuilder(isolate.substring(3900, 4412)); // toxA-F at its base 101
+        int mismatch = 100 + 4; // toxA-F's base 5
+        stretch.setCharAt(mismatch, stretch.charAt(mismatch) == 'A' ? 'C' : 'A');
+        java.util.Random random = new java.util.Random(5);
+        java.util.function.IntFunction<String> randomBases = length -> {
+            StringBuilder bases = new StringBuilder();
+            while (bases.length() < length) {
+                bases.append("ACGT".charAt(random.nextInt(4)));
+            }
+            return bases.toString();
+        };
+        String chromosome = randomBases.apply(999_000 - 1 - 100) + stretch + randomBases.apply(600_000);
+        Path genomes = Files.createDirectory(directory.resolve("cut"));
+        Files.writeString(genomes.resolve("big.fasta"), ">chr1\n" + chromosome + "\n");
+        Files.writeString(genomes.resolve("small.fasta"), ">ctg1\n" + randomBases.apply(2_000) + stretch
+                + randomBases.apply(2_000) + "\n");
+        Path output = directory.resolve("cut-results");
+
+        new InSilicoPcrPipeline(PipelineConfig.builder(genomes, output, PRIMERS).threads(2)
+                .ampliconOptions(ca.canada.inspection.pcr.AmpliconOptions.withMismatches(1)).build()).run();
+
+        // Gene, size, primers, mismatches and 5' unaligned bases: the same for both.
+        List<String> rows = lines(report(output));
+        java.util.function.Function<String, List<String>> verdicts = sample -> rows.stream()
+                .filter(row -> row.startsWith(sample + "\t"))
+                .map(row -> {
+                    String[] cells = row.split("\t", -1);
+                    return String.join(" ", cells[1], cells[3], cells[6], cells[7], cells[8], cells[9], cells[10],
+                            cells[11], cells[17], cells[18]);
+                }).sorted().toList();
+        List<String> small = verdicts.apply("small");
+        assertTrue(small.stream().anyMatch(verdict -> verdict.startsWith("toxA ")), small.toString());
+        assertEquals(small, verdicts.apply("big"));
+    }
+
+    @Test
     void aProductAcrossABreakInTheAssemblyIsWarnedAbout() throws IOException {
         // isolate_01 gives toxA at 4001-4312 of its one contig; cut the contig at 4150.
         List<String> lines = lines(EXAMPLE.resolve("genomes").resolve("isolate_01.fasta"));

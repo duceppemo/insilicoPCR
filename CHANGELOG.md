@@ -31,8 +31,8 @@
   chromosome, where a draft of the same genome kept it (on a 48 Mb sequence
   with a 40-assay panel: none of 5,689 such sites, all of them in a draft). A
   sequence longer than 1 Mb is searched in overlapping 1 Mb pieces, its hits
-  put back on it; that costs what a draft does (3 times the search time on
-  that sequence).
+  put back on it, each from the one piece that holds it whole; that costs what
+  a draft does (3 times the search time on that sequence).
 - The BLAST table of each sample (`detailed_report/<sample>/<sample>.tsv`) kept
   every alignment blastn wrote, 1.5 million lines (140 MB) for one bacterial
   genome and a 40-assay panel, a few thousand of them primer sites, and was
@@ -41,7 +41,9 @@
 - The HTML report was built whole in memory: on a large run (some 1.6 million
   amplicon rows) it outgrew the largest string Java holds, after all the BLAST
   work, and the run failed. It is written as it is made, and "All amplicons"
-  lists the first 50,000 rows, saying so; `report.tsv` has them all.
+  lists the first 50,000 rows, saying so; `report.tsv` has them all. A click on
+  a grid cell whose rows are past them says so too, and the page is written
+  beside its place and moved there, never left cut short.
 - The BLAST searches ran one per thread, with no regard to memory: 1.7 to 3 GB
   each with a large panel, 55 to 70 GB at `-t 32`. They run within the memory
   budget the BBTools programs share, the threads left over going to each.

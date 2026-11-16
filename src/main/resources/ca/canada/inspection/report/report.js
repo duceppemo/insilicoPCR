@@ -37,7 +37,10 @@
     });
     rowFilter.value = '';
     showAll.hidden = false;
-    rowCount.textContent = sample + ' · ' + assay + ': ' + shown + ' of ' + rows.length + ' shown';
+    var capped = document.getElementById('rows').dataset.capped;
+    rowCount.textContent = sample + ' · ' + assay + ': ' + (shown === 0 && capped
+        ? 'not among the amplicons listed here; ' + capped + ' has them'
+        : shown + ' of ' + rows.length + ' shown');
   }
   if (rowFilter) {
     rowFilter.addEventListener('input', typed);

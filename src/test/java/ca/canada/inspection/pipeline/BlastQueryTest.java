@@ -9,6 +9,7 @@ import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.stream.Stream;
 import java.util.zip.GZIPOutputStream;
 
@@ -159,28 +160,51 @@ class BlastQueryTest {
     }
 
     @Test
-    void aSequenceLongerThanAPieceIsCopiedInOverlappingPiecesAndItsHitsPutBack() throws IOException {
-        // 2.5 pieces long: pieces at 0, 999,000 and 1,998,000, each sharing 1,000 bases with the next.
+    void aSequenceLongerThanAPieceIsCopiedInOverlappingPiecesAndItsHitsPutBackByTheirOwner() throws IOException {
+        // 2.5 pieces long: pieces at 0, 999,000 and 1,998,000, each sharing 1,000 bases with the next. A contig
+        // named like a piece is a contig of the user's: its hits stay its own.
         StringBuilder bases = new StringBuilder();
         java.util.Random random = new java.util.Random(3);
         while (bases.length() < 2_500_000) {
             bases.append("ACGT".charAt(random.nextInt(4)));
         }
-        Path fasta = Files.writeString(directory.resolve("long.fasta"), ">short one\nACGTACGT\n>chr1 long\n" + bases + "\n");
+        Path fasta = Files.writeString(directory.resolve("long.fasta"), ">short one\nACGTACGT\n>"
+                + BlastQuery.PIECE_ID + "1\nACGTACGTAC\n>chr1 long\n" + bases + "\n");
 
         try (BlastQuery query = BlastQuery.of(fasta, directory)) {
+            List<String> pieces = query.pieceIds();
+            assertEquals(3, pieces.size());
             java.util.Map<String, Integer> lengths = ca.canada.inspection.util.SequenceFileUtils.sequenceLengths(query.path());
-            assertEquals(java.util.Map.of("short", 8, BlastQuery.PIECE_ID + "0", 1_000_000, BlastQuery.PIECE_ID + "1",
-                    1_000_000, BlastQuery.PIECE_ID + "2", 502_000), lengths);
-            // A hit at 11-30 of the second piece is at 999,011-999,030 of chr1; a short sequence's line is as it was.
-            String line = String.join("\t", BlastQuery.PIECE_ID + "1", "a-F", "20", "0", "0", "1e-5", "40", "20", "20",
-                    "11", "30", "ACGT", "1", "20", "ACGT");
-            assertEquals(String.join("\t", "chr1", "a-F", "20", "0", "0", "1e-5", "40", "20", "20", "999011", "999030",
-                    "ACGT", "1", "20", "ACGT"), query.toContig(line));
+            assertEquals(java.util.Map.of("short", 8, BlastQuery.PIECE_ID + "1", 10, pieces.get(0), 1_000_000,
+                    pieces.get(1), 1_000_000, pieces.get(2), 502_000), lengths);
+            java.util.function.BiFunction<String, int[], String> hit = (id, at) -> String.join("\t", id, "a-F", "20",
+                    "0", "0", "1e-5", "40", "20", "20", String.valueOf(at[0]), String.valueOf(at[1]), "ACGT", "1", "20", "ACGT");
+
+            // In the second half of the overlap of the first two pieces: the second piece's hit, put back on chr1.
+            assertEquals(hit.apply("chr1", new int[]{999_511, 999_530}), query.toContig(hit.apply(pieces.get(1),
+                    new int[]{511, 530})));
+            // In the first half: the first piece's; the second's copy is dropped, cut or not.
+            assertEquals(hit.apply("chr1", new int[]{999_011, 999_030}), query.toContig(hit.apply(pieces.get(0),
+                    new int[]{999_011, 999_030})));
+            assertEquals(null, query.toContig(hit.apply(pieces.get(1), new int[]{11, 30})));
+            assertEquals(null, query.toContig(hit.apply(pieces.get(0), new int[]{999_600, 999_619})));
+            // The last piece owns everything after its first half overlap.
+            assertEquals(hit.apply("chr1", new int[]{2_499_981, 2_500_000}), query.toContig(hit.apply(pieces.get(2),
+                    new int[]{501_981, 502_000})));
+            // Other sequences, the one named like a piece among them, as they are.
+            String own = hit.apply(BlastQuery.PIECE_ID + "1", new int[]{1, 10});
+            assertEquals(own, query.toContig(own));
             assertEquals("short\ta-F", query.toContig("short\ta-F"));
         }
         try (java.util.stream.Stream<Path> files = Files.list(directory)) {
-            assertEquals(java.util.List.of(), files.filter(file -> file.getFileName().toString().startsWith("blast_query_")).toList());
+            assertEquals(List.of(), files.filter(file -> file.getFileName().toString().startsWith("blast_query_")).toList());
         }
+    }
+
+    @Test
+    void thePieceIdsStartLikeNoSequenceOfTheFile() {
+        String prefix = BlastQuery.pieceIdPrefix(java.util.Set.of("chr1", BlastQuery.PIECE_ID + "1"));
+        assertTrue(prefix.startsWith(BlastQuery.PIECE_ID) && prefix.endsWith("_") && prefix.length() > BlastQuery.PIECE_ID.length() + 1,
+                prefix);
     }
 }

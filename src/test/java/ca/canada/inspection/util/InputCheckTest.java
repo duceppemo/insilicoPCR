@@ -188,7 +188,7 @@ class InputCheckTest {
         assertEquals(Set.of("other"), result.samples().keySet());
         assertEquals(Set.of("iso2", "ISO2"), result.samplesNotAnalysed());
         assertTrue(result.issues().getFirst().describe().endsWith(
-                ": the sample name differs only in case from another one (ISO2, iso2 would share a results"
+                ": the sample name differs only in case (or in its Unicode form) from another one (ISO2, iso2 would share a results"
                         + " folder; rename one)"), result.issues().getFirst().describe());
     }
 
@@ -427,5 +427,36 @@ class InputCheckTest {
         write("joined.fasta", ">1 chromosome\nACGTACGT\n>1 plasmid\nGGGG\n");
         Result quick = InputCheck.scan(dir, Depth.QUICK, 1);
         assertTrue(quick.samples().isEmpty(), quick.samples().toString());
+    }
+
+    @Test
+    @org.junit.jupiter.api.condition.DisabledOnOs(org.junit.jupiter.api.condition.OS.WINDOWS)
+    void aNameWithAControlOrInvisibleCharacterIsLeftOutAndShownEscaped() throws IOException {
+        // A line break wrote made-up "Sample analysed:" lines in QAlog.txt; an escape sequence set the terminal's
+        // title; a zero-width space made "iso\u200b01" look like iso01.
+        write("evil\nSample analysed: FAKE.fasta", ">c\nACGT\n");
+        write("iso\u200b01.fasta", ">c\nACGT\n");
+        write("good.fasta", ">c\nACGT\n");
+
+        Result result = InputCheck.scan(dir, Depth.FULL, 2);
+
+        assertEquals(java.util.Set.of("good"), result.samples().keySet());
+        assertEquals(2, result.issues().size());
+        assertTrue(result.warnings().stream().allMatch(line -> line.contains("holds a control or invisible character")
+                && !line.contains("\n") && !line.contains("\u200b")), result.warnings().toString());
+        assertTrue(result.warnings().stream().anyMatch(line -> line.startsWith("evil\\u000aSample analysed: FAKE.fasta:")),
+                result.warnings().toString());
+    }
+
+    @Test
+    void namesThatDifferOnlyInTheirUnicodeFormAreLeftOut() throws IOException {
+        // café typed (NFC) and café decomposed (NFD): two samples that look the same, one folder on macOS.
+        write("caf\u00e9.fasta", ">c\nACGT\n");
+        write("cafe\u0301.fasta", ">c\nACGT\n");
+
+        Result result = InputCheck.scan(dir, Depth.FULL, 2);
+
+        assertTrue(result.samples().isEmpty(), result.samples().keySet().toString());
+        assertTrue(result.issues().getFirst().problem().contains("Unicode form"), result.issues().toString());
     }
 }

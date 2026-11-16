@@ -83,8 +83,38 @@ public enum ReportColumn {
      */
     public static String cell(String text) {
         String cell = readBack(text);
+        if (needsApostrophe(cell)) {
+            // A contig description =HYPERLINK(...), a sample file named -ctrl.fasta: a spreadsheet opening the
+            // report took them for formulas (#NAME?, or a link to follow). A leading apostrophe makes one show
+            // the text as it is; the program's own reader (ReportTsv) takes it off.
+            return "'" + cell;
+        }
         return cell.length() >= 2 && cell.startsWith("\"") && cell.endsWith("\"")
                 ? "\"" + cell.replace("\"", "\"\"") + "\"" : cell;
+    }
+
+    /**
+     * Whether {@code cell} is written after an apostrophe: a spreadsheet takes it for a formula, or it starts with
+     * an apostrophe the reader would take off (a name {@code '-a} is written {@code ''-a}, read back {@code '-a}).
+     */
+    public static boolean needsApostrophe(String cell) {
+        return formulaLike(cell) || cell.startsWith("'") && needsApostrophe(cell.substring(1));
+    }
+
+    /**
+     * Whether a spreadsheet takes {@code cell} for a formula: it starts with {@code =} or {@code @}, or with
+     * {@code +} or {@code -} and is not a number (a strand, {@code -}, and {@code -5} are left as they are).
+     */
+    public static boolean formulaLike(String cell) {
+        if (cell.isEmpty()) {
+            return false;
+        }
+        char first = cell.charAt(0);
+        if (first == '=' || first == '@') {
+            return true;
+        }
+        return (first == '+' || first == '-') && cell.length() > 1
+                && !cell.matches("[+-]\\d+(\\.\\d+)?([eE][+-]?\\d+)?");
     }
 
     /** What a cell written from {@code text} reads back as: its tabs and line breaks are spaces. */

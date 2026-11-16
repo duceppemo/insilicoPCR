@@ -62,16 +62,24 @@ public final class InSilicoPcrPipeline {
             throw new PipelineException(InputCheck.noInputFiles(config.input()));
         }
         checked.warnings().forEach(line -> monitor.warning("Warning: " + line));
-        if (checked.samples().isEmpty()) {
+        List<InputCheck.Issue> issues = new ArrayList<>(checked.issues());
+        Map<String, Sample> sampleMap = new LinkedHashMap<>(checked.samples());
+        // A sample whose files' names would be too long for the file system stopped the run, every sample with
+        // it (the reads of one hung it, BBDuk never ending): it is left out.
+        for (InputCheck.Issue issue : FileNameLimit.tooLong(directories, sampleMap.values())) {
+            sampleMap.remove(issue.sample());
+            issues.add(issue);
+            monitor.warning("Warning: " + issue.line());
+        }
+        if (sampleMap.isEmpty()) {
             // Every file faulty: empty reports ending as if the run had worked would be read as a result
             // (a workflow manager running one job per sample, given one truncated file, saw exit code 0).
             throw new PipelineException("No sample of " + config.input() + " can be analysed: every input file"
                     + " is faulty (each is named in a warning above)");
         }
-        Map<String, Sample> sampleMap = new LinkedHashMap<>(checked.samples());
         PipelineContext context = new PipelineContext(config, dependencies, directories, sampleMap, primers,
                 // The BLAST step adds an assembly blastn refuses (BlastRunner).
-                ChildJavaMemory.budgetGiB(config.bbtoolsMemoryGiB()), new ArrayList<>(checked.issues()), monitor);
+                ChildJavaMemory.budgetGiB(config.bbtoolsMemoryGiB()), issues, monitor);
         logRuntime(context);
         RunSettings.lines(config, context.hasFastqSamples()).forEach(monitor::info);
         // Before any program runs: on Windows, a path too long fails them all, with an obscure error.

@@ -65,6 +65,8 @@ than from the mini-assembly.
 
 ## Consolidated report
 
+
+A cell a spreadsheet would take for a formula (it starts with `=` or `@`, or with `+` or `-` and is not a number: a contig description `=HYPERLINK(...)`, a sample file named `-ctrl.fasta`) is written after an apostrophe, since 0.15.3: `'-ctrl`. Excel and LibreOffice then show the text as it is, where they showed `#NAME?`, or a link to follow; the program's own readers (the gel, **Open Previous Run**) take the apostrophe off, and so should a script that reads the report.
 The consolidated report is the primary summary table: one row per predicted amplicon that passed the [amplicon calling rules](Amplicon-Calling).
 
 ### Standard PCR mode columns

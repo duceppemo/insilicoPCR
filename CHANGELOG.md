@@ -25,6 +25,18 @@
 
 ### Fixed
 
+- Output safety: an output folder holding symbolic links where a run writes
+  (one reused from another run, or unpacked from an archive) made the run
+  write through them, overwriting or deleting the files they point to: such a
+  folder is refused. A cell of `report.tsv` a spreadsheet takes for a formula
+  (`=HYPERLINK(...)` in a contig description, a sample file `-ctrl.fasta`) is
+  written after an apostrophe. A file name holding a control or invisible
+  character (a line break, an escape sequence, a zero-width or right-to-left
+  mark) is refused, and shown escaped: it wrote lines in QAlog.txt, or took
+  over the terminal. Names differing only in their Unicode form are refused as
+  those differing in case are. A sample name too long for its result files'
+  names is left out (the run failed, or hung in FASTQ mode). A report number
+  past a million (`report(99999999999).tsv`) is ignored: it failed the run.
 - The window: a message holding a long path (a faulty primer file, an empty
   folder) did not wrap, and pushed Run and the buttons beside it out of the
   window, the reason cut short. A run that failed or was stopped turned off the

@@ -1,5 +1,6 @@
 package ca.canada.inspection.pipeline;
 
+import ca.canada.inspection.report.ConsolidatedReport;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -81,8 +82,10 @@ public record PreviousRun(Path report, List<String> samples) {
             try (Stream<Path> files = Files.list(runDirectory)) {
                 for (Path file : files.toList()) {
                     java.util.regex.Matcher name = QaLogWriter.FILE_PATTERN.matcher(file.getFileName().toString());
-                    if (name.matches() && Files.isRegularFile(file)) {
-                        logs.put(name.group(1) == null ? 0 : Integer.parseInt(name.group(1)), file);
+                    int number = !name.matches() ? -1 : name.group(1) == null ? 0
+                            : ConsolidatedReport.number("(" + name.group(1) + ")");
+                    if (number >= 0 && Files.isRegularFile(file)) {
+                        logs.put(number, file);
                     }
                 }
             } catch (IOException | NumberFormatException e) {

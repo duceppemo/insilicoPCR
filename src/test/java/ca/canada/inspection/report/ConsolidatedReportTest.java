@@ -273,4 +273,16 @@ class ConsolidatedReportTest {
         assertTrue(lines.get(1).endsWith("\tassay-P\t300-319\t20\t0\t0\t0\tother"), lines.get(1));
         assertTrue(lines.get(2).endsWith("\tassay-P\t35-54\t20\t0\t0\t0\ttarget"), lines.get(2));
     }
+
+    @org.junit.jupiter.api.Test
+    void aReportNumberPastAMillionIsNotOneOfARunsAndIsIgnored(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir)
+            throws java.io.IOException {
+        // report(99999999999).tsv failed every run after its BLAST work; report(2147483647).tsv made the next
+        // report report(-2147483648).tsv, and every later run failed.
+        java.nio.file.Files.writeString(dir.resolve("report(99999999999).tsv"), "");
+        java.nio.file.Files.writeString(dir.resolve("report(2147483647).tsv"), "");
+        org.junit.jupiter.api.Assertions.assertEquals(dir.resolve("report.tsv"), ConsolidatedReport.nextAvailableReportFile(dir));
+        java.nio.file.Files.writeString(dir.resolve("report(4).tsv"), "");
+        org.junit.jupiter.api.Assertions.assertEquals(dir.resolve("report(5).tsv"), ConsolidatedReport.nextAvailableReportFile(dir));
+    }
 }

@@ -162,6 +162,8 @@ public final class ReportTsv {
             String cell = cells[i];
             if (cell.length() >= 2 && cell.startsWith("\"") && cell.endsWith("\"")) {
                 cells[i] = cell.substring(1, cell.length() - 1).replace("\"\"", "\"");
+            } else if (cell.startsWith("'") && ReportColumn.needsApostrophe(cell.substring(1))) {
+                cells[i] = cell.substring(1); // written so for spreadsheets (ReportColumn.cell)
             }
         }
         return cells;

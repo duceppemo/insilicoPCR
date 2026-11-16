@@ -74,4 +74,25 @@ class ReportColumnTest {
             assertEquals(ReportColumn.readBack(name), ReportTsv.read(report).getFirst().sample(), name);
         }
     }
+
+    @Test
+    void aCellASpreadsheetTakesForAFormulaIsWrittenAsTextAndReadBackAsItWas() throws IOException {
+        // A contig description =HYPERLINK(...) became a link in Excel, a sample file -ctrl.fasta showed #NAME?.
+        assertEquals("'=HYPERLINK(\"http://x\",\"c\")", ReportColumn.cell("=HYPERLINK(\"http://x\",\"c\")"));
+        assertEquals("'-ctrl", ReportColumn.cell("-ctrl"));
+        assertEquals("'@SUM(1)", ReportColumn.cell("@SUM(1)"));
+        assertEquals("'+cmd", ReportColumn.cell("+cmd"));
+        // A strand, a number: as they are.
+        assertEquals("-", ReportColumn.cell("-"));
+        assertEquals("-5", ReportColumn.cell("-5"));
+        assertEquals("+1.5e3", ReportColumn.cell("+1.5e3"));
+        for (String name : List.of("-ctrl", "=1+2", "'quoted", "'-already")) {
+            Path report = Files.writeString(dir.resolve("formula.tsv"), String.join("\t",
+                    ReportColumn.of(false).stream().map(ReportColumn::header).toList()) + "\n"
+                    + String.join("\t", ReportColumn.of(false).stream().map(column -> column == ReportColumn.SAMPLE
+                    ? ReportColumn.cell(name) : column.value(WITHOUT)).toList()) + "\n");
+
+            assertEquals(name, ReportTsv.read(report).getFirst().sample(), name);
+        }
+    }
 }

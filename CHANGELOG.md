@@ -4,6 +4,13 @@
 
 ### Added
 
+- Third-party notices: the ZIPs hold the licenses of the programs and libraries
+  they bundle (BBTools, BLAST+, nghttp2 in the Windows ZIP, OpenJFX), in
+  `third_party/`, listed in `THIRD-PARTY-NOTICES.md`; the smoke test fails a
+  ZIP without them.
+- The versions of the tools a run uses (BLAST+, BBTools, Java) are in its
+  `QAlog.txt` and the HTML report's run details (`Tools:`), and the Linux ZIP
+  lists what it bundles in `VERSIONS.txt`.
 - Products of one primer alone are reported: a forward primer with a forward
   primer of its assay (itself or another variant), or a reverse with a reverse,
   where a sequence repeats inverted. They are a product of the tube; until now
@@ -292,6 +299,17 @@
 
 ### Changed
 
+- License: copyright of His Majesty the King in Right of Canada, as represented
+  by the Canadian Food Inspection Agency (Crown copyright); still the MIT
+  License. `CITATION.cff`, `.zenodo.json` and `pom.xml` name the agency.
+- The Linux ZIP lists its entries in one order, each dated by the commit.
+- CI: the workflows read the repository only; the job publishing a release
+  alone may write. Actions are pinned to commits. The Windows job fails when
+  the tests that need BLAST+, BBTools or a display did not run. A release's
+  notes start with `docs/release-notes/<version>.md` when there is one.
+- Documentation: system requirements and launcher options (Installation),
+  where to get help (Troubleshooting), `EXTENSION_IN_TANDEM_REPEAT` among the
+  FASTQ-mode negatives.
 - Documentation: the exit codes and what a stopped run says are on the
   command-line page; `--bbtools-memory` is described as the memory of the
   BLAST searches too, assemblies' included; the baiting limits, the files kept

@@ -12,8 +12,9 @@ on:
         required: false
         default: ''
 
+# Read only: a pull request's code runs here. The release job alone may write (its own permissions).
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   linux-zip:
@@ -22,12 +23,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           lfs: true
 
       - name: Set up JDK 26
-        uses: actions/setup-java@v6
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6
         with:
           distribution: temurin
           java-version: '26'
@@ -72,7 +73,7 @@ jobs:
           scripts/ci/require-tests-ran.sh target/surefire-reports
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v7
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: target/site/jacoco/jacoco.xml
@@ -99,7 +100,7 @@ jobs:
           scripts/ci/smoke-test.sh release/*linux-x64.zip
 
       - name: Upload Linux artifact
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: insilicoPCR-linux-x64
           path: |
@@ -113,12 +114,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           lfs: true
 
       - name: Set up JDK 26
-        uses: actions/setup-java@v6
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6
         with:
           distribution: temurin
           java-version: '26'
@@ -150,6 +151,12 @@ jobs:
           # Coverage is uploaded from the Linux job.
           .\mvnw.cmd -B test "-Djacoco.skip=true"
 
+      - name: Require that the tests ran
+        shell: bash
+        run: |
+          # As on Linux: a build that skipped them (a -DskipTests left in, a filter matching none) fails.
+          scripts/ci/require-tests-ran.sh --windows target/surefire-reports
+
       - name: Build Windows portable ZIP
         shell: pwsh
         run: |
@@ -166,7 +173,7 @@ jobs:
           scripts/ci/smoke-test.sh release/*windows-x64.zip
 
       - name: Upload Windows artifact
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: insilicoPCR-windows-x64
           path: |
@@ -185,10 +192,9 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
-
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Download the Windows ZIP
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           name: insilicoPCR-windows-x64
           path: build
@@ -224,7 +230,7 @@ jobs:
 
       - name: Upload the results
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: wintest-results
           path: scripts/wintest/results
@@ -235,10 +241,12 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     needs: [ linux-zip, windows-zip, windows-harness ]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Download release artifacts
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           # The two ZIPs, not the harness results.
           pattern: insilicoPCR-*
@@ -249,12 +257,26 @@ jobs:
         shell: bash
         run: find dist -maxdepth 2 -type f -print -exec ls -lh {} \;
 
+      - name: Check out the release notes
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          path: source
+          sparse-checkout: docs/release-notes
+
+      - name: Release notes of this version
+        shell: bash
+        run: |
+          # The curated notes of the version, if any, above the list of pull requests GitHub writes.
+          notes="source/docs/release-notes/${GITHUB_REF_NAME#v}.md"
+          if [[ -f "$notes" ]]; then cp "$notes" release-notes.md; else : > release-notes.md; fi
+
       - name: Publish portable ZIPs only
-        uses: softprops/action-gh-release@v3
+        uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3 # v3
         with:
           files: |
             dist/*linux-x64.zip
             dist/*linux-x64.zip.sha256
             dist/*windows-x64.zip
             dist/*windows-x64.zip.sha256
+          body_path: release-notes.md
           generate_release_notes: true

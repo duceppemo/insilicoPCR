@@ -49,6 +49,21 @@ public final class BbtoolsLauncher {
     }
 
     /**
+     * @throws PipelineException when {@code jar}'s path, which has a letter outside ASCII, also holds a
+     *                           {@code #} or a {@code %}: left as it is in the URL, {@code #} ends the path
+     *                           there and {@code %} starts a code; encoded, it makes BBTools garble the
+     *                           letter. Either way BBTools could not find its resources.
+     */
+    static void checkUsable(Path jar) {
+        String path = jar.toAbsolutePath().normalize().toString();
+        if (path.indexOf('#') >= 0 || path.indexOf('%') >= 0) {
+            throw new PipelineException("BBTools cannot be started from " + jar.getParent() + ": its path has a"
+                    + " letter outside ASCII and a # or a %, which BBTools cannot read together. Move insilicoPCR to a"
+                    + " folder whose path has neither (FASTQ input only; assemblies run from anywhere).");
+        }
+    }
+
+    /**
      * A {@code file:} URL of {@code jar} with its path as it is: no letter, and no space, percent-encoded.
      * A space left as {@code %20} would do no harm alone, but BBTools copies a path that has any percent
      * code byte by byte, which garbles the letters outside ASCII.

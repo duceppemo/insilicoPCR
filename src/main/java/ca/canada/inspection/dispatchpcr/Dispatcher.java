@@ -101,6 +101,13 @@ public final class Dispatcher {
             public ExternalProcessTracker processes() {
                 return programs;
             }
+
+            // Once killed, a program that stops is the run being stopped, not a failure to report
+            // ("Tadpole failed with exit code 137") nor a step to go on from.
+            @Override
+            public boolean isCancelled() {
+                return programs.isShutDown();
+            }
         };
     }
 

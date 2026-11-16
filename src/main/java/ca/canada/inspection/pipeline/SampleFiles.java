@@ -1,6 +1,7 @@
 package ca.canada.inspection.pipeline;
 
 import java.nio.file.Path;
+import java.util.List;
 
 /**
  * The files of one sample in a run's {@code detailed_report} folder: the one place their
@@ -85,5 +86,18 @@ public record SampleFiles(Path directory, String name) {
     /** BLAST hits of the primers on the extended reads; not {@code .tsv}, as for {@link #baitedReadsHits}. */
     Path extendedReadsHits() {
         return directory.resolve(name + "_extendedReads.blast.txt");
+    }
+
+    /**
+     * Every file a run writes here: an assembly gets its {@link #blastReport} only, a read set all of
+     * them. Windows' path limit is checked on the longest ({@link WindowsPathLimit}).
+     */
+    List<Path> written(boolean fastq) {
+        if (!fastq) {
+            return List.of(blastReport());
+        }
+        return List.of(blastReport(), targetMatches(), doubleTargetMatches(), assembly(), mergedReads(),
+                unmergedReads(), baitedReadsFasta(), baitedReadsHits(), extensionSeeds(), extendedReads(),
+                extensionCandidates(), candidateReads(), extendedReadsHits());
     }
 }

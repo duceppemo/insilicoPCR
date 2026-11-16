@@ -25,6 +25,23 @@
   such a share is printed to a tenth, rounded down (29.6%).
 - The bases a hit's trimmed ends are compared with: each query that is in no
   searched file cost a further read through every file; it is looked up once.
+- A run whose every input file is faulty ended with empty reports and exit code
+  0, which a workflow manager running one job per sample, given one truncated
+  file, took for success. It stops after naming the files, with `No sample of
+  ... can be analysed` and exit code 1.
+- Command line: a run killed (`kill`, a workflow manager stopping its job) took
+  each program it stopped for a failed one, printing `Error: Tadpole failed with
+  exit code 137` and going on to its next step; it is cancelled.
+- Windows:
+  - A sample name ending with a space or a dot (`Sample 1 _R1.fastq.gz`) stopped
+    the whole run with `Trailing char < >`; such a sample, or one named after a
+    device (`con.fasta`), is left out with a warning and the others are run.
+  - The output folder's path length and code page were checked only after the
+    input check, which reads every read of every FASTQ file; they are checked
+    first. The length is worked out from the files each sample's folder gets
+    (`SampleFiles`), not from a copy of the longest name.
+  - FASTQ input from an installation whose path has an accented letter and a
+    `#` or `%` failed inside BBTools; the run stops at once saying why.
 
 ### Changed
 

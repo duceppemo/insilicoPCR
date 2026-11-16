@@ -21,8 +21,8 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * FASTQ mode: searches the first-pass baited reads directly for amplicons, so a
  * target the mini-assembly omitted or split (#7) can still be called when single
- * reads or merged pairs hold it. Shared by the command-line and GUI pipelines; run
- * after the primer BLAST database exists.
+ * reads or merged pairs hold it. A step of {@link InSilicoPcrPipeline}, run after the
+ * primer BLAST database exists.
  */
 public final class ReadLevelStage {
 

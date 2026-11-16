@@ -10,6 +10,7 @@ import ca.canada.inspection.util.InputCheck;
 import ca.canada.inspection.util.SequenceFileUtils;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CancellationException;
@@ -50,6 +51,10 @@ public final class InSilicoPcrPipeline {
 
     private RunResult run(long startTime, RuntimeDependencies dependencies, PipelineDirectories directories) {
         done(Step.DEPENDENCIES);
+        // On Windows, the output folder and the installation first: the input check can take minutes, and
+        // its samples are checked once they are known (below).
+        WindowsPathLimit.check(directories, List.of());
+        WindowsCodePage.check(config, dependencies, List.of());
 
         // The primer file first: a mistake there is found at once, not after reading every input.
         PrimerPanel primers = PrimerService.loadAndPrepare(config, directories);
@@ -64,6 +69,12 @@ public final class InSilicoPcrPipeline {
                     + " (input files are named " + String.join(", ", SequenceFileUtils.ACCEPTED_EXTENSIONS) + ")");
         }
         checked.warnings().forEach(line -> monitor.warning("Warning: " + line));
+        if (checked.samples().isEmpty()) {
+            // Every file faulty: empty reports ending as if the run had worked would be read as a result
+            // (a workflow manager running one job per sample, given one truncated file, saw exit code 0).
+            throw new PipelineException("No sample of " + config.input() + " can be analysed: every input file"
+                    + " is faulty (each is named in a warning above)");
+        }
         Map<String, Sample> sampleMap = new LinkedHashMap<>(checked.samples());
         PipelineContext context = new PipelineContext(config, dependencies, directories, sampleMap, primers,
                 ChildJavaMemory.budgetGiB(config.bbtoolsMemoryGiB()), checked.issues(), monitor);

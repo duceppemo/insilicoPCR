@@ -85,7 +85,7 @@ public final class ReportGenerator {
         Path html = HtmlReport.write(report, rows, context.samples().keySet(), fastqSampleNames(context.samples()),
                 context.primers(), diagnostics.findings(),
                 RunSettings.details(Version.VERSION, context.config(), context.hasFastqSamples(),
-                        context.dependencies().versions()),
+                        context.dependencies().versions(), context.primers().mixGroups().groups()),
                 context.inputIssues(), splits);
         written.add(html);
         monitor.info("HTML report written to " + html);

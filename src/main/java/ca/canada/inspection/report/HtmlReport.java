@@ -60,9 +60,13 @@ public final class HtmlReport {
         ACROSS_ENDS("Primers at contig ends", "No product on any one contig, but the primers point off the ends of two"
                 + " contigs, or both ends of one: a product could span the break, or the end of a circular sequence",
                 "\u25c7"),
-        /** No product, and the reads could not have shown one of the declared size (FASTQ input). */
-        UNCHECKED("Not checkable from reads", "No product, but one of the declared size is longer than the reads"
-                + " could hold, so its absence proves nothing", "\u25cb"),
+        /**
+         * No product, and the reads could not have shown it (FASTQ input): one of the declared size is longer than
+         * the reads could hold, or the extended reads loop in a tandem repeat on the way to it.
+         */
+        UNCHECKED("Not checkable from reads", "No product, but the reads could not have shown it: one of the"
+                + " declared size is longer than they could hold, or the extended reads loop in a tandem repeat on"
+                + " the way to it; its absence proves nothing", "\u25cb"),
         /** No product. */
         NONE("No product", "No product", "·");
 
@@ -316,7 +320,9 @@ public final class HtmlReport {
                 .append(escape(String.join(" · ", headline(runDetails, reportName)))).append("</p>\n</header>\n");
 
         long notAnalysed = inputIssues.stream().map(InputCheck.Issue::sample).distinct().count();
-        tiles(html, samples.size(), assayOrder.size(), products.size(), totals, anyDeclared, anyUndeclared,
+        // The primer file's assays: a column of products of two assays (A+B) is not one (it read "6 assays" for 5).
+        int assayCount = assays.isEmpty() ? assayOrder.size() : new TreeSet<>(assays).size();
+        tiles(html, samples.size(), assayCount, products.size(), totals, anyDeclared, anyUndeclared,
                 (int) notAnalysed);
         inputSection(html, inputIssues);
         gridSection(html, grid, assayOrder, sizes, fastqSamples, totals, anyDeclared);
@@ -712,7 +718,9 @@ public final class HtmlReport {
         long notInReads = findings.stream().filter(finding -> finding.status() == Status.NOT_IN_READS).count();
         long notClosed = findings.stream()
                 .filter(finding -> finding.status() == Status.NOT_CLOSED_BY_EXTENSION).count();
-        if (shown.isEmpty() && notInReads == 0 && notClosed == 0) {
+        long inRepeat = findings.stream()
+                .filter(finding -> finding.status() == Status.EXTENSION_IN_TANDEM_REPEAT).count();
+        if (shown.isEmpty() && notInReads == 0 && notClosed == 0 && inRepeat == 0) {
             return;
         }
         html.append("<section>\n<h2>Read-level evidence (FASTQ input)</h2>\n<p class=\"hint\">Reads are baited and")
@@ -746,6 +754,12 @@ public final class HtmlReport {
             html.append("<p class=\"hint\">").append(notClosed).append(notClosed == 1 ? " negative has" : " negatives have")
                     .append(" both primers in the reads, but no read holds a complete amplicon and extending the reads")
                     .append(" through the reads baited in rounds did not join the primers; see the diagnostics TSV.</p>\n");
+        }
+        if (inRepeat > 0) {
+            html.append("<p class=\"hint\">").append(inRepeat).append(inRepeat == 1 ? " assay is" : " assays are")
+                    .append(" neither positive nor negative: the reads extended from the primers loop in a tandem")
+                    .append(" repeat they cannot cross, on the way to the product. Confirm on an assembly of long reads,")
+                    .append(" or by PCR; see the diagnostics TSV.</p>\n");
         }
         html.append("</section>\n");
     }

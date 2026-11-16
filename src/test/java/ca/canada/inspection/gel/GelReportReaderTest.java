@@ -103,4 +103,21 @@ class GelReportReaderTest {
         assertEquals(ca.canada.inspection.pcr.ExpectedSizes.Label.UNEXPECTED,
                 GelReportReader.read(file, List.of()).get("s1").getFirst().sizeCheck());
     }
+
+    @Test
+    void aBandSaysWhenItIsOfOnePrimerOrOfTwoAssays() throws IOException {
+        // The report tags such products; the gel showed them as their assay's own.
+        Path file = Files.writeString(dir.resolve("paired.tsv"),
+                "Sample\tGene\tGenomeLocation\tAmpliconSize\tContig\tForwardPrimers\tReversePrimers\n"
+                        + "s1\tone\t1-400\t400\tc1\tone-F\tone-F\n"
+                        + "s1\ta+b\t1-300\t300\tc1\ta-F\tb-R\n"
+                        + "s1\ta\t1-200\t200\tc1\ta-F\ta-R\n");
+
+        List<GelBand> bands = GelReportReader.read(file, List.of()).get("s1");
+
+        assertEquals(List.of("one primer", "two assays", ""), bands.stream().map(GelBand::pairingTag).toList());
+        assertEquals("Sample: s1\nGene: one\nAmplicon size: 400 bp\nMade by: one primer",
+                GelText.tooltip(List.of(bands.getFirst())));
+        assertEquals("tip\n\nRows:\ns1\ta+b\t300 bp\ttwo assays", GelText.details("tip", List.of(bands.get(1))));
+    }
 }

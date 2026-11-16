@@ -32,6 +32,14 @@
 
 ### Fixed
 
+- Reports, round 12: an assay whose extended reads loop in a tandem repeat
+  (`EXTENSION_IN_TANDEM_REPEAT`) was explained in the HTML report as a product
+  too long for the reads, and left out of its read-level evidence: the mark's
+  text says both, and the section counts it. The "assays" tile counted a
+  column of products of two assays (`A+B`) as one more assay. The gel shows
+  whether a band is of one primer or of two assays (hover text and details),
+  as the report does. The HTML run details list the assays sharing a
+  reaction (`mix=`), as `QAlog.txt` does.
 - Round 12 fixes:
   - The output folder's link check refused folders holding links where a run
     does not write (an input folder inside it with linked reads, a `.venv`):

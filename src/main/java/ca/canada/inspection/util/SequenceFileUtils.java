@@ -82,6 +82,14 @@ public final class SequenceFileUtils {
     private record Naming(String sample, int mate) {
     }
 
+    /**
+     * Which read of a pair {@code file} is named as: 1 or 2 ({@code _R1}, {@code _R2_001}; a bare {@code _1}
+     * or {@code _2} when its mate is beside it), or 0 for a file named as no pair's.
+     */
+    public static int mateNumber(Path file) {
+        return naming(file).mate();
+    }
+
     private static Naming naming(Path path) {
         Path directory = path.toAbsolutePath().getParent();
         return naming(path.getFileName().toString(),

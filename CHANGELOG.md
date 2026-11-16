@@ -25,6 +25,23 @@
 
 ### Fixed
 
+- FASTQ: a product longer than 1.5 to 2 kb was never found, however deep the
+  sample: the read extension grew reads only through the baited reads, which
+  run out about a fragment from each primer. It now baits in rounds: the
+  sample's reads sharing a k-mer with the ends of the extended reads of an
+  assay not yet closed, then extends again, until it closes, the reads stop
+  growing, or 20 rounds. Products of 1.5 to 4.9 kb in 30x and 80x reads, all
+  missed before, are found.
+- FASTQ: one sample's reads stopped the whole run when BBDuk could not read
+  them, every other sample with it: `-m 4` or more (BBDuk takes at most 3
+  substitutions; baiting now uses 3), a gzipped file named `.GZ`, a read
+  holding `J`, `Z`, `.`, `-` or `*` (the input check now takes the letters
+  BBDuk takes), an `=` in a file's path (BBTools reads a value from it), a
+  file cut short past the quick input check. The input check now names the
+  first three; the others leave their sample out with a warning, as an
+  assembly blastn refuses does. An `=` in the output folder's path works.
+- A read set of one file named as one read of a pair (`_R1`, its mate missing,
+  or given alone with `-i`) ran as single-end reads without a word: warned.
 - An insertion or deletion in a primer site changed `AmpliconSize` by its
   length, though the primer, not the site, is copied into the product: the
   size is both primers in full and the template between their 3' ends.

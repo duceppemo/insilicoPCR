@@ -83,6 +83,21 @@ public record SampleFiles(Path directory, String name) {
         return directory.resolve(name + "_extensionCandidateReads.fastq.gz");
     }
 
+    /** The ends of extended reads that stopped short of a product, from which a round of the extension baits more. */
+    Path extensionEnds() {
+        return directory.resolve(name + "_extensionEnds.fasta");
+    }
+
+    /** The sample's reads (pairs kept together) sharing a k-mer with the ends of one round's extended reads. */
+    Path extensionRoundReads() {
+        return directory.resolve(name + "_extensionRoundReads.fastq.gz");
+    }
+
+    /** Every read the rounds of the extension baited from the ends of extended reads, the rounds one after another. */
+    Path extensionReads() {
+        return directory.resolve(name + "_extensionReads.fastq.gz");
+    }
+
     /** BLAST hits of the primers on the extended reads; not {@code .tsv}, as for {@link #baitedReadsHits}. */
     Path extendedReadsHits() {
         return directory.resolve(name + "_extendedReads.blast.txt");
@@ -98,6 +113,7 @@ public record SampleFiles(Path directory, String name) {
         }
         return List.of(blastReport(), targetMatches(), doubleTargetMatches(), assembly(), mergedReads(),
                 unmergedReads(), baitedReadsFasta(), baitedReadsHits(), extensionSeeds(), extendedReads(),
-                extensionCandidates(), candidateReads(), extendedReadsHits());
+                extensionCandidates(), candidateReads(), extendedReadsHits(), extensionEnds(), extensionRoundReads(),
+                extensionReads());
     }
 }

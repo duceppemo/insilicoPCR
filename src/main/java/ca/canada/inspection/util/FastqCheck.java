@@ -53,13 +53,12 @@ public final class FastqCheck {
     private static final boolean[] ANY = new boolean[256];
 
     static {
-        for (int c = 'A'; c <= 'Z'; c++) {
+        // The letters BBDuk, the first program to read the reads, takes: the IUPAC codes, U and X. Any
+        // other (J, Z, '.', '-', '*') stopped it, and the run with it, after the check had let the file by.
+        for (char c : "ACGTUNRYKMSWBDHVX".toCharArray()) {
             BASE[c] = true;
-            BASE[c + 32] = true;
+            BASE[Character.toLowerCase(c)] = true;
         }
-        BASE['.'] = true;
-        BASE['-'] = true;
-        BASE['*'] = true;
         for (int c = '!'; c <= '~'; c++) {
             QUALITY[c] = true;
         }
@@ -82,7 +81,14 @@ public final class FastqCheck {
      * must not read their input twice.
      */
     public static Result check(Path file, long maxRecords) {
-        boolean gzipped = file.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(".gz");
+        String name = file.getFileName().toString();
+        boolean gzipped = name.toLowerCase(Locale.ROOT).endsWith(".gz");
+        if (gzipped && !name.endsWith(".gz")) {
+            // BBTools reads a gzipped file by its lower-case .gz only: it read X.FASTQ.GZ as text, and stopped
+            // on the compressed bytes, the run with it.
+            return new Result(Fault.UNREADABLE, 0, "BBTools reads a gzipped file only by a lower-case .gz: rename it "
+                    + name.substring(0, name.length() - 3) + ".gz");
+        }
         Scan scan = new Scan(maxRecords);
         try {
             if (Files.size(file) == 0) {

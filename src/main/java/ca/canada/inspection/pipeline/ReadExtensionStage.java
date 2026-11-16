@@ -135,6 +135,9 @@ public final class ReadExtensionStage {
         deleteQuietly(hitsFile);
         deleteQuietly(files.extensionCandidates());
         deleteQuietly(files.candidateReads());
+        deleteQuietly(files.extensionEnds());
+        deleteQuietly(files.extensionRoundReads());
+        deleteQuietly(files.extensionReads());
 
         // What the sample shows already, on contigs and in reads: worked out once for the sample.
         Map<String, Set<Integer>> known = ReadExtensionCaller.knownSizes(sample, primers, options, reads);
@@ -151,20 +154,43 @@ public final class ReadExtensionStage {
                 files.baitedReadsFasta(), seedsFile);
         int reach = options.maxAmpliconLength() > 0 ? options.maxAmpliconLength() : ReadExtensionCaller.DEFAULT_REACH;
 
-        settings.bbtools().extend(seedsFile, baitedReads, extendedFile, ReadExtensionCaller.K, reach)
-                .run(settings.search().monitor(), "Tadpole");
-        if (!Files.isRegularFile(extendedFile)) {
-            throw new PipelineException("Tadpole wrote no extended reads");
+        // In rounds: the baited reads run out about a fragment from each primer, and a product longer than
+        // what they cover never closed, however deep the sample (before 0.15.3: 1.5 to 2 kb). Each round baits
+        // the sample's reads again from the ends of the extended reads of the assays not yet closed, and
+        // extends the seeds again through every read baited so far, until each assay closes, the extended
+        // reads stop growing, or MAX_ROUNDS.
+        List<Path> pool = new ArrayList<>(List.of(baitedReads));
+        Map<String, Integer> grown = Map.of();
+        Map<String, Integer> lengths;
+        Map<String, Outcome> evaluated;
+        for (int round = 1; ; round++) {
+            stopIfCancelled(settings);
+            settings.bbtools().extend(seedsFile, pool, extendedFile, ReadExtensionCaller.K, reach)
+                    .run(settings.search().monitor(), "Tadpole");
+            if (!Files.isRegularFile(extendedFile)) {
+                throw new PipelineException("Tadpole wrote no extended reads");
+            }
+            lengths = SequenceFileUtils.sequenceLengths(extendedFile);
+            ReadLevelStage.runBlast(settings.search(), settings.search().threads(), extendedFile, hitsFile);
+            BlastTsv.keepAccepted(hitsFile, List.of(extendedFile), primers, options);
+            evaluated = ReadExtensionCaller.evaluate(name, extendedHits(name, hitsFile, extendedFile, lengths, primers,
+                    options, settings.search().monitor()::warning), lengths, seeds, primers, options, reach, known);
+            Map<String, Integer> open = openSeedLengths(assays, seeds, evaluated, lengths);
+            if (open.isEmpty() || round == MAX_ROUNDS || !grewSince(open, grown)) {
+                break;
+            }
+            grown = open;
+            writeEnds(extendedFile, open.keySet(), files.extensionEnds());
+            settings.bbtools().recruit(files.extensionEnds(), sample.files(), files.extensionRoundReads(),
+                    ReadExtensionCaller.K).run(settings.search().monitor(), "BBDuk");
+            appendTo(files.extensionRoundReads(), files.extensionReads());
+            deleteQuietly(files.extensionRoundReads());
+            if (pool.size() == 1) {
+                pool.add(files.extensionReads());
+            }
         }
-        Map<String, Integer> lengths = SequenceFileUtils.sequenceLengths(extendedFile);
-        ReadLevelStage.runBlast(settings.search(), settings.search().threads(), extendedFile, hitsFile);
-        BlastTsv.keepAccepted(hitsFile, List.of(extendedFile), primers, options);
 
-        Map<String, Outcome> sampleOutcomes = checkAgainstReadPairs(settings, ReadExtensionCaller.evaluate(name,
-                extendedHits(name, hitsFile, extendedFile, lengths, primers, options,
-                        settings.search().monitor()::warning), lengths, seeds, primers, options, reach,
-                known),
-                extendedFile, files, sample);
+        Map<String, Outcome> sampleOutcomes = checkAgainstReadPairs(settings, evaluated, extendedFile, files, sample);
         outcomes.put(name, sampleOutcomes);
 
         Map<String, String> readOfSeed = new HashMap<>();
@@ -179,6 +205,67 @@ public final class ReadExtensionStage {
         }
         if (!sampleRows.isEmpty()) {
             rows.put(name, sampleRows);
+        }
+    }
+
+    /** The most rounds of the extension: about 300 bases more each, past the 5,000 of the default reach. */
+    static final int MAX_ROUNDS = 20;
+    /** Bases at each end of an extended read from which a round baits: more than a fragment, so mates reach past it. */
+    static final int END_LENGTH = 500;
+
+    /**
+     * The extended reads' lengths, by seed, of the assays of {@code assays} with no closed product in
+     * {@code outcomes}: those another round may close.
+     */
+    static Map<String, Integer> openSeedLengths(List<String> assays, List<Seed> seeds, Map<String, Outcome> outcomes,
+                                                Map<String, Integer> lengths) {
+        Set<String> open = new HashSet<>();
+        for (String assay : assays) {
+            Outcome outcome = outcomes.get(assay);
+            if (outcome == null || outcome.closed().isEmpty()) {
+                open.add(assay);
+            }
+        }
+        Map<String, Integer> openLengths = new java.util.TreeMap<>();
+        for (Seed seed : seeds) {
+            Integer length = lengths.get(seed.id());
+            if (open.contains(seed.assay()) && length != null) {
+                openLengths.put(seed.id(), length);
+            }
+        }
+        return openLengths;
+    }
+
+    /** Whether an extended read of {@code now} is longer than it was in {@code before} (or is new). */
+    static boolean grewSince(Map<String, Integer> now, Map<String, Integer> before) {
+        return now.entrySet().stream().anyMatch(entry -> entry.getValue() > before.getOrDefault(entry.getKey(), 0));
+    }
+
+    /** Writes the first and last {@link #END_LENGTH} bases of the extended reads {@code ids} as FASTA. */
+    private static void writeEnds(Path extendedFile, Set<String> ids, Path ends) {
+        Map<String, String> extended = readFasta(extendedFile, ids);
+        try (BufferedWriter writer = Files.newBufferedWriter(ends, StandardCharsets.UTF_8)) {
+            for (Map.Entry<String, String> read : extended.entrySet()) {
+                String bases = read.getValue();
+                writer.write(">" + read.getKey() + "_start\n" + bases.substring(0, Math.min(END_LENGTH, bases.length()))
+                        + "\n>" + read.getKey() + "_end\n" + bases.substring(Math.max(0, bases.length() - END_LENGTH))
+                        + "\n");
+            }
+        } catch (IOException e) {
+            throw new PipelineException("Could not write the ends of the extended reads: " + ends, e);
+        }
+    }
+
+    /** Appends {@code part}, a gzipped file, to {@code whole}: two gzip files one after another are one. */
+    private static void appendTo(Path part, Path whole) {
+        if (!Files.isRegularFile(part)) {
+            return;
+        }
+        try (java.io.OutputStream out = Files.newOutputStream(whole, java.nio.file.StandardOpenOption.CREATE,
+                java.nio.file.StandardOpenOption.APPEND)) {
+            Files.copy(part, out);
+        } catch (IOException e) {
+            throw new PipelineException("Could not keep the reads baited from the extended reads: " + whole, e);
         }
     }
 

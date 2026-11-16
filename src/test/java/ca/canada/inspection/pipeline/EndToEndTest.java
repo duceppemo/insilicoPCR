@@ -341,6 +341,63 @@ class EndToEndTest {
     }
 
     @Test
+    void aProductLongerThanTheBaitedReadsReachIsClosedInRounds() throws IOException {
+        // A 2,500 bp product in 40x reads of 2 x 150 bases (fragments of 350): the baited reads run out about a
+        // fragment from each primer, and the read extension, through them only, never closed it (before
+        // 0.15.3, nothing over 1.5 to 2 kb). Rounds bait more reads from the ends of the extended reads.
+        java.util.Random random = new java.util.Random(13);
+        StringBuilder genome = new StringBuilder();
+        while (genome.length() < 12_000) {
+            genome.append("ACGT".charAt(random.nextInt(4)));
+        }
+        String forward = "GATCGGAAGAGCACACGTCT";
+        String reverse = "CTTGCCAGTAGCGTCATACG";
+        genome.replace(5_000, 5_020, forward);
+        genome.replace(7_480, 7_500, reverseComplement(reverse)); // the product: 5,001 to 7,500
+        Path input = Files.createDirectory(directory.resolve("long-reads"));
+        StringBuilder first = new StringBuilder();
+        StringBuilder second = new StringBuilder();
+        String quality = "I".repeat(150);
+        for (int pair = 0; pair < 40 * genome.length() / 300; pair++) {
+            int start = random.nextInt(genome.length() - 350);
+            String fragment = genome.substring(start, start + 350);
+            boolean flip = random.nextBoolean();
+            String one = flip ? reverseComplement(fragment) : fragment;
+            first.append("@p").append(pair).append("/1\n").append(one, 0, 150).append("\n+\n").append(quality).append('\n');
+            second.append("@p").append(pair).append("/2\n").append(reverseComplement(one).substring(0, 150))
+                    .append("\n+\n").append(quality).append('\n');
+        }
+        gzip(first.toString().getBytes(StandardCharsets.UTF_8), input.resolve("long_R1.fastq.gz"));
+        gzip(second.toString().getBytes(StandardCharsets.UTF_8), input.resolve("long_R2.fastq.gz"));
+        Path primers = Files.writeString(directory.resolve("long-primers.fasta"), ">long-F\n" + forward + "\n>long-R\n"
+                + reverse + "\n");
+        Path output = directory.resolve("long-results");
+
+        new InSilicoPcrPipeline(PipelineConfig.builder(input, output, primers).threads(2).build()).run();
+
+        assertEquals(List.of("long long 2500 "), products(report(output)), () -> {
+            try {
+                return Files.readString(output.resolve("consolidated_report").resolve("report_fastq_diagnostics.tsv"));
+            } catch (IOException e) {
+                return e.toString();
+            }
+        });
+    }
+
+    private static String reverseComplement(CharSequence bases) {
+        StringBuilder complement = new StringBuilder(bases.length());
+        for (int i = bases.length() - 1; i >= 0; i--) {
+            complement.append(switch (bases.charAt(i)) {
+                case 'A' -> 'T';
+                case 'C' -> 'G';
+                case 'G' -> 'C';
+                default -> 'A';
+            });
+        }
+        return complement.toString();
+    }
+
+    @Test
     void faultyFilesAreNamedAndLeftOutAndTheOthersAreRun() throws IOException {
         Path input = Files.createDirectory(directory.resolve("broken"));
         Files.copy(EXAMPLE.resolve("genomes").resolve("isolate_03.fasta"), input.resolve("isolate_03.fasta"));
@@ -371,6 +428,26 @@ class EndToEndTest {
                 .filter(line -> line.startsWith("Sample not analysed: ")).count());
         assertTrue(Files.readString(output.resolve("consolidated_report").resolve("report.html"))
                 .contains("gapped.fasta"), "named in the HTML report's Input not analysed");
+    }
+
+    @Test
+    void readsBbtoolsCannotBeGivenLeaveTheirSampleOutAndTheOthersAreRun() throws IOException {
+        // BBTools reads a path from its last '=': a read set named run=2 failed the whole run, the assembly
+        // beside it too. As for an assembly blastn refuses, only its sample is left out.
+        Path input = Files.createDirectory(directory.resolve("equals"));
+        Files.copy(EXAMPLE.resolve("genomes").resolve("isolate_03.fasta"), input.resolve("isolate_03.fasta"));
+        Files.copy(EXAMPLE.resolve("reads").resolve("isolate_01_R1.fastq.gz"), input.resolve("run=2_R1.fastq.gz"));
+        Files.copy(EXAMPLE.resolve("reads").resolve("isolate_01_R2.fastq.gz"), input.resolve("run=2_R2.fastq.gz"));
+        Recorder monitor = new Recorder();
+        Path output = directory.resolve("equals-results");
+
+        new InSilicoPcrPipeline(config(input, output), monitor).run();
+
+        assertTrue(monitor.warnings.stream().anyMatch(line -> line.startsWith("Warning: run=2_R1.fastq.gz")
+                && line.contains("BBDuk cannot read the reads") && line.contains("equals sign")), monitor.warnings.toString());
+        assertEquals(List.of("isolate_03 toxA 312 target"), products(report(output)));
+        assertEquals(1, lines(output.resolve("QAlog.txt")).stream()
+                .filter(line -> line.startsWith("Sample not analysed: ")).count());
     }
 
     @Test
@@ -521,7 +598,7 @@ class EndToEndTest {
         int size = header.indexOf("AmpliconSize");
         int check = header.indexOf("SizeCheck");
         return rows.stream().skip(1).map(row -> row.split("\t", -1))
-                .map(cells -> cells[sample] + " " + cells[gene] + " " + cells[size] + " " + cells[check])
+                .map(cells -> cells[sample] + " " + cells[gene] + " " + cells[size] + " " + (check < 0 ? "" : cells[check]))
                 .sorted().toList();
     }
 

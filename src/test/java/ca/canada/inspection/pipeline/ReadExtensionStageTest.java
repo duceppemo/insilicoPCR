@@ -468,6 +468,99 @@ class ReadExtensionStageTest {
     }
 
     @Test
+    void eachRoundReadsTheSamplesFilesOnceAndTheLastCheckTakesTheReadsOfItsRound() throws IOException {
+        // Two seeds a primer, each extended to 600 bases either side, both primers on each: a 1,074-bp product the
+        // read pairs reject (BBDuk brings back one unrelated pair). Round 1: one pass over the sample's files baits
+        // for the candidate and the grown ends together, each one's reads then taken from it. Round 2: no end grew,
+        // so the check makes its own pass, and the rounds end. The check after them takes its reads from round 2's.
+        List<String> started = new java.util.ArrayList<>();
+        List<String> sources = new java.util.ArrayList<>();
+        boolean[] unionHoldsBoth = {false};
+        RunMonitor monitor = new RunMonitor() {
+            @Override
+            public void runProgram(Path directory, List<String> command, String program) {
+                started.add(program);
+                try {
+                    switch (program) {
+                        case "Tadpole" -> {
+                            StringBuilder out = new StringBuilder();
+                            List<String> seeds = Files.readAllLines(directory.resolve(argument(command, "in")));
+                            for (int i = 0; i + 1 < seeds.size(); i += 2) {
+                                out.append(seeds.get(i)).append('\n').append("A".repeat(600)).append(seeds.get(i + 1))
+                                        .append("A".repeat(600)).append('\n');
+                            }
+                            Files.writeString(directory.resolve(argument(command, "out")), out);
+                        }
+                        case "BBDuk" -> {
+                            Path ref = directory.resolve(argument(command, "ref"));
+                            Path in = command.stream().anyMatch(a -> a.startsWith("in1=")) ? argument(command, "in1")
+                                    : argument(command, "in");
+                            sources.add(ref.getFileName().toString().replaceFirst("^S_", "") + " from "
+                                    + in.getFileName().toString().replaceFirst("^S_", ""));
+                            if (ref.getFileName().toString().endsWith("UnionRef.fasta")) {
+                                String union = Files.readString(ref);
+                                unionHoldsBoth[0] = union.contains(">long_1074bp_on_") && union.contains("_start\n");
+                            }
+                            try (var gz = new java.util.zip.GZIPOutputStream(Files.newOutputStream(
+                                    directory.resolve(argument(command, "outm"))))) {
+                                gz.write("@new/1\nACGT\n+\nIIII\n@new/2\nACGT\n+\nIIII\n".getBytes());
+                            }
+                        }
+                        default -> { // blastn: both primers on each extended read, every round
+                            StringBuilder table = new StringBuilder();
+                            for (String line : Files.readAllLines(argument(command, "-query"))) {
+                                if (line.startsWith(">")) {
+                                    String id = line.substring(1).split("\\s")[0];
+                                    table.append(hit(id, "long-F", 101, 120, 1, 20))
+                                            .append(hit(id, "long-R", 1155, 1174, 20, 1));
+                                }
+                            }
+                            Files.writeString(argument(command, "-out"), table);
+                        }
+                    }
+                } catch (IOException e) {
+                    throw new java.io.UncheckedIOException(e);
+                }
+            }
+
+            @Override
+            public void info(String message) {
+            }
+        };
+        Sample sample = new Sample("S");
+        sample.setFileType(Sample.FileType.FASTQ);
+        PipelineDirectories directories = new PipelineDirectories(dir, dir.resolve("detailed_report"),
+                dir.resolve(PipelineDirectories.CONSOLIDATED));
+        SampleFiles files = directories.sample("S");
+        Files.createDirectories(files.directory());
+        sample.addFile(Files.writeString(dir.resolve("S.fastq"), "@r\nACGT\n+\nIIII\n"));
+        Files.writeString(files.doubleTargetMatches(), "");
+        Files.writeString(files.baitedReadsFasta(), ">read_0 a/1\nACGTACGT\n>read_1 a/2\nTTTTGGGG\n"
+                + ">read_2 b/1\nACGTACGA\n>read_3 b/2\nTTTTGGGC\n");
+        ReadEvidence evidence = new ReadEvidence(Map.of("long-F", Set.of("read_0", "read_2"),
+                "long-R", Set.of("read_1", "read_3")), Map.of(), Map.of());
+        ReadExtensionStage.Settings settings = new ReadExtensionStage.Settings(
+                new ReadLevelStage.Settings(Path.of("blastn"), Path.of("primer_tmp.fasta"), 1e5, 1, 0.3, monitor, 4),
+                new BbtoolsCommands("java", Path.of("bbtools.jar"), 4, 1), ReadExtensionCaller.Mode.UNREPORTED);
+
+        ReadExtensionStage.Result result = ReadExtensionStage.run(settings, directories, Map.of("S", sample), PRIMERS,
+                AmpliconOptions.withMismatches(0), Map.of("S", evidence));
+
+        assertEquals(List.of(
+                "extensionUnionRef.fasta from S.fastq", // round 1: one pass, candidate and ends
+                "extensionCandidates.fasta from extensionUnionReads.fastq.gz",
+                "extensionEnds.fasta from extensionUnionReads.fastq.gz",
+                "extensionCandidates.fasta from S.fastq", // round 2: no end grew, the check's own pass
+                "extensionCandidates.fasta from extensionUnionReads.fastq.gz"), sources); // after: round 2's reads
+        assertTrue(unionHoldsBoth[0], "the pass baits for the candidate and the ends");
+        assertEquals(List.of("Tadpole", "blastn", "BBDuk", "BBDuk", "BBDuk", "Tadpole", "blastn", "BBDuk", "BBDuk"),
+                started);
+        assertTrue(result.outcomes().get("S").get("long").called().isEmpty(), "rejected by the read pairs");
+        assertTrue(Files.notExists(files.extensionUnionReads()) && Files.notExists(files.extensionUnionRef()),
+                "the pass's files are removed");
+    }
+
+    @Test
     void aPoolFileThatEndsInsideAReadIsAnError() throws IOException {
         Path cut = Files.writeString(dir.resolve("cut.fq"), "@r1\nACGT\n+\n");
         java.io.UncheckedIOException error = assertThrows(java.io.UncheckedIOException.class, () -> ReadPool.of(cut));

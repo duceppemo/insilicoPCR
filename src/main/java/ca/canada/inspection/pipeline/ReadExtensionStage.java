@@ -497,13 +497,6 @@ public final class ReadExtensionStage {
      * from the primers.
      *
      * @param extendedFile the extended reads the products lie on
-     */
-    static Map<String, Outcome> checkAgainstReadPairs(Settings settings, Map<String, Outcome> outcomes,
-                                                      Path extendedFile, SampleFiles files, Sample sample) {
-        return checkAgainstReadPairs(settings, outcomes, extendedFile, files, sample, null, null);
-    }
-
-    /**
      * @param ends   the ends of extended reads a round baits from next, or {@code null}: baited in the same pass
      *               over the sample's reads as the candidates ({@link SampleFiles#extensionUnionReads}), which the
      *               round then takes its reads from

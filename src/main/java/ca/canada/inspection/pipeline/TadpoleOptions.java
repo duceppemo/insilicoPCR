@@ -31,10 +31,11 @@ public record TadpoleOptions(int k, int minCountSeed, int minCoverage, int minCo
     public static final int MIN_CONTIG = 1;
 
     public TadpoleOptions {
-        requireAtLeast(k, MIN_K, "k");
-        requireAtLeast(minCountSeed, MIN_COUNT_SEED, "minCountSeed");
-        requireAtLeast(minCoverage, MIN_COVERAGE, "minCoverage");
-        requireAtLeast(minContig, MIN_CONTIG, "minContig");
+        // Named as the command line and the window name them: Tadpole's own names (minContig) were not theirs.
+        requireAtLeast(k, MIN_K, "--tadpole-k");
+        requireAtLeast(minCountSeed, MIN_COUNT_SEED, "--tadpole-min-seed");
+        requireAtLeast(minCoverage, MIN_COVERAGE, "--tadpole-min-cov");
+        requireAtLeast(minContig, MIN_CONTIG, "--tadpole-min-contig");
     }
 
     /** Tadpole command-line arguments for these settings. */

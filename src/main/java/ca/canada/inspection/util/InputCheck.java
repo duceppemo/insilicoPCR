@@ -87,9 +87,11 @@ public final class InputCheck {
      * @param input   the file or folder that was scanned
      * @param files   how many files with a sequence file extension were looked at
      * @param subfoldersNotRead the folder's subfolders that hold sequence files, which are not read
+     * @param namesNotRead the names of the folder's files named like sequence files of a kind not read
+     *                     ({@code x.fas}, {@code x.fasta.bz2})
      */
     public record Result(Map<String, Sample> samples, List<Issue> issues, Path input, int files,
-                         List<Path> subfoldersNotRead) {
+                         List<Path> subfoldersNotRead, List<String> namesNotRead) {
 
         /** The names of the samples left out. */
         public Set<String> samplesNotAnalysed() {
@@ -115,6 +117,9 @@ public final class InputCheck {
             subfoldersNotRead.forEach(folder -> lines.add("the folder " + folder + " holds sequence files, which are"
                     + " not read: only the files directly in " + input + " are. Give that folder as an input of its own,"
                     + " or move its files up."));
+            // x.fas or x.fasta.bz2 beside the other inputs was left out without a word.
+            namesNotRead.forEach(name -> lines.add(name + " is not read: input files are named "
+                    + String.join(", ", SequenceFileUtils.ACCEPTED_EXTENSIONS)));
             return lines;
         }
     }
@@ -128,12 +133,29 @@ public final class InputCheck {
      * @param threads files are checked this many at a time
      */
     public static Result scan(Path input, Depth depth, int threads) {
+        return scan(input, depth, threads, null);
+    }
+
+    /**
+     * As {@link #scan(Path, Depth, int)}, {@code output} (the run's output folder, which may lie in the
+     * input folder) not taken for a subfolder of inputs: its primer file made it one, with a misleading warning.
+     */
+    public static Result scan(Path input, Depth depth, int threads, Path output) {
         List<Path> files = candidates(input);
         Map<Path, FileFault> faults = check(files, depth, threads);
 
         Map<String, Sample> samples = SequenceFileUtils.sampleMapOf(files);
         List<Issue> issues = new ArrayList<>();
         Set<String> rejected = new LinkedHashSet<>();
+        // A link to a file that is not there: left out without a word, its sample with it.
+        for (Path entry : namedLikeInputs(input)) {
+            if (!Files.isRegularFile(entry)) {
+                String sample = SequenceFileUtils.sampleName(entry);
+                issues.add(new Issue(sample, List.of(entry.getFileName().toString()), "the file cannot be read",
+                        Files.isSymbolicLink(entry) ? "a link to a file that does not exist" : "not a file"));
+                rejected.add(sample);
+            }
+        }
         for (Path file : files) {
             FileFault fault = faults.get(file);
             if (fault.problem() != null) {
@@ -143,6 +165,7 @@ public final class InputCheck {
             }
         }
         rejectFilesThatAreNotOneSample(samples, issues, rejected);
+        rejectNamesThatAreNoName(samples, issues, rejected);
         rejectNamesThatDifferInCase(samples, issues, rejected);
         if (System.getProperty("os.name", "").startsWith("Windows")) {
             rejectNamesWindowsCannotUse(samples, issues, rejected);
@@ -165,17 +188,54 @@ public final class InputCheck {
         }
         Map<String, Sample> kept = new LinkedHashMap<>(samples);
         kept.keySet().removeAll(rejected);
-        return new Result(kept, List.copyOf(issues), input, files.size(), subfoldersWithSequenceFiles(input));
+        return new Result(kept, List.copyOf(issues), input, files.size(), subfoldersWithSequenceFiles(input, output),
+                namesNotRead(input));
     }
 
-    /** The subfolders of {@code input}, a folder, that hold a file named like a sequence file. */
-    private static List<Path> subfoldersWithSequenceFiles(Path input) {
+    /** Names of a sequence file, of a kind the run does not read: x.fas, x.fasta.bz2, x.fq.xz. */
+    private static final java.util.regex.Pattern LIKE_A_SEQUENCE_FILE =
+            java.util.regex.Pattern.compile("(?i).+\\.(fasta|fas|fa|fna|ffn|fsa|faa|fastq|fq)(\\.[a-z0-9]{1,4})?$");
+
+    /** The names of the files of {@code input}, a folder, named like sequence files of a kind it does not read. */
+    private static List<String> namesNotRead(Path input) {
         if (!Files.isDirectory(input)) {
             return List.of();
         }
         try (Stream<Path> entries = Files.list(input)) {
+            return entries.filter(entry -> !Files.isDirectory(entry))
+                    .map(entry -> entry.getFileName().toString())
+                    .filter(name -> LIKE_A_SEQUENCE_FILE.matcher(name).matches()
+                            && !SequenceFileUtils.hasExtension(Path.of(name), SequenceFileUtils.ACCEPTED_EXTENSIONS))
+                    .sorted().toList();
+        } catch (IOException | UncheckedIOException e) {
+            return List.of(); // only a warning: the run does not need it
+        }
+    }
+
+    /** The entries of {@code input}, a folder, named as input files, files or not (a link to nothing). */
+    private static List<Path> namedLikeInputs(Path input) {
+        if (!Files.isDirectory(input)) {
+            return List.of();
+        }
+        try (Stream<Path> entries = Files.list(input)) {
+            return entries.filter(entry -> !Files.isDirectory(entry))
+                    .filter(entry -> SequenceFileUtils.hasExtension(entry, SequenceFileUtils.ACCEPTED_EXTENSIONS))
+                    .sorted().toList();
+        } catch (IOException e) {
+            throw new UncheckedIOException("Unable to list input directory: " + input, e);
+        }
+    }
+
+    /** The subfolders of {@code input}, a folder, that hold a file named like a sequence file, {@code output} not. */
+    private static List<Path> subfoldersWithSequenceFiles(Path input, Path output) {
+        if (!Files.isDirectory(input)) {
+            return List.of();
+        }
+        Path outputFolder = output == null ? null : output.toAbsolutePath().normalize();
+        try (Stream<Path> entries = Files.list(input)) {
             return entries.filter(Files::isDirectory).filter(folder -> !candidates(folder).isEmpty())
-                    .map(folder -> folder.toAbsolutePath().normalize()).sorted().toList();
+                    .map(folder -> folder.toAbsolutePath().normalize())
+                    .filter(folder -> !folder.equals(outputFolder)).sorted().toList();
         } catch (IOException | UncheckedIOException e) {
             return List.of(); // only a warning: the run does not need it
         }
@@ -256,6 +316,19 @@ public final class InputCheck {
             if (problem != null && rejected.add(name)) {
                 issues.add(new Issue(name, fileNames(sample.files()), problem,
                         "Windows cannot make its results folder; rename the file"));
+            }
+        });
+    }
+
+    /**
+     * A file named {@code .fasta}, {@code ..fasta} or {@code ...fasta} makes the sample "", "." or "..": its
+     * results went to the report folder itself, or to the output folder above it.
+     */
+    private static void rejectNamesThatAreNoName(Map<String, Sample> samples, List<Issue> issues, Set<String> rejected) {
+        samples.forEach((name, sample) -> {
+            if ((name.isBlank() || name.equals(".") || name.equals("..")) && rejected.add(name)) {
+                issues.add(new Issue(name, fileNames(sample.files()), "the file's name makes no sample name",
+                        "the name before the extension is empty, . or ..; rename the file"));
             }
         });
     }
@@ -431,7 +504,7 @@ public final class InputCheck {
         } catch (ZipException e) {
             return new FileFault("the file cannot be read", "not a gzip file, or a damaged one (" + e.getMessage() + ")", 0);
         } catch (IOException e) {
-            return new FileFault("the file cannot be read", String.valueOf(e.getMessage()), 0);
+            return new FileFault("the file cannot be read", SequenceFileUtils.why(e), 0);
         }
         if (!sequenceSeen) {
             return new FileFault("the file holds no sequence", "header lines only", 0);

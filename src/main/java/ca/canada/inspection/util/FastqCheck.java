@@ -95,7 +95,7 @@ public final class FastqCheck {
                 return new Result(Fault.EMPTY, 0, "the file is empty");
             }
         } catch (IOException e) {
-            return new Result(Fault.UNREADABLE, 0, "cannot be read: " + e.getMessage());
+            return new Result(Fault.UNREADABLE, 0, "cannot be read: " + SequenceFileUtils.why(e));
         }
         // Past a byte order mark (a file saved by a Windows editor): BBTools reads such a file too.
         try (InputStream raw = Files.newInputStream(file);
@@ -124,7 +124,7 @@ public final class FastqCheck {
                     ? "not a gzip file (" + e.getMessage() + ")"
                     : "the gzip stream is damaged after " + reads(scan.records) + " (" + e.getMessage() + ")");
         } catch (IOException e) {
-            return new Result(Fault.UNREADABLE, scan.records, "cannot be read: " + e.getMessage());
+            return new Result(Fault.UNREADABLE, scan.records, "cannot be read: " + SequenceFileUtils.why(e));
         }
         return scan.end();
     }

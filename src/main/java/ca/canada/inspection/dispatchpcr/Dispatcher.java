@@ -59,6 +59,7 @@ public final class Dispatcher {
             }
             // "C:\my data\" -p ...: the backslash kept the quote, and -i took the rest of the line.
             CliConfig.checkQuotes(cmd);
+            CliConfig.checkGivenOnce(cmd);
             if (!cmd.getArgList().isEmpty()) {
                 // A shell pattern (-i reads/*.fastq.gz) gives -i its first file and leaves the
                 // others here: run, the run would quietly analyse one file.
@@ -73,7 +74,12 @@ public final class Dispatcher {
             return 2;
         }
         try {
-            new InSilicoPcrPipeline(config, consoleMonitor()).run();
+            RUNNING.set(true);
+            try {
+                new InSilicoPcrPipeline(config, consoleMonitor()).run();
+            } finally {
+                RUNNING.set(false);
+            }
             return 0;
         } catch (java.util.concurrent.CancellationException e) {
             // Killed (kill, Ctrl-C, a workflow manager stopping its job): its programs are stopped, which is
@@ -92,6 +98,12 @@ public final class Dispatcher {
         }
     }
 
+    /** Whether a run is under way: a run stopped by a signal says so ({@link #consoleMonitor}). */
+    private static final java.util.concurrent.atomic.AtomicBoolean RUNNING = new java.util.concurrent.atomic.AtomicBoolean();
+    /** What a run stopped by a signal says. */
+    static final String STOPPED = "insilicoPCR was stopped before the run ended: its programs are stopped, and its"
+            + " reports are missing or incomplete (QAlog.txt is written only by a run that ends)";
+
     /**
      * The console, with the external programs tracked: killed with this program (kill, a workflow
      * manager stopping its job, Task Manager), which left them running and writing, holding their
@@ -99,8 +111,13 @@ public final class Dispatcher {
      */
     static RunMonitor consoleMonitor() {
         ExternalProcessTracker programs = new ExternalProcessTracker();
-        Runtime.getRuntime().addShutdownHook(Thread.ofPlatform().name("stop external programs")
-                .unstarted(programs::destroyAll));
+        Runtime.getRuntime().addShutdownHook(Thread.ofPlatform().name("stop external programs").unstarted(() -> {
+            programs.destroyAll();
+            if (RUNNING.get()) {
+                // Ctrl-C or kill: the run ended with nothing said, its reports missing or cut short.
+                System.err.println(STOPPED);
+            }
+        }));
         return new RunMonitor() {
             @Override
             public ExternalProcessTracker processes() {

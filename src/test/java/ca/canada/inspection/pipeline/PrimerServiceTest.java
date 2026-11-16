@@ -192,6 +192,19 @@ class PrimerServiceTest {
     }
 
     @Test
+    void anIdCutShortByASpaceIsNamedForItsSuffixNotAsADuplicate() throws java.io.IOException {
+        // ">tox A-F" and ">tox A-R": the ID is "tox". It was said to appear twice, to be renamed tox_1 and tox_2,
+        // which the run refuses too.
+        java.nio.file.Path primerFile = java.nio.file.Files.writeString(dir.resolve("space.fasta"),
+                ">tox A-F\nACGTACG\n>tox A-R\nACGTACG\n");
+
+        PipelineException error = assertThrows(PipelineException.class, () -> PrimerService.read(primerFile));
+
+        assertTrue(error.getMessage().startsWith("Primer ID must follow the <assay>-F / <assay>-R / <assay>-P naming"
+                + " convention: tox "), error.getMessage());
+    }
+
+    @Test
     void aBadPrimerIdIsRejectedWhenTheFileIsRead() throws java.io.IOException {
         java.nio.file.Path primerFile = java.nio.file.Files.writeString(dir.resolve("badid.fasta"),
                 ">assay-F\nACGT\n>assay_R\nACGT\n");

@@ -223,4 +223,26 @@ class CliConfigTest {
         IllegalArgumentException error = assertThrows(IllegalArgumentException.class, () -> CliConfig.checkQuotes(cmd));
         assertTrue(error.getMessage().contains("leave out the last backslash"), error.getMessage());
     }
+
+    @Test
+    void anOptionGivenTwiceIsRefused() throws ParseException, IOException {
+        // -t 2 -t 3 ran with 2, the first, without a word.
+        parse();
+        CommandLine cmd = new DefaultParser().parse(Dispatcher.options(), new String[]{"-i", input.toString(), "-o",
+                dir.resolve("out").toString(), "-p", primers.toString(), "-t", "2", "--threads", "3"});
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class, () -> CliConfig.checkGivenOnce(cmd));
+        assertEquals("--threads is given 2 times: give it once", error.getMessage());
+    }
+
+    @Test
+    void numbersTheProgramCannotHoldAreNamedAsGiven() {
+        // 1e-400 reads as 0: the message said "got: 0.0"; --bbtools-memory -1 said ">= 0", though 0 is refused too;
+        // Tadpole's settings were named by Tadpole's names (minContig), not the options'.
+        assertEquals("--evalue 1e-400 is too small for a number of the program (it reads as 0): give 1e-300 or more",
+                assertThrows(IllegalArgumentException.class, () -> parse("-e", "1e-400")).getMessage());
+        assertEquals("--bbtools-memory must be at least 1 GB; leave it out for automatic",
+                assertThrows(IllegalArgumentException.class, () -> parse("--bbtools-memory", "-1")).getMessage());
+        assertEquals("Invalid Tadpole setting: --tadpole-min-contig must be >= 1, got: 0",
+                assertThrows(IllegalArgumentException.class, () -> parse("--tadpole-min-contig", "0")).getMessage());
+    }
 }

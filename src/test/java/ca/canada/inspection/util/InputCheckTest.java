@@ -51,6 +51,72 @@ class InputCheckTest {
     }
 
     @Test
+    @org.junit.jupiter.api.condition.DisabledOnOs(org.junit.jupiter.api.condition.OS.WINDOWS)
+    void aLinkToNothingAndFilesOfAKindNotReadAreNamed() throws IOException {
+        // Beside other inputs, both were left out without a word.
+        write("good.fasta", ">c\nACGT\n");
+        Files.createSymbolicLink(dir.resolve("gone.fasta"), dir.resolve("deleted.fasta"));
+        write("old.fas", ">c\nACGT\n");
+        write("packed.fasta.bz2", "BZh");
+        write("notes.txt", "not a sequence file");
+
+        Result result = InputCheck.scan(dir, Depth.FULL, 2);
+
+        assertEquals(java.util.Set.of("good"), result.samples().keySet());
+        assertEquals(List.of("gone.fasta: the file cannot be read (a link to a file that does not exist). Sample gone is not analysed.",
+                "old.fas is not read: input files are named " + String.join(", ", SequenceFileUtils.ACCEPTED_EXTENSIONS),
+                "packed.fasta.bz2 is not read: input files are named " + String.join(", ", SequenceFileUtils.ACCEPTED_EXTENSIONS)),
+                result.warnings());
+    }
+
+    @Test
+    @org.junit.jupiter.api.condition.DisabledOnOs(org.junit.jupiter.api.condition.OS.WINDOWS)
+    void aFileThatCannotBeOpenedSaysWhy() throws IOException {
+        // The reason was the file's path alone (an AccessDeniedException's message), which the user knows already.
+        write("locked.fasta", ">c\nACGT\n");
+        write("locked_R1.fastq", READ);
+        java.util.Set<java.nio.file.attribute.PosixFilePermission> none = java.util.Set.of();
+        Files.setPosixFilePermissions(dir.resolve("locked.fasta"), none);
+        Files.setPosixFilePermissions(dir.resolve("locked_R1.fastq"), none);
+        org.junit.jupiter.api.Assumptions.assumeFalse(Files.isReadable(dir.resolve("locked.fasta")), "run as root");
+
+        List<String> warnings = InputCheck.scan(dir, Depth.FULL, 2).warnings();
+
+        assertTrue(warnings.stream().anyMatch(line -> line.startsWith("locked.fasta: the file cannot be read (permission denied)")),
+                warnings.toString());
+        assertTrue(warnings.stream().anyMatch(line -> line.contains("locked_R1.fastq") && line.contains("permission denied")),
+                warnings.toString());
+    }
+
+    @Test
+    void aFileWhoseNameMakesNoSampleNameIsLeftOut() throws IOException {
+        // .fasta, ..fasta and ...fasta: the samples "", "." and "..", whose results went to the report folder
+        // itself or above it.
+        write(".fasta", ">c\nACGT\n");
+        write("..fasta", ">c\nACGT\n");
+        write("...fasta", ">c\nACGT\n");
+        write("good.fasta", ">c\nACGT\n");
+
+        Result result = InputCheck.scan(dir, Depth.FULL, 2);
+
+        assertEquals(java.util.Set.of("good"), result.samples().keySet());
+        assertEquals(3, result.issues().size());
+        assertTrue(result.issues().stream().allMatch(issue -> issue.line().contains("the file's name makes no sample name")),
+                result.issues().toString());
+    }
+
+    @Test
+    void theRunsOwnOutputFolderInTheInputIsNotASubfolderOfInputs() throws IOException {
+        // Its primer file made it look like a folder of inputs not read, which the user was told to give as input.
+        write("good.fasta", ">c\nACGT\n");
+        Path output = Files.createDirectory(dir.resolve("results"));
+        Files.writeString(output.resolve("primer_tmp.fasta"), ">a-F\nACGTACG\n");
+
+        assertEquals(List.of(), InputCheck.scan(dir, Depth.FULL, 2, output).warnings());
+        assertEquals(1, InputCheck.scan(dir, Depth.FULL, 2).warnings().size(), "another folder is still named");
+    }
+
+    @Test
     void goodFilesMakeTheSamplesAndNothingIsSaid() throws IOException {
         write("genome.fasta", ">c1\nACGT\n");
         gzip("zipped.fna.gz", ">c1\nACGT\n");

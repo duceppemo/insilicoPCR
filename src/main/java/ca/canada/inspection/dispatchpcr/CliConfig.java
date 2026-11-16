@@ -56,14 +56,20 @@ public final class CliConfig {
             config.threads(parseInt(cmd, "threads"));
         }
         if (cmd.hasOption("evalue")) {
-            config.evalue(parseDouble(cmd, "evalue"));
+            double evalue = parseDouble(cmd, "evalue");
+            if (evalue == 0 && !cmd.getOptionValue("evalue").matches("[+-]?0*\\.?0*([eE][+-]?\\d+)?")) {
+                // 1e-400 reads as 0: the message said "got: 0.0", not what was given.
+                throw new IllegalArgumentException("--evalue " + cmd.getOptionValue("evalue") + " is too small for a"
+                        + " number of the program (it reads as 0): give 1e-300 or more");
+            }
+            config.evalue(evalue);
         }
         if (cmd.hasOption("read-min-fraction")) {
             config.readMinFraction(parseFraction(cmd, "read-min-fraction"));
         }
         if (cmd.hasOption("bbtools-memory")) {
-            int gib = parseNonNegative(cmd, "bbtools-memory", 0);
-            if (gib == 0) {
+            int gib = parseInt(cmd, "bbtools-memory");
+            if (gib < 1) {
                 throw new IllegalArgumentException("--bbtools-memory must be at least 1 GB; leave it out for automatic");
             }
             config.bbtoolsMemory(gib);
@@ -159,6 +165,23 @@ public final class CliConfig {
                 throw new IllegalArgumentException(notAPath(option, value));
             }
         }
+    }
+
+    /**
+     * @throws IllegalArgumentException when an option is given more than once: -t 2 -t 3 ran with 2, the first,
+     *                                  without a word (a command line built from a script's defaults and a user's
+     *                                  own setting is the usual way to get there)
+     */
+    static void checkGivenOnce(CommandLine cmd) {
+        java.util.Map<String, Integer> times = new java.util.TreeMap<>();
+        for (org.apache.commons.cli.Option option : cmd.getOptions()) {
+            times.merge(option.getLongOpt() != null ? option.getLongOpt() : option.getOpt(), 1, Integer::sum);
+        }
+        times.forEach((option, count) -> {
+            if (count > 1) {
+                throw new IllegalArgumentException("--" + option + " is given " + count + " times: give it once");
+            }
+        });
     }
 
     private static int parseInt(CommandLine cmd, String option) {

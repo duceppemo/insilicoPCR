@@ -9,6 +9,7 @@ import ca.canada.inspection.pipeline.RunMonitor.Step;
 import ca.canada.inspection.util.InputCheck;
 import ca.canada.inspection.util.SequenceFileUtils;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -63,6 +64,12 @@ public final class InSilicoPcrPipeline {
         monitor.info("Checking the input files (" + (config.inputCheck() == InputCheck.Depth.FULL
                 ? "every read; --input-check quick reads the first one only" : "first read only") + ")");
         InputCheck.Result checked = InputCheck.scan(config.input(), config.inputCheck(), config.threads());
+        if (checked.files() == 0 && !checked.subfoldersNotRead().isEmpty()) {
+            throw new PipelineException("No FASTA or FASTQ file directly in " + config.input() + ": its subfolders "
+                    + checked.subfoldersNotRead().stream().map(folder -> folder.getFileName().toString())
+                    .collect(java.util.stream.Collectors.joining(", ")) + " hold some, but subfolders are not read."
+                    + " Give one of them as the input, or move their files up into one folder.");
+        }
         if (checked.files() == 0) {
             // Most likely a mistyped -i: a run of nothing would end as if it had worked (exit 0).
             throw new PipelineException("No FASTA or FASTQ file in " + config.input() + ": nothing to analyse"
@@ -77,7 +84,8 @@ public final class InSilicoPcrPipeline {
         }
         Map<String, Sample> sampleMap = new LinkedHashMap<>(checked.samples());
         PipelineContext context = new PipelineContext(config, dependencies, directories, sampleMap, primers,
-                ChildJavaMemory.budgetGiB(config.bbtoolsMemoryGiB()), checked.issues(), monitor);
+                // The BLAST step adds an assembly blastn refuses (BlastRunner).
+                ChildJavaMemory.budgetGiB(config.bbtoolsMemoryGiB()), new ArrayList<>(checked.issues()), monitor);
         logRuntime(context);
         RunSettings.lines(config, context.hasFastqSamples()).forEach(monitor::info);
         // Before any program runs: on Windows, a path too long fails them all, with an obscure error.

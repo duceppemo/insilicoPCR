@@ -1,19 +1,47 @@
 package ca.canada.inspection.pipeline;
 
 import ca.canada.inspection.model.Sample;
+import ca.canada.inspection.util.InputCheck;
 
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public final class BlastRunner {
     private BlastRunner() {
     }
 
+    /**
+     * Searches every sample's FASTA. An assembly blastn refuses (a record whose first line holds no base,
+     * a file with no base at all: its reader is stricter than the input check) is a faulty input file: its
+     * sample is left out, named in a warning and among the run's {@link PipelineContext#inputIssues}, and
+     * the others are run. When blastn refuses every assembly, the fault is not the files': the run fails.
+     */
     public static void run(PipelineContext context) {
         List<Sample> samples = List.copyOf(context.samples().values());
+        Map<String, Refused> refused = new ConcurrentHashMap<>();
         ParallelStageRunner.run("BLAST", samples, context.config().threads(), context.monitor(),
-                sample -> blast(context, sample), context.monitor()::blastProgress);
+                sample -> blast(context, sample, refused), context.monitor()::blastProgress);
+        if (refused.isEmpty()) {
+            return;
+        }
+        if (refused.size() == samples.stream().filter(sample -> !sample.isFastq()).count()) {
+            throw new PipelineException("BLAST failed", refused.values().iterator().next().failure());
+        }
+        for (Sample sample : samples) {
+            Refused one = refused.get(sample.getName());
+            if (one != null) {
+                context.samples().remove(sample.getName());
+                context.inputIssues().add(one.issue());
+                context.monitor().warning("Warning: " + one.issue().line());
+            }
+        }
+    }
+
+    /** An assembly blastn could not search, and why. */
+    private record Refused(InputCheck.Issue issue, ProgramFailedException failure) {
     }
 
     /** The FASTA file searched for {@code sample} ({@link PipelineContext#searchedFasta}): one, always. */
@@ -26,7 +54,7 @@ public final class BlastRunner {
         return searched.getFirst();
     }
 
-    private static void blast(PipelineContext context, Sample sample) {
+    private static void blast(PipelineContext context, Sample sample, Map<String, Refused> refused) {
         // The report is named after the sample, not the file, so that it is read back for that
         // sample whatever the file is called (SampleFiles.blastReport).
         Path query = query(context, sample);
@@ -37,6 +65,19 @@ public final class BlastRunner {
         try (BlastQuery blastQuery = BlastQuery.of(query, blastOutput)) {
             BlastTsv.runBlastn(context.monitor(), context.dependencies().blastn(), blastQuery.path(),
                     context.directories().primerDatabase(), context.config().evalue(), 1, blastTsv);
+        } catch (ProgramFailedException e) {
+            if (sample.isFastq()) {
+                throw e; // its mini-assembly is the program's own file: not the user's to fix
+            }
+            refused.put(sample.getName(), new Refused(new InputCheck.Issue(sample.getName(),
+                    List.of(query.getFileName().toString()), "blastn cannot read the file",
+                    "its message is in the log above: " + e.getMessage()), e));
+            try {
+                java.nio.file.Files.deleteIfExists(blastTsv);
+            } catch (IOException ignored) {
+                // a partial table left beside nothing that reads it
+            }
+            return;
         } catch (IOException e) {
             throw new PipelineException("Unable to prepare the BLAST query for " + query, e);
         }

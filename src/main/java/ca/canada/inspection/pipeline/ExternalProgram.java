@@ -75,6 +75,12 @@ final class ExternalProgram {
             int exit = process.waitFor();
             ended = true;
             boolean saidOutOfMemory = reading.get();
+            if (killedBySignal(exit)) {
+                // Ctrl-C, or a workflow manager signalling the process group: the program may die a moment
+                // before this program's own shutdown (which marks the run stopped) begins. A failure said
+                // then ("blastn failed with exit code 130") was the stop itself.
+                Thread.sleep(SIGNAL_GRACE.toMillis());
+            }
             stopIfCancelled(monitor, program);
             if (exit != 0) {
                 // Where it ran too: a command with a relative path is run again by hand from there.
@@ -104,6 +110,14 @@ final class ExternalProgram {
                 monitor.processes().remove(process);
             }
         }
+    }
+
+    /** How long a program killed by SIGINT or SIGTERM waits for this program's own stop to be seen. */
+    private static final java.time.Duration SIGNAL_GRACE = java.time.Duration.ofMillis(300);
+
+    /** Whether {@code exit} is a program's end by SIGINT (130) or SIGTERM (143), outside Windows. */
+    static boolean killedBySignal(int exit) {
+        return !AppPaths.isWindows() && (exit == 128 + 2 || exit == 128 + 15);
     }
 
     /**

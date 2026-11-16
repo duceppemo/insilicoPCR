@@ -257,6 +257,8 @@ class EndToEndTest {
         Path input = Files.createDirectory(directory.resolve("broken"));
         Files.copy(EXAMPLE.resolve("genomes").resolve("isolate_03.fasta"), input.resolve("isolate_03.fasta"));
         Files.writeString(input.resolve("headers.fasta"), ">only_a_header\n");
+        // An aligned FASTA whose first sequence line is all gaps: the input check passes it, blastn refuses it.
+        Files.writeString(input.resolve("gapped.fasta"), ">c1\n" + "-".repeat(60) + "\nACGTACGTACGTACGT\n");
         gzip(new byte[0], input.resolve("nolibrary_R1.fastq.gz"));
         gzip(new byte[0], input.resolve("nolibrary_R2.fastq.gz"));
         // A download that stopped early.
@@ -271,13 +273,29 @@ class EndToEndTest {
         for (String expected : List.of("Warning: headers.fasta: the file holds no sequence",
                 "Warning: nolibrary_R1.fastq.gz: the file holds no read",
                 "Warning: nolibrary_R2.fastq.gz: the file holds no read",
-                "Warning: cutshort_R1.fastq.gz: the file cannot be read (the gzip stream ends early")) {
+                "Warning: cutshort_R1.fastq.gz: the file cannot be read (the gzip stream ends early",
+                "Warning: gapped.fasta: blastn cannot read the file")) {
             assertTrue(monitor.warnings.stream().anyMatch(line -> line.startsWith(expected)),
                     "no warning starting with: " + expected + " in " + monitor.warnings);
         }
         assertEquals(List.of("isolate_03 toxA 312 target"), products(report(output)));
-        assertEquals(3, lines(output.resolve("QAlog.txt")).stream()
+        assertEquals(4, lines(output.resolve("QAlog.txt")).stream()
                 .filter(line -> line.startsWith("Sample not analysed: ")).count());
+        assertTrue(Files.readString(output.resolve("consolidated_report").resolve("report.html"))
+                .contains("gapped.fasta"), "named in the HTML report's Input not analysed");
+    }
+
+    @Test
+    void whenBlastnRefusesEveryAssemblyTheRunFailsAsBefore() throws IOException {
+        // Not one faulty file among good ones, which would be left out: blastn itself, its database, the disk.
+        Path input = Files.createDirectory(directory.resolve("allgapped"));
+        Files.writeString(input.resolve("gapped.fasta"), ">c1\n" + "-".repeat(60) + "\nACGTACGTACGTACGT\n");
+
+        PipelineException error = assertThrows(PipelineException.class, () -> new InSilicoPcrPipeline(
+                config(input, directory.resolve("allgapped-results")), new Recorder()).run());
+
+        assertEquals("BLAST failed", error.getMessage());
+        assertTrue(error.getCause() instanceof ProgramFailedException, String.valueOf(error.getCause()));
     }
 
     @Test
@@ -312,6 +330,26 @@ class EndToEndTest {
         assertFalse(Files.exists(output.resolve("consolidated_report").resolve("report.tsv")));
         assertFalse(Files.exists(output.resolve("QAlog.txt")));
         assertEquals(List.of(Step.DEPENDENCIES, Step.PRIMERS, Step.INPUT_CHECK), monitor.steps);
+    }
+
+    @Test
+    void aRunStoppedWhileWritingItsReportsLeavesNone() {
+        // Stopped once report.tsv is written: it stayed, unnamed by any QAlog, though the window says a
+        // stopped run writes no report.
+        Path output = directory.resolve("stopped-in-reports");
+        Path report = output.resolve("consolidated_report").resolve("report.tsv");
+        Recorder monitor = new Recorder() {
+            @Override
+            public boolean isCancelled() {
+                return Files.exists(report);
+            }
+        };
+
+        assertThrows(CancellationException.class,
+                () -> new InSilicoPcrPipeline(config(EXAMPLE.resolve("genomes"), output), monitor).run());
+        assertFalse(Files.exists(report));
+        assertFalse(Files.exists(output.resolve("consolidated_report").resolve("report.html")));
+        assertFalse(Files.exists(output.resolve("QAlog.txt")));
     }
 
     /** Copies of the example reads under the given sample names. */

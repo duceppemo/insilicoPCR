@@ -26,6 +26,28 @@
   rest of a line after `;`, a line starting with `#` or `!`) are not bases, a
   `U` pairs with `A` as `T` does, and a header with no ID (BLAST names it
   `Query_1`) is refused at the input check.
+- An assembly blastn refuses although the input check passed it (an aligned
+  FASTA whose first sequence line is all gaps, a file with no base) stopped the
+  whole run with "BLAST failed". It is a faulty input file like the others:
+  its sample is left out with a warning and in "Input not analysed", and the
+  others are run. When blastn refuses every assembly, the run fails as before.
+- Input folders are read one level deep, which no page said: a sample in a
+  subfolder (one folder per sample, as some sequencers' software writes them)
+  was missing without a word. A subfolder holding sequence files is named in a
+  warning; an input with sequence files in subfolders only says so; the `-i`
+  help, the window's tooltip and the docs say it.
+- A run stopped while it wrote its reports left them (`report(n).tsv`, its HTML
+  report, gel pictures, diagnostics) without a QAlog naming them, although the
+  window says a stopped run writes no report; they are removed.
+- Command line: a killed run (`kill`, Ctrl-C) could end with a Java stack
+  trace, or with `Error: blastn failed with exit code 130` when Ctrl-C reached
+  the program first; it prints `Run cancelled`.
+- **Open Previous Run** read the sample names of `QAlog.txt` with their
+  surrounding spaces trimmed: a sample named `Sample 1 ` (from `Sample 1
+  _R1.fastq.gz`) showed as an empty lane beside the one holding its bands.
+- A `.gz` input file that is not gzip stayed open after the input check said
+  so, until Java's garbage collector came by; on Windows it could not be
+  renamed meanwhile.
 - A product made by several variants of a degenerate primer named a variant
   whose first base does not pair, rather than one that pairs over its whole
   length, when the two had no mismatch in their alignments: BLAST leaves a

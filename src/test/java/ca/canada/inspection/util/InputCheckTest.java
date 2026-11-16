@@ -265,6 +265,24 @@ class InputCheckTest {
     }
 
     @Test
+    void aSubfolderHoldingSequenceFilesIsNamedNotReadSilently() throws IOException {
+        // One folder per sample, as sequencers' software writes them: the sample was missing without a word.
+        write("top.fasta", ">c1\nACGT\n");
+        Files.createDirectories(dir.resolve("S2"));
+        Files.writeString(dir.resolve("S2").resolve("S2_R1.fastq"), READ);
+        Files.createDirectories(dir.resolve("notes"));
+        Files.writeString(dir.resolve("notes").resolve("readme.txt"), "not a sequence");
+
+        Result result = InputCheck.scan(dir, Depth.FULL, 1);
+
+        assertEquals(Set.of("top"), result.samples().keySet());
+        assertEquals(List.of(dir.resolve("S2").toAbsolutePath().normalize()), result.subfoldersNotRead());
+        assertEquals(1, result.warnings().size());
+        assertTrue(result.warnings().getFirst().startsWith("the folder " + dir.resolve("S2").toAbsolutePath().normalize()
+                + " holds sequence files, which are not read"), result.warnings().getFirst());
+    }
+
+    @Test
     void namesWindowsCannotGiveAFolderAreNamed() {
         assertEquals("the sample name ends with a space", InputCheck.windowsFolderProblem("Sample 1 "));
         assertEquals("the sample name ends with a dot", InputCheck.windowsFolderProblem("iso."));

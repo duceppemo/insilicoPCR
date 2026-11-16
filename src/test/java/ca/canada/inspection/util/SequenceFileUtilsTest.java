@@ -170,4 +170,25 @@ class SequenceFileUtilsTest {
             assertEquals(null, reader.readLine());
         }
     }
+
+    @Test
+    @org.junit.jupiter.api.condition.EnabledOnOs(org.junit.jupiter.api.condition.OS.LINUX)
+    void aGzFileThatIsNotGzipIsClosedOnTheFailure() throws IOException {
+        // Left open until the garbage collector came by: on Windows the file could not be renamed meanwhile.
+        Path notGzip = Files.writeString(dir.resolve("plain.fasta.gz"), ">c1\nACGT\n");
+        org.junit.jupiter.api.Assertions.assertThrows(java.util.zip.ZipException.class,
+                () -> SequenceFileUtils.openMaybeGzip(notGzip));
+
+        long open;
+        try (var handles = Files.list(Path.of("/proc/self/fd"))) {
+            open = handles.filter(handle -> {
+                try {
+                    return Files.readSymbolicLink(handle).equals(notGzip.toRealPath());
+                } catch (IOException gone) {
+                    return false;
+                }
+            }).count();
+        }
+        assertEquals(0, open);
+    }
 }

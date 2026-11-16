@@ -28,13 +28,14 @@ public final class GelImageWriter {
     /**
      * @param info    told where the picture was written
      * @param warning told why it could not be
+     * @return the pictures written (one per gel), none when they could not be
      */
-    public static void write(Path consolidatedReport, Path outputFile, Collection<String> sampleNames,
-                             Consumer<String> info, Consumer<String> warning) {
+    public static List<Path> write(Path consolidatedReport, Path outputFile, Collection<String> sampleNames,
+                                   Consumer<String> info, Consumer<String> warning) {
         if (TOOLKIT_SHUT_DOWN.get()) {
             warning.accept("Warning: the JavaFX toolkit was already shut down in this process;"
                     + " the synthetic gel can only be rendered once per run.");
-            return;
+            return List.of();
         }
         boolean startedHere = false;
         try {
@@ -46,12 +47,13 @@ public final class GelImageWriter {
                 // Toolkit already initialized (e.g. running inside the GUI); reuse it.
             } catch (RuntimeException | NoClassDefFoundError | UnsatisfiedLinkError e) {
                 warning.accept(NO_GRAPHICS + rootMessage(e));
-                return;
+                return List.of();
             }
             List<Path> written = SyntheticGelImage.exportPng(consolidatedReport, outputFile, sampleNames);
             info.accept(written.size() == 1 ? "Synthetic gel image written to " + written.getFirst()
                     : "Synthetic gel images written, " + InteractiveGelViewer.SAMPLES_PER_GEL + " samples a gel: "
                     + written.getFirst() + " to " + written.getLast().getFileName());
+            return written;
         } catch (NoClassDefFoundError | UnsatisfiedLinkError e) {
             warning.accept(NO_GRAPHICS + rootMessage(e));
         } catch (RuntimeException e) {
@@ -63,6 +65,7 @@ public final class GelImageWriter {
                 TOOLKIT_SHUT_DOWN.set(true);
             }
         }
+        return List.of();
     }
 
     private static String rootMessage(Throwable t) {

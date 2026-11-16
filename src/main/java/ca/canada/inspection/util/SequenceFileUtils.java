@@ -164,12 +164,17 @@ public final class SequenceFileUtils {
     public static BufferedReader openMaybeGzip(Path file) throws IOException {
         // Decoded leniently either way: a byte that is not UTF-8 (an accented letter in a
         // header, say) becomes a replacement character instead of ending the run.
+        // A .gz that is not gzip fails as it is opened: the file is then closed here, or it stayed open
+        // until the garbage collector came by (on Windows, locked: it could not be renamed meanwhile).
+        InputStream raw = Files.newInputStream(file);
         BufferedReader reader;
-        if (file.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(".gz")) {
-            reader = new BufferedReader(new InputStreamReader(new GZIPInputStream(Files.newInputStream(file)),
-                    StandardCharsets.UTF_8));
-        } else {
-            reader = new BufferedReader(new InputStreamReader(Files.newInputStream(file), StandardCharsets.UTF_8));
+        try {
+            InputStream in = file.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(".gz")
+                    ? new GZIPInputStream(raw) : raw;
+            reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8));
+        } catch (IOException | RuntimeException e) {
+            raw.close();
+            throw e;
         }
         return withoutByteOrderMark(reader);
     }

@@ -243,4 +243,14 @@ class ExternalProgramTest {
                 () -> ExternalProgram.run(monitor, null, List.of(JAVA, "-version"), "java"));
         assertFalse(monitor.isCancelled());
     }
+
+    @Test
+    void aProgramEndedBySigintOrSigtermMayBeTheRunsOwnStop() {
+        // Ctrl-C reaches the programs before this program's shutdown marks the run stopped.
+        boolean windows = AppPaths.isWindows();
+        org.junit.jupiter.api.Assertions.assertEquals(!windows, ExternalProgram.killedBySignal(130));
+        org.junit.jupiter.api.Assertions.assertEquals(!windows, ExternalProgram.killedBySignal(143));
+        org.junit.jupiter.api.Assertions.assertFalse(ExternalProgram.killedBySignal(1));
+        org.junit.jupiter.api.Assertions.assertFalse(ExternalProgram.killedBySignal(137)); // SIGKILL: not a stop to wait for
+    }
 }

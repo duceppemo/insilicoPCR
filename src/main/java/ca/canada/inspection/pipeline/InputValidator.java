@@ -31,9 +31,21 @@ public final class InputValidator {
         if (Files.isDirectory(inputFile) && !containsSequenceFile(inputFile)) {
             // A faulty file among good ones does not stop the run: the run names it, leaves
             // its sample out and analyses the others (InputCheck).
+            if (subfolderHoldsSequenceFiles(inputFile)) {
+                return "The input folder holds no FASTA/FASTQ file directly, only in subfolders, which are not read:"
+                        + " choose one of them, or move their files up into one folder";
+            }
             return "Input directory must contain at least one valid fastq/fasta file";
         }
         return "";
+    }
+
+    private static boolean subfolderHoldsSequenceFiles(Path directory) {
+        try (Stream<Path> entries = Files.list(directory)) {
+            return entries.filter(Files::isDirectory).anyMatch(InputValidator::containsSequenceFile);
+        } catch (IOException | RuntimeException e) {
+            return false; // only a better message
+        }
     }
 
     private static boolean containsSequenceFile(Path directory) {

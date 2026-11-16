@@ -86,8 +86,10 @@ public final class InputCheck {
      * @param issues  what was left out, in file order
      * @param input   the file or folder that was scanned
      * @param files   how many files with a sequence file extension were looked at
+     * @param subfoldersNotRead the folder's subfolders that hold sequence files, which are not read
      */
-    public record Result(Map<String, Sample> samples, List<Issue> issues, Path input, int files) {
+    public record Result(Map<String, Sample> samples, List<Issue> issues, Path input, int files,
+                         List<Path> subfoldersNotRead) {
 
         /** The names of the samples left out. */
         public Set<String> samplesNotAnalysed() {
@@ -100,6 +102,10 @@ public final class InputCheck {
         public List<String> warnings() {
             List<String> lines = new ArrayList<>();
             issues.forEach(issue -> lines.add(issue.line()));
+            // A sample in a per-sample folder (as sequencers' software writes them) was left out without a word.
+            subfoldersNotRead.forEach(folder -> lines.add("the folder " + folder + " holds sequence files, which are"
+                    + " not read: only the files directly in " + input + " are. Give that folder as an input of its own,"
+                    + " or move its files up."));
             return lines;
         }
     }
@@ -150,7 +156,20 @@ public final class InputCheck {
         }
         Map<String, Sample> kept = new LinkedHashMap<>(samples);
         kept.keySet().removeAll(rejected);
-        return new Result(kept, List.copyOf(issues), input, files.size());
+        return new Result(kept, List.copyOf(issues), input, files.size(), subfoldersWithSequenceFiles(input));
+    }
+
+    /** The subfolders of {@code input}, a folder, that hold a file named like a sequence file. */
+    private static List<Path> subfoldersWithSequenceFiles(Path input) {
+        if (!Files.isDirectory(input)) {
+            return List.of();
+        }
+        try (Stream<Path> entries = Files.list(input)) {
+            return entries.filter(Files::isDirectory).filter(folder -> !candidates(folder).isEmpty())
+                    .map(folder -> folder.toAbsolutePath().normalize()).sorted().toList();
+        } catch (IOException | UncheckedIOException e) {
+            return List.of(); // only a warning: the run does not need it
+        }
     }
 
     /**

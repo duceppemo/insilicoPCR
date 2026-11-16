@@ -33,7 +33,7 @@ public final class GelReportReader {
         if (sampleNames != null) {
             // Named as report.tsv names them: a tab or line break in a name is a space there.
             sampleNames.stream()
-                    .map(ReportColumn::cell)
+                    .map(ReportColumn::readBack)
                     .sorted()
                     .forEach(sampleName -> lanes.put(sampleName, new ArrayList<>()));
         }

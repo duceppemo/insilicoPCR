@@ -13,6 +13,7 @@ import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** The window's form to the run it asks for, without the window. */
 class RunFormTest {
@@ -52,6 +53,25 @@ class RunFormTest {
         RunForm.Outcome.Invalid invalid = assertInstanceOf(RunForm.Outcome.Invalid.class,
                 new RunForm(null, dir, dir, 1, 0, "1e5", AmpliconSettings.DEFAULTS, FastqSettings.DEFAULTS).toConfig());
         assertEquals("Please enter an input file, a reference file, and an output file", invalid.message());
+    }
+
+    @Test
+    @org.junit.jupiter.api.condition.DisabledOnOs(org.junit.jupiter.api.condition.OS.WINDOWS)
+    void anInputFolderThatCannotBeListedIsAMessage() throws IOException {
+        // Another user's folder: Run did nothing, the error escaping on the window's thread.
+        Path input = Files.createDirectories(dir.resolve("theirs"));
+        Path primers = Files.writeString(dir.resolve("primers.fasta"), ">a-F\nACGTACGT\n>a-R\nACGTACGT\n");
+        Files.setPosixFilePermissions(input, java.nio.file.attribute.PosixFilePermissions.fromString("---------"));
+        try {
+            org.junit.jupiter.api.Assumptions.assumeFalse(Files.isReadable(input), "run as root: every folder is readable");
+            RunForm.Outcome.Invalid invalid = assertInstanceOf(RunForm.Outcome.Invalid.class,
+                    new RunForm(input, dir.resolve("out"), primers, 1, 0, "1e5", AmpliconSettings.DEFAULTS,
+                            FastqSettings.DEFAULTS).toConfig());
+            assertEquals("Unable to list input directory: " + input + " (" + input + ": permission denied)",
+                    invalid.message());
+        } finally {
+            Files.setPosixFilePermissions(input, java.nio.file.attribute.PosixFilePermissions.fromString("rwx------"));
+        }
     }
 
     @Test

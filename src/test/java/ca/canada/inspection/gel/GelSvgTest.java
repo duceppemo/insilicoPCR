@@ -117,6 +117,9 @@ class GelSvgTest {
         assertEquals("a &amp; b &lt;c&gt; &quot;d&quot; &apos;e&apos;", GelSvg.escapeXml("a & b <c> \"d\" 'e'"));
         assertEquals("&amp;lt;", GelSvg.escapeXml("&lt;"));
         assertEquals("", GelSvg.escapeXml(null));
+        // Characters XML does not allow made a file no program opens; tabs, line breaks and others stay.
+        assertEquals("a\uFFFDb\uFFFDc\td\u00e9\uD83E\uDDEA", GelSvg.escapeXml("a\u001bb\u0001c\td\u00e9\uD83E\uDDEA"));
+        assertEquals("\uFFFDx", GelSvg.escapeXml("\uD800x"));
         assertEquals("plain", GelSvg.escapeXml("plain"));
     }
 }

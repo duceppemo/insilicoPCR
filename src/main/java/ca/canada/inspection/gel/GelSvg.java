@@ -83,11 +83,23 @@ final class GelSvg {
     }
 
     /** Text with the five XML special characters escaped; empty for {@code null}. */
+    /**
+     * {@code value} with each character XML 1.0 does not allow (a control character other than tab and
+     * line breaks, a lone surrogate, U+FFFE, U+FFFF) replaced by U+FFFD: a sample named after a file
+     * whose name held one (Linux allows any but / and NUL) made the saved SVG one no program opens.
+     */
+    static String xmlCharacters(String value) {
+        StringBuilder text = new StringBuilder(value.length());
+        value.codePoints().forEach(c -> text.appendCodePoint(c == 0x9 || c == 0xA || c == 0xD
+                || c >= 0x20 && c <= 0xD7FF || c >= 0xE000 && c <= 0xFFFD || c >= 0x10000 ? c : 0xFFFD));
+        return text.toString();
+    }
+
     static String escapeXml(String value) {
         if (value == null) {
             return "";
         }
-        return value.replace("&", "&amp;")
+        return xmlCharacters(value).replace("&", "&amp;")
                 .replace("<", "&lt;")
                 .replace(">", "&gt;")
                 .replace("\"", "&quot;")

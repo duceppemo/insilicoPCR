@@ -359,6 +359,10 @@ class HtmlReportTest {
             assertEquals(kind.name(), HtmlReport.State.of(kind).name());
         }
         assertEquals(ca.canada.inspection.pcr.AssayVerdict.Kind.values().length, HtmlReport.State.values().length);
+        // Told apart without hovering: "seen in too few reads" and "not confirmed by read pairs" were both "?".
+        List<String> glyphs = java.util.Arrays.stream(HtmlReport.State.values()).map(HtmlReport.State::glyph)
+                .filter(glyph -> !glyph.isEmpty()).toList();
+        assertEquals(glyphs.size(), new java.util.HashSet<>(glyphs).size(), glyphs.toString());
     }
 
     @Test
@@ -369,6 +373,9 @@ class HtmlReportTest {
                 List.of(finding(Status.NOT_IN_READS, 300)), DETAILS));
 
         assertTrue(page.contains("no product, not checkable from reads"), "a tile for it");
+        // Its outcome reaches a screen reader, not only the mouse (a title).
+        assertTrue(page.contains("<span class=\"chip unchecked\" title=\"S · its: Not checkable from reads"), page);
+        assertTrue(page.contains("role=\"img\" aria-label=\"S · its: Not checkable from reads \u25cb. "), page);
         // neg shows "no product" with nothing to add: no title, a third of a large run's page.
         assertTrue(page.contains("<span class=\"chip none\">"), "a plain negative cell without a title");
     }

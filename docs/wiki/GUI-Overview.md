@@ -10,7 +10,7 @@ The window of version 0.15.2 after a run on a folder of five FASTA files: the th
 
 The GUI lets users select:
 
-- input FASTA/FASTQ file or directory (**Select ▾** → **File…** or **Folder…**, or drag it onto the field; files and folders are told apart automatically)
+- input FASTA/FASTQ file or directory (**Select ▾** → **File…** or **Folder…**, or drag it onto the field; files and folders are told apart automatically; a field takes one file or folder, so dropping both files of a read pair is refused: drop their folder)
 - primer FASTA file
 - output directory
 - number of worker threads
@@ -28,7 +28,7 @@ Two buttons above the log open the remaining settings. Each dialog has **Default
 
 See [Amplicon Calling](Amplicon-Calling) and [FASTQ mode and false negatives](Reports#fastq-mode-and-false-negatives) for what they do.
 
-After the inputs are selected, click **Run** to start the analysis. The run first checks every input file (since 0.13.0): a sample with an empty, damaged or malformed file is left out with a `Warning:` line in the log and the other samples are run; see [Input check](Running-Analyses#input-check). **Run** stays disabled until the run ends, so two runs cannot write to the same output folder at once.
+After the inputs are selected, click **Run** to start the analysis. The run first checks every input file (since 0.13.0): a sample with an empty, damaged or malformed file is left out with a `Warning:` line in the log and the other samples are run; see [Input check](Running-Analyses#input-check). While a run goes on, **Run** reads **Stop**: it asks for confirmation, then stops the run and the programs it runs, and the window stays open (since 0.15.3; before, only closing the window stopped a run). The run writes no report; what the window showed of it is added to `log.txt` with `Run cancelled`. The button reads **Stopping…** until the run has ended, then **Run** again, so two runs of the window never write to one output folder at once.
 
 ## Progress and logs
 

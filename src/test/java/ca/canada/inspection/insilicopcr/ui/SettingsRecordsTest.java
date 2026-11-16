@@ -69,6 +69,15 @@ class SettingsRecordsTest {
     }
 
     @Test
+    void aDropOfOneFileOrFolderIsTakenNotOfSeveral() {
+        // Both files of a read pair dropped on the input field: the first was run alone, as single-end reads.
+        java.io.File r1 = new java.io.File("s_R1.fastq.gz");
+        assertEquals(r1.toPath(), PathFieldBinder.dropped(java.util.List.of(r1)));
+        assertEquals(null, PathFieldBinder.dropped(java.util.List.of(r1, new java.io.File("s_R2.fastq.gz"))));
+        assertEquals(null, PathFieldBinder.dropped(java.util.List.of()));
+    }
+
+    @Test
     void typedPathsAreParsedOrCleared() {
         assertEquals(java.nio.file.Path.of("/data/reads").toAbsolutePath(), PathFieldBinder.toPath("  /data/reads "));
         assertEquals(java.nio.file.Path.of(System.getProperty("user.home"), "out"), PathFieldBinder.toPath("~/out"));

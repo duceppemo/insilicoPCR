@@ -298,9 +298,16 @@ public class MainRun extends Application {
         previousRunButton.setMaxWidth(Double.MAX_VALUE);
         previousRunButton.setOnAction(event -> openPreviousRun());
 
+        // Run, and while a run goes on, Stop: the window stays open, unlike closing it.
         runButton = new Button("Run");
         runButton.setMaxWidth(Double.MAX_VALUE);
-        runButton.setOnAction(event -> startRun(alertText, threadField, mismatchField, evalueField));
+        runButton.setOnAction(event -> {
+            if (currentlyRunning.get()) {
+                confirmStop();
+            } else {
+                startRun(alertText, threadField, mismatchField, evalueField);
+            }
+        });
 
         var reportButton = new Button("Open Report TSV");
         reportButton.setMaxWidth(Double.MAX_VALUE);
@@ -326,7 +333,7 @@ public class MainRun extends Application {
                           ComboBox<Integer> mismatchField,
                           TextField evalueField) {
         if (currentlyRunning.get()) {
-            return; // the button is disabled while running; ignore a stray second trigger
+            return; // the button is Stop while running; ignore a stray second trigger
         }
         // Every typed value is checked BEFORE any UI state changes, so a bad entry cannot leave the
         // window stuck in the "running" state.
@@ -342,7 +349,7 @@ public class MainRun extends Application {
         alertText.setText("");
         outputField.clear();
         currentlyRunning.set(true);
-        runButton.setDisable(true);
+        runButton.setText("Stop");
         gelButton.setDisable(true);
         htmlButton.setDisable(true);
         showProgressBars(true);
@@ -355,20 +362,35 @@ public class MainRun extends Application {
         runningTask = new PcrPipelineTask(config, outputField, blastProgress);
         mainProgress.progressProperty().bind(runningTask.progressProperty());
         runningTask.setOnCancelled(event -> {
-            currentlyRunning.set(false);
-            runButton.setDisable(false);
+            // Cancelled is said at once; the run then stops its programs and writes its log. Run comes
+            // back once it has: a run started sooner would find its output folder still held.
             showProgressBars(false);
+            runButton.setText("Stopping…");
+            runButton.setDisable(true);
+            Thread run = runningThread;
+            Thread.ofPlatform().daemon().name("after-stop").start(() -> {
+                try {
+                    run.join();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                Platform.runLater(() -> {
+                    currentlyRunning.set(false);
+                    runButton.setText("Run");
+                    runButton.setDisable(false);
+                });
+            });
         });
         runningTask.setOnSucceeded(event -> {
             lastResult = runningTask.getValue();
-            runButton.setDisable(false);
+            runButton.setText("Run");
             currentlyRunning.set(false);
             gelButton.setDisable(false);
             htmlButton.setDisable(false);
             showProgressBars(false);
         });
         runningTask.setOnFailed(event -> {
-            runButton.setDisable(false);
+            runButton.setText("Run");
             currentlyRunning.set(false);
             gelButton.setDisable(true);
             htmlButton.setDisable(true);
@@ -388,6 +410,21 @@ public class MainRun extends Application {
         mainProgress.setManaged(visible);
         blastProgress.setVisible(visible);
         blastProgress.setManaged(visible);
+    }
+
+    /** Stops the run on show, once asked: its programs end, and it writes no report. */
+    private void confirmStop() {
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
+                "Stop the run? Its programs are stopped, and it writes no report; what this window showed of it"
+                        + " is added to log.txt in its output folder.",
+                ButtonType.OK, ButtonType.CANCEL);
+        confirm.initOwner(primaryStage);
+        confirm.setTitle("Stop the run");
+        confirm.setHeaderText(null);
+        // The run may have ended while the question was asked: then there is nothing to stop.
+        if (confirm.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK && !runningTask.isDone()) {
+            runningTask.cancel(true);
+        }
     }
 
     private boolean confirmClose() {

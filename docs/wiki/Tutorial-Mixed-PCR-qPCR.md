@@ -92,7 +92,7 @@ The run takes well under a minute on a desktop machine (14 seconds here). It wri
 | `consolidated_report/report.tsv` | The same results as a table, one row per amplicon |
 | `consolidated_report/report_fastq_diagnostics.tsv` | For the read sets: assays not reported although their primers are in the reads (none in this run) |
 | `synthetic_gel_report.png` | The gel image asked for with `--gel` |
-| `detailed_report/<sample>/` | Raw BLAST hits per sample; for the read sets, also the baited reads and the mini-assembly |
+| `detailed_report/<sample>/` | The BLAST hits behind each sample's products; for the read sets, also the baited reads and the mini-assembly |
 | `QAlog.txt` | Version, inputs and settings |
 
 ## 4. The HTML report
@@ -161,4 +161,4 @@ See [GUI Overview](GUI-Overview) for the other buttons and the settings dialogs.
 - Remove the two `size=` words from the primer file and re-run: `report.tsv` loses its `SizeCheck` column and the HTML report shows the same four products in blue, as amplified with no size to compare with.
 - Declare a wrong size instead (`>hly702-F size=500`) and re-run: the 702 bp products are still reported, now labelled `unexpected`, and the HTML report no longer counts them as positive. Nothing is hidden; the label only tells the reader what the size means.
 - Add your own assay for a different gene to the primer FASTA — mixed files are fine as long as every ID ends in `-F`, `-R`, or `-P`.
-- Open `tutorial_results/detailed_report/<sample>/<sample>.tsv` to audit the raw BLAST hits behind every call.
+- Open `tutorial_results/detailed_report/<sample>/<sample>.tsv` to audit the BLAST hits behind every call.

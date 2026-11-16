@@ -158,7 +158,7 @@ public final class ReadExtensionStage {
         }
         Map<String, Integer> lengths = SequenceFileUtils.sequenceLengths(extendedFile);
         ReadLevelStage.runBlast(settings.search(), settings.search().threads(), extendedFile, hitsFile);
-        BlastTsv.prependHeader(hitsFile);
+        BlastTsv.keepAccepted(hitsFile, List.of(extendedFile), primers, options);
 
         Map<String, Outcome> sampleOutcomes = checkAgainstReadPairs(settings, ReadExtensionCaller.evaluate(name,
                 extendedHits(name, hitsFile, extendedFile, lengths, primers, options,

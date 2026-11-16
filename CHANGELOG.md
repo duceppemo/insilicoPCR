@@ -25,6 +25,26 @@
 
 ### Fixed
 
+- A primer site within `-m 2` or `-m 3` on a long sequence (a chromosome) could
+  be dropped without a word: BLAST's e-value grows with the length of the
+  sequence searched, and such a site's went over the cut-off on a whole
+  chromosome, where a draft of the same genome kept it (on a 48 Mb sequence
+  with a 40-assay panel: none of 5,689 such sites, all of them in a draft). A
+  sequence longer than 1 Mb is searched in overlapping 1 Mb pieces, its hits
+  put back on it; that costs what a draft does (3 times the search time on
+  that sequence).
+- The BLAST table of each sample (`detailed_report/<sample>/<sample>.tsv`) kept
+  every alignment blastn wrote, 1.5 million lines (140 MB) for one bacterial
+  genome and a 40-assay panel, a few thousand of them primer sites, and was
+  then copied again to add its header: some 1.4 TB for 5,000 genomes. It keeps
+  the hits the rules accept, filtered in each sample's search as it ends.
+- The HTML report was built whole in memory: on a large run (some 1.6 million
+  amplicon rows) it outgrew the largest string Java holds, after all the BLAST
+  work, and the run failed. It is written as it is made, and "All amplicons"
+  lists the first 50,000 rows, saying so; `report.tsv` has them all.
+- The BLAST searches ran one per thread, with no regard to memory: 1.7 to 3 GB
+  each with a large panel, 55 to 70 GB at `-t 32`. They run within the memory
+  budget the BBTools programs share, the threads left over going to each.
 - FASTQ: a primer site with an indel, or with mismatches in its 5' bases that
   `--5p-truncation` lets a hit on an assembly leave unaligned, baited no read:
   BBDuk's first bait matched k-mers as long as the shortest primer, with

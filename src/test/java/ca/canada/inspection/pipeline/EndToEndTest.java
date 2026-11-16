@@ -95,6 +95,48 @@ class EndToEndTest {
     }
 
     @Test
+    void aSequenceLongerThanAPieceIsSearchedInPiecesAndItsProductsKeepTheirPlace() throws IOException {
+        // A chromosome-long sequence gave a weak primer site an e-value over the cut-off, which a draft of
+        // the same genome kept: it is searched in overlapping pieces, its hits put back on it. Here the toxA
+        // product of isolate_01 (4001-4312 there) straddles the end of the first piece.
+        StringBuilder isolate = new StringBuilder();
+        for (String line : lines(EXAMPLE.resolve("genomes").resolve("isolate_01.fasta"))) {
+            if (!line.startsWith(">")) {
+                isolate.append(line.strip());
+            }
+        }
+        java.util.Random random = new java.util.Random(7);
+        StringBuilder chromosome = new StringBuilder();
+        int site = BlastQuery.PIECE_LENGTH - 400; // 0-based start of the copied stretch
+        while (chromosome.length() < site) {
+            chromosome.append("ACGT".charAt(random.nextInt(4)));
+        }
+        chromosome.append(isolate, 3900, 4412); // bases 3901-4412 of isolate_01
+        while (chromosome.length() < 1_500_000) {
+            chromosome.append("ACGT".charAt(random.nextInt(4)));
+        }
+        Path genomes = Files.createDirectory(directory.resolve("chromosome"));
+        StringBuilder fasta = new StringBuilder(">chr1 a sequence longer than a piece\n");
+        for (int i = 0; i < chromosome.length(); i += 80) {
+            fasta.append(chromosome, i, Math.min(chromosome.length(), i + 80)).append('\n');
+        }
+        Files.writeString(genomes.resolve("big.fasta"), fasta);
+        Path output = directory.resolve("chromosome-results");
+
+        new InSilicoPcrPipeline(config(genomes, output)).run();
+
+        // Where it is on the sequence: 101 bases into the stretch copied from 3901.
+        int start = site + (4001 - 3901) + 1;
+        String expected = "big\ttoxA\t" + start + "-" + (start + 311) + "\t312\tchr1";
+        assertTrue(lines(report(output)).stream().anyMatch(row -> row.startsWith(expected)),
+                expected + " in " + lines(report(output)));
+        try (Stream<Path> files = Files.walk(output)) {
+            assertEquals(List.of(), files.filter(file -> file.getFileName().toString().startsWith("blast_query_"))
+                    .toList(), "the copy in pieces left in the results");
+        }
+    }
+
+    @Test
     void aProductAcrossABreakInTheAssemblyIsWarnedAbout() throws IOException {
         // isolate_01 gives toxA at 4001-4312 of its one contig; cut the contig at 4150.
         List<String> lines = lines(EXAMPLE.resolve("genomes").resolve("isolate_01.fasta"));

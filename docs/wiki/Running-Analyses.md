@@ -111,7 +111,7 @@ Every GUI setting has a command-line equivalent; see [Command-line Interface](Co
 | `consolidated_report/report.html` | [HTML report](Reports#html-report): which samples are positive for which assay, then every amplicon |
 | `consolidated_report/report.tsv` | One row per amplicon; the source of the HTML report and of the synthetic gel |
 | `consolidated_report/report_fastq_diagnostics.tsv` | FASTQ input only: why an assay was not reported although its primers are in the reads |
-| `detailed_report/<sample>/` | Raw BLAST hits per sample and, for FASTQ input, the baited reads and mini-assembly |
+| `detailed_report/<sample>/` | The BLAST hits the rules accept per sample (before 0.15.3, every alignment) and, for FASTQ input, the baited reads and mini-assembly |
 | `QAlog.txt` | Version, inputs, the samples analysed, the report written and the settings that decide calls; written when a run finishes |
 | `primer_tmp.fasta*` | The primers as a BLAST database; the application deletes it no longer, since 0.14.0 |
 | `synthetic_gel_report.png` | With `--gel` only: the synthetic gel, in the output folder itself, named after the report (`synthetic_gel_report(1).png` for `report(1).tsv`) |

@@ -22,8 +22,17 @@ public final class BlastRunner {
     public static void run(PipelineContext context) {
         List<Sample> samples = List.copyOf(context.samples().values());
         Map<String, Refused> refused = new ConcurrentHashMap<>();
-        ParallelStageRunner.run("BLAST", samples, context.config().threads(), context.monitor(),
-                sample -> blast(context, sample, refused), context.monitor()::blastProgress);
+        // As many searches at once as the memory holds; the threads left over go to each of them.
+        int threads = context.config().threads();
+        int atOnce = ChildJavaMemory.blastnAtOnce(context.childJavaMemoryBudgetGiB(), threads, samples.size());
+        int each = Math.max(1, threads / atOnce);
+        if (atOnce < Math.min(threads, samples.size())) {
+            context.monitor().info("BLAST: " + atOnce + (atOnce == 1 ? " search" : " searches") + " at a time, each with "
+                    + each + (each == 1 ? " thread" : " threads") + " (about " + ChildJavaMemory.BLASTN_GIB
+                    + " GB each, within " + context.childJavaMemoryBudgetGiB() + " GB)");
+        }
+        ParallelStageRunner.run("BLAST", samples, atOnce, context.monitor(),
+                sample -> blast(context, sample, refused, each), context.monitor()::blastProgress);
         if (refused.isEmpty()) {
             return;
         }
@@ -61,7 +70,7 @@ public final class BlastRunner {
         return searched.getFirst();
     }
 
-    private static void blast(PipelineContext context, Sample sample, Map<String, Refused> refused) {
+    private static void blast(PipelineContext context, Sample sample, Map<String, Refused> refused, int threads) {
         // The report is named after the sample, not the file, so that it is read back for that
         // sample whatever the file is called (SampleFiles.blastReport).
         Path query = query(context, sample);
@@ -69,9 +78,12 @@ public final class BlastRunner {
         Path blastTsv = context.directories().sample(sample.getName()).blastReport();
         Path blastOutput = blastTsv.getParent();
 
+        // A long sequence is searched in pieces: its hits are put back on it as the table is written.
+        java.util.function.UnaryOperator<String> toContig;
         try (BlastQuery blastQuery = BlastQuery.of(query, blastOutput)) {
+            toContig = blastQuery::toContig;
             BlastTsv.runBlastn(context.monitor(), context.dependencies().blastn(), blastQuery.path(),
-                    context.directories().primerDatabase(), context.config().evalue(), 1, blastTsv);
+                    context.directories().primerDatabase(), context.config().evalue(), threads, blastTsv);
         } catch (ProgramFailedException e) {
             // Its mini-assembly is the program's own file, not the user's to fix; and only blastn's reader
             // refusing the file is the file's fault: a blastn killed (out of memory: 137), a database or a
@@ -91,6 +103,7 @@ public final class BlastRunner {
         } catch (IOException e) {
             throw new PipelineException("Unable to prepare the BLAST query for " + query, e);
         }
-        BlastTsv.prependHeader(blastTsv);
+        BlastTsv.keepAccepted(blastTsv, List.of(query), context.primers(), context.config().ampliconOptions(),
+                toContig);
     }
 }

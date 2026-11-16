@@ -270,8 +270,8 @@ class EndToEndTest {
         assertTrue(monitor.messages.contains("Completed sample big"), monitor.messages.toString());
         // Run again from the assembly on: no baiting twice.
         assertEquals(4, executed(monitor, "jgi.BBDuk").size());
-        // The assembly, on one thread however many the sample has: the same contigs on every run.
-        assertEquals(List.of("threads=1", "threads=1"), executed(monitor, "assemble.Tadpole"));
+        // The assembly: its k-mers loaded on the sample's threads, its contigs built on one (buildthreads=1).
+        assertEquals(List.of("threads=1", "threads=2"), executed(monitor, "assemble.Tadpole"));
         // Only "small" is left to merge at once: it runs alone, with everything, and so does "big" after it.
         assertEquals(List.of("threads=2", "threads=2"), executed(monitor, "jgi.BBMerge"));
         assertTrue(monitor.messages.contains("BBTools: one sample at a time, with 2 threads and -Xmx8g"),
@@ -540,6 +540,38 @@ class EndToEndTest {
 
         assertEquals(List.of("plasmid a 2901-100 200 a-P 2998-23 26"), cells(report(output), "Sample", "Gene",
                 "GenomeLocation", "AmpliconSize", "Probe", "ProbeLocation", "ProbeSize"));
+    }
+
+    @Test
+    void theMiniAssemblyGivesTheSameContigsOnOneThreadAsOnSixteen() throws IOException {
+        // Its k-mers loaded on every thread, its contigs built on one: built on several, the contigs differed between
+        // runs of the same reads (a circle written from another point, contigs numbered otherwise).
+        java.util.Random random = new java.util.Random(53);
+        String forward = "GATCGGAAGAGCACACGTCT";
+        String reverse = "CTTGCCAGTAGCGTCATACG";
+        Path input = Files.createDirectory(directory.resolve("threads-reads"));
+        StringBuilder all = new StringBuilder();
+        for (int length : new int[]{1_200, 1_800, 2_500}) {
+            StringBuilder circle = new StringBuilder();
+            while (circle.length() < length) {
+                circle.append("ACGT".charAt(random.nextInt(4)));
+            }
+            circle.replace(100, 120, forward);
+            circle.replace(500, 520, reverseComplement(reverse));
+            all.append(circle).append(circle, 0, 400).append("N".repeat(400));
+        }
+        simulatePairs(all, 40, random, input, "mix");
+        Path primers = Files.writeString(directory.resolve("threads-primers.fasta"), ">c-F\n" + forward + "\n>c-R\n"
+                + reverse + "\n");
+        List<byte[]> assemblies = new java.util.ArrayList<>();
+        for (int threads : new int[]{1, 16}) {
+            Path output = directory.resolve("threads-" + threads);
+            pipeline(PipelineConfig.builder(input, output, primers).threads(threads).build()).run();
+            assemblies.add(Files.readAllBytes(output.resolve("detailed_report").resolve("mix").resolve("mix_assembly.fasta")));
+        }
+
+        assertTrue(assemblies.getFirst().length > 1_000, "contigs were made");
+        assertTrue(java.util.Arrays.equals(assemblies.get(0), assemblies.get(1)), "the same contigs, byte for byte");
     }
 
     @Test

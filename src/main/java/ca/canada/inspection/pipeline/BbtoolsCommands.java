@@ -176,10 +176,25 @@ record BbtoolsCommands(String javaCommand, Path bbtoolsJar, int childMemoryGiB, 
     }
 
     /**
-     * The mini-assembly, on one thread: on several, Tadpole's contigs differed between runs of the same
-     * reads (a circle starting elsewhere, contigs numbered otherwise, one in a thousand lost or joined), and so
-     * did the report. One thread took 3 s on 45,000 baited reads (as 16 did), 79 s on 1.7 million (13 s on
-     * 16), 326 s on 9.7 million (43 s).
+     * {@link #recruit} from reads a recruit already baited ({@code baited}, one file; pairs one mate after the
+     * other when {@code paired}), with a reference that is part of that recruit's: the same reads, in the same
+     * order, as {@code recruit} from the sample's files gives, for a pass over a few thousand reads.
+     */
+    Command recruitFrom(Path ref, Path baited, boolean paired, Path output, int k) {
+        Command command = recruit(ref, List.of(baited), output, k);
+        List<String> arguments = new java.util.ArrayList<>(command.arguments());
+        arguments.replaceAll(argument -> argument.equals("interleaved=f") ? "interleaved=" + (paired ? "t" : "f")
+                : argument);
+        return new Command(command.directory(), arguments);
+    }
+
+    /**
+     * The mini-assembly, its contigs built on one thread: built on several, Tadpole's contigs differed between
+     * runs of the same reads (a circle starting elsewhere, contigs numbered otherwise, one in a thousand lost or
+     * joined), and so did the report. Its k-mers are loaded on every thread ({@code buildthreads=1} keeps the
+     * contigs the same, as Tadpole's help says), into tables of {@code ways=31}: on 16 threads Tadpole made
+     * 41 of them, and 13 of 1,159 circles came out turned. The contigs were those of {@code threads=1} on every
+     * run tried (9 of 9), in 112 s rather than 305 on 9.7 million baited reads, 43 rather than 86 on 1.7 million.
      */
     Command assemble(Path reads, Path output, TadpoleOptions tadpole) {
         Path directory = directoryOf(output);
@@ -188,7 +203,9 @@ record BbtoolsCommands(String javaCommand, Path bbtoolsJar, int childMemoryGiB, 
                 "in=" + argument(directory, reads),
                 "out=" + argument(directory, output),
                 "overwrite=t",
-                "threads=1"));
+                "threads=" + threads,
+                "buildthreads=1",
+                "ways=31"));
         arguments.addAll(tadpole.arguments());
         return new Command(directory, arguments);
     }

@@ -47,7 +47,7 @@ Since 0.13.0 every input file is checked before anything is run on it. A sample 
 
 A sample is left out as a whole: when one file of a read pair is faulty, the other is not run as single-end reads. A file named like a sequence file of a kind the run does not read (`x.fas`, `x.fasta.bz2`) is named in a warning, since 0.15.3 (`y.fasta.bz2 is not read: input files are named .fasta, ...`): it was left out without a word. When BBDuk refuses the reads of every read set of a run (two or more), the run fails (`Error: BBDuk could not read the reads of any sample`), assemblies beside them or not: the fault is then not the files' but the program's.
 
-An output folder holding symbolic links where a run writes (`primer_tmp.fasta`, `QAlog.txt.part`, `detailed_report/<sample>`), as one reused from another run or unpacked from an archive may, is refused before the run starts, since 0.15.3: the run wrote through them, overwriting or deleting the files they point to, outside the folder. The output folder itself may be a link.
+An output folder holding symbolic links where a run writes (`primer_tmp.fasta`, `QAlog.txt.part`, `detailed_report/<sample>`), as one reused from another run or unpacked from an archive may, is refused before the run starts, since 0.15.3: the run wrote through them, overwriting or deleting the files they point to, outside the folder. Links elsewhere in it are no concern of the run's (an input folder inside it, its reads linked from a shared store). The output folder itself may be a link.
 
 A read set of one file named as one read of a pair (`x_R1.fastq.gz`, its `x_R2` not in the input, or `-i` given the `_R1` file alone) is run as single-end reads, with a warning since 0.15.3: before, half the data went unused without a word.
 

@@ -103,6 +103,20 @@ public record SampleFiles(Path directory, String name) {
         return directory.resolve(name + "_extensionEnds.fasta");
     }
 
+    /**
+     * What one pass over the sample's reads baits from in a round of the extension: its candidate products and the
+     * ends of its extended reads together. The reads of each are then taken from that pass's reads
+     * ({@link #extensionUnionReads}), as a pass of their own would have baited them.
+     */
+    Path extensionUnionRef() {
+        return directory.resolve(name + "_extensionUnionRef.fasta");
+    }
+
+    /** The sample's reads (pairs kept together) sharing a k-mer with {@link #extensionUnionRef}. */
+    Path extensionUnionReads() {
+        return directory.resolve(name + "_extensionUnionReads.fastq.gz");
+    }
+
     /** The seeds a round of the extension extends: those of the assays not closed yet. */
     Path extensionRoundSeeds() {
         return directory.resolve(name + "_extensionRoundSeeds.fasta");
@@ -135,6 +149,6 @@ public record SampleFiles(Path directory, String name) {
                 doubleTargetMatches(), assembly(), mergedReads(),
                 unmergedReads(), baitedReadsFasta(), baitedReadsHits(), extensionSeeds(), extendedReads(),
                 extensionCandidates(), candidateReads(), extendedReadsHits(), extensionEnds(), extensionRoundReads(),
-                extensionReads(), extensionRoundSeeds());
+                extensionReads(), extensionRoundSeeds(), extensionUnionRef(), extensionUnionReads());
     }
 }

@@ -158,8 +158,13 @@ public final class ReadExtensionStage {
         // round's extended reads and products; a round that fails keeps what the rounds before it found.
         Map<String, String> seedBases = new HashMap<>();
         seeds.forEach(seed -> seedBases.put(seed.id(), seedReads.get(seed.read()).sequence()));
-        ReadPool pooled = ReadPool.of(baitedReads);
+        // Built when a round first baits new reads: 27 s on 9.7 million baited reads, for a sample whose assays
+        // all closed in round 1, which never used it.
+        ReadPool pooled = null;
         List<Path> pool = new ArrayList<>(List.of(baitedReads));
+        // Whether files.candidateReads() holds the reads checked in the round of `latest` (a check that failed part
+        // way may have cut it short): the check after the rounds then takes its reads from them.
+        boolean latestChecked = false;
         Map<String, Outcome> settled = new java.util.TreeMap<>();
         Hits roundHits = new Hits();
         Map<String, String> settledReads = new java.util.LinkedHashMap<>();
@@ -205,10 +210,23 @@ public final class ReadExtensionStage {
                     closedNow.put(assay, outcome);
                 }
             });
+            Map<String, String> roundReads = readFasta(extendedFile, lengths.keySet());
             Map<String, Outcome> checkedNow;
+            deleteQuietly(files.extensionUnionReads());
             try {
+                // The ends every open seed grew this round, written before the check: those of the seeds still
+                // open after it are among them, and are baited in the same pass over the sample's reads as the
+                // candidate products (each pass reads files of gigabytes; two a round took 70 of S3's 77 s).
+                Path ends = null;
+                if (!closedNow.isEmpty() && round < MAX_ROUNDS
+                        && writeGrownEnds(sides(open, seedBases, roundReads), sides, roundReads, files.extensionEnds())) {
+                    ends = files.extensionEnds();
+                }
+                if (!closedNow.isEmpty()) {
+                    latestChecked = false; // the check rewrites the file; it holds the round's reads once it is done
+                }
                 checkedNow = closedNow.isEmpty() ? Map.of()
-                        : checkAgainstReadPairs(settings, closedNow, extendedFile, files, sample);
+                        : checkAgainstReadPairs(settings, closedNow, extendedFile, files, sample, ends, null);
             } catch (PipelineException | UncheckedIOException e) {
                 // As a round that fails before it (it lost the sample's whole extension, the rounds before it too).
                 if (round == 1) {
@@ -220,8 +238,11 @@ public final class ReadExtensionStage {
                 break;
             }
             latest = current;
-            latestReads = readFasta(extendedFile, lengths.keySet());
+            latestReads = roundReads;
             latestHits = Files.isRegularFile(hitsFile) ? linesOf(hitsFile) : List.of();
+            if (!closedNow.isEmpty()) {
+                latestChecked = true;
+            }
             Set<String> doneNow = new HashSet<>();
             for (Map.Entry<String, Outcome> entry : current.entrySet()) {
                 String assay = entry.getKey();
@@ -260,8 +281,17 @@ public final class ReadExtensionStage {
                     break;
                 }
                 sides = now;
-                settings.bbtools().recruit(files.extensionEnds(), sample.files(), files.extensionRoundReads(),
-                        ReadExtensionCaller.K).run(settings.search().monitor(), "BBDuk");
+                // From this round's pass, when it baited from these ends already; else a pass of their own.
+                if (Files.isRegularFile(files.extensionUnionReads())) {
+                    settings.bbtools().recruitFrom(files.extensionEnds(), files.extensionUnionReads(), sample.isPaired(),
+                            files.extensionRoundReads(), ReadExtensionCaller.K).run(settings.search().monitor(), "BBDuk");
+                } else {
+                    settings.bbtools().recruit(files.extensionEnds(), sample.files(), files.extensionRoundReads(),
+                            ReadExtensionCaller.K).run(settings.search().monitor(), "BBDuk");
+                }
+                if (pooled == null) {
+                    pooled = ReadPool.of(baitedReads);
+                }
                 int added = pooled.addNew(files.extensionRoundReads(), files.extensionReads());
                 deleteQuietly(files.extensionRoundReads());
                 if (added == 0) {
@@ -299,9 +329,22 @@ public final class ReadExtensionStage {
                 line.substring(0, Math.max(0, line.indexOf('\t'))))).forEach(finalHits::add);
         writeExtended(finalReads, extendedFile, finalHits, hitsFile);
 
-        // The assays settled on a supported product were checked in their round; the others are checked now.
+        // The assays settled on a supported product were checked in their round; the others are checked now, from
+        // the reads their round's check baited (with more candidates: the same reads as a pass of their own).
+        Path baited = null;
+        boolean anyClosed = unsettled.values().stream().anyMatch(outcome -> !outcome.closed().isEmpty());
+        if (anyClosed && latestChecked && Files.isRegularFile(files.candidateReads())) {
+            try {
+                baited = Files.move(files.candidateReads(), files.extensionUnionReads(),
+                        java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            } catch (IOException e) {
+                baited = null; // a pass over the sample's reads, as before
+            }
+        }
         Map<String, Outcome> sampleOutcomes = new java.util.TreeMap<>(
-                checkAgainstReadPairs(settings, unsettled, extendedFile, files, sample));
+                checkAgainstReadPairs(settings, unsettled, extendedFile, files, sample, null, baited));
+        deleteQuietly(files.extensionUnionReads());
+        deleteQuietly(files.extensionUnionRef());
         sampleOutcomes.putAll(settled);
         outcomes.put(name, sampleOutcomes);
 
@@ -457,6 +500,19 @@ public final class ReadExtensionStage {
      */
     static Map<String, Outcome> checkAgainstReadPairs(Settings settings, Map<String, Outcome> outcomes,
                                                       Path extendedFile, SampleFiles files, Sample sample) {
+        return checkAgainstReadPairs(settings, outcomes, extendedFile, files, sample, null, null);
+    }
+
+    /**
+     * @param ends   the ends of extended reads a round baits from next, or {@code null}: baited in the same pass
+     *               over the sample's reads as the candidates ({@link SampleFiles#extensionUnionReads}), which the
+     *               round then takes its reads from
+     * @param baited reads already baited with a reference holding every candidate here, or {@code null}: the
+     *               candidates' reads are taken from them, as a pass over the sample's reads would give them
+     */
+    static Map<String, Outcome> checkAgainstReadPairs(Settings settings, Map<String, Outcome> outcomes,
+                                                      Path extendedFile, SampleFiles files, Sample sample, Path ends,
+                                                      Path baited) {
         List<Product> closed = new ArrayList<>();
         outcomes.values().forEach(outcome -> closed.addAll(outcome.closed()));
         if (closed.isEmpty()) {
@@ -479,8 +535,25 @@ public final class ReadExtensionStage {
             throw new PipelineException("Could not write the candidate products: " + candidates, e);
         }
         Path candidateReads = files.candidateReads();
-        settings.bbtools().recruit(candidates, sample.files(), candidateReads, ReadExtensionCaller.K)
-                .run(settings.search().monitor(), "BBDuk");
+        int k = ReadExtensionCaller.K;
+        if (baited != null) {
+            settings.bbtools().recruitFrom(candidates, baited, sample.isPaired(), candidateReads, k)
+                    .run(settings.search().monitor(), "BBDuk");
+        } else if (ends != null) {
+            Path union = files.extensionUnionRef();
+            try {
+                Files.writeString(union, Files.readString(candidates) + Files.readString(ends));
+            } catch (IOException e) {
+                throw new PipelineException("Could not write the candidate products and ends: " + union, e);
+            }
+            settings.bbtools().recruit(union, sample.files(), files.extensionUnionReads(), k)
+                    .run(settings.search().monitor(), "BBDuk");
+            settings.bbtools().recruitFrom(candidates, files.extensionUnionReads(), sample.isPaired(), candidateReads,
+                    k).run(settings.search().monitor(), "BBDuk");
+        } else {
+            settings.bbtools().recruit(candidates, sample.files(), candidateReads, k)
+                    .run(settings.search().monitor(), "BBDuk");
+        }
         PairSupport.Tally tally = tally(sequences, candidateReads, sample.isPaired(), settings);
         Map<Product, PairSupport.Verdict> verdicts = new java.util.IdentityHashMap<>();
         for (int i = 0; i < closed.size(); i++) {

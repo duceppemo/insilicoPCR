@@ -58,8 +58,14 @@ final class ReadPool {
     int addNew(Path recruited, Path into) {
         Set<Long> thisRound = new HashSet<>();
         int[] written = {0};
+        // Compressed fast: the reads are Tadpole's input, read once a round, and the default level took up to 9 s
+        // a round for a file it shrank little more.
         try (BufferedWriter out = new BufferedWriter(new OutputStreamWriter(new GZIPOutputStream(Files.newOutputStream(
-                into, StandardOpenOption.CREATE, StandardOpenOption.APPEND)), StandardCharsets.UTF_8))) {
+                into, StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
+            {
+                def.setLevel(java.util.zip.Deflater.BEST_SPEED);
+            }
+        }, StandardCharsets.UTF_8))) {
             forEachRecord(recruited, record -> {
                 long name = key(record[0]);
                 // Both mates of a new pair are written: the second finds the name this round added, not before.

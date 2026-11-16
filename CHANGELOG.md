@@ -184,6 +184,11 @@
 
 ### Changed
 
+- Finding the products is faster on a long sequence with many primer sites: a
+  site is compared with its partner's sites within the longest product of it
+  (`-l`) only, not with every site on the sequence, and the variants of a
+  degenerate primer with no site are passed over. 20,000 sites per primer on a
+  48 Mb chromosome took 12 s a sample; 0.3 s. The products are the same.
 - CI: the ZIPs of builds that are not a release (pull requests, pushes to
   `master`) are named for the version in `pom.xml`, not for a placeholder
   0.8.0, and the smoke test checks that the program reports it.

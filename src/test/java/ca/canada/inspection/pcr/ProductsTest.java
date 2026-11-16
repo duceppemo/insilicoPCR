@@ -1,5 +1,6 @@
 package ca.canada.inspection.pcr;
 
+import ca.canada.inspection.model.BlastResult;
 import ca.canada.inspection.model.Sample;
 import org.junit.jupiter.api.Test;
 
@@ -12,6 +13,7 @@ import static ca.canada.inspection.pcr.TestHits.minusHit;
 import static ca.canada.inspection.pcr.TestHits.plusHit;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ProductsTest {
 
@@ -138,6 +140,46 @@ class ProductsTest {
         // Run apart, each assay is its own tube: each reports what its primers make.
         assertEquals(List.of("abortus 101-919 ONE_PRIMER", "meli 101-600 DESIGNED", "meli 101-919 ONE_PRIMER"),
                 shown.apply(Products.of(sample, PrimerPanel.of(sequences), options)));
+    }
+
+    @Test
+    void pairingNearbyHitsOnlyFindsEveryProductAllPairsFind() {
+        // Since 0.15.3 a primer's hit is compared only with its partner's hits within the longest product of
+        // it, not with every hit on the contig: the products must be the same, in the same order, those of
+        // exactly the longest length included. Hits spread over two contigs, some 1,999 to 2,001 bp apart.
+        java.util.Random random = new java.util.Random(11);
+        Sample sample = new Sample("S");
+        List<BlastResult> forward = new java.util.ArrayList<>();
+        List<BlastResult> reverse = new java.util.ArrayList<>();
+        for (int i = 0; i < 400; i++) {
+            String contig = random.nextBoolean() ? "c1" : "c2";
+            int at = 1 + random.nextInt(200_000);
+            BlastResult f = random.nextBoolean() ? plusHit("a-F", contig, at) : minusHit("a-F", contig, at);
+            BlastResult r = random.nextBoolean() ? minusHit("a-R", contig, at + 1_980 + random.nextInt(3))
+                    : minusHit("a-R", contig, 1 + random.nextInt(200_000));
+            forward.add(f);
+            reverse.add(r);
+        }
+        forward.forEach(hit -> sample.hits().add("a-F", hit));
+        reverse.forEach(hit -> sample.hits().add("a-R", hit));
+        AmpliconOptions options = AmpliconOptions.builder().mismatches(0).maxLength(2_000).build();
+        List<String> everyPair = new java.util.ArrayList<>();
+        for (BlastResult f : forward) {
+            for (BlastResult r : reverse) {
+                AmpliconCaller.call(f, r, options).ifPresent(product ->
+                        everyPair.add(product.contig() + " " + product.start() + "-" + product.end()));
+            }
+        }
+
+        List<String> found = Products.of(sample, PrimerPanel.of(Map.of("a-F", PRIMER_20, "a-R", PRIMER_20)), options)
+                .stream().filter(row -> row.pairing() == ReportRow.Pairing.DESIGNED)
+                .map(row -> row.site().contig() + " " + row.start() + "-" + row.end()).toList();
+
+        assertEquals(everyPair, found);
+        assertTrue(everyPair.stream().anyMatch(product -> {
+            String[] ends = product.substring(3).split("-");
+            return Integer.parseInt(ends[1]) - Integer.parseInt(ends[0]) + 1 == 2_000;
+        }), "a product of exactly the longest length");
     }
 
     @Test

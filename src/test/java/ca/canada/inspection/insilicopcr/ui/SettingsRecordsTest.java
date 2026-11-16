@@ -130,4 +130,17 @@ class SettingsRecordsTest {
                 () -> FastqSettingsDialog.parse("31", "2", "1", "60", "0.3", mode, "0"));
         assertTrue(FastqSettingsDialog.FastqSettings.DEFAULTS.isDefault());
     }
+
+    @org.junit.jupiter.api.Test
+    @org.junit.jupiter.api.condition.DisabledOnOs(org.junit.jupiter.api.condition.OS.WINDOWS)
+    void aPastedPathIsReadAsTheFileItNames() {
+        // A file manager's file URI, single quotes and a shell's escaped space were taken for relative paths, the
+        // working folder glued to the front: "Input does not exist: /home/me/file:/data/my reads".
+        java.nio.file.Path expected = java.nio.file.Path.of("/data/my reads é");
+        assertEquals(expected, PathFieldBinder.toPath("file:///data/my%20reads%20%C3%A9"));
+        assertEquals(expected, PathFieldBinder.toPath("'/data/my reads é'"));
+        assertEquals(expected, PathFieldBinder.toPath("\"/data/my reads é\""));
+        assertEquals(expected, PathFieldBinder.toPath("/data/my\\ reads\\ é"));
+        assertEquals(expected, PathFieldBinder.toPath("  /data/my reads é \n"));
+    }
 }

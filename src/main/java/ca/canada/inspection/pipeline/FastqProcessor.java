@@ -106,7 +106,7 @@ public final class FastqProcessor {
                         spare.release();
                     }
                 }
-            }, ParallelStageRunner.Progress.NONE);
+            }, monitor::blastProgress); // the window's second bar: samples done in the step
             if (step.completed != null) {
                 monitor.info(step.completed);
             }

@@ -118,4 +118,13 @@ class InputValidatorTest {
                 ">a-F size=420-450 other=575\nACGT\n>a-R reverse primer\nACGT\n>a-P\tFAM-BHQ1\nACGT\n");
         assertEquals("", InputValidator.validate(input, dir.resolve("out2"), primers));
     }
+
+    @Test
+    void anOutputThatIsAFileIsReportedBeforeTheRun() throws IOException {
+        // The run failed after its first steps, saying only "Not a directory".
+        Path input = Files.writeString(dir.resolve("in.fasta"), ">c1\nACGT\n");
+        Path taken = Files.writeString(dir.resolve("results"), "a file");
+        assertEquals("The output folder is a file: " + taken + ". Choose a folder, or a name that is not taken.",
+                InputValidator.validate(input, taken, primers()));
+    }
 }

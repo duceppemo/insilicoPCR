@@ -96,6 +96,9 @@ public class MainRun extends Application {
         scene = new Scene(pane, 800, 500);
         primaryStage.setScene(scene);
         primaryStage.setTitle("InSilico PCR " + Version.VERSION);
+        // Smaller, labels lay over fields and the buttons read "...".
+        primaryStage.setMinWidth(720);
+        primaryStage.setMinHeight(460);
 
         // A build without the icon still opens its window, with the default icon.
         try (var icon = MainRun.class.getResourceAsStream("/icons/insilicoPCR-icon.png")) {
@@ -323,6 +326,11 @@ public class MainRun extends Application {
         HBox.setHgrow(runButton, Priority.ALWAYS);
         HBox.setHgrow(reportButton, Priority.ALWAYS);
 
+        // Wrapped to the window: a message holding a long path pushed Run and the buttons beside it out of it.
+        alertText.wrappingWidthProperty().bind(pane.widthProperty().subtract(80));
+        mainProgress.setTooltip(new javafx.scene.control.Tooltip("Steps of the run done"));
+        blastProgress.setTooltip(new javafx.scene.control.Tooltip("Samples done in the step running"));
+        runButton.setDefaultButton(true);
         VBox bottomPanel = new VBox(5, alertText, mainProgress, buttons, blastProgress);
         bottomPanel.setAlignment(Pos.CENTER);
         bottomPanel.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
@@ -357,8 +365,8 @@ public class MainRun extends Application {
         mainProgress.progressProperty().unbind();
         mainProgress.setProgress(ProgressBar.INDETERMINATE_PROGRESS);
         blastProgress.setProgress(ProgressBar.INDETERMINATE_PROGRESS);
-
-        lastResult = null;
+        // lastResult stays the last run that finished: a run that fails or is stopped leaves its gel and
+        // report to view, as the buttons say (they were turned off for good).
 
         runningTask = new PcrPipelineTask(config, outputField, blastProgress);
         mainProgress.progressProperty().bind(runningTask.progressProperty());
@@ -379,6 +387,8 @@ public class MainRun extends Application {
                     currentlyRunning.set(false);
                     runButton.setText("Run");
                     runButton.setDisable(false);
+                    gelButton.setDisable(lastResult == null);
+                    htmlButton.setDisable(lastResult == null);
                 });
             });
         });
@@ -393,8 +403,8 @@ public class MainRun extends Application {
         runningTask.setOnFailed(event -> {
             runButton.setText("Run");
             currentlyRunning.set(false);
-            gelButton.setDisable(true);
-            htmlButton.setDisable(true);
+            gelButton.setDisable(lastResult == null);
+            htmlButton.setDisable(lastResult == null);
             showProgressBars(false);
             // The task has shown why, and written it to log.txt.
         });

@@ -17,6 +17,10 @@ public final class InputValidator {
         if (!Files.exists(inputFile)) {
             return "Input does not exist: " + inputFile;
         }
+        // Checked here as the run checks it later: it failed after its first steps, saying "Not a directory".
+        if (Files.exists(outDir) && !Files.isDirectory(outDir)) {
+            return "The output folder is a file: " + outDir + ". Choose a folder, or a name that is not taken.";
+        }
         // The primer file is what the run can read, whatever its name, as on the command line.
         if (!Files.isRegularFile(primerFile)) {
             return "Primer file does not exist or is not a regular file: " + primerFile;

@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.0.0 (2026-11-17)
 
 ### Changed (the 1.0 formats: what scripts may rely on)
 

@@ -91,7 +91,7 @@ When at least one assay in the primer file defines a `-P` probe, the report appe
 
 | Column | Meaning |
 |---|---|
-| `Probe` | Probe ID |
+| `Probe` | Probe ID. When the probe binds twice inside a product, the row shows the site with the fewest mismatches, then the one nearest the product's start (since 0.15.3) |
 | `ProbeLocation` | 1-based start-end of the probe on the contig (across a circle's origin, as for the product) |
 | `ProbeSize` | Length of the probe match |
 | `ProbeMismatches` | Mismatches + indels in the probe alignment. A degenerate probe is searched as its variants (`_0`, `_1`, ...); a product has one row, with the variants of primers and probe that match best (since 0.15.2 on contigs, as on reads since 0.13.0; before, on a contig, each variant that hit gave its own row) |
@@ -151,7 +151,9 @@ The `detailed_report` folder keeps each sample's BLAST hits that the rules accep
 FASTQ input is not assembled into a genome. The reads are baited twice with BBDuk (reads carrying a primer
 k-mer, then reads overlapping those of them that hold a primer site the rules accept, found with blastn: since
 0.15.3, before which the second baiting started from every read of the first, and with permissive settings took
-whole families of rRNA, mitochondrial and repeat reads that share a short k-mer with a primer and hold no site),
+whole families of rRNA, mitochondrial and repeat reads that share a short k-mer with a primer and hold no site; and
+since 0.15.3 those reads are trimmed of adapter read-through and poly-G tails first, an adapter in one baiting every
+adapter dimer of the library),
 the baited reads are micro-assembled with Tadpole, and the primers are BLASTed against the resulting contigs. The mini-assembly can **omit the target region** or **break inside the
 amplicon**, so the forward and reverse primers land on different contigs. Recruitment only reaches about one
 fragment length beyond each primer, so amplicons longer than roughly two fragment lengths always end up split.
@@ -321,6 +323,9 @@ reports only at another size than a product called from reads, is listed in
 summarized in `QAlog.txt`, and noted on the console or in the GUI log. Files kept per sample under
 `detailed_report/<sample>/`: `_targetMatches.fastq.gz` (the first baiting: reads sharing a k-mer with a primer),
 `_baitAnchors.fastq.gz` (those of them holding a primer site the rules accept, with their mates, since 0.15.3),
+`_baitAnchorsTrimmed.fastq.gz` (the anchors with adapter read-through and poly-G tails cut off, each mate on its own:
+what the second baiting baits from, since 0.15.3; one anchor ending in a TruSeq adapter baited every adapter dimer of
+a library),
 `_doubleTargetMatches.fastq.gz` (the second baiting: reads overlapping the anchors), `_assembly.fasta` (the
 mini-assembly, searched like an assembly, its hits in `<sample>.tsv`), `_merged.fastq.gz` / `_unmerged.fastq.gz` (BBMerge output, paired-end input only), `_baitedReads.fasta`
 (the reads searched, renamed `read_<n>` with the original name as description) and `_baitedReads.blast.txt`

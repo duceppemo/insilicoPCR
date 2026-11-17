@@ -10,7 +10,6 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -82,7 +81,7 @@ final class BlastTsv {
         // Written beside it with the folder's usual permissions, then moved over it: a temporary file
         // (Files.createTempFile) is readable by its owner only, and so was the hit file it became, to
         // colleagues sharing the output folder.
-        Path temp = path.resolveSibling(path.getFileName() + ".part");
+        Path temp = ca.canada.inspection.util.OutputFiles.partOf(path);
         try {
             Path parent = path.getParent();
             if (parent != null) {
@@ -110,11 +109,7 @@ final class BlastTsv {
                 } catch (WriteFailed e) {
                     throw e.cause;
                 }
-                try {
-                    Files.move(temp, path, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
-                } catch (java.nio.file.AtomicMoveNotSupportedException e) {
-                    Files.move(temp, path, StandardCopyOption.REPLACE_EXISTING);
-                }
+                ca.canada.inspection.util.OutputFiles.moveOver(temp, path);
                 return missing;
             } catch (IOException | RuntimeException e) {
                 Files.deleteIfExists(temp);

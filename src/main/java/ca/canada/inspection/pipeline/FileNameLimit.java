@@ -18,7 +18,7 @@ final class FileNameLimit {
     /** Bytes a file name may have. */
     static final int MAX_NAME_BYTES = 255;
     /** What is added to a name while it is written ({@code .part}, then moved over it). */
-    private static final String WRITING = ".part";
+    private static final String WRITING = ca.canada.inspection.util.OutputFiles.PART;
 
     private FileNameLimit() {
     }

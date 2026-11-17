@@ -389,21 +389,6 @@ public final class PairSupport {
             }
             return depth;
         }
-
-        /** Per position of product {@code index}, the reads whose match starts there, clipped on the left. */
-        int[] entering(int index) {
-            return entering.get(index);
-        }
-
-        /** Per position of product {@code index}, the reads whose match ends there, clipped on the right. */
-        int[] leaving(int index) {
-            return leaving.get(index);
-        }
-
-        /** The fragments placed on product {@code index}, 0-based half-open. */
-        List<int[]> fragments(int index) {
-            return fragments.get(index);
-        }
     }
 
     /**

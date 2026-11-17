@@ -1,6 +1,7 @@
 package ca.canada.inspection.pcr;
 
 import ca.canada.inspection.model.BlastResult;
+import ca.canada.inspection.util.Circles;
 
 import java.util.Optional;
 
@@ -85,16 +86,13 @@ public final class AmpliconCaller {
 
         char strand = forward.isPlusStrand() ? '+' : '-';
         if (circle > 0) {
-            return Optional.of(new Amplicon(forward.queryID(), onCircle(productStart, circle), onCircle(end, circle),
+            return Optional.of(new Amplicon(forward.queryID(), Circles.onCircle(productStart, circle),
+                    Circles.onCircle(end, circle),
                     size, strand, circle));
         }
         return Optional.of(new Amplicon(forward.queryID(), Math.max(1, productStart), end, size, strand, 0));
     }
 
-    /** A position of a circle of {@code circle} bases counted on past its origin, or before it, as on it. */
-    static int onCircle(int position, int circle) {
-        return Math.floorMod(position - 1, circle) + 1;
-    }
 
     /**
      * A predicted PCR product.

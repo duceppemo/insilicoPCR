@@ -171,6 +171,24 @@ public final class SequenceFileUtils {
         return withoutByteOrderMark(reader);
     }
 
+    /**
+     * A file the run wrote itself (BBTools' reads, gzipped or not, whatever its name: a test's may not say),
+     * gzipped when its first bytes say so; closed when its gzip header cannot be read.
+     */
+    public static BufferedReader openWritten(Path file) throws IOException {
+        InputStream raw = new java.io.BufferedInputStream(Files.newInputStream(file), 1 << 16);
+        try {
+            raw.mark(2);
+            boolean gzip = raw.read() == 0x1f && raw.read() == 0x8b;
+            raw.reset();
+            return new BufferedReader(new InputStreamReader(gzip ? new GZIPInputStream(raw) : raw,
+                    StandardCharsets.UTF_8));
+        } catch (IOException | RuntimeException e) {
+            raw.close();
+            throw e;
+        }
+    }
+
     /** The UTF-8 byte order mark, which Notepad and other Windows editors write at the start of a file. */
     private static final byte[] BYTE_ORDER_MARK = {(byte) 0xEF, (byte) 0xBB, (byte) 0xBF};
 

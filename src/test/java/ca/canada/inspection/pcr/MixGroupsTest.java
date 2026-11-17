@@ -68,5 +68,7 @@ class MixGroupsTest {
                 () -> mix.checkNames(Set.of("a", "b+c", "a+b", "c")));
         assertEquals("Assay a+b shares the reaction t (mix=) and has '+' in its ID, which joins the names of two assays"
                 + " in a product of both: rename it", error.getMessage());
+        // Alone in its reaction, it makes no product of two assays: its name is no one's.
+        MixGroups.fromHeaders(Map.of("x+y-F", "mix=g1")).checkNames(Set.of("x+y"));
     }
 }

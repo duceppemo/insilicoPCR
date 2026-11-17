@@ -124,6 +124,36 @@ class ProductsTest {
     }
 
     @Test
+    void ofTwoEquallyBoundProbeSitesInAProductTheFirstFromItsStartIsShown() {
+        // BLAST listed the site at 450 first: the row showed it, not the one at 301 before it.
+        Map<String, String> sequences = Map.of("q-F", PRIMER_20, "q-R", PRIMER_20, "q-P", PRIMER_20);
+        Sample sample = new Sample("S");
+        sample.hits().add("q-F", plusHit("q-F", "c1", 101));
+        sample.hits().add("q-R", minusHit("q-R", "c1", 581));
+        sample.hits().add("q-P", plusHit("q-P", "c1", 450));
+        sample.hits().add("q-P", plusHit("q-P", "c1", 301));
+
+        List<ReportRow> rows = Products.of(sample, PrimerPanel.of(sequences), AmpliconOptions.withMismatches(0));
+
+        assertEquals(List.of("101-600 probe 301-320"), rows.stream().map(row -> row.start() + "-" + row.end()
+                + " probe " + row.probe().start() + "-" + row.probe().end()).toList());
+    }
+
+    @Test
+    void onACircleAProbeSitePastTheOriginComesAfterTheSitesBeforeIt() {
+        // A product 1,700-100 round the origin: a site at 1,750 is nearer its start than one at 20.
+        ReportRow.Probe early = new ReportRow.Probe("q-P", 1_750, 1_769, 0);
+        ReportRow.Probe late = new ReportRow.Probe("q-P", 20, 39, 0);
+        ReportRow first = TestRows.of("S", "q", 1_700, 100, 201, "c1", "", "q-F", "q-R", 0, 0, 0, 0, '+', early, 0, 0);
+        ReportRow second = TestRows.of("S", "q", 1_700, 100, 201, "c1", "", "q-F", "q-R", 0, 0, 0, 0, '+', late, 0, 0);
+
+        assertTrue(ReportRow.PROBE_FIRST.compare(first, second) < 0);
+        assertTrue(ReportRow.PROBE_FIRST.compare(second, first) > 0);
+        assertEquals(0, ReportRow.PROBE_FIRST.compare(TestRows.row("S", "q", 1, 100, "c1", ""),
+                TestRows.row("S", "q", 1, 100, "c1", "")), "rows without a probe tie");
+    }
+
+    @Test
     void twoForwardPrimersOfAssaysInOneReactionMakeAProductOfBoth() {
         // a-F on the plus strand, b-F on the minus strand facing it: a product of the two assays' mix.
         Sample sample = new Sample("S");

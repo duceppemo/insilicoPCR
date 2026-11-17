@@ -162,6 +162,21 @@ class AmpliconCallerTest {
     }
 
     @Test
+    void primersOverlappingHeadToHeadFaceEachOtherByTheirFullLength() {
+        // Forward at 301-320, its first 4 bases free (within --5p-truncation): BLAST aligns 305-320. The reverse at
+        // 303-322 ends inside those free bases. By the aligned bases the pair faced away, and the 22-bp product,
+        // which the size counts on the full primers, was dropped.
+        String primer = "ACGTACGTACGTACGTACGT";
+        BlastResult forward = TestHits.truncatedPlusHit("a-F", "c1", 305, 5, 20, primer);
+        BlastResult reverse = TestHits.minusHit("a-R", "c1", 303);
+
+        Amplicon amplicon = AmpliconCaller.call(forward, reverse, DEFAULTS).orElseThrow();
+
+        assertEquals("301-322", amplicon.start() + "-" + amplicon.end());
+        assertEquals(22, amplicon.size());
+    }
+
+    @Test
     void onACircleAPairAcrossTheOriginAmplifies() {
         // An 1,800-bp circle: forward at 1,701..1,720 (+), reverse at 81..100 (-). On the sequence as written
         // they point off its two ends; round the origin, they make 1,701..1,800 and 1..100: 200 bp.

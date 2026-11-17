@@ -51,6 +51,13 @@ public final class InSilicoPcrPipeline {
         WindowsPathLimit.check(directories, List.of());
         WindowsCodePage.check(config, dependencies, List.of());
 
+        // A folder with no report number left fails now, not after the run's work.
+        try {
+            ca.canada.inspection.report.ConsolidatedReport.checkRoomFor(directories.consolidated());
+        } catch (IllegalStateException e) {
+            throw new PipelineException(e.getMessage());
+        }
+
         // The primer file first: a mistake there is found at once, not after reading every input.
         PrimerPanel primers = PrimerService.loadAndPrepare(config, directories);
         done(Step.PRIMERS);

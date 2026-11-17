@@ -50,8 +50,10 @@ public final class AmpliconCaller {
         // Convergent orientation: the plus-strand primer must lie upstream of the
         // minus-strand primer. Overlapping primers (very short products) are allowed. On a circle,
         // one past the other is upstream of it once round the origin: its positions go on from there.
+        // The primers in full, as the product counts them: by the bases BLAST aligned, a primer whose
+        // unaligned 5' bases reach past the other's 3' end faced away, and its short product was dropped.
         int round = 0;
-        if (rightExtending.qstart() > leftExtending.qstart() || rightExtending.qend() > leftExtending.qend()) {
+        if (rightExtending.fullStart() > leftExtending.fullStart() || rightExtending.fullEnd() > leftExtending.fullEnd()) {
             if (circle <= 0) {
                 return Optional.empty();
             }

@@ -151,7 +151,12 @@ class ExternalProgramTest {
                 System.err.flush();
                 """);
 
-        assertArrayEquals(new byte[] {'5', '%', '\r', '9', (byte) 0xE9, '\n'}, onTheConsole(command, null));
+        byte[] said = {'5', '%', '\r', '9', (byte) 0xE9, '\n'};
+        // On Windows, read in the code page the programs print in and written in the console's encoding (here the
+        // test's UTF-8): 0xE9 is é there.
+        byte[] shown = AppPaths.isWindows()
+                ? new String(said, ExternalProgram.OUTPUT_ENCODING).getBytes(StandardCharsets.UTF_8) : said;
+        assertArrayEquals(shown, onTheConsole(command, null));
     }
 
     @Test

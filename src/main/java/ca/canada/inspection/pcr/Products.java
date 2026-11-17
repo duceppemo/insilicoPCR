@@ -375,8 +375,8 @@ public final class Products {
                 // A probe across a circle's origin ends on the circle's start, as the product does; one whose 5'
                 // bases BLAST left unaligned lie before the origin starts at the circle's end (it read -2).
                 int circle = amplicon.circle();
-                int shownStart = circle > 0 ? AmpliconCaller.onCircle(probeStart, circle) : probeStart;
-                int shownEnd = circle > 0 ? AmpliconCaller.onCircle(probeEnd, circle) : probeEnd;
+                int shownStart = ca.canada.inspection.util.Circles.onCircle(probeStart, circle);
+                int shownEnd = ca.canada.inspection.util.Circles.onCircle(probeEnd, circle);
                 rows.accept(pair.withProbe(new ReportRow.Probe(probeId, shownStart, shownEnd,
                         probeHit.alignedMismatches(), probeEnd - probeStart + 1)));
             }

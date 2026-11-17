@@ -80,6 +80,17 @@ class BbtoolsCommandsTest {
     }
 
     @Test
+    void aCommandIsNamedForTheProgramItRuns() {
+        // Each call site named it as well, and a name could be given to the wrong program.
+        assertEquals("BBDuk", commands.secondBait(Path.of("a.fq.gz"), List.of(Path.of("s.fastq.gz")),
+                Path.of("b.fq.gz")).program());
+        assertEquals("BBMerge", commands.mergePairs(Path.of("a.fq.gz"), Path.of("m.fq.gz"), Path.of("u.fq.gz"))
+                .program());
+        assertEquals("Tadpole", commands.assemble(Path.of("a.fq.gz"), Path.of("asm.fasta"),
+                new TadpoleOptions(31, 2, 1, 60)).program());
+    }
+
+    @Test
     void assemblyRunsTadpoleWithOverwriteAndGivenSettingsBuildingContigsOnOneThread() {
         // Its k-mers loaded on every thread, its contigs built on one, in tables of 31 ways whatever the threads:
         // built on several, or in another number of tables, the contigs differed between runs of the same reads.
@@ -325,7 +336,7 @@ class BbtoolsCommandsTest {
         new BbtoolsCommands(javaCommand, installed.resolve("bbtools.jar"), 1, 1)
                 .firstBait(example.resolve("primers.fasta"), List.of(example.resolve("reads").resolve("isolate_01_R1.fastq.gz"),
                         example.resolve("reads").resolve("isolate_01_R2.fastq.gz")), out, 20, 0)
-                .run(monitor, "BBDuk");
+                .run(monitor);
 
         assertFalse(lines.stream().anyMatch(line -> line.contains("Cannot find")), String.join("\n", lines));
         assertTrue(java.nio.file.Files.size(out) > 1_000, String.join("\n", lines));

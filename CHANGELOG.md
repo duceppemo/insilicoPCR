@@ -349,6 +349,16 @@
 
 ### Changed
 
+- Code, round 13 (no change in what a run does): the run's own FASTQ files
+  are read by one reader (`FastqRecords`), which recognises gzip by its first
+  bytes and closes the file when its gzip header cannot be read (the bait
+  anchors' reader left it open); files written beside their place and moved
+  over it, and work files deleted quietly, go through one helper
+  (`OutputFiles`; the HTML report is now moved atomically too); a BBTools
+  command names its own program in the log; positions on a circle are put
+  there by one function; unused methods removed. The documented quick build
+  (`-DexcludedGroups=end-to-end -Djacoco.haltOnFailure=false`) named a
+  property surefire ignores.
 - FASTQ mode is faster on large samples, with the same results: a round of the
   read extension reads the sample's files once, not twice (the candidate
   products and the grown ends baited in one pass), the check after the rounds

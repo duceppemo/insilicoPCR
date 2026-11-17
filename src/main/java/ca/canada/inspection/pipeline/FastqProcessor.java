@@ -197,7 +197,7 @@ public final class FastqProcessor {
 
     private static void merge(PipelineContext context, BbtoolsCommands commands, Sample sample) {
         SampleFiles files = context.directories().sample(sample.getName());
-        run(context, "BBMerge", commands.mergePairs(files.targetMatches(),
+        run(context, commands.mergePairs(files.targetMatches(),
                 files.mergedReads(),
                 files.unmergedReads()));
     }
@@ -209,7 +209,7 @@ public final class FastqProcessor {
     private static void bait(PipelineContext context, BbtoolsCommands commands, Sample sample, int kLength) {
         context.directories().createSampleDirectory(sample.getName());
         SampleFiles files = context.directories().sample(sample.getName());
-        run(context, "BBDuk", commands.firstBait(
+        run(context, commands.firstBait(
                 context.directories().primerDatabase(),
                 sample.files(),
                 files.targetMatches(),
@@ -233,10 +233,10 @@ public final class FastqProcessor {
         // read of a library (72% of SRR35797377's reads), all of it then assembled, for the same report.
         Path bait = files.baitAnchors();
         if (anchors > 0) {
-            run(context, "BBDuk", commands.trimAdapters(files.baitAnchors(), sample.isPaired(), files.baitAnchorsTrimmed()));
+            run(context, commands.trimAdapters(files.baitAnchors(), sample.isPaired(), files.baitAnchorsTrimmed()));
             bait = files.baitAnchorsTrimmed();
         }
-        run(context, "BBDuk", commands.secondBait(
+        run(context, commands.secondBait(
                 bait,
                 sample.files(),
                 files.doubleTargetMatches()
@@ -246,11 +246,11 @@ public final class FastqProcessor {
     private static void assemble(PipelineContext context, BbtoolsCommands commands, Sample sample) {
         SampleFiles files = context.directories().sample(sample.getName());
         Path output = files.assembly();
-        run(context, "Tadpole", commands.assemble(files.doubleTargetMatches(), output,
+        run(context, commands.assemble(files.doubleTargetMatches(), output,
                 context.config().tadpole()));
     }
 
-    private static void run(PipelineContext context, String program, BbtoolsCommands.Command command) {
-        command.run(context.monitor(), program);
+    private static void run(PipelineContext context, BbtoolsCommands.Command command) {
+        command.run(context.monitor());
     }
 }

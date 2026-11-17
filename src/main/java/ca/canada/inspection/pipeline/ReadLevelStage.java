@@ -82,7 +82,7 @@ public final class ReadLevelStage {
         boolean paired = sample.isPaired();
         BaitedReads.ReadSet reads = BaitedReads.write(readInputs(files, paired), paired, fasta);
         if (reads.lengths().isEmpty()) {
-            deleteQuietly(hitsFile); // no stale hits from an earlier run in this folder
+            ca.canada.inspection.util.OutputFiles.deleteQuietly(hitsFile); // no stale hits from an earlier run in this folder
             return new ReadEvidence(Map.of(), Map.of(), Map.of());
         }
         runBlast(settings, blastThreads, fasta, hitsFile);
@@ -130,11 +130,4 @@ public final class ReadLevelStage {
         return List.of(files.targetMatches());
     }
 
-    private static void deleteQuietly(Path file) {
-        try {
-            Files.deleteIfExists(file);
-        } catch (IOException ignored) {
-            // A leftover file is only clutter; it is never read without being rewritten.
-        }
-    }
 }

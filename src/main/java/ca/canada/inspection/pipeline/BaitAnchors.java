@@ -3,18 +3,14 @@ package ca.canada.inspection.pipeline;
 import ca.canada.inspection.model.BlastResult;
 import ca.canada.inspection.model.Hits;
 
-import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.BitSet;
 import java.util.List;
-import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
 /**
@@ -71,69 +67,50 @@ final class BaitAnchors {
         } catch (IOException e) {
             throw new PipelineException("Could not find the primer sites of the baited reads: " + firstBait, e);
         } finally {
-            deleteQuietly(query);
-            deleteQuietly(hits);
+            ca.canada.inspection.util.OutputFiles.deleteQuietly(query);
+            ca.canada.inspection.util.OutputFiles.deleteQuietly(hits);
         }
     }
 
     /** Writes the reads of {@code fastq} as FASTA named {@code r<index>}; @return how many. */
     private static int writeQuery(Path fastq, Path query) throws IOException {
-        int index = 0;
-        try (BufferedReader in = open(fastq);
-             BufferedWriter out = Files.newBufferedWriter(query, StandardCharsets.UTF_8)) {
-            String header;
-            while ((header = in.readLine()) != null) {
-                if (header.isBlank()) {
-                    continue;
-                }
-                String sequence = in.readLine();
-                in.readLine();
-                in.readLine();
-                out.write(">r" + index++ + "\n" + (sequence == null ? "" : sequence) + "\n");
-            }
+        int[] index = {0};
+        try (BufferedWriter out = Files.newBufferedWriter(query, StandardCharsets.UTF_8)) {
+            forEachRecord(fastq, record -> write(out, ">r" + index[0]++ + "\n" + record[1] + "\n"));
+        } catch (java.io.UncheckedIOException e) {
+            throw e.getCause();
         }
-        return index;
+        return index[0];
     }
 
     /** Copies the records of {@code fastq} whose index is in {@code keep} to {@code anchors}, gzipped. */
     private static void writeKept(Path fastq, BitSet keep, Path anchors) throws IOException {
-        int index = 0;
-        try (BufferedReader in = open(fastq);
-             BufferedWriter out = new BufferedWriter(new OutputStreamWriter(new GZIPOutputStream(
-                     Files.newOutputStream(anchors)), StandardCharsets.UTF_8))) {
-            String header;
-            while ((header = in.readLine()) != null) {
-                if (header.isBlank()) {
-                    continue;
+        int[] index = {0};
+        try (BufferedWriter out = new BufferedWriter(new OutputStreamWriter(new GZIPOutputStream(
+                Files.newOutputStream(anchors)), StandardCharsets.UTF_8))) {
+            forEachRecord(fastq, record -> {
+                if (keep.get(index[0]++)) {
+                    write(out, String.join("\n", record) + "\n");
                 }
-                String[] record = {header, in.readLine(), in.readLine(), in.readLine()};
-                if (keep.get(index++)) {
-                    for (String line : record) {
-                        out.write(line == null ? "" : line);
-                        out.write('\n');
-                    }
-                }
-            }
+            });
+        } catch (java.io.UncheckedIOException e) {
+            throw e.getCause();
         }
     }
 
-    private static BufferedReader open(Path fastq) throws IOException {
-        if (!Files.isRegularFile(fastq) || Files.size(fastq) == 0) {
-            return new BufferedReader(new java.io.StringReader(""));
+    /** Each record of the first bait's reads, none for a missing or empty file (no read baited). */
+    private static void forEachRecord(Path fastq, java.util.function.Consumer<String[]> each) throws IOException {
+        if (Files.isRegularFile(fastq) && Files.size(fastq) > 0) {
+            ca.canada.inspection.util.FastqRecords.forEachRecordLines(fastq, each);
         }
-        InputStream raw = Files.newInputStream(fastq);
-        boolean gzip;
-        try (InputStream peek = Files.newInputStream(fastq)) {
-            gzip = peek.read() == 0x1f && peek.read() == 0x8b;
-        }
-        return new BufferedReader(new InputStreamReader(gzip ? new GZIPInputStream(raw) : raw, StandardCharsets.UTF_8));
     }
 
-    private static void deleteQuietly(Path file) {
+    private static void write(BufferedWriter out, String text) {
         try {
-            Files.deleteIfExists(file);
-        } catch (IOException ignored) {
-            // a work file left behind
+            out.write(text);
+        } catch (IOException e) {
+            throw new java.io.UncheckedIOException(e);
         }
     }
+
 }

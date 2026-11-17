@@ -126,14 +126,14 @@ public final class ReadExtensionStage {
         Path extendedFile = files.extendedReads();
         Path hitsFile = files.extendedReadsHits();
         // No stale files from an earlier run in this folder.
-        deleteQuietly(seedsFile);
-        deleteQuietly(extendedFile);
-        deleteQuietly(hitsFile);
-        deleteQuietly(files.extensionCandidates());
-        deleteQuietly(files.candidateReads());
-        deleteQuietly(files.extensionEnds());
-        deleteQuietly(files.extensionRoundReads());
-        deleteQuietly(files.extensionReads());
+        ca.canada.inspection.util.OutputFiles.deleteQuietly(seedsFile);
+        ca.canada.inspection.util.OutputFiles.deleteQuietly(extendedFile);
+        ca.canada.inspection.util.OutputFiles.deleteQuietly(hitsFile);
+        ca.canada.inspection.util.OutputFiles.deleteQuietly(files.extensionCandidates());
+        ca.canada.inspection.util.OutputFiles.deleteQuietly(files.candidateReads());
+        ca.canada.inspection.util.OutputFiles.deleteQuietly(files.extensionEnds());
+        ca.canada.inspection.util.OutputFiles.deleteQuietly(files.extensionRoundReads());
+        ca.canada.inspection.util.OutputFiles.deleteQuietly(files.extensionReads());
 
         // What the sample shows already, on contigs and in reads: worked out once for the sample.
         Map<String, Set<Integer>> known = ReadExtensionCaller.knownSizes(sample, primers, options, reads);
@@ -182,7 +182,7 @@ public final class ReadExtensionStage {
             try {
                 writeSeedBases(open, seedBases, roundSeeds);
                 settings.bbtools().extend(roundSeeds, pool, extendedFile, ReadExtensionCaller.K, reach)
-                        .run(settings.search().monitor(), "Tadpole");
+                        .run(settings.search().monitor());
                 if (!Files.isRegularFile(extendedFile)) {
                     throw new PipelineException("Tadpole wrote no extended reads");
                 }
@@ -212,7 +212,7 @@ public final class ReadExtensionStage {
             });
             Map<String, String> roundReads = readFasta(extendedFile, lengths.keySet());
             Map<String, Outcome> checkedNow;
-            deleteQuietly(files.extensionUnionReads());
+            ca.canada.inspection.util.OutputFiles.deleteQuietly(files.extensionUnionReads());
             try {
                 // The ends every open seed grew this round, written before the check: those of the seeds still
                 // open after it are among them, and are baited in the same pass over the sample's reads as the
@@ -284,16 +284,16 @@ public final class ReadExtensionStage {
                 // From this round's pass, when it baited from these ends already; else a pass of their own.
                 if (Files.isRegularFile(files.extensionUnionReads())) {
                     settings.bbtools().recruitFrom(files.extensionEnds(), files.extensionUnionReads(), sample.isPaired(),
-                            files.extensionRoundReads(), ReadExtensionCaller.K).run(settings.search().monitor(), "BBDuk");
+                            files.extensionRoundReads(), ReadExtensionCaller.K).run(settings.search().monitor());
                 } else {
                     settings.bbtools().recruit(files.extensionEnds(), sample.files(), files.extensionRoundReads(),
-                            ReadExtensionCaller.K).run(settings.search().monitor(), "BBDuk");
+                            ReadExtensionCaller.K).run(settings.search().monitor());
                 }
                 if (pooled == null) {
                     pooled = ReadPool.of(baitedReads);
                 }
                 int added = pooled.addNew(files.extensionRoundReads(), files.extensionReads());
-                deleteQuietly(files.extensionRoundReads());
+                ca.canada.inspection.util.OutputFiles.deleteQuietly(files.extensionRoundReads());
                 if (added == 0) {
                     break; // no read the extension has not had
                 }
@@ -307,7 +307,7 @@ public final class ReadExtensionStage {
                 break;
             }
         }
-        deleteQuietly(roundSeeds);
+        ca.canada.inspection.util.OutputFiles.deleteQuietly(roundSeeds);
         // The sample's extended reads and their hits: those of each assay as of the round it closed in, the
         // others' as of the last round.
         Map<String, Outcome> unsettled = new java.util.LinkedHashMap<>(latest);
@@ -343,8 +343,8 @@ public final class ReadExtensionStage {
         }
         Map<String, Outcome> sampleOutcomes = new java.util.TreeMap<>(
                 checkAgainstReadPairs(settings, unsettled, extendedFile, files, sample, null, baited));
-        deleteQuietly(files.extensionUnionReads());
-        deleteQuietly(files.extensionUnionRef());
+        ca.canada.inspection.util.OutputFiles.deleteQuietly(files.extensionUnionReads());
+        ca.canada.inspection.util.OutputFiles.deleteQuietly(files.extensionUnionRef());
         sampleOutcomes.putAll(settled);
         outcomes.put(name, sampleOutcomes);
 
@@ -531,7 +531,7 @@ public final class ReadExtensionStage {
         int k = ReadExtensionCaller.K;
         if (baited != null) {
             settings.bbtools().recruitFrom(candidates, baited, sample.isPaired(), candidateReads, k)
-                    .run(settings.search().monitor(), "BBDuk");
+                    .run(settings.search().monitor());
         } else if (ends != null) {
             Path union = files.extensionUnionRef();
             try {
@@ -540,12 +540,12 @@ public final class ReadExtensionStage {
                 throw new PipelineException("Could not write the candidate products and ends: " + union, e);
             }
             settings.bbtools().recruit(union, sample.files(), files.extensionUnionReads(), k)
-                    .run(settings.search().monitor(), "BBDuk");
+                    .run(settings.search().monitor());
             settings.bbtools().recruitFrom(candidates, files.extensionUnionReads(), sample.isPaired(), candidateReads,
-                    k).run(settings.search().monitor(), "BBDuk");
+                    k).run(settings.search().monitor());
         } else {
             settings.bbtools().recruit(candidates, sample.files(), candidateReads, k)
-                    .run(settings.search().monitor(), "BBDuk");
+                    .run(settings.search().monitor());
         }
         PairSupport.Tally tally = tally(sequences, candidateReads, sample.isPaired(), settings);
         Map<Product, PairSupport.Verdict> verdicts = new java.util.IdentityHashMap<>();
@@ -670,11 +670,4 @@ public final class ReadExtensionStage {
         }
     }
 
-    private static void deleteQuietly(Path file) {
-        try {
-            Files.deleteIfExists(file);
-        } catch (IOException ignored) {
-            // A leftover file is only clutter; it is never read without being rewritten.
-        }
-    }
 }

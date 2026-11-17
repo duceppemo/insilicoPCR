@@ -6,10 +6,8 @@ import ca.canada.inspection.util.InputCheck;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -64,7 +62,7 @@ final class QaLogWriter {
         Path qLog = output.resolve(fileFor(report));
         // Written beside it, then moved over it: a write that stops partway (a full disk, the
         // program ending) leaves the last finished run's log whole, not half of this one.
-        Path written = qLog.resolveSibling(qLog.getFileName() + ".part");
+        Path written = ca.canada.inspection.util.OutputFiles.partOf(qLog);
         try (BufferedWriter writer = Files.newBufferedWriter(written, StandardCharsets.UTF_8)) {
             writeLine(writer, "In Silico PCR version: " + version);
             writeLine(writer, "Date run: " + QA_DATE_FORMAT.format(LocalDateTime.now()));
@@ -94,24 +92,13 @@ final class QaLogWriter {
                 writeLine(writer, line);
             }
             writer.close();
-            try {
-                Files.move(written, qLog, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
-            } catch (AtomicMoveNotSupportedException e) {
-                Files.move(written, qLog, StandardCopyOption.REPLACE_EXISTING);
-            }
+            ca.canada.inspection.util.OutputFiles.moveOver(written, qLog);
         } catch (IOException e) {
-            deleteQuietly(written);
+            ca.canada.inspection.util.OutputFiles.deleteQuietly(written);
             throw new PipelineException("Could not write QA log: " + qLog, e);
         }
     }
 
-    private static void deleteQuietly(Path file) {
-        try {
-            Files.deleteIfExists(file);
-        } catch (IOException ignored) {
-            // The failure to write the log is what the run reports.
-        }
-    }
 
     private static String relative(Path output, Path report) {
         Path absoluteOutput = output.toAbsolutePath().normalize();

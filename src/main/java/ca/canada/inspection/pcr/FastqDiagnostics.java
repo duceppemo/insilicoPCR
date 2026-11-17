@@ -435,8 +435,9 @@ public final class FastqDiagnostics {
             StringBuilder part = new StringBuilder()
                     .append(hit.subjectID()).append(' ')
                     .append(shortName(hit.queryID())).append(':')
-                    .append(circle == null ? hit.qstart() : AmpliconCaller.onCircle(hit.qstart(), circle)).append('-')
-                    .append(circle == null ? hit.qend() : AmpliconCaller.onCircle(hit.qend(), circle))
+                    .append(ca.canada.inspection.util.Circles.onCircle(hit.qstart(), circle == null ? 0 : circle))
+                    .append('-')
+                    .append(ca.canada.inspection.util.Circles.onCircle(hit.qend(), circle == null ? 0 : circle))
                     .append('(').append(hit.isPlusStrand() ? '+' : '-').append(')');
             Integer length = contigLengths.get(hit.queryID());
             if (circle != null) {

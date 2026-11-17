@@ -1,9 +1,7 @@
 package ca.canada.inspection.pipeline;
 
-import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
@@ -13,7 +11,6 @@ import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
 /**
@@ -113,7 +110,7 @@ final class ReadPool {
         return hash;
     }
 
-    /** Each four-line record of {@code fastq} (gzipped or not), as its lines. */
+    /** Each four-line record of {@code fastq} (gzipped or not), as its lines; none for a missing or empty file. */
     private static void forEachRecord(Path fastq, java.util.function.Consumer<String[]> each) {
         try {
             if (!Files.isRegularFile(fastq) || Files.size(fastq) == 0) {
@@ -122,28 +119,10 @@ final class ReadPool {
         } catch (IOException e) {
             throw new UncheckedIOException("Unable to read " + fastq, e);
         }
-        try (BufferedReader in = new BufferedReader(new InputStreamReader(gzipped(fastq)
-                ? new GZIPInputStream(Files.newInputStream(fastq)) : Files.newInputStream(fastq), StandardCharsets.UTF_8))) {
-            String header;
-            while ((header = in.readLine()) != null) {
-                if (header.isBlank()) {
-                    continue;
-                }
-                String[] record = {header, in.readLine(), in.readLine(), in.readLine()};
-                if (record[3] == null) {
-                    throw new IOException("a read cut short at its end: " + header);
-                }
-                each.accept(record);
-            }
-        } catch (IOException e) {
-            throw new UncheckedIOException("Unable to read " + fastq, e);
-        }
-    }
-
-    /** Whether {@code file} starts as gzip does (BBTools writes what its name says, a test file may not). */
-    private static boolean gzipped(Path file) throws IOException {
-        try (java.io.InputStream in = Files.newInputStream(file)) {
-            return in.read() == 0x1f && in.read() == 0x8b;
+        try {
+            ca.canada.inspection.util.FastqRecords.forEachRecordLines(fastq, each);
+        } catch (UncheckedIOException e) {
+            throw new UncheckedIOException("Unable to read " + fastq + ": " + e.getMessage(), e.getCause());
         }
     }
 }

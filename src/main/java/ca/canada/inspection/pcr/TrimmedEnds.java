@@ -55,7 +55,7 @@ public final class TrimmedEnds {
 
         /** The base at {@code position}, upper case; U read as T, as BLAST pairs it. */
         char base(int position) {
-            int at = circle > 0 ? Math.floorMod(position - 1, circle) : position - 1;
+            int at = ca.canada.inspection.util.Circles.onCircle(position, circle) - 1;
             char base = Character.toUpperCase(bases.charAt(at));
             return base == 'U' ? 'T' : base;
         }

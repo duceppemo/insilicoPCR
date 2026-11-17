@@ -51,6 +51,15 @@ public final class Circles {
     }
 
     /**
+     * {@code position} counted on past a circle's origin (or before it) as on the circle of {@code circle} bases:
+     * 1,810 on a 1,800-base circle is 10, 0 is 1,800. A sequence of no length as a circle (0 or less) is linear:
+     * the position as it is.
+     */
+    public static int onCircle(int position, int circle) {
+        return circle > 0 ? Math.floorMod(position - 1, circle) + 1 : position;
+    }
+
+    /**
      * The circular sequences of {@code fasta} (gzipped or not), by ID, each with its length as a circle;
      * in file order.
      *

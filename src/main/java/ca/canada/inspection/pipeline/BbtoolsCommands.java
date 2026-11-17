@@ -56,8 +56,18 @@ record BbtoolsCommands(String javaCommand, Path bbtoolsJar, int childMemoryGiB, 
             arguments = List.copyOf(arguments);
         }
 
-        void run(RunMonitor monitor, String program) {
-            monitor.runProgram(directory, arguments, program);
+        /** The program, as the run's messages name it: the BBTools class it runs ({@code jgi.BBDuk}: BBDuk). */
+        String program() {
+            for (String argument : arguments) {
+                if (argument.matches("[a-z]+\\.[A-Z][A-Za-z0-9]*")) {
+                    return argument.substring(argument.indexOf('.') + 1);
+                }
+            }
+            throw new IllegalStateException("No BBTools program in " + arguments);
+        }
+
+        void run(RunMonitor monitor) {
+            monitor.runProgram(directory, arguments, program());
         }
     }
 

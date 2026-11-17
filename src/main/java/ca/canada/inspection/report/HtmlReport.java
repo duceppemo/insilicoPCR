@@ -220,7 +220,7 @@ public final class HtmlReport {
         // Written as it is made: built whole in memory, the page of a large run (millions of amplicon rows)
         // outgrew the largest string Java holds, after all the BLAST work, and the run failed. Written beside
         // it, then moved over it: a failure part way left a page cut short where the page is looked for.
-        Path part = html.resolveSibling(html.getFileName() + ".part");
+        Path part = ca.canada.inspection.util.OutputFiles.partOf(html);
         try {
             try (java.io.Writer out = Files.newBufferedWriter(part, StandardCharsets.UTF_8)) {
                 Page page = new Page(out);
@@ -229,27 +229,20 @@ public final class HtmlReport {
                         sizes, findings, runDetails, inputIssues, splits);
                 page.flush();
             }
-            Files.move(part, html, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            ca.canada.inspection.util.OutputFiles.moveOver(part, html);
         } catch (IOException e) {
-            deleteQuietly(part);
+            ca.canada.inspection.util.OutputFiles.deleteQuietly(part);
             throw new UncheckedIOException("Unable to write HTML report: " + html, e);
         } catch (UncheckedIOException e) {
-            deleteQuietly(part);
+            ca.canada.inspection.util.OutputFiles.deleteQuietly(part);
             throw new UncheckedIOException("Unable to write HTML report: " + html, e.getCause());
         } catch (RuntimeException e) {
-            deleteQuietly(part);
+            ca.canada.inspection.util.OutputFiles.deleteQuietly(part);
             throw e;
         }
         return html;
     }
 
-    private static void deleteQuietly(Path file) {
-        try {
-            Files.deleteIfExists(file);
-        } catch (IOException ignored) {
-            // the failure being reported matters more
-        }
-    }
 
     /** The HTML page of a consolidated report: {@code report(1).html} for {@code report(1).tsv}. */
     public static Path pathFor(Path reportTsv) {

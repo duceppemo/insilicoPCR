@@ -39,17 +39,18 @@ public final class ConsolidatedReport {
         List<ReportColumn> columns = ReportColumn.of(probeColumns);
         Path report = nextAvailableReportFile(consolidatedDir);
 
-        // A new file: never over another run's report.
+        // A new file: never over another run's report. Its lines end in LF on every system, as the other files a
+        // run writes do: on Windows, newLine() wrote CRLF in some files and not others.
         try (BufferedWriter writer = Files.newBufferedWriter(report, StandardCharsets.UTF_8,
                 java.nio.file.StandardOpenOption.CREATE_NEW, java.nio.file.StandardOpenOption.WRITE)) {
             writer.write(header(probeColumns, sizeColumn));
-            writer.newLine();
+            writer.write('\n');
             for (ReportRow row : rows) {
                 writer.write(String.join("\t", columns.stream().map(column -> column.value(row)).toList()));
                 if (sizeColumn) {
                     writer.write("\t" + expectedSizes.labelText(row.assay(), row.size()));
                 }
-                writer.newLine();
+                writer.write('\n');
             }
         } catch (IOException e) {
             throw new UncheckedIOException("Unable to write consolidated report: " + report, e);

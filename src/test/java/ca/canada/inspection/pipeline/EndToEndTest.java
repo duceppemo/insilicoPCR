@@ -90,6 +90,11 @@ class EndToEndTest {
         assertTrue(Files.readString(output.resolve("QAlog.txt")).matches("(?s).*\\n  Tools: BLAST\\+ 2\\.\\d+\\.\\d+, BBTools \\d+\\.\\d+, Java \\d.*"),
                 "the programs' versions in QAlog.txt");
         assertFalse(Files.readString(output.resolve("QAlog.txt")).contains("Primers at contig ends"));
+        // LF on every system (on Windows, report.tsv and QAlog.txt ended their lines in CRLF, the other files in LF).
+        for (Path written : List.of(report(output), output.resolve("QAlog.txt"),
+                output.resolve("detailed_report").resolve("isolate_01").resolve("isolate_01.tsv"))) {
+            assertFalse(Files.readString(written).contains("\r"), written + ": LF line ends");
+        }
         try (Stream<Path> files = Files.walk(output)) {
             assertEquals(List.of(), files.filter(file -> file.getFileName().toString().startsWith("blast_query_"))
                     .toList(), "decompressed BLAST queries left in the results");
@@ -817,9 +822,11 @@ class EndToEndTest {
                 () -> pipeline(config, monitor).run());
 
         assertTrue(error.getMessage().contains("toxA-R is missing"), error.getMessage());
-        assertEquals(List.of(Step.DEPENDENCIES), monitor.steps);
+        // Refused with the paths' checks, before any step, and before the output folder is made (since 0.15.4).
+        assertEquals(List.of(), monitor.steps);
         assertTrue(monitor.messages.stream().noneMatch(line -> line.startsWith("Checking the input files")),
                 monitor.messages.toString());
+        assertFalse(Files.exists(directory.resolve("results")), "no output folder left behind");
     }
 
     @Test

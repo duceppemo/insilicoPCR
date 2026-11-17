@@ -62,8 +62,8 @@ final class ExternalProgram {
         // (and the program is then killed below); a blocking read would not stop.
         FutureTask<Boolean> reading = new FutureTask<>(() -> {
             try {
-                return console ? copyToConsole(process.getErrorStream())
-                        : passLines(process.getInputStream(), output);
+                return console ? copyToConsole(process.getErrorStream(), AppPaths.isWindows() ? OUTPUT_ENCODING : null,
+                        System.err) : passLines(process.getInputStream(), output);
             } catch (IOException | RuntimeException e) {
                 process.destroyForcibly(); // or it may block on a full pipe, and waitFor() with it
                 throw e;
@@ -142,20 +142,34 @@ final class ExternalProgram {
         return saidOutOfMemory;
     }
 
-    /** Copies to standard error as it comes; whether it says the program ran out of memory. */
-    private static boolean copyToConsole(InputStream stream) throws IOException {
+    /**
+     * Copies to {@code console} (standard error) as it comes; whether it says the program ran out of memory.
+     *
+     * @param encoding what the program prints in, read and written again in the console's own: on Windows, the
+     *                 programs print in the computer's code page (1252), and the console (cmd.exe) shows another
+     *                 (850), so an accent came out wrong ("RÚsultats"). {@code null}: copied byte for byte.
+     */
+    static boolean copyToConsole(InputStream stream, java.nio.charset.Charset encoding, java.io.PrintStream console)
+            throws IOException {
         String sought = BbtoolsCommands.OUT_OF_MEMORY_LINE;
         StringBuilder recent = new StringBuilder();
         boolean saidOutOfMemory = false;
         byte[] buffer = new byte[8192];
-        try (stream) {
+        char[] chars = new char[8192];
+        try (stream; java.io.Reader reader = encoding == null ? null : new InputStreamReader(stream, encoding)) {
             int read;
-            while ((read = stream.read(buffer)) != -1) {
-                System.err.write(buffer, 0, read);
-                System.err.flush();
+            while ((read = reader == null ? stream.read(buffer) : reader.read(chars)) != -1) {
+                // The message is ASCII: one char per byte, whatever the rest is in.
+                String text = reader == null ? new String(buffer, 0, read, StandardCharsets.ISO_8859_1)
+                        : new String(chars, 0, read);
+                if (reader == null) {
+                    console.write(buffer, 0, read);
+                } else {
+                    console.print(text);
+                }
+                console.flush();
                 if (!saidOutOfMemory) {
-                    // The message is ASCII: one char per byte, whatever the rest is in.
-                    recent.append(new String(buffer, 0, read, StandardCharsets.ISO_8859_1));
+                    recent.append(text);
                     saidOutOfMemory = recent.indexOf(sought) >= 0;
                     recent.delete(0, Math.max(0, recent.length() - sought.length()));
                 }

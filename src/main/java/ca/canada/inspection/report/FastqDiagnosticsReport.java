@@ -25,7 +25,7 @@ public final class FastqDiagnosticsReport {
     public static void write(Path file, List<Finding> findings) {
         try (BufferedWriter writer = Files.newBufferedWriter(file, StandardCharsets.UTF_8)) {
             writer.write(HEADER);
-            writer.newLine();
+            writer.write('\n');
             for (Finding finding : findings) {
                 writer.write(String.join("\t",
                         ReportColumn.cell(finding.sample()),
@@ -38,7 +38,7 @@ public final class FastqDiagnosticsReport {
                         String.valueOf(finding.checkableLength()),
                         ReportColumn.cell(finding.readDetail()),
                         ReportColumn.cell(finding.assemblyDetail())));
-                writer.newLine();
+                writer.write('\n');
             }
         } catch (IOException e) {
             throw new UncheckedIOException("Unable to write FASTQ diagnostics: " + file, e);

@@ -3,6 +3,7 @@ package ca.canada.inspection.insilicopcr;
 import ca.canada.inspection.pipeline.ExternalProcessTracker;
 import ca.canada.inspection.pipeline.InSilicoPcrPipeline;
 import ca.canada.inspection.pipeline.LogFiles;
+import ca.canada.inspection.pipeline.OutputFolderInUse;
 import ca.canada.inspection.pipeline.PipelineConfig;
 import ca.canada.inspection.pipeline.RunFailure;
 import ca.canada.inspection.pipeline.RunMonitor;
@@ -15,6 +16,7 @@ import javafx.scene.control.TextArea;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Objects;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -52,6 +54,7 @@ final class PcrPipelineTask extends Task<RunResult> {
         // Which run this is, in log.txt, where the runs of a folder follow one another.
         append("Run of " + java.time.LocalDateTime.now().withNano(0).toString().replace('T', ' ') + "\nInput: "
                 + config.input() + "\nPrimers: " + config.primers() + "\nOutput: " + config.output() + "\n");
+        Throwable failure = null;
         try {
             RunResult result = new InSilicoPcrPipeline(config, new WindowMonitor()).run();
             if (isCancelled()) {
@@ -60,6 +63,7 @@ final class PcrPipelineTask extends Task<RunResult> {
             }
             return result;
         } catch (RuntimeException | Error e) {
+            failure = e;
             if (isCancelled() && stoppedByTheCancel(e)) {
                 append("\nRun cancelled\n");
             } else {
@@ -69,8 +73,19 @@ final class PcrPipelineTask extends Task<RunResult> {
             }
             throw e;
         } finally {
-            writeRunLog();
+            if (writesRunLog(config.output(), failure)) {
+                writeRunLog();
+            }
         }
+    }
+
+    /**
+     * Whether a run that ended with {@code failure} ({@code null}: none) writes its {@code log.txt} into
+     * {@code output}: not before it made the folder, nor into one another run holds, whose log.txt that run may be
+     * writing (the refused run's lines went into it).
+     */
+    static boolean writesRunLog(Path output, Throwable failure) {
+        return Files.isDirectory(output) && !(failure instanceof OutputFolderInUse);
     }
 
     /**
@@ -98,9 +113,6 @@ final class PcrPipelineTask extends Task<RunResult> {
     }
 
     private void writeRunLog() {
-        if (!Files.isDirectory(config.output())) {
-            return; // the run stopped before making its output folder
-        }
         try {
             LogFiles.appendRunLog(config.output(), runLog.toString().strip());
         } catch (RuntimeException e) {

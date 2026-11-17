@@ -36,6 +36,13 @@ public final class InSilicoPcrPipeline {
     public RunResult run() {
         long startTime = System.nanoTime();
         monitor.info("Beginning Program Run");
+        // The window's checks of the three paths, before the output folder is made: on the command line, a
+        // primer file with a mistake, or an input that is not there, left an empty output folder behind, and an
+        // output that is a file failed as "Unable to create directory".
+        String problem = InputValidator.validate(config.input(), config.output(), config.primers());
+        if (!problem.isEmpty()) {
+            throw new PipelineException(problem);
+        }
         RuntimeDependencies dependencies = RuntimeDependencies.discover();
         PipelineDirectories directories = PipelineDirectories.create(config.output());
         // One run at a time in an output folder, held until this run ends, however it ends.

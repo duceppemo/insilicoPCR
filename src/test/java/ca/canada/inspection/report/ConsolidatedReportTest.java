@@ -125,6 +125,8 @@ class ConsolidatedReportTest {
         assertEquals("taq", qpcrRow[1]);
         assertEquals("taq-P", qpcrRow[13]);
         assertEquals("2300-2319", qpcrRow[14]);
+        // LF on every system: on Windows, the report's lines ended in CRLF, the HTML report's and others' in LF.
+        assertTrue(!Files.readString(report).contains("\r"), "LF line ends");
     }
 
     @Test

@@ -15,7 +15,7 @@ class PipelineDirectoriesTest {
         PipelineException error = org.junit.jupiter.api.Assertions.assertThrows(PipelineException.class,
                 () -> PipelineDirectories.create(output));
 
-        org.junit.jupiter.api.Assertions.assertTrue(error.getMessage().contains("holds symbolic links where a run writes"),
+        org.junit.jupiter.api.Assertions.assertTrue(error.getMessage().contains("holds symbolic links or junctions where a run writes"),
                 error.getMessage());
         org.junit.jupiter.api.Assertions.assertEquals("keep me", java.nio.file.Files.readString(decoy));
         // The output folder itself may be a link (to a scratch disk, say).
@@ -42,5 +42,53 @@ class PipelineDirectoriesTest {
         // Where a run writes, at its top: refused.
         java.nio.file.Files.createSymbolicLink(output.resolve("QAlog.txt"), store);
         org.junit.jupiter.api.Assertions.assertThrows(PipelineException.class, () -> PipelineDirectories.create(output));
+    }
+
+    @org.junit.jupiter.api.Test
+    @org.junit.jupiter.api.condition.DisabledOnOs(org.junit.jupiter.api.condition.OS.WINDOWS)
+    void theNamesARunWritesAreMatchedWhateverTheirCase(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir)
+            throws java.io.IOException {
+        // On Windows and macOS, a link named Detailed_Report is the folder the run writes in: it was let through.
+        org.junit.jupiter.api.Assertions.assertTrue(PipelineDirectories.written("Detailed_Report"));
+        org.junit.jupiter.api.Assertions.assertTrue(PipelineDirectories.written("QALOG.txt"));
+        org.junit.jupiter.api.Assertions.assertTrue(PipelineDirectories.written("Primer_Tmp.fasta.nhr"));
+        org.junit.jupiter.api.Assertions.assertTrue(PipelineDirectories.written(".insilicoPCR.LOCK"));
+        org.junit.jupiter.api.Assertions.assertFalse(PipelineDirectories.written("reads"));
+
+        java.nio.file.Path elsewhere = java.nio.file.Files.createDirectories(dir.resolve("elsewhere"));
+        java.nio.file.Path output = java.nio.file.Files.createDirectories(dir.resolve("run"));
+        java.nio.file.Files.createSymbolicLink(output.resolve("Consolidated_Report"), elsewhere);
+        org.junit.jupiter.api.Assertions.assertThrows(PipelineException.class, () -> PipelineDirectories.create(output));
+    }
+
+    @org.junit.jupiter.api.Test
+    @org.junit.jupiter.api.condition.DisabledOnOs(org.junit.jupiter.api.condition.OS.WINDOWS)
+    void aPipeWhereARunWritesIsRefusedAsALinkIs(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir)
+            throws Exception {
+        // Java reads a Windows junction as "other", as it does a pipe: the one test of that rule this system allows.
+        java.nio.file.Path output = java.nio.file.Files.createDirectories(dir.resolve("run"));
+        Process mkfifo = new ProcessBuilder("mkfifo", output.resolve("QAlog.txt.part").toString()).start();
+        org.junit.jupiter.api.Assumptions.assumeTrue(mkfifo.waitFor() == 0, "mkfifo");
+
+        org.junit.jupiter.api.Assertions.assertTrue(PipelineDirectories.leadsElsewhere(output.resolve("QAlog.txt.part")));
+        org.junit.jupiter.api.Assertions.assertThrows(PipelineException.class, () -> PipelineDirectories.create(output));
+    }
+
+    @org.junit.jupiter.api.Test
+    @org.junit.jupiter.api.condition.EnabledOnOs(org.junit.jupiter.api.condition.OS.WINDOWS)
+    void aJunctionWhereARunWritesIsRefused(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir) throws Exception {
+        // A junction (mklink /J, made without administrator rights, unlike a symbolic link) named detailed_report: a
+        // run wrote through it, into the folder it points to.
+        java.nio.file.Path elsewhere = java.nio.file.Files.createDirectories(dir.resolve("elsewhere"));
+        java.nio.file.Path output = java.nio.file.Files.createDirectories(dir.resolve("run"));
+        Process mklink = new ProcessBuilder("cmd", "/c", "mklink", "/J",
+                output.resolve("detailed_report").toString(), elsewhere.toString()).redirectErrorStream(true).start();
+        mklink.getInputStream().readAllBytes();
+        org.junit.jupiter.api.Assertions.assertEquals(0, mklink.waitFor(), "mklink /J");
+        org.junit.jupiter.api.Assertions.assertFalse(java.nio.file.Files.isSymbolicLink(output.resolve("detailed_report")));
+
+        PipelineException error = org.junit.jupiter.api.Assertions.assertThrows(PipelineException.class,
+                () -> PipelineDirectories.create(output));
+        org.junit.jupiter.api.Assertions.assertTrue(error.getMessage().contains("junctions"), error.getMessage());
     }
 }

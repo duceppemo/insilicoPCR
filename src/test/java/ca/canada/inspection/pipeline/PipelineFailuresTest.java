@@ -29,6 +29,31 @@ class PipelineFailuresTest {
     }
 
     @Test
+    void theRunChecksItsPathsBeforeMakingTheOutputFolder() throws IOException {
+        // On the command line, a primer file with a mistake left an empty output folder behind (the window checked
+        // the paths first), and an output that is a file failed as "Unable to create directory".
+        Path input = Files.createDirectories(directory.resolve("in"));
+        Files.writeString(input.resolve("s.fasta"), ">c1\nACGTACGTACGTACGTACGT\n");
+        Path badPrimers = Files.writeString(directory.resolve("primers.fasta"), ">only-F\nACGTACGTACGTACGTACGT\n");
+        Path output = directory.resolve("out");
+
+        PipelineException error = assertThrows(PipelineException.class,
+                () -> new InSilicoPcrPipeline(PipelineConfig.builder(input, output, badPrimers).build(),
+                        RunMonitor.CONSOLE).run());
+
+        assertEquals(InputValidator.validate(input, output, badPrimers), error.getMessage());
+        assertTrue(!Files.exists(output), "no output folder made");
+
+        Path aFile = Files.writeString(directory.resolve("taken"), "");
+        Path primers = Files.writeString(directory.resolve("good.fasta"),
+                ">a-F\nACGTACGTACGTACGTACGT\n>a-R\nACGTACGTACGTACGTACGT\n");
+        error = assertThrows(PipelineException.class,
+                () -> new InSilicoPcrPipeline(PipelineConfig.builder(input, aFile, primers).build(),
+                        RunMonitor.CONSOLE).run());
+        assertTrue(error.getMessage().startsWith("The output folder is a file: "), error.getMessage());
+    }
+
+    @Test
     void aQaLogThatCannotBeWrittenIsForTheUser() throws IOException {
         Path notAFolder = Files.writeString(directory.resolve("results"), "a file where the folder should go");
 

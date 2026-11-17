@@ -31,7 +31,7 @@ final class OutputLock implements AutoCloseable {
      *
      * @param warning told when the folder's file system cannot lock (some network file systems):
      *                the run goes on without the lock
-     * @throws PipelineException when another run holds the folder
+     * @throws OutputFolderInUse when another run holds the folder
      */
     static OutputLock take(Path output, Consumer<String> warning) {
         Path file = output.resolve(FILE_NAME);
@@ -56,9 +56,7 @@ final class OutputLock implements AutoCloseable {
         }
         if (lock == null) {
             closeQuietly(channel);
-            throw new PipelineException("Another run is using the output folder " + output
-                    + ": give each run its own output folder (a workflow manager running one job per sample, one"
-                    + " folder per job), or wait for that run to finish");
+            throw new OutputFolderInUse(output);
         }
         return new OutputLock(channel, lock);
     }

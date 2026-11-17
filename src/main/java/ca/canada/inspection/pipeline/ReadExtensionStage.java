@@ -330,9 +330,9 @@ public final class ReadExtensionStage {
                 writer.write(">" + product.assay() + "_" + product.size() + "bp_on_"
                         + product.row().contig()
                         + " best-supported path held by extended reads, not an assembled consensus");
-                writer.newLine();
+                writer.write('\n');
                 writer.write(sequences.get(i));
-                writer.newLine();
+                writer.write('\n');
             }
         } catch (IOException e) {
             throw new PipelineException("Could not write the candidate products: " + candidates, e);
@@ -446,9 +446,9 @@ public final class ReadExtensionStage {
                 }
                 // The assay, the primer and the read it is seeded from, for whoever audits a call.
                 writer.write(">" + seed.id() + " " + seed.assay() + "-" + seed.role().letter() + " " + seed.read());
-                writer.newLine();
+                writer.write('\n');
                 writer.write(record.sequence());
-                writer.newLine();
+                writer.write('\n');
             }
         } catch (IOException e) {
             throw new PipelineException("Could not write the extension seeds: " + seedsFile, e);

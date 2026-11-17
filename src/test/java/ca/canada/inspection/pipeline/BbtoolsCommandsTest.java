@@ -241,6 +241,31 @@ class BbtoolsCommandsTest {
     }
 
     @Test
+    void aHashInTheOutputFolderIsLeftOutOfTheFilesBbtoolsWrites(@TempDir Path dir) {
+        // In a file it writes, BBTools reads '#' as the mate's number: -o run#2 wrote into run12 and run22, beside
+        // the output folder, and every run with reads failed. Files it reads may keep theirs.
+        Path run = dir.resolve("run#2");
+        Path sampleDir = run.resolve("detailed_report").resolve("s");
+        Path reads = dir.resolve("reads#1").resolve("s.fastq.gz");
+        BbtoolsCommands.Command command = commands.firstBait(run.resolve("primer_tmp.fasta"), List.of(reads),
+                sampleDir.resolve("s_targetMatches.fastq.gz"), 17, 0);
+
+        assertTrue(command.arguments().contains("outm=s_targetMatches.fastq.gz"), command::toString);
+        assertTrue(command.arguments().contains("in=" + reads.toAbsolutePath().normalize()), command::toString);
+        assertTrue(command.arguments().contains("ref=" + run.resolve("primer_tmp.fasta").toAbsolutePath().normalize()),
+                command::toString);
+        assertTrue(commands.trimAdapters(reads, false, sampleDir.resolve("trimmed.fq.gz")).arguments()
+                .contains("out=trimmed.fq.gz"));
+
+        // A '#' in the name of the file written: a clear error, which leaves that sample out.
+        PipelineException error = assertThrows(BbtoolsCommands.UnusablePath.class,
+                () -> commands.firstBait(run.resolve("primer_tmp.fasta"), List.of(reads),
+                        sampleDir.resolve("s#1_targetMatches.fastq.gz"), 17, 0));
+        assertTrue(error.getMessage().startsWith("BBTools reads a # in the name of a file it writes"),
+                error.getMessage());
+    }
+
+    @Test
     void baitingAllowsAtMostTheSubstitutionsBbdukTakes() {
         // BBDuk refuses hdist above 3: -m 4 failed every run with reads.
         List<String> command = commands.firstBait(Path.of("primers.fasta"), List.of(Path.of("r.fq.gz")),

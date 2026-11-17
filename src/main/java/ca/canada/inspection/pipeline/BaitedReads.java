@@ -55,9 +55,9 @@ final class BaitedReads {
                     String id = "read_" + index[0]++;
                     try {
                         writer.write(">" + id + " " + record.header());
-                        writer.newLine();
+                        writer.write('\n');
                         writer.write(record.sequence());
-                        writer.newLine();
+                        writer.write('\n');
                     } catch (IOException e) {
                         throw new UncheckedIOException(e);
                     }

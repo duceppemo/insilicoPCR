@@ -25,6 +25,7 @@ final class OutputLock implements AutoCloseable {
      */
     private static final java.util.Set<Path> HELD = java.util.concurrent.ConcurrentHashMap.newKeySet();
     /** Channels that found the lock held here by another path to the file: kept open, as closing them would free it. */
+    @SuppressWarnings("MismatchedQueryAndUpdateOfCollection") // held, never read: it keeps them open
     private static final java.util.List<FileChannel> KEPT_OPEN = new java.util.concurrent.CopyOnWriteArrayList<>();
 
     private final FileChannel channel;
@@ -67,7 +68,8 @@ final class OutputLock implements AutoCloseable {
         }
     }
 
-    private static OutputLock take(Path output, Path file, Path key, Consumer<String> warning) {
+    /** As {@link #take(Path, Consumer)}, once {@code key} is held here. */
+    static OutputLock take(Path output, Path file, Path key, Consumer<String> warning) {
         FileChannel channel;
         try {
             channel = FileChannel.open(file, StandardOpenOption.CREATE, StandardOpenOption.WRITE);

@@ -55,6 +55,18 @@ class OutputLockTest {
     }
 
     @Test
+    void aSecondChannelThatFindsTheLockHeldHereIsKeptOpen() throws Exception {
+        // Through another path to the file than HELD knows (a bind mount, say): the overlap is found by the system's
+        // lock, and the channel kept open, as closing it would free the first run's lock on Linux.
+        List<String> warnings = new ArrayList<>();
+        try (OutputLock first = OutputLock.take(dir, warnings::add)) {
+            assertThrows(OutputFolderInUse.class, () -> OutputLock.take(dir, dir.resolve(OutputLock.FILE_NAME),
+                    dir.resolve("another key"), warnings::add));
+            assertThrows(OutputFolderInUse.class, () -> OutputLock.take(dir, warnings::add), "still held");
+        }
+    }
+
+    @Test
     void aRunInAnotherProcessHoldsTheFolderToo() throws Exception {
         // The case that matters (two command-line runs), where the operating system's lock refuses the
         // second; within one program the overlap is found before it asks.

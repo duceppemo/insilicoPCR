@@ -109,7 +109,7 @@ class SettingsRecordsTest {
         assertEquals("FASTQ settings… *", FastqSettingsDialog.buttonLabel(custom));
         assertTrue(FastqSettingsDialog.summary(custom).contains("k=25"));
         assertTrue(FastqSettingsDialog.summary(custom).contains("\nRead extension: unreported\n"));
-        assertTrue(FastqSettingsDialog.summary(custom).endsWith("BBTools memory: automatic: three quarters of the"
+        assertTrue(FastqSettingsDialog.summary(custom).endsWith("Memory for BBTools and BLAST: automatic: three quarters of the"
                 + " memory insilicoPCR leaves free on the computer (a job's limit on a cluster), at least half of its own"
                 + " heap"), FastqSettingsDialog.summary(custom));
 

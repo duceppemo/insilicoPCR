@@ -97,21 +97,27 @@ public final class AmpliconCaller {
     }
 
     /**
-     * Query position of the primer's 5'-most base from which it pairs with the template without a break: the full
-     * primer's when its unaligned 5' bases were compared with the template and all pair, the alignment's otherwise
-     * (BLAST never ends an alignment next to a base that pairs, so the base it left out next to it does not), and
-     * past the innermost mismatch it kept aligned within {@code --5p-truncation} of the 5' end (0.15.4 let the other
-     * primer's 3' end sit on such a mismatch). Left edge on the plus strand, right edge on the minus strand.
+     * Query position from which the primer pairs with the template without a break to its 3' end (left edge on the
+     * plus strand, right edge on the minus strand): the other primer's 3' end must lie there or further in, past
+     * every base of this one that does not pair, since the strand this primer made carries those bases. Past its
+     * 5' bases left out of the alignment unless they were compared and all pair (BLAST never ends an alignment next
+     * to a base that pairs), past every mismatch or indel of the alignment (0.15.4 counted only those within
+     * {@code --5p-truncation}, and 0.15.3 none), and past its 3' bases left out, which do not pair either: then no
+     * primer may overlap it.
      */
     private static int pairedFivePrimeEdge(BlastResult hit) {
         boolean plus = hit.isPlusStrand();
+        if (hit.threePrimeUncovered() > 0) {
+            return plus ? hit.fullEnd() + 1 : hit.fullStart() - 1;
+        }
         int edge = hit.fivePrimeUnpaired() == 0 ? (plus ? hit.fullStart() : hit.fullEnd()) : (plus ? hit.qstart() : hit.qend());
-        if (hit.fivePrimeFree() > 0) {
-            int pairsAgain = hit.pairsAgainAfterFivePrimeFree();
+        if (hit.alignedMismatches() > 0) {
+            int pairsAgain = hit.pairsAgainAfterLastMismatch();
             if (pairsAgain == Integer.MIN_VALUE) {
-                return plus ? hit.qend() : hit.qstart(); // where its mismatches lie is not known: no overlap at all
+                // Where its mismatches lie is not known: as if at its 3' end, no primer may overlap it.
+                return plus ? hit.fullEnd() + 1 : hit.fullStart() - 1;
             }
-            return pairsAgain;
+            return plus ? Math.max(edge, pairsAgain) : Math.min(edge, pairsAgain);
         }
         return edge;
     }

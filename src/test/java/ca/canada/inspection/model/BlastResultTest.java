@@ -11,10 +11,10 @@ class BlastResultTest {
         String bases = "ACGTACGTACGTACGTACGT";
         // A mismatch counted free, the aligned bases unknown: no position to give.
         BlastResult unknown = new BlastResult("c", "a-F", 1, 0, 101, 120, 1, 20, 20, 20, null, null, bases, 0, 1);
-        assertEquals(Integer.MIN_VALUE, unknown.pairsAgainAfterFivePrimeFree());
+        assertEquals(Integer.MIN_VALUE, unknown.pairsAgainAfterLastMismatch());
         // One counted free that the alignment does not show (all its bases pair): none either.
         BlastResult none = new BlastResult("c", "a-F", 0, 0, 101, 120, 1, 20, 20, 20, bases, bases, bases, 0, 1);
-        assertEquals(Integer.MIN_VALUE, none.pairsAgainAfterFivePrimeFree());
+        assertEquals(Integer.MIN_VALUE, none.pairsAgainAfterLastMismatch());
     }
 
     @Test

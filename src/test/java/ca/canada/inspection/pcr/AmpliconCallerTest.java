@@ -192,7 +192,7 @@ class AmpliconCallerTest {
         String template = "ACGTGCGTACGTACGTACGT";
         BlastResult forward = TestHits.plusHit("a-F", "c1", 301, template, TestHits.PRIMER_20).withFivePrimeFree(5);
         assertEquals(1, forward.fivePrimeFree());
-        assertEquals(306, forward.pairsAgainAfterFivePrimeFree());
+        assertEquals(306, forward.pairsAgainAfterLastMismatch());
 
         assertTrue(AmpliconCaller.call(forward, TestHits.minusHit("a-R", "c1", 305), DEFAULTS).isEmpty(), "on it");
         assertTrue(AmpliconCaller.call(forward, TestHits.minusHit("a-R", "c1", 303), DEFAULTS).isEmpty(), "before it");
@@ -203,9 +203,32 @@ class AmpliconCallerTest {
         // (318); a forward ending on it (299-318) gives no product, one ending at 317 does.
         String reverseTemplate = "ACGTACGTACGTACGCACGT"; // query orientation: its 5th base from the right differs
         BlastResult reverse = TestHits.minusHit("a-R", "c1", 303, reverseTemplate, TestHits.PRIMER_20).withFivePrimeFree(5);
-        assertEquals(317, reverse.pairsAgainAfterFivePrimeFree());
+        assertEquals(317, reverse.pairsAgainAfterLastMismatch());
         assertTrue(AmpliconCaller.call(TestHits.plusHit("a-F", "c1", 299), reverse, DEFAULTS).isEmpty());
         assertTrue(AmpliconCaller.call(TestHits.plusHit("a-F", "c1", 298), reverse, DEFAULTS).isPresent());
+    }
+
+    @Test
+    void anyBaseOfAPrimerThatDoesNotPairStopsTheOtherPrimersThreePrimeEnd() {
+        // A mismatch at the forward's 10th base, past --5p-truncation, counted against -m 1: a reverse ending on it was
+        // reported (0.15.4), its 3' end on a base the strand the forward made does not pair with.
+        AmpliconOptions oneMismatch = AmpliconOptions.withMismatches(1);
+        String template = "ACGTACGTAAGTACGTACGT"; // base 10 (310) differs
+        BlastResult forward = TestHits.plusHit("a-F", "c1", 301, template, TestHits.PRIMER_20).withFivePrimeFree(5);
+        assertEquals(0, forward.fivePrimeFree());
+        assertEquals(311, forward.pairsAgainAfterLastMismatch());
+        assertTrue(AmpliconCaller.call(forward, TestHits.minusHit("a-R", "c1", 310), oneMismatch).isEmpty(), "on it");
+        assertTrue(AmpliconCaller.call(forward, TestHits.minusHit("a-R", "c1", 305), oneMismatch).isEmpty(), "before it");
+        assertTrue(AmpliconCaller.call(forward, TestHits.minusHit("a-R", "c1", 311), oneMismatch).isPresent(), "past it");
+        // A product that does not overlap is not concerned.
+        assertTrue(AmpliconCaller.call(forward, TestHits.minusHit("a-R", "c1", 500), oneMismatch).isPresent());
+
+        // A 3' base left out (unpaired): no primer may overlap it at all; one just past its end still faces it.
+        BlastResult cut = TestHits.truncatedPlusHit("a-F", "c1", 301, 1, 19, TestHits.PRIMER_20);
+        assertEquals(1, cut.threePrimeUncovered());
+        AmpliconOptions lenient = new AmpliconOptions(1, 1, 5, 3, 5, 0, 5000);
+        assertTrue(AmpliconCaller.call(cut, TestHits.minusHit("a-R", "c1", 315), lenient).isEmpty());
+        assertTrue(AmpliconCaller.call(cut, TestHits.minusHit("a-R", "c1", 321), lenient).isPresent());
     }
 
     @Test

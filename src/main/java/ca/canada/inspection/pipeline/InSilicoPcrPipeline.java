@@ -170,7 +170,7 @@ public final class InSilicoPcrPipeline {
         monitor.info("Child Java memory: " + context.childJavaMemoryBudgetGiB() + " GB for the BBTools programs"
                 + " running at once, at most " + ChildJavaMemory.MAX_CHILD_GIB + " GB each"
                 + (context.config().bbtoolsMemoryGiB() > 0 ? " (--memory)"
-                : " (three quarters of the memory insilicoPCR leaves free; --memory, or BBTools memory"
+                : " (three quarters of the memory insilicoPCR leaves free; --memory, or Memory for BBTools and BLAST"
                 + " in the window's FASTQ settings, sets it)"));
     }
 }

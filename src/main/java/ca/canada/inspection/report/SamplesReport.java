@@ -47,8 +47,10 @@ public final class SamplesReport {
      */
     public static Path write(Path report, Collection<Sample> samples, List<InputCheck.Issue> issues,
                              List<ReportRow> rows) {
+        // Products, not rows: one product is one assay at one place, whatever rows show it.
         Map<String, Integer> products = new TreeMap<>();
-        rows.forEach(row -> products.merge(row.sample(), 1, Integer::sum));
+        rows.stream().map(row -> List.of(row.sample(), row.assay(), row.contig(), String.valueOf(row.start()),
+                String.valueOf(row.end()))).distinct().forEach(product -> products.merge(product.getFirst(), 1, Integer::sum));
         Map<String, List<String>> lines = new TreeMap<>();
         for (Sample sample : samples) {
             lines.put(sample.getName(), List.of(sample.getName(), ANALYSED, input(sample.getFileType()),
@@ -60,7 +62,7 @@ public final class SamplesReport {
         leftOut.forEach((name, problems) -> lines.putIfAbsent(name, List.of(name, NOT_ANALYSED,
                 problems.stream().flatMap(issue -> issue.files().stream()).anyMatch(SamplesReport::reads) ? "reads"
                         : "assembly",
-                String.join("; ", problems.stream().flatMap(issue -> issue.files().stream()).distinct().toList()), "",
+                String.join("; ", problems.stream().flatMap(issue -> issue.sampleFiles().stream()).distinct().toList()), "",
                 String.join("; ", problems.stream().map(issue -> issue.problem()
                         + (issue.detail().isEmpty() ? "" : " (" + issue.detail() + ")")).toList()))));
 

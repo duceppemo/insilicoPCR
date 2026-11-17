@@ -214,8 +214,10 @@ public final class CliConfig {
             return Integer.parseInt(value);
         } catch (NumberFormatException e) {
             if (value != null && value.matches("[+-]?\\d+")) {
-                throw new IllegalArgumentException("--" + option + " is too large, got: " + value + " (at most "
-                        + Integer.MAX_VALUE + ")");
+                boolean negative = value.startsWith("-");
+                throw new IllegalArgumentException("--" + option + (negative ? " is too small" : " is too large")
+                        + ", got: " + value + (negative ? " (at least " + Integer.MIN_VALUE : " (at most "
+                        + Integer.MAX_VALUE) + ")");
             }
             throw new IllegalArgumentException("--" + option + " must be an integer, got: " + value);
         }

@@ -43,10 +43,8 @@ public final class PrimerService {
      * @param sequences     primer sequences by primer ID (the header up to the first blank), in file order
      * @param expectedSizes product sizes the headers declare ({@code size=}, {@code other=})
      * @param mixGroups     the assays the headers say share a reaction ({@code mix=})
-     */
-    /**
-     * @param warnings what the run says of the file without refusing it: a {@code key=value} word in a header that the
-     *                 program does not read
+     * @param warnings      what the run says of the file without refusing it: a {@code key=value} word in a header
+     *                      that the program does not read
      */
     public record PrimerFile(Map<String, String> sequences, ExpectedSizes expectedSizes, MixGroups mixGroups,
                              List<String> warnings) {
@@ -220,7 +218,6 @@ public final class PrimerService {
         return unaccented.replaceAll("[^\\x21-\\x7E]", "_");
     }
 
-    /** Fails on an assay that lacks a forward or a reverse primer, naming the primers it lacks. */
     /**
      * The warnings for {@code key=value} words of the headers whose key the program does not read ({@link
      * #HEADER_KEYS}): left as free text, they would start to change what the file does if a later release read
@@ -244,6 +241,7 @@ public final class PrimerService {
 
     private static final java.util.regex.Pattern UNKNOWN_KEY = java.util.regex.Pattern.compile("([A-Za-z][A-Za-z0-9_]*)=.*");
 
+    /** Fails on an assay that lacks a forward or a reverse primer, naming the primers it lacks. */
     private static void checkAssaysComplete(Iterable<String> ids, Path file) {
         List<String> missing = new ArrayList<>();
         PrimerId.byAssay(ids).forEach((assay, primers) -> {

@@ -134,6 +134,18 @@ class InputCheckTest {
     }
 
     @Test
+    void aFaultyMateIsNamedAloneAndTheIssueKeepsBothFilesOfTheSample() throws IOException {
+        // report_samples.tsv listed only the faulty mate as the sample's files.
+        write("half_R1.fastq", "@r1\nACGT\n+\n");
+        write("half_R2.fastq", READ);
+
+        InputCheck.Issue issue = InputCheck.scan(dir, Depth.FULL, 2).issues().getFirst();
+
+        assertEquals(List.of("half_R1.fastq"), issue.files());
+        assertEquals(List.of("half_R1.fastq", "half_R2.fastq"), issue.sampleFiles());
+    }
+
+    @Test
     void filesThatShareASampleNameButAreNotAPairAreLeftOut() throws IOException {
         write("both.fasta", ">c1\nACGT\n");
         write("both.fastq", READ);

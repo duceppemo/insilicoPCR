@@ -64,10 +64,18 @@ public final class InputCheck {
      * @param files   file names: one, the two mates, or the files that share a sample name
      * @param problem a few words: what kind of fault
      * @param detail  where and what
+     * @param sampleFiles all the files of the sample, the faulty one among them: both mates of a pair one of which is
+     *                    cut short ({@code report_samples.tsv} lists the sample's files, not only the faulty one)
      */
-    public record Issue(String sample, List<String> files, String problem, String detail) {
+    public record Issue(String sample, List<String> files, String problem, String detail, List<String> sampleFiles) {
         public Issue {
             files = List.copyOf(files);
+            sampleFiles = List.copyOf(sampleFiles);
+        }
+
+        /** An issue whose files are all the sample's. */
+        public Issue(String sample, List<String> files, String problem, String detail) {
+            this(sample, files, problem, detail, files);
         }
 
         /** The files and what is wrong with them. */
@@ -182,7 +190,9 @@ public final class InputCheck {
             FileFault fault = faults.get(file);
             if (fault.problem() != null) {
                 String sample = SequenceFileUtils.sampleName(file);
-                issues.add(new Issue(sample, List.of(file.getFileName().toString()), fault.problem(), fault.detail()));
+                Sample all = samples.get(sample);
+                issues.add(new Issue(sample, List.of(file.getFileName().toString()), fault.problem(), fault.detail(),
+                        all == null ? List.of(file.getFileName().toString()) : fileNames(all.files())));
                 rejected.add(sample);
             }
         }

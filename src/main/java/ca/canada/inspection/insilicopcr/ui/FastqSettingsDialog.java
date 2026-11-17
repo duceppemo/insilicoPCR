@@ -110,7 +110,7 @@ public final class FastqSettingsDialog {
                 + "\nTadpole: " + String.join(" ", settings.tadpole().arguments())
                 + "\nRead-level calls: " + RunSettings.readLevelCalls(settings.readMinFraction())
                 + "\nRead extension: " + settings.readExtension()
-                + "\nBBTools memory: " + RunSettings.bbtoolsMemory(settings.bbtoolsMemoryGiB());
+                + "\nMemory for BBTools and BLAST: " + RunSettings.bbtoolsMemory(settings.bbtoolsMemoryGiB());
     }
 
     /**
@@ -122,7 +122,7 @@ public final class FastqSettingsDialog {
     static FastqSettings parse(String k, String minSeed, String minCov, String minContig, String readFraction,
                                ReadExtensionCaller.Mode readExtension, String bbtoolsMemory) {
         int memory = bbtoolsMemory.isBlank() ? PipelineConfig.AUTOMATIC_BBTOOLS_MEMORY
-                : SettingsDialog.parseInt(bbtoolsMemory, "BBTools memory", 1);
+                : SettingsDialog.parseInt(bbtoolsMemory, "Memory for BBTools and BLAST", 1);
         TadpoleOptions tadpole = new TadpoleOptions(
                 SettingsDialog.parseInt(k, "k-mer length", TadpoleOptions.MIN_K),
                 SettingsDialog.parseInt(minSeed, "Min k-mer count to seed", TadpoleOptions.MIN_COUNT_SEED),

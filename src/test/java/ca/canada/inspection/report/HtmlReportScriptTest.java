@@ -55,8 +55,8 @@ class HtmlReportScriptTest {
         rows.add(TestRows.row("S11", "inv", 1, 300, "c2", ""));
         PrimerPanel primers = PrimerPanel.of(Map.of("16S-F", "ACGTACGTACGTACGTACGT", "16S-R", "ACGTACGTACGTACGTACGT",
                 "inv-F", "ACGTACGTACGTACGTACGT", "inv-R", "ACGTACGTACGTACGTACGT"));
-        return HtmlReport.write(Files.writeString(dir.resolve("report.tsv"), ""), rows, samples, Set.of(), primers,
-                List.of(), new RunDetails("2026-11-15 12:00", "9.9.9", List.of()), List.of(), List.of());
+        return HtmlReport.write(new HtmlReport.Input(Files.writeString(dir.resolve("report.tsv"), ""), rows, samples, Set.of(), primers,
+                List.of(), new RunDetails("2026-11-15 12:00", "9.9.9", List.of()), List.of(), List.of()));
     }
 
     /** Runs {@code actions} on the page in Chrome, then gives what they recorded in {@code out}. */
@@ -116,10 +116,11 @@ class HtmlReportScriptTest {
 
     @Test
     void aCellOfASampleBeyondTheRowsListedSaysWhereItsRowsAre() throws Exception {
-        // The page lists the first 50,000 amplicons: a click on a later sample's cell found none, and said "0 of
-        // 50000 shown" as if it had none.
+        // The page lists the first 50,000 amplicons (here 100, the same code): a click on a later sample's cell
+        // found none, and said "0 of 50000 shown" as if it had none.
+        int listed = 100;
         List<ReportRow> rows = new ArrayList<>();
-        for (int i = 0; i < HtmlReport.MAX_LISTED; i++) {
+        for (int i = 0; i < listed; i++) {
             rows.add(TestRows.row("S" + (i % 50), "16S", 1, 1500, "c" + i, ""));
         }
         rows.add(TestRows.row("Zlast", "16S", 1, 1500, "z", ""));
@@ -129,8 +130,8 @@ class HtmlReportScriptTest {
         }
         samples.add("Zlast");
         PrimerPanel primers = PrimerPanel.of(Map.of("16S-F", "ACGTACGTACGTACGTACGT", "16S-R", "ACGTACGTACGTACGTACGT"));
-        Path page = HtmlReport.write(Files.writeString(dir.resolve("report.tsv"), ""), rows, samples, Set.of(), primers,
-                List.of(), new RunDetails("2026-11-16 12:00", "9.9.9", List.of()), List.of(), List.of());
+        Path page = HtmlReport.write(new HtmlReport.Input(Files.writeString(dir.resolve("report.tsv"), ""), rows, samples, Set.of(), primers,
+                List.of(), new RunDetails("2026-11-16 12:00", "9.9.9", List.of()), List.of(), List.of(), listed));
 
         String out = run(page, """
                   document.querySelector('#grid button.chip[data-s="Zlast"][data-a="16S"]').click();
@@ -139,7 +140,7 @@ class HtmlReportScriptTest {
                   out.push(document.getElementById('rowCount').textContent);
                 """);
 
-        assertEquals("Zlast · 16S: not among the amplicons listed here; report.tsv has them|S7 · 16S: 1000 of 50000 shown", out);
+        assertEquals("Zlast · 16S: not among the amplicons listed here; report.tsv has them|S7 · 16S: 2 of 100 shown", out);
     }
 
     @Test

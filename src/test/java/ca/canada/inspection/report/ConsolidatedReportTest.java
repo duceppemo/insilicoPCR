@@ -294,5 +294,7 @@ class ConsolidatedReportTest {
                 () -> ConsolidatedReport.checkRoomFor(dir));
         org.junit.jupiter.api.Assertions.assertTrue(full.getMessage().contains("no report number is left"),
                 full.getMessage());
+        // A folder not made yet (a first run) has every number left.
+        org.junit.jupiter.api.Assertions.assertDoesNotThrow(() -> ConsolidatedReport.checkRoomFor(dir.resolve("new")));
     }
 }

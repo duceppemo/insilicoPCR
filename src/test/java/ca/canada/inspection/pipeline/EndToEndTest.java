@@ -543,6 +543,21 @@ class EndToEndTest {
     }
 
     @Test
+    void aFolderWithNoReportNumberLeftIsRefusedBeforeTheRunsWork() throws IOException {
+        // report(1000000).tsv would not be counted, and every run after it failed, after its BLAST work.
+        Path output = directory.resolve("full-out");
+        Files.createDirectories(output.resolve("consolidated_report"));
+        Files.writeString(output.resolve("consolidated_report").resolve("report(999999).tsv"), "");
+        Recorder monitor = new Recorder();
+
+        PipelineException error = assertThrows(PipelineException.class,
+                () -> pipeline(config(EXAMPLE.resolve("genomes"), output), monitor).run());
+
+        assertTrue(error.getMessage().contains("no report number is left"), error.getMessage());
+        assertFalse(Files.exists(output.resolve("primer_tmp.fasta")), "refused before the primers were prepared");
+    }
+
+    @Test
     void theMiniAssemblyGivesTheSameContigsOnOneThreadAsOnSixteen() throws IOException {
         // Its k-mers loaded on every thread, its contigs built on one: built on several, the contigs differed between
         // runs of the same reads (a circle written from another point, contigs numbered otherwise).

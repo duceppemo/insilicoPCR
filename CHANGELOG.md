@@ -1,5 +1,80 @@
 # Changelog
 
+## Unreleased
+
+### Changed (the 1.0 formats: what scripts may rely on)
+
+- `report.tsv` has every column in every report, in one order, empty where it
+  does not apply: the probe columns and `SizeCheck` were left out when no
+  assay had a probe or a size, which moved the columns after them. Renamed:
+  `Gene` to `Assay`, `Contig Description` to `ContigDescription`,
+  `ForwardPrimers`/`ReversePrimers` to `ForwardPrimer`/`ReversePrimer`,
+  `Forward5PrimeUnaligned`/`Reverse5PrimeUnaligned` to
+  `Forward5PrimeUnpaired`/`Reverse5PrimeUnpaired` (they count mismatches
+  BLAST kept aligned too, since 0.15.3). New: `Pairing` (`designed`,
+  `one-primer`, `two-assays`) and `Source` (`assembly`, `reads`,
+  `extension`), which only the primer IDs and the description's wording told.
+  The program still reads earlier reports (Open Previous Run, the gel).
+- `report_samples.tsv` beside each report: every sample, analysed or left out
+  and why, with its products counted. A sample without a product has no row
+  in `report.tsv`, and only `QAlog.txt` listed the samples.
+- `report_fastq_diagnostics.tsv`: `Gene` is `Assay`.
+- Standard output holds insilicoPCR's own lines, among them `Report written
+  to <report.tsv>` (only the HTML report was named); what BLAST+ and BBTools
+  print goes to standard error (makeblastdb's went to standard output). A
+  command-line mistake prints its message and where to look on standard
+  error, not the whole help on standard output.
+- Exit codes: 2 when the command line cannot be used as given, nothing
+  started (now also an output folder that is a file, and `-v -v`); 1 when the
+  run started and failed.
+- `--memory` is the name of `--bbtools-memory`, which sizes the BLAST searches
+  too since 0.15.3; the old name still works. In the application it is
+  **Memory for BBTools and BLAST** (**FASTQ settings…**), and `QAlog.txt` and
+  the HTML report list it for every run, not only FASTQ ones.
+- Application labels: **Max 5' unpaired bases** (was "unaligned", as the
+  report's columns), **E-value** (was "Evalue"); the gel viewer says assay,
+  not gene (**By assay**, **Assay legend**, `Assay:` in a band's details).
+  The 3'-penalty help says how an indel is scored: as a mismatch at its place,
+  plus 1 (it said "+1").
+- Primer file: `+` is refused in every assay ID (only in `mix=` assays
+  before), as the report joins two assays' names with it; a `key=value` word
+  in a header that the program does not read (`Tm=60`, a mistyped
+  `sise=420`) is named in a warning, as such words could change meaning in a
+  later release.
+
+### Fixed
+
+- Primers overlapping head to head: a 5' mismatch BLAST kept in its alignment
+  (within `--5p-truncation`) did not stop the other primer's 3' end landing on
+  it, as one left out of the alignment does since 0.15.4: such a product was
+  reported.
+- FASTQ: two read sets left out for their file names (a comma, an equals
+  sign) failed the run, the assemblies beside them with it, as if BBTools
+  could not run; they are left out with a message ("BBTools cannot be given
+  the file"), and the others are run.
+- Application: **Stop**, then **Run** into the same output folder before the
+  first run had ended, let go of its lock on Linux, and another run could
+  start in it.
+- Windows: only a folder reparse point (a junction) where a run writes is
+  refused as a link: 0.15.4 refused any reparse point, such as a file of a
+  deduplicated volume. On Linux, a link named `LOG.TXT` (not a name a run
+  writes there) is no longer refused.
+- The command line checks the primer file's sequences before it makes the
+  output folder: a primer with a letter that is not a base left an empty
+  folder behind.
+- *Primers at contig ends*: "at least N bp" is the larger of the bases on the
+  two contigs and the longer primer's length; 0.15.4 added the primer bases
+  past the contig ends, which may be on the other contig where contigs
+  overlap.
+- `--tadpole-k` longer than a sample's reads leaves its mini-assembly empty:
+  a warning says so (only blastn's "Query is Empty" did).
+- Messages: an integer too large for the program (`-m 99999999999`) is said
+  to be so, not "not an integer"; `-e -1` is named as `--evalue` and as given;
+  `-1e-400` and `0d` are no longer "too small"; the Tadpole settings give the
+  same bound for 0 and -1; a primer header with no ID says so.
+- Linux launcher: `--enable-native-access`, as on Windows: `--gel` printed
+  the JVM's "restricted method" warnings.
+
 ## 0.15.4 (2026-11-17)
 
 ### Fixed

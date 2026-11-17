@@ -90,6 +90,7 @@ The run takes well under a minute on a desktop machine (14 seconds here). It wri
 |---|---|
 | `consolidated_report/report.html` | The results as a page to read: start here |
 | `consolidated_report/report.tsv` | The same results as a table, one row per amplicon |
+| `consolidated_report/report_samples.tsv` | Every sample, with its number of products (since 1.0): the two *L. innocua* samples are there with `0` |
 | `consolidated_report/report_fastq_diagnostics.tsv` | For the read sets: assays not reported although their primers are in the reads (none in this run) |
 | `synthetic_gel_report.png` | The gel image asked for with `--gel` |
 | `detailed_report/<sample>/` | The BLAST hits behind each sample's products; for the read sets, also the baited reads and the mini-assembly |
@@ -116,7 +117,7 @@ See [HTML report](Reports#html-report) for every mark the page can show.
 
 `tutorial_results/consolidated_report/report.tsv` holds the same four amplicons as a table ([the file from this run](https://github.com/duceppemo/insilicoPCR/blob/master/docs/examples/tutorial/report.tsv); columns abridged here):
 
-| Sample | Gene | GenomeLocation | AmpliconSize | Contig | Fwd/Rev mismatches | Strand | Probe | ProbeMismatches | Fwd/Rev 5' unaligned | SizeCheck |
+| Sample | Assay | GenomeLocation | AmpliconSize | Contig | Fwd/Rev mismatches | Strand | Probe | ProbeMismatches | Fwd/Rev 5' unpaired | SizeCheck |
 |---|---|---|---|---|---|---|---|---|---|---|
 | SRR17090570 | hly702 | 660-1361 | **702** | contig_0 (Tadpole) | 0 / 0 | - | | | 0 / **1** | target |
 | SRR17090570 | hlyQ | 1257-1368 | **112** | contig_0 (Tadpole) | 0 / 0 | - | hlyQ-P | 0 | 0 / 0 | target |
@@ -126,12 +127,12 @@ See [HTML report](Reports#html-report) for every mark the page can show.
 How to read it:
 
 - Both *L. monocytogenes* samples (assembly **and** reads) are positive for **both assays**, with the expected product sizes (702 bp and 112 bp) and zero mismatches.
-- `SizeCheck` is `target` on every row: each product has the size declared for its assay. The column only exists because the primer file declares sizes; it labels rows and never removes one.
+- `SizeCheck` is `target` on every row: each product has the size declared for its assay. The column is filled only because the primer file declares sizes; it labels rows and never removes one.
 - The `hlyQ` rows carry the probe columns — the probe was found **inside** the amplicon, which is required for a qPCR assay to be called positive. The conventional `hly702` rows leave the probe columns empty.
 - The *hly* coordinates from the read samples differ from the EGD-e coordinates because they are positions on the Tadpole-assembled contig, not on a reference genome.
 - `Strand` is `-` for the read sample: Tadpole happened to assemble the *hly* region in the opposite orientation, so the assay matched the reverse strand — a reminder that assays are detected on either strand.
 - Neither *L. innocua* sample produces a row: the primers have no acceptable binding sites. **An empty result for the negative control is the expected outcome.** (You may notice a harmless `Warning: [blastn] Query is Empty!` in the console: baiting the *L. innocua* reads with *hly* primers catches nothing, so there is no assembly to search.)
-- Bonus insight: this *L. monocytogenes* strain carries a single SNP at position 4 (from the 5' end) of `hly702-R`. BLAST leaves the first four bases of the primer out of its alignment (visible in `detailed_report/SRR17090570/SRR17090570.tsv`), and `Reverse5PrimeUnaligned` counts the one of them that does not pair: `1`. 5'-proximal mismatches barely affect priming, so the hit is accepted (`--5p-truncation`, default 5) and the mismatch columns stay at `0` — exactly what a real PCR would do.
+- Bonus insight: this *L. monocytogenes* strain carries a single SNP at position 4 (from the 5' end) of `hly702-R`. BLAST leaves the first four bases of the primer out of its alignment (visible in `detailed_report/SRR17090570/SRR17090570.tsv`), and `Reverse5PrimeUnpaired` (`Reverse5PrimeUnaligned` before 1.0) counts the one of them that does not pair: `1`. 5'-proximal mismatches barely affect priming, so the hit is accepted (`--5p-truncation`, default 5) and the mismatch columns stay at `0` — exactly what a real PCR would do.
 
 ## 6. The synthetic gel
 
@@ -139,7 +140,7 @@ How to read it:
 
 ![Synthetic gel of the tutorial run](https://raw.githubusercontent.com/duceppemo/insilicoPCR/master/docs/assets/tutorial/synthetic_gel_tutorial.png)
 
-Each positive lane shows the two bands you would expect on a real gel — the 702 bp conventional product and the 112 bp qPCR product — while the negative-control lanes are loaded but empty, exactly like a wet-lab exclusivity control. Bands are colored by assay with a gene legend, matching the **Color: By gene** choice of the interactive GUI viewer (**View Gel Image**), which additionally offers colours by size check (target, other known product, unexpected), hover tooltips, pagination, and SVG/PDF export.
+Each positive lane shows the two bands you would expect on a real gel — the 702 bp conventional product and the 112 bp qPCR product — while the negative-control lanes are loaded but empty, exactly like a wet-lab exclusivity control. Bands are colored by assay with an assay legend, matching the **Color: By assay** choice (**By gene** before 1.0) of the interactive GUI viewer (**View Gel Image**), which additionally offers colours by size check (target, other known product, unexpected), hover tooltips, pagination, and SVG/PDF export.
 
 ## 7. The same run in the GUI
 
@@ -156,7 +157,7 @@ See [GUI Overview](GUI-Overview) for the other buttons and the settings dialogs.
 
 ## 8. Things to try next
 
-- Re-run with `-m 2` and watch the same four products come out, with the same sizes and mismatch counts — the assays match their target perfectly. A fifth comes out too: `hly702` on `lmono_EGDe`, 3226 bp, labelled `unexpected`, made by the same primers at two sites 3 kb apart, the forward one with 2 mismatches and 4 unpaired 5' bases (`ForwardMismatches 2`, `Forward5PrimeUnaligned 4`). A permissive `-m` lets primers pair at other places of a genome; the `SizeCheck` label tells the designed product from such one. Only the contig name and coordinates of the read sample change otherwise: `-m` also loosens read baiting, so the mini-assembly comes out differently.
+- Re-run with `-m 2` and watch the same four products come out, with the same sizes and mismatch counts — the assays match their target perfectly. A fifth comes out too: `hly702` on `lmono_EGDe`, 3226 bp, labelled `unexpected`, made by the same primers at two sites 3 kb apart, the forward one with 2 mismatches and 4 unpaired 5' bases (`ForwardMismatches 2`, `Forward5PrimeUnpaired 4`). A permissive `-m` lets primers pair at other places of a genome; the `SizeCheck` label tells the designed product from such one. Only the contig name and coordinates of the read sample change otherwise: `-m` also loosens read baiting, so the mini-assembly comes out differently.
 - Re-run with `-l 100`: the 112 bp qPCR product now exceeds the maximum length and disappears; `--min-length 200` would drop it too.
 - Remove the two `size=` words from the primer file and re-run: `report.tsv` loses its `SizeCheck` column and the HTML report shows the same four products in blue, as amplified with no size to compare with.
 - Declare a wrong size instead (`>hly702-F size=500`) and re-run: the 702 bp products are still reported, now labelled `unexpected`, and the HTML report no longer counts them as positive. Nothing is hidden; the label only tells the reader what the size means.

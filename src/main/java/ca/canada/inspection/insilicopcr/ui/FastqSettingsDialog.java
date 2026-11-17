@@ -75,13 +75,16 @@ public final class FastqSettingsDialog {
                         + ReadExtensionCaller.Mode.DEFAULT + ".");
 
         dialog.section("Memory");
-        TextField bbtoolsMemory = dialog.field("BBTools memory (GB, empty: automatic)",
+        // For assemblies too: it sizes the BLAST searches running at once (since 0.15.3), not only BBTools.
+        TextField bbtoolsMemory = dialog.field("Memory for BBTools and BLAST (GB, empty: automatic)",
                 current.bbtoolsMemoryGiB() > 0 ? String.valueOf(current.bbtoolsMemoryGiB()) : "",
-                "Memory the BBTools programs running at once share (--memory): "
-                        + ca.canada.inspection.pipeline.ChildJavaMemory.limits() + ". Set it on a computer shared with "
-                        + "others. Empty: " + RunSettings.bbtoolsMemory(PipelineConfig.AUTOMATIC_BBTOOLS_MEMORY) + ".");
+                "Memory the BBTools programs running at once share (FASTQ input: "
+                        + ca.canada.inspection.pipeline.ChildJavaMemory.limits() + "), and that the BLAST searches"
+                        + " running at once share, about 2 GB each, for assemblies too (--memory). Set it on a computer"
+                        + " shared with others. Empty: " + RunSettings.bbtoolsMemory(PipelineConfig.AUTOMATIC_BBTOOLS_MEMORY)
+                        + ".");
 
-        return dialog.show(owner, "FASTQ settings", "Settings used only for FASTQ (read) input",
+        return dialog.show(owner, "FASTQ settings", "Settings for FASTQ (read) input, and memory",
                 () -> parse(k.getText(), minSeed.getText(), minCov.getText(), minContig.getText(),
                         readFraction.getText(), readExtension.getValue(), bbtoolsMemory.getText()),
                 () -> {

@@ -7,11 +7,12 @@ insilicoPCR produces report files that summarize primer hits, predicted amplicon
 - runtime and quality logs (`QAlog.txt`): the version, the input files and samples, every setting that decides the results (each with its command-line option: mismatches, 3'/5' rules, product length, BLAST e-value, threads, input check, and the FASTQ settings when there are reads), the versions of the tools used (`Tools:` BLAST+, BBTools, Java; since 0.15.3), the assays sharing a reaction (`mix=`), then what the run found worth a note. The run's log lists the same settings at its start, and the HTML report under **Run details** (the e-value, threads, input check and Tadpole settings since 0.15.2)
 - detailed per-sample BLAST hit tables (`detailed_report/<sample>/<sample>.tsv`)
 - consolidated TSV report (`consolidated_report/report.tsv`)
+- the samples of the run (`consolidated_report/report_samples.tsv`, since 1.0): every sample, analysed or left out, with its number of products; see [Samples file](#samples-file)
 - HTML report (`consolidated_report/report.html`): the same results as a page to read; see [HTML report](#html-report)
 - FASTQ-mode diagnostics (`consolidated_report/report_fastq_diagnostics.tsv`), when any input is FASTQ
 - with `--gel`, the synthetic gel as `synthetic_gel_report.png` in the output folder (`synthetic_gel_report(1).png` for `report(1).tsv`); in the application, from its gel viewer
 
-If a `report.tsv` already exists in the output folder, a new run writes `report(1).tsv`, `report(2).tsv`, and so on instead of overwriting it, each with its own log (`QAlog(1).txt`, `QAlog(2).txt`) since 0.15.2. `detailed_report/` holds the latest run's files.
+If a `report.tsv` already exists in the output folder, a new run writes `report(1).tsv`, `report(2).tsv`, and so on instead of overwriting it, each with its own log (`QAlog(1).txt`, `QAlog(2).txt`) since 0.15.2. The files of a report are named after it: `report(1).html`, `report(1)_samples.tsv`, `report(1)_fastq_diagnostics.tsv`. `detailed_report/` holds the latest run's files.
 
 ## HTML report
 
@@ -66,28 +67,53 @@ than from the mini-assembly.
 ## Consolidated report
 
 
-The consolidated report is the primary summary table: one row per predicted amplicon that passed the [amplicon calling rules](Amplicon-Calling).
+The consolidated report is the primary summary table: one row per predicted amplicon that passed the [amplicon calling rules](Amplicon-Calling). A sample with no product has no row: [`report_samples.tsv`](#samples-file) lists every sample.
 
-A cell a spreadsheet would take for a formula (it starts with `=` or `@`, or with `+` or `-` and is not a number: a contig description `=HYPERLINK(...)`, a sample file named `-ctrl.fasta`) is written after an apostrophe, since 0.15.3: `'-ctrl`. Excel and LibreOffice then show the text as it is, where they showed `#NAME?`, or a link to follow; the program's own readers (the gel, **Open Previous Run**) take the apostrophe off, and so should a script that reads the report.
+### File format
+
+Since 1.0, every report has every column, in one order, whatever the primer file holds; a column that does not apply to a row is empty. The header line is the format:
+
+```text
+Sample	Assay	GenomeLocation	AmpliconSize	Contig	ContigDescription	ForwardPrimer	ReversePrimer	ForwardMismatches	ReverseMismatches	Forward3PrimeMismatches	Reverse3PrimeMismatches	Strand	Probe	ProbeLocation	ProbeSize	ProbeMismatches	Forward5PrimeUnpaired	Reverse5PrimeUnpaired	Pairing	Source	SizeCheck
+```
+
+Before 1.0, the probe columns were there only when an assay of the primer file had a probe, and `SizeCheck` only when an assay declared a size, so the columns after them moved from one primer file to the next. Columns renamed in 1.0:
+
+| Before 1.0 | Since 1.0 |
+|---|---|
+| `Gene` | `Assay` |
+| `Contig Description` | `ContigDescription` |
+| `ForwardPrimers` / `ReversePrimers` | `ForwardPrimer` / `ReversePrimer` |
+| `Forward5PrimeUnaligned` / `Reverse5PrimeUnaligned` | `Forward5PrimeUnpaired` / `Reverse5PrimeUnpaired` |
+
+`Pairing` and `Source` are new in 1.0. The application still reads reports written before 1.0, under their old column names (**Open Previous Run**, the gel).
+
+What a script can rely on:
+
+- The file is UTF-8 without a byte-order mark; every line ends in LF (`\n`), on every system; the cells of a line are separated by tabs; the first line is the header.
+- A tab or a line break in a value (a FASTA header's description may hold one) is written as a space.
+- A cell a spreadsheet would take for a formula (it starts with `=` or `@`, or with `+` or `-` and is not a number: a contig description `=HYPERLINK(...)`, a sample file named `-ctrl.fasta`) is written after an apostrophe, since 0.15.3: `'-ctrl`. Excel and LibreOffice then show the text as it is, where they showed `#NAME?`, or a link to follow. A value that starts with an apostrophe followed by such text gets one more (`'-a` is written `''-a`). To read a cell back, take off a leading apostrophe when the rest of the cell would itself be written after one; the program's own readers (the gel, **Open Previous Run**) do so. A strand `-` and a number such as `-5` are written as they are.
+- A value that starts and ends with a double quote (a file named `"isolate 7".fasta`) is quoted as a spreadsheet quotes it: between double quotes, each of its own doubled (`"""isolate 7"""`). To read such a cell back, take off the outer quotes and make each doubled quote one.
+- The rows are in this order: by sample name, compared as Java compares strings (character by character, case-sensitive: `ISO2` before `iso1`, and `iso10` before `iso2`); within a sample, first the products found on its sequences (an assembly's contigs, or the mini-assembly of reads), assay by assay in name order, each assay's products in the order they are found (its designed products before those of one primer alone; its primers in primer-file order, a degenerate primer's variants in [their order](Primer-FASTA-Format#degenerate-bases), then BLAST's order of the hits: not by position), then the products of two assays that share a reaction (`mix=`); then, for reads, the products called from reads, then those called by extending reads. The same data and settings give the same order on every run.
 
 ### Standard PCR mode columns
 
 | Column | Meaning |
 |---|---|
 | `Sample` | Sample name (from the input file name) |
-| `Gene` | Assay name (primer ID without the `-F`/`-R`/`-P` suffix); for a product of two assays that share a reaction (`mix=`), their names joined by `+` (`stxQ+toxA`), since 0.15.3 |
+| `Assay` | Assay name (primer ID without the `-F`/`-R`/`-P` suffix); for a product of two assays that share a reaction (`mix=`), their names joined by `+` (`stxQ+toxA`), since 0.15.3 |
 | `GenomeLocation` | 1-based start-end of the product on the contig; on a circular sequence, a product across its origin starts after it ends (`1780-279`, since 0.15.3) |
-| `AmpliconSize` | Product length in bp: both primers in full and the template between their 3' ends. It can differ from the span of `GenomeLocation`: by the length of an insertion or deletion in a primer site, and round a circle's origin, where the location starts after it ends (see [Amplicon Calling](Amplicon-Calling)) |
+| `AmpliconSize` | Product length in bp: both primers in full and the template between their 3' ends. It can differ from the span of `GenomeLocation`: by the length of an insertion or deletion BLAST places inside a primer site, and round a circle's origin, where the location starts after it ends (see [Amplicon Calling](Amplicon-Calling)) |
 | `Contig` | Contig/sequence ID the product sits on |
-| `Contig Description` | Free text from the contig FASTA header |
-| `ForwardPrimers` / `ReversePrimers` | Primer IDs that formed the pair (degenerate variants keep their `_n` suffix). Since 0.15.3 they can name one role twice (`toxA-F` and `toxA-F`: a product of one primer alone, at an inverted repeat) or two assays (a product of two assays in one reaction); the first is then the primer on the plus strand. The HTML report tags such a product **one primer** or **two assays**, and says why in the cell's hover text. See [Amplicon Calling](Amplicon-Calling#stage-2-amplicon-calling) |
+| `ContigDescription` | Free text from the contig FASTA header; for a product called from reads, how the reads support it (below) |
+| `ForwardPrimer` / `ReversePrimer` | Primer IDs that formed the pair (degenerate variants keep their `_n` suffix). Since 0.15.3 they can name one role twice (`toxA-F` and `toxA-F`: a product of one primer alone, at an inverted repeat) or two assays (a product of two assays in one reaction); the first is then the primer on the plus strand, and `Pairing` says which it is. The HTML report tags such a product **one primer** or **two assays**, and says why in the cell's hover text. See [Amplicon Calling](Amplicon-Calling#stage-2-amplicon-calling) |
 | `ForwardMismatches` / `ReverseMismatches` | Mismatches + indels for each primer, as counted against `-m`. The 3' bases BLAST trimmed off its alignment are compared with the template and counted when they do not pair; a 3' base beyond the end of a contig or read counts too. Unpaired 5' bases are not included (see [Primer binding columns](#primer-binding-columns)) |
 | `Forward3PrimeMismatches` / `Reverse3PrimeMismatches` | Number of imperfections within the 3'-end window (default last 5 bases) |
 | `Strand` | `+` when the forward primer matched the plus strand; `-` when the assay matched the reverse strand |
 
 ### qPCR/probe columns
 
-When at least one assay in the primer file defines a `-P` probe, the report appends:
+After `Strand`, in every report since 1.0 (before, only when at least one assay in the primer file defined a `-P` probe), and empty on a row without a probe:
 
 | Column | Meaning |
 |---|---|
@@ -100,32 +126,41 @@ For an assay that defines a probe, a row is only written when the probe lies ent
 
 ### Primer binding columns
 
-After the columns above (and the probe columns, when present):
+After the probe columns:
 
 | Column | Meaning |
 |---|---|
-| `Forward5PrimeUnaligned` / `Reverse5PrimeUnaligned` | Bases within `--5p-truncation` of the primer's 5' end that do not pair with the template: the bases BLAST left out of its alignment that differ from the template (bases beyond the end of a contig or read count too), and, since 0.15.3, the mismatches and indels it kept aligned there |
+| `Forward5PrimeUnpaired` / `Reverse5PrimeUnpaired` | Bases within `--5p-truncation` of the primer's 5' end that do not pair with the template: the bases BLAST left out of its alignment that differ from the template (bases beyond the end of a contig or read count too), and, since 0.15.3, the mismatches and indels it kept aligned there. Named `Forward5PrimeUnaligned` / `Reverse5PrimeUnaligned` before 1.0 |
 
 The first `--5p-truncation` bases (default 5) may differ from the template, whether BLAST left them out or aligned them, and are **not** counted in the mismatch columns.
 A row can therefore show `0` mismatches for a primer that is held by its 3' end only. With
 `--5p-truncation 8`, a 17-base primer is accepted on a 9-base match:
 
 ```text
-ForwardPrimers  ForwardMismatches  Forward3PrimeMismatches  Forward5PrimeUnaligned
-assay-F         0                  0                        8
+ForwardPrimer  ForwardMismatches  Forward3PrimeMismatches  Forward5PrimeUnpaired
+assay-F        0                  0                        8
 ```
 
 Compare the number with the primer's length. Six unaligned bases of a 22-mer leave 16 bound, which a
 reaction tolerates; eight of a 17-mer leave 9, which will not anneal at a normal annealing temperature. The
 HTML report gives both numbers (`9 of 17 bases`) and marks such products with `◐`.
 
-### Size label column
+### Pairing and source columns
 
-When at least one assay in the primer file [declares product sizes](Primer-FASTA-Format#declaring-product-sizes-optional), the report ends with:
+Since 1.0, after the primer binding columns (before, only the primer IDs and the wording of `ContigDescription` told these apart):
 
 | Column | Meaning |
 |---|---|
-| `SizeCheck` | `target`: the product the assay is designed to give (`size=`). `other`: another product it is known to give (`other=`). `unexpected`: a size the primer file does not declare. Empty for an assay that declares nothing |
+| `Pairing` | How the primers came together: `designed` (an assay's forward primer with its reverse primer), `one-primer` (one role twice: a product of one primer alone) or `two-assays` (primers of two assays that share a reaction, `mix=`). See [Amplicon Calling](Amplicon-Calling#stage-2-amplicon-calling) |
+| `Source` | What the product was called on: `assembly` (a contig of an assembly, or of the mini-assembly of reads), `reads` (a read or merged pair: a [read-level call](#read-level-calls)) or `extension` (an extended read: a [read-extension call](#read-extension-products-longer-than-a-read)) |
+
+### Size label column
+
+The last column. It is filled for the assays that [declare product sizes](Primer-FASTA-Format#declaring-product-sizes-optional) in the primer file (before 1.0 the column was there only when at least one assay declared a size):
+
+| Column | Meaning |
+|---|---|
+| `SizeCheck` | `target`: the product the assay is designed to give (`size=`). `other`: another product it is known to give (`other=`). `unexpected`: a size the primer file does not declare. Empty for an assay that declares nothing, and for a product of two assays |
 
 The label is information only. Every product is reported whatever its size, with or without a declaration; an `unexpected` row is a product a real PCR would amplify too.
 
@@ -142,6 +177,22 @@ A sequence whose header says it is circular is searched as a circle whatever its
 A product across the origin is reported with its location starting after it ends: on a 3,000-bp plasmid, `2901-100` is 2,901 to 3,000 then 1 to 100, 200 bp. A primer or probe site across the origin is found whole. In the per-sample BLAST table (`detailed_report/<sample>/<sample>.tsv`) such a site ends past the sequence's length (`2989-3012` on a 3,000-bp circle): its positions go on past the origin, where the report gives them on the circle (`2989-12`). A circle is never in the HTML report's *Primers at contig ends* (`◇`): it has no ends.
 
 The mini-assembly builds its contigs on one thread, since 0.15.3: built on several, its contigs differed between runs of the same reads (a circle written from another point, contigs numbered otherwise, now and then one lost or joined), and so did the report. Its k-mers are still loaded on every thread (Tadpole's `buildthreads=1`, with `ways=31`): the same contigs as on one thread throughout. On 9.7 million baited reads it takes 112 s (305 s on one thread throughout, 43 s on 16 threads throughout, with contigs that varied).
+
+## Samples file
+
+Since 1.0, every report has beside it `report_samples.tsv` (`report(1)_samples.tsv` beside `report(1).tsv`): one line per sample of the run, analysed or left out. A sample with no product has no row in `report.tsv`; this file is where a script finds it, as a negative. Before 1.0 only `QAlog.txt` listed the samples.
+
+| Column | Meaning |
+|---|---|
+| `Sample` | Sample name |
+| `Status` | `analysed`, or `not-analysed`: a sample left out for a faulty input file (see [Input check](Running-Analyses#input-check)) |
+| `Input` | `assembly` or `reads` |
+| `Files` | The sample's file names (not their folders), joined with `; ` |
+| `Products` | The number of rows the sample has in `report.tsv`: `0` for an analysed sample with no product. Empty for a sample not analysed, which is neither positive nor negative |
+| `Reason` | For a sample not analysed, what is wrong with its files, as in the warning (several joined with `; `); empty otherwise |
+
+The lines are sorted by sample name, in the order of `report.tsv`. The file is written as `report.tsv` is: UTF-8 without a byte-order mark, LF line ends, tabs between cells, and its cells written the same way ([File format](#file-format)).
+
 ## Detailed per-sample reports
 
 The `detailed_report` folder keeps each sample's BLAST hits that the rules accept (with a header line), the ones its products are made from: useful for auditing a call. Columns follow BLAST `-outfmt "6 qseqid sseqid positive mismatch gaps evalue bitscore slen length qstart qend qseq sstart send sseq"`. Before 0.15.3 it kept every alignment blastn wrote, rejected ones included: 1.5 million lines (140 MB) for one bacterial genome and a 40-assay panel, of which a few thousand were primer sites. A sequence longer than 1 Mb (a chromosome) is searched in overlapping pieces of 1 Mb, since 0.15.3: BLAST's e-value grows with the length of the sequence searched, and on a whole chromosome a primer site within `-m 2` or `-m 3` could get one above the cut-off and be dropped, though a draft of the same genome kept it. The hits are put back on the sequence, at its own positions, so the table and the report show it whole; each hit comes from the one piece that holds it whole (the pieces share 1,000 bases, each half of the share belonging to one of them).
@@ -155,8 +206,11 @@ whole families of rRNA, mitochondrial and repeat reads that share a short k-mer 
 since 0.15.3 those reads are trimmed of adapter read-through and poly-G tails first, an adapter in one baiting every
 adapter dimer of the library),
 the baited reads are micro-assembled with Tadpole, and the primers are BLASTed against the resulting contigs. The mini-assembly can **omit the target region** or **break inside the
-amplicon**, so the forward and reverse primers land on different contigs. Recruitment only reaches about one
-fragment length beyond each primer, so amplicons longer than roughly two fragment lengths always end up split.
+amplicon**, so the forward and reverse primers land on different contigs. Recruitment reaches only so far from
+each primer: the reads holding a primer site come with their mates (about one fragment length), and the second
+baiting adds the pairs that share a k-mer with one of them, mates included (about one more). A product longer than
+the baited reads cover from its two primers cannot be assembled whole, and the longer the product, the more often
+the assembly breaks inside it; [read extension](#read-extension-products-longer-than-a-read) baits further, in rounds.
 Baiting allows `-m` substitutions (at most 3, BBDuk's limit: `-m 4` and more stopped every run with reads before 0.15.3) and `-m` indels (at most 2: none at `-m 0`) on k-mers shorter than the primers by `--5p-truncation` (at least
 16 plus `-m` bases, and shorter than the shortest primer; since 0.15.3, before which they were as long as the shortest
 primer, substitutions only): a primer site with more differences may still bait no read, a
@@ -202,11 +256,11 @@ and gets its own row, like separate bands on a gel. Sizes within 10 bp of each o
 variants of a single locus. A product the mini-assembly already reports is not repeated; a product it lacks is
 added even when the assembly reports the same assay at another size. As everywhere in insilicoPCR, every
 product a real PCR would amplify is reported, whatever its size: check `AmpliconSize` against the size the
-assay is designed for before calling a test positive (the optional [`SizeCheck` column](#size-label-column)
-does that comparison for you).
+assay is designed for before calling a test positive (the [`SizeCheck` column](#size-label-column)
+does that comparison for you when the primer file declares the size).
 
 Read-level rows appear in `report.tsv` like any other amplicon, with the representative read as `Contig` (its
-coordinates are on that read) and a `Contig Description` starting with `FASTQ read-level call:` and giving the
+coordinates are on that read), `Source` `reads`, and a `ContigDescription` starting with `FASTQ read-level call:` and giving the
 support, e.g. `complete amplicon in 17 of 25 informative read(s) (68%)`. Reads are counted per DNA fragment:
 the two unmerged reads of one pair count once, whether supporting or informative.
 
@@ -240,9 +294,11 @@ of its primers**, the reads themselves are therefore extended (which assays exac
 5. Such a product is then **checked against the sample's read pairs**, described below, and reported only when
    they support it over its whole length. Each product reported gets its own row.
 
-The two-sided rule keeps out an extension that takes a wrong branch on its own: the reads of the other primer,
-extended the other way, do not give the same product. On the test runs a real product was held by 67 to 98% of
-the extended reads of each side, and such a false join by one read of one side.
+Before 0.15.3, the rule was two-sided, 2 extended reads from each primer: it kept out an extension that takes a
+wrong branch on its own, which the reads of the other primer, extended the other way, do not follow (on the test
+runs a real product was held by 67 to 98% of the extended reads of each side, and such a false join by one read of
+one side), but it also kept out both products of a locus of two. A product held from one side only is now called,
+and what keeps out a wrong branch, taken from one side or from both, is the read-pair check.
 
 **The read-pair check.** Where two places in the genome share a repeat, an extension can enter the repeat at
 one place and leave it at the other, and it does so from both primers alike: both sides then agree on a product
@@ -273,7 +329,7 @@ to 350 bases at 60x, 200 to 250 at 20x) are withheld together with the traps the
 
 Unpaired reads are their own fragments: the same rules apply, with windows no longer than a read.
 
-Rows called this way have a `Contig Description` starting with `FASTQ read-extension call:` and giving the
+Rows called this way have `Source` `extension` and a `ContigDescription` starting with `FASTQ read-extension call:` and giving the
 support, e.g. `142 of 150 forward-seeded and 145 of 150 reverse-seeded reads` and `every 150-base window held
 by at least 2403 read pairs`. `Contig` is the extended read (`extended_read_<n>`), and the coordinates are on
 it. Kept under `detailed_report/<sample>/`: `_extensionSeeds.fasta`, `_extendedReads.fasta`,
@@ -290,7 +346,7 @@ What the extension does not do:
 - It does not overrule the read-level rules. A product seen in too few reads to report (`WEAK_READ_SUPPORT`)
   stays unreported: the assay is not extended for it, and if the extended reads hold it, it is not added.
 - It does not weigh the product against the rest of the sample as the 30% rule does. A product needs 2 extended
-  reads per side, whatever share of the seeds they are; the counts are in the row for you to judge. A primer
+  reads seeded from one primer, whatever share of the seeds they are; the counts are in the row for you to judge. A primer
   that also matches elsewhere in the genome gives seeds that never reach the product, which lowers the share
   without meaning anything.
 - It needs coverage: with a handful of reads carrying the primers (single juveniles in the test runs) the
@@ -307,7 +363,7 @@ What the extension does not do:
 | `target` | Those, and an assay that declares a target size (`size=`) of which the sample shows no product yet, whatever other products it shows. Use it when an assay can give a short product somewhere else and its real, long product would otherwise never be looked for |
 | `off` | None; long products are then left at `NOT_IN_READS` |
 
-In every case reads must carry both primers, and the two-sided rule decides the call. A product the extended
+In every case reads must carry both primers, and a product needs 2 extended reads seeded from one primer (rule 4) and the read pairs' support. A product the extended
 reads hold at a size the sample already shows (on a contig or in reads, within 10 bp) is not reported a second
 time. The extension adds from a few seconds to a few minutes per sample that has such an assay (the read-pair
 check reads the input once more when a product needs checking), and nothing otherwise. The value used is recorded in `QAlog.txt` and in the HTML report.
@@ -336,7 +392,7 @@ and `_extensionReads.fastq.gz`.
 
 | Column | Meaning |
 |---|---|
-| `Sample` / `Gene` | Sample and assay |
+| `Sample` / `Assay` | Sample and assay (`Assay` was named `Gene` before 1.0) |
 | `Status` | What the reads show; see below |
 | `Assembly` | Why the mini-assembly did not report it; see below |
 | `ReadsWithForward` / `ReadsWithReverse` / `ReadsWithProbe` | Baited reads (or merged pairs) holding the whole oligo with an accepted hit; every oligo a read carries is counted, and a read matching several variants of a degenerate primer counts once |
@@ -346,7 +402,7 @@ and `_extensionReads.fastq.gz`.
 | Status | Meaning |
 |---|---|
 | `CALLED_FROM_READS` | Reported in `report.tsv` from reads |
-| `CALLED_BY_EXTENSION` | A product that no contig and no read holds, but reads extended from both primers do, and that the read pairs support: reported in `report.tsv` (`FASTQ read-extension call`). `ReadDetail` gives the size and the extended reads holding it per side, then any product withheld or held by too few extended reads. With `--read-extension target` the assay can show other products too (`Assembly` is then `OTHER_PRODUCT_ONLY`) |
+| `CALLED_BY_EXTENSION` | A product that no contig and no read holds, but at least 2 reads extended from one of its primers do, and that the read pairs support: reported in `report.tsv` (`FASTQ read-extension call`). `ReadDetail` gives the size and the extended reads holding it per side, then any product withheld or held by too few extended reads. With `--read-extension target` the assay can show other products too (`Assembly` is then `OTHER_PRODUCT_ONLY`) |
 | `EXTENSION_NOT_SUPPORTED_BY_PAIRS` | Extended reads hold a product, but read pairs do not span one of its windows, or are too few to verify it. **Not reported, and warned about**: this is what a wrong turn through a repeat looks like. `ReadDetail` gives the weakest window, its position and the median |
 | `EXTENSION_THROUGH_UNRESOLVED_REPEAT` | Extended reads hold a product that passes through a repeat with another copy in the sample, longer than the read pairs can bridge. **Not reported, and warned about**: a real product and a wrong turn look the same there. `ReadDetail` gives the repeat's position |
 | `WEAK_READ_SUPPORT` | Complete amplicons in reads, but fewer than 2 or under `--read-min-fraction` (default 30%) of informative reads. **Not reported, and warned about**: contamination, index hopping, a mixed sample, or a locus of which only some copies match the assay. Inspect the reads before trusting either answer |

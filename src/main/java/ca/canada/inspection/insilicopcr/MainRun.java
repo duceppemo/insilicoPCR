@@ -227,7 +227,7 @@ public class MainRun extends Application {
     }
 
     private TextField addEvalueControls(GridPane pane) {
-        var prompt = promptText("Evalue");
+        var prompt = promptText("E-value");
         prompt.setTextAlignment(TextAlignment.LEFT);
         var box = new HBox(10, prompt);
         box.setAlignment(Pos.TOP_LEFT);

@@ -73,7 +73,7 @@ Standard PCR assays and qPCR/probe assays can be mixed in the same primer FASTA 
 - an assay **with** a `-P` probe is reported only when the probe is also found inside the amplicon;
 - an assay **without** a probe is reported on its primer pair alone.
 
-When at least one assay defines a probe, the consolidated report includes the probe columns; they are left empty on rows of probe-less assays.
+The consolidated report has the probe columns whatever the primer file holds (since 1.0; before, only when at least one assay defined a probe); they are left empty on rows of probe-less assays.
 
 ## Degenerate bases
 
@@ -84,24 +84,24 @@ Supported bases include:
 | Code | Bases |
 |---|---|
 | `R` | A or G |
-| `Y` | C or T |
-| `S` | C or G |
+| `Y` | T or C |
+| `S` | G or C |
 | `W` | A or T |
-| `K` | G or T |
+| `K` | T or G |
 | `M` | A or C |
-| `B` | C, G, or T |
-| `D` | A, G, or T |
-| `H` | A, C, or T |
+| `B` | T, G, or C |
+| `D` | A, T, or G |
+| `H` | A, T, or C |
 | `V` | A, C, or G |
-| `N` | A, C, G, or T |
+| `N` | A, T, C, or G |
 
 Sequences should not include spaces, fluorophore names, quencher names, or non-IUPAC sequence characters. If a probe has labels such as FAM or BHQ1, remove those labels and keep only the nucleotide sequence.
 
 Each degenerate oligo is searched as every sequence it stands for, up to 65,536 (eight `N`). A more degenerate one stops the run with `Primer <ID> is too degenerate`; an inosine written as `N` counts as four bases.
 
-The run also stops on a record without a sequence (`Primer toxA-P has no sequence in the primer file ...`) and on an ID used twice (`Primer ID toxB-F appears twice ...`; give each its own ID, such as `toxB-F_1`, `toxB-F_2`). Before 0.15.2 both were silent: a probe without a sequence turned its qPCR assay into a PCR assay reported on its primers alone, and of two records with one ID only the last was searched.
+The run also stops on a record without a sequence (`Primer toxA-P has no sequence in the primer file ...`) and on an ID used twice (`Primer ID toxB-F appears twice ...`; give each its own ID, such as `toxB-F_1`, `toxB-F_2`). Before 0.15.2 both were silent: a probe without a sequence turned its qPCR assay into a PCR assay reported on its primers alone, and of two records with one ID only the last was searched. A header with no ID, a `>` with nothing after it, stops the run with `The primer file ... has a header with no ID` since 1.0 (before, with a message about the naming convention and a blank where the ID goes).
 
-The sequences of a degenerate primer are named by its ID followed by `_0`, `_1`, and so on, so no other primer of the file may have one of those IDs (`X-F_1` beside a degenerate `X-F`): the run stops with `Primer X-F is degenerate: its sequences are named X-F_0 to ...`. It also stops on a file with no primer, or with a sequence before its first `>` line. Before 0.15.2 the first replaced a sequence of the degenerate primer, and the others left the run with no primer to search, without a word.
+The sequences of a degenerate primer are named by its ID followed by `_0`, `_1`, and so on, and the report names the variants that make a product by these IDs. They are numbered in this order: the degenerate base nearest the 5' end changes slowest and the one nearest the 3' end fastest, each code's bases taken in the order of the table above. `toxA-F` = `TTGRCAAY` gives `toxA-F_0` `TTGACAAT`, `toxA-F_1` `TTGACAAC`, `toxA-F_2` `TTGGCAAT` and `toxA-F_3` `TTGGCAAC`. A primer without a degenerate base keeps its ID. No other primer of the file may have one of those IDs (`X-F_1` beside a degenerate `X-F`): the run stops with `Primer X-F is degenerate: its sequences are named X-F_0 to ...`. It also stops on a file with no primer, or with a sequence before its first `>` line. Before 0.15.2 the first replaced a sequence of the degenerate primer, and the others left the run with no primer to search, without a word.
 
 The primer file may have any name, and may be gzipped (`primers.fasta.gz`), in the application as on the command line. Before 0.15.2 the application refused a primer file not named like a FASTA file (`primers.txt`), and accepted a gzipped one that the run then could not read.
 
@@ -145,7 +145,7 @@ The first is read as the ID `speciesA`, which has no role suffix; the second end
 insilicoPCR reports **every** product a primer pair would amplify, whatever its size, as a real PCR does. An
 assay that gives a product of the wrong size is still a positive PCR; whether the *test* is positive is for
 you to decide from `AmpliconSize`. To make that reading easier, a header can say which sizes the assay is
-known to give. The report then gets a `SizeCheck` column that labels each row. **Nothing is filtered or
+known to give. The report's `SizeCheck` column then labels each of its rows. **Nothing is filtered or
 hidden**: the rows are the same with or without the declaration.
 
 ```fasta
@@ -177,15 +177,19 @@ Values are in bp:
 
 Rules:
 
-- Put the words on the header of any one primer of the assay (`-F`, `-R` or `-P`), after the ID. Other words
-  on the header are free text and are ignored.
+- Put the words on the header of any one primer of the assay (`-F`, `-R` or `-P`), after the ID. The keys
+  `size`, `other` and `mix` are read in any letter case (`Size=434` is `size=434`). Other words on the header
+  are free text and are ignored; since 1.0, a word of the form `key=value` with another key (`Tm=60`, a mistyped
+  `sise=420`) is named in a warning (`Warning: the header of primer ... holds Tm=60, which insilicoPCR does not
+  read ...`) and ignored: a later release might read it, and a mistyped key was ignored without a word. Write
+  such a note otherwise (`Tm 60`).
 - `size=` and `other=` can sit on different primers of the same assay. Giving the same word twice for one
   assay is accepted only when the values agree.
 - A size that matches both `size=` and `other=` is labelled `target`.
 - An assay that declares `other=` must declare `size=` too: without a target, none of its products could ever be positive. Such a primer file is refused (since 0.15.3).
 - A value that cannot be read (`size=434bp`, `size=450-420`) stops the run with a message naming the primer.
-- The column appears only when at least one assay declares a size, so reports of primer files without
-  declarations are unchanged. The ranges used are recorded in `QAlog.txt`.
+- The column is in every report since 1.0, empty for the assays that declare nothing (before, it appeared
+  only when at least one assay declared a size). The ranges used are recorded in `QAlog.txt`.
 - The declaration does not change `--min-length`/`--max-length`: a product outside those limits is still not
   reported, declared or not.
 
@@ -205,4 +209,4 @@ ATGTCCGTAATGTAGGCGAAA
 ...
 ```
 
-The primers of the assays of one group then also pair with each other, any role with any role, as they would in the tube: such a product is reported under the two assays' names joined by `+` (`stxQ+toxA`), tagged **two assays** in the HTML report (see [Amplicon Calling](Amplicon-Calling#stage-2-amplicon-calling)). `its`, without `mix=`, is run on its own, as every assay of a file without `mix=` is. An assay is in one reaction: two different `mix=` names for one assay are refused, and so is an assay named as a product of two assays of one reaction (an assay `a+b` beside `a` and `b` sharing `mix=`). A primer two assays of a reaction share can be written under each one's ID: the product it makes is reported once (see [Amplicon Calling](Amplicon-Calling#stage-2-amplicon-calling)). `QAlog.txt` lists the groups. Since 0.15.3. Since 0.15.3 an assay that shares a reaction may not have `+` in its ID: `a` with `b+c`, and `a+b` with `c`, would both be reported as `a+b+c`.
+The primers of the assays of one group then also pair with each other, any role with any role, as they would in the tube: such a product is reported under the two assays' names joined by `+` (`stxQ+toxA`), tagged **two assays** in the HTML report (see [Amplicon Calling](Amplicon-Calling#stage-2-amplicon-calling)). `its`, without `mix=`, is run on its own, as every assay of a file without `mix=` is. An assay is in one reaction: two different `mix=` names for one assay are refused, and so is an assay named as a product of two assays of one reaction (an assay `a+b` beside `a` and `b` sharing `mix=`). A primer two assays of a reaction share can be written under each one's ID: the product it makes is reported once (see [Amplicon Calling](Amplicon-Calling#stage-2-amplicon-calling)). `QAlog.txt` lists the groups. Since 0.15.3. No assay ID may hold `+`, since 1.0, as the report joins two assays' names with it (`Assay ... has '+' in its ID ...`): before, only an assay that shared a reaction was refused (`a` with `b+c`, and `a+b` with `c`, would both be reported as `a+b+c`), and an assay `a+b` run on its own still read as a product of two assays.

@@ -53,6 +53,7 @@ grid has one row per sample and one column per assay, and shows which samples ar
 size in each cell. Then review, as needed:
 
 - `consolidated_report/report.tsv`: the same results as a table, one row per amplicon
+- `consolidated_report/report_samples.tsv`: every sample, with its number of products (a sample without one has no row in `report.tsv`)
 - the synthetic gel view
 - detailed per-sample report files (the BLAST hits the rules accept)
 - console or GUI log output, and `QAlog.txt`

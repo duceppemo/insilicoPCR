@@ -34,7 +34,8 @@ class RunSettingsTest {
                 "  Product length (--min-length to --max-length): 0 to no limit",
                 "  BLAST e-value (-e): 0.00001",
                 "  Threads (-t): 3",
-                "  Input check (--input-check): full"), lines);
+                "  Input check (--input-check): full",
+                "  Memory (--memory): " + RunSettings.bbtoolsMemory(0)), lines);
     }
 
     @Test
@@ -93,9 +94,12 @@ class RunSettingsTest {
     }
 
     @Test
-    void theBbtoolsMemoryIsListedWithTheFastqSettings() {
+    void theMemoryIsListedForEveryRun() {
         assertEquals("24 GB for the programs running at once", value(RunSettings.of(config().bbtoolsMemory(24).build(),
                 true), "Memory"));
         assertTrue(value(RunSettings.of(config().build(), true), "Memory").startsWith("automatic"));
+        // It sizes the BLAST searches of assemblies too: listed without FASTQ input (it was not).
+        assertEquals("24 GB for the programs running at once", value(RunSettings.of(config().bbtoolsMemory(24).build(),
+                false), "Memory"));
     }
 }

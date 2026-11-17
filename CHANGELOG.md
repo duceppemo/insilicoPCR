@@ -69,9 +69,10 @@
 - `--tadpole-k` longer than a sample's reads leaves its mini-assembly empty:
   a warning says so (only blastn's "Query is Empty" did).
 - Messages: an integer too large or too small for the program
-  (`-m 99999999999`) is said to be so, not "not an integer"; `-e -1` is named as `--evalue` and as given;
-  `-1e-400` and `0d` are no longer "too small"; the Tadpole settings give the
-  same bound for 0 and -1; a primer header with no ID says so.
+  (`-m 99999999999`) is said to be so, not "not an integer"; `-e -1` is
+  named as `--evalue` and as given; `-1e-400` and `0d` are no longer "too
+  small"; the Tadpole settings give the same bound for 0 and -1; a primer
+  header with no ID says so.
 - Linux launcher: `--enable-native-access`, as on Windows: `--gel` printed
   the JVM's "restricted method" warnings.
 

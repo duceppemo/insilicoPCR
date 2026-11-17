@@ -209,6 +209,15 @@ class AmpliconCallerTest {
     }
 
     @Test
+    void aPrimerWhoseKeptFivePrimeMismatchCannotBePlacedLetsNoPrimerOverlapIt() {
+        // The aligned bases unknown, where its 5' mismatch lies is too: the other primer may not reach into it at all.
+        BlastResult forward = new BlastResult("c1", "a-F", 1, 0, 301, 320, 1, 20, 20, 20, null, null,
+                TestHits.PRIMER_20, 0, 1);
+        assertTrue(AmpliconCaller.call(forward, TestHits.minusHit("a-R", "c1", 310), DEFAULTS).isEmpty());
+        assertTrue(AmpliconCaller.call(forward, TestHits.minusHit("a-R", "c1", 321), DEFAULTS).isPresent());
+    }
+
+    @Test
     void minusPrimerFacesByItsFivePrimeBasesOnlyWhereTheyPair() {
         // The mirror image: reverse at 303-322 (minus strand), its 5' bases 319-322 left out by BLAST; the forward
         // at 301-320 ends on them.

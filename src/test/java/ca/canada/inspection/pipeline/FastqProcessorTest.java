@@ -35,6 +35,49 @@ class FastqProcessorTest {
     }
 
     @Test
+    void readSetsRefusedAreLeftOutNamedOrTheRunFails(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir) {
+        PipelineException bbduk = new ProgramFailedException("BBDuk", 1, false, "BBDuk failed with exit code 1");
+        PipelineException named = new BbtoolsCommands.UnusablePath("BBTools reads a comma in a file name");
+        // One left out by BBDuk, one for its name, beside an assembly: both named, the assembly run.
+        java.util.Map<String, ca.canada.inspection.model.Sample> samples = new java.util.HashMap<>(java.util.Map.of(
+                "a", sample(dir, "a"), "b", sample(dir, "b"), "g", sample(dir, "g")));
+        PipelineContext context = TestContexts.writingTo(dir.resolve("out"), samples);
+        FastqProcessor.leaveOut(context, java.util.Map.of("a", bbduk, "b", named), 2);
+        assertEquals(java.util.Set.of("g"), context.samples().keySet());
+        assertEquals(java.util.List.of("BBDuk cannot read the reads", "BBTools cannot be given the file"),
+                context.inputIssues().stream().map(ca.canada.inspection.util.InputCheck.Issue::problem).toList());
+
+        // Every read set BBDuk was given refused: the program's fault, the run fails naming them.
+        PipelineContext both = TestContexts.writingTo(dir.resolve("out2"), new java.util.HashMap<>(java.util.Map.of(
+                "a", sample(dir, "a"), "b", sample(dir, "b"), "g", sample(dir, "g"))));
+        PipelineException error = org.junit.jupiter.api.Assertions.assertThrows(PipelineException.class,
+                () -> FastqProcessor.leaveOut(both, java.util.Map.of("a", bbduk, "b", bbduk), 2));
+        assertEquals("BBDuk could not read the reads of any sample (a, b)", error.getMessage());
+
+        // The only samples left out for their names: no sample is left, which the run says.
+        PipelineContext none = TestContexts.writingTo(dir.resolve("out3"), new java.util.HashMap<>(java.util.Map.of(
+                "a", sample(dir, "a"), "b", sample(dir, "b"))));
+        error = org.junit.jupiter.api.Assertions.assertThrows(PipelineException.class,
+                () -> FastqProcessor.leaveOut(none, java.util.Map.of("a", named, "b", named), 2));
+        assertTrue(error.getMessage().startsWith("No sample of "), error.getMessage());
+    }
+
+    private static ca.canada.inspection.model.Sample sample(java.nio.file.Path dir, String name) {
+        ca.canada.inspection.model.Sample sample = new ca.canada.inspection.model.Sample(name);
+        sample.addFile(dir.resolve(name + "_R1.fastq.gz"));
+        return sample;
+    }
+
+    @Test
+    void anUnreadableReadFileGivesNoTadpoleWarning(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir)
+            throws java.io.IOException {
+        // Not four lines a record: the steps after it say what is wrong with the file.
+        java.nio.file.Path reads = java.nio.file.Files.writeString(dir.resolve("r.fq"), "not a fastq record\n");
+        java.nio.file.Path empty = java.nio.file.Files.createFile(dir.resolve("a.fasta"));
+        assertEquals(null, FastqProcessor.longerThanTheReads(200, empty, reads, "s"));
+    }
+
+    @Test
     void onlyReadSetsBbdukRefusedCanMakeTheFaultTheProgramsNotTheirNames() {
         PipelineException bbduk = new ProgramFailedException("BBDuk", 1, false, "BBDuk failed with exit code 1");
         PipelineException named = new BbtoolsCommands.UnusablePath("BBTools reads a comma in a file name");

@@ -30,6 +30,61 @@ import java.util.TreeMap;
 public final class FastqDiagnosticsStage {
 
     /**
+     * How the console or GUI log gives the findings of a status: each one on its own line at {@code level}, or,
+     * with {@code count}, how many (its text follows the number, and the diagnostics file's name it).
+     */
+    private record LogEntry(Status status, String level, String count) {
+    }
+
+    /** The log's findings, status by status, in this order. */
+    private static final List<LogEntry> LOG = List.of(
+            new LogEntry(Status.CALLED_FROM_READS, "Note", null),
+            new LogEntry(Status.CALLED_BY_EXTENSION, "Note", null),
+            new LogEntry(Status.WEAK_READ_SUPPORT, "Warning", null),
+            new LogEntry(Status.EXTENSION_NOT_SUPPORTED_BY_PAIRS, "Warning", null),
+            new LogEntry(Status.EXTENSION_THROUGH_UNRESOLVED_REPEAT, "Warning", null),
+            new LogEntry(Status.NOT_IN_READS, "Note", " FASTQ-mode negative(s) have both primers in the reads but no"
+                    + " complete amplicon in any read; see "),
+            new LogEntry(Status.EXTENSION_IN_TANDEM_REPEAT, "Warning", null),
+            new LogEntry(Status.NOT_CLOSED_BY_EXTENSION, "Note", " FASTQ-mode negative(s) have both primers in the"
+                    + " reads, but neither a read nor the extended reads hold a complete amplicon; see "));
+
+    /**
+     * How QAlog.txt gives the findings of some statuses: a heading for how many, then, when {@code listed}, each
+     * one on its own line.
+     */
+    private record QaGroup(List<Status> statuses, java.util.function.IntFunction<String> heading, boolean listed) {
+    }
+
+    /** QAlog.txt's findings, group by group, in this order. */
+    private static final List<QaGroup> QA_LOG = List.of(
+            new QaGroup(List.of(Status.CALLED_FROM_READS), n -> "FASTQ mode: " + n + " assay(s) missing from the"
+                    + " mini-assembly were called from reads (rows marked '" + ReadLevelCaller.ROW_PREFIX
+                    + "' in the report):", true),
+            new QaGroup(List.of(Status.CALLED_BY_EXTENSION), n -> "FASTQ mode: " + n + " assay(s) have a product in"
+                    + " no contig and in no read, called by extending reads (rows marked '"
+                    + ReadExtensionCaller.ROW_PREFIX + "' in the report; the extended read is the best-supported"
+                    + " path, not an assembled consensus):", true),
+            new QaGroup(List.of(Status.WEAK_READ_SUPPORT), n -> "FASTQ mode WARNING: " + n + " assay(s) have a"
+                    + " complete amplicon in too few of the informative reads and are NOT reported (contamination or"
+                    + " mixed sample?):", true),
+            new QaGroup(List.of(Status.NOT_IN_READS), n -> "FASTQ mode: " + n + " negative assay(s) have both"
+                    + " primers in the reads but no complete amplicon in any read; inconclusive for amplicons longer"
+                    + " than the checkable length:", true),
+            new QaGroup(List.of(Status.EXTENSION_NOT_SUPPORTED_BY_PAIRS, Status.EXTENSION_THROUGH_UNRESOLVED_REPEAT),
+                    n -> "FASTQ mode WARNING: " + n + " assay(s) have a product that extended reads hold but read"
+                    + " pairs do not confirm; NOT reported (a wrong turn through a repeat looks like this, and so"
+                    + " does a real product through a repeat longer than the read pairs):", true),
+            new QaGroup(List.of(Status.EXTENSION_IN_TANDEM_REPEAT), n -> "FASTQ mode WARNING: " + n + " assay(s)"
+                    + " have both primers in the reads, but the reads extended from them run into a tandem repeat"
+                    + " they cannot cross; inconclusive (confirm on an assembly of long reads, or by PCR):", true),
+            new QaGroup(List.of(Status.NOT_CLOSED_BY_EXTENSION), n -> "FASTQ mode: " + n + " negative assay(s) have"
+                    + " both primers in the reads, but neither a read nor the extended reads hold a complete"
+                    + " amplicon:", true),
+            new QaGroup(List.of(Status.PARTIAL_BAIT), n -> "FASTQ mode: " + n + " negative assay(s) had only some"
+                    + " primers in the reads (PARTIAL_BAIT, see diagnostics file).", false));
+
+    /**
      * @param file     TSV written, or {@code null} when the run had no FASTQ samples
      * @param findings findings in status, sample and assay order
      * @param notes    samples that could not be checked, with the reason
@@ -39,32 +94,22 @@ public final class FastqDiagnosticsStage {
             return findings.stream().filter(finding -> finding.status() == status).toList();
         }
 
-        /** Lines for the console or GUI log. */
+        /** Lines for the console or GUI log: per status ({@link #LOG}), in its order, then the notes. */
         public List<String> logLines() {
             List<String> lines = new ArrayList<>();
-            withStatus(Status.CALLED_FROM_READS).forEach(finding -> lines.add("Note: " + finding.message()));
-            withStatus(Status.CALLED_BY_EXTENSION).forEach(finding -> lines.add("Note: " + finding.message()));
-            withStatus(Status.WEAK_READ_SUPPORT).forEach(finding -> lines.add("Warning: " + finding.message()));
-            withStatus(Status.EXTENSION_NOT_SUPPORTED_BY_PAIRS)
-                    .forEach(finding -> lines.add("Warning: " + finding.message()));
-            withStatus(Status.EXTENSION_THROUGH_UNRESOLVED_REPEAT)
-                    .forEach(finding -> lines.add("Warning: " + finding.message()));
-            int notInReads = withStatus(Status.NOT_IN_READS).size();
-            if (notInReads > 0) {
-                lines.add("Note: " + notInReads + " FASTQ-mode negative(s) have both primers in the reads but no"
-                        + " complete amplicon in any read; see " + file);
-            }
-            withStatus(Status.EXTENSION_IN_TANDEM_REPEAT).forEach(finding -> lines.add("Warning: " + finding.message()));
-            int notClosed = withStatus(Status.NOT_CLOSED_BY_EXTENSION).size();
-            if (notClosed > 0) {
-                lines.add("Note: " + notClosed + " FASTQ-mode negative(s) have both primers in the reads, but neither"
-                        + " a read nor the extended reads hold a complete amplicon; see " + file);
+            for (LogEntry entry : LOG) {
+                List<Finding> found = withStatus(entry.status());
+                if (entry.count() == null) {
+                    found.forEach(finding -> lines.add(entry.level() + ": " + finding.message()));
+                } else if (!found.isEmpty()) {
+                    lines.add(entry.level() + ": " + found.size() + entry.count() + file);
+                }
             }
             notes.forEach(note -> lines.add("Warning: " + note));
             return lines;
         }
 
-        /** Lines for QAlog.txt. */
+        /** Lines for QAlog.txt: per group of statuses ({@link #QA_LOG}), in its order. */
         public List<String> qaLogLines() {
             List<String> lines = new ArrayList<>();
             if (file == null) {
@@ -72,57 +117,15 @@ public final class FastqDiagnosticsStage {
             }
             // The FASTQ settings are among the run's settings, above (RunSettings).
             lines.add("FASTQ mode diagnostics: " + file);
-            List<Finding> called = withStatus(Status.CALLED_FROM_READS);
-            if (!called.isEmpty()) {
-                lines.add("FASTQ mode: " + called.size() + " assay(s) missing from the mini-assembly were called from"
-                        + " reads (rows marked '" + ReadLevelCaller.ROW_PREFIX + "' in the report):");
-                called.forEach(finding -> lines.add("  " + finding.message()));
-            }
-            List<Finding> extended = withStatus(Status.CALLED_BY_EXTENSION);
-            if (!extended.isEmpty()) {
-                lines.add("FASTQ mode: " + extended.size() + " assay(s) have a product in no contig and in no read,"
-                        + " called by extending reads (rows marked '" + ReadExtensionCaller.ROW_PREFIX + "' in the report; the"
-                        + " extended read is the best-supported path, not an assembled consensus):");
-                extended.forEach(finding -> lines.add("  " + finding.message()));
-            }
-            List<Finding> weak = withStatus(Status.WEAK_READ_SUPPORT);
-            if (!weak.isEmpty()) {
-                lines.add("FASTQ mode WARNING: " + weak.size() + " assay(s) have a complete amplicon in too few"
-                        + " of the informative reads and are NOT reported (contamination or mixed sample?):");
-                weak.forEach(finding -> lines.add("  " + finding.message()));
-            }
-            List<Finding> notInReads = withStatus(Status.NOT_IN_READS);
-            if (!notInReads.isEmpty()) {
-                lines.add("FASTQ mode: " + notInReads.size() + " negative assay(s) have both primers in the reads but no"
-                        + " complete amplicon in any read; inconclusive for amplicons longer than the checkable length:");
-                notInReads.forEach(finding -> lines.add("  " + finding.message()));
-            }
-            List<Finding> unsupported = new ArrayList<>(withStatus(Status.EXTENSION_NOT_SUPPORTED_BY_PAIRS));
-            unsupported.addAll(withStatus(Status.EXTENSION_THROUGH_UNRESOLVED_REPEAT));
-            if (!unsupported.isEmpty()) {
-                lines.add("FASTQ mode WARNING: " + unsupported.size() + " assay(s) have a product that extended reads"
-                        + " hold but read pairs do not confirm; NOT reported (a wrong turn through a"
-                        + " repeat looks like this, and so does a real product through a repeat longer than the read"
-                        + " pairs):");
-                unsupported.forEach(finding -> lines.add("  " + finding.message()));
-            }
-            List<Finding> inRepeat = withStatus(Status.EXTENSION_IN_TANDEM_REPEAT);
-            if (!inRepeat.isEmpty()) {
-                lines.add("FASTQ mode WARNING: " + inRepeat.size() + " assay(s) have both primers in the reads, but the"
-                        + " reads extended from them run into a tandem repeat they cannot cross; inconclusive (confirm on"
-                        + " an assembly of long reads, or by PCR):");
-                inRepeat.forEach(finding -> lines.add("  " + finding.message()));
-            }
-            List<Finding> notClosed = withStatus(Status.NOT_CLOSED_BY_EXTENSION);
-            if (!notClosed.isEmpty()) {
-                lines.add("FASTQ mode: " + notClosed.size() + " negative assay(s) have both primers in the reads, but"
-                        + " neither a read nor the extended reads hold a complete amplicon:");
-                notClosed.forEach(finding -> lines.add("  " + finding.message()));
-            }
-            int partial = withStatus(Status.PARTIAL_BAIT).size();
-            if (partial > 0) {
-                lines.add("FASTQ mode: " + partial + " negative assay(s) had only some primers in the reads"
-                        + " (PARTIAL_BAIT, see diagnostics file).");
+            for (QaGroup group : QA_LOG) {
+                List<Finding> found = new ArrayList<>();
+                group.statuses().forEach(status -> found.addAll(withStatus(status)));
+                if (!found.isEmpty()) {
+                    lines.add(group.heading().apply(found.size()));
+                    if (group.listed()) {
+                        found.forEach(finding -> lines.add("  " + finding.message()));
+                    }
+                }
             }
             // Every status has its lines above (FastqDiagnosticsStageTest.everyStatusHasItsLinesInTheLog).
             if (findings.isEmpty()) {

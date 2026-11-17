@@ -45,8 +45,8 @@ class HtmlReportTest {
     private static Path write(Path tsv, List<String> samples, Set<String> fastqSamples, PrimerPanel primers,
                               List<Finding> findings, RunDetails details) {
         // As a run gives them, the rows made from the report's text (their source read back from it).
-        return HtmlReport.write(tsv, ReportTsv.read(tsv), samples, fastqSamples, primers, findings, details,
-                List.of(), List.of());
+        return HtmlReport.write(new HtmlReport.Input(tsv, ReportTsv.read(tsv), samples, fastqSamples, primers, findings, details,
+                List.of(), List.of()));
     }
 
     /** A run's details, where a test is not about them. */
@@ -349,8 +349,8 @@ class HtmlReportTest {
                 new InputCheck.Issue("odd <b>", List.of("odd_R1.fastq", "odd_R2.fastq"),
                         "the two files of the pair hold different numbers of reads", "3 and 2"));
 
-        String page = Files.readString(HtmlReport.write(tsv, ReportTsv.read(tsv), List.of("a"), Set.of(), panel(List.of("its-F", "its-R"), SIZES),
-                List.of(), DETAILS, issues, List.of()));
+        String page = Files.readString(HtmlReport.write(new HtmlReport.Input(tsv, ReportTsv.read(tsv), List.of("a"), Set.of(), panel(List.of("its-F", "its-R"), SIZES),
+                List.of(), DETAILS, issues, List.of())));
 
         assertTrue(page.contains("<h2>Input not analysed</h2>"));
         assertTrue(page.contains("<span class=\"n\">2</span><span class=\"l\">samples not analysed: faulty input files</span>"),
@@ -407,8 +407,8 @@ class HtmlReportTest {
                         0, 0, 0, 0, '+', null, 0, 0),
                 ca.canada.inspection.pcr.TestRows.of("S", "its+plain", 101, 400, 300, "c1", "", "its-F", "plain-R_0",
                         0, 0, 0, 0, '+', null, 0, 0));
-        Path html = HtmlReport.write(Files.writeString(dir.resolve("report.tsv"), ""), rows, List.of("S"), Set.of(),
-                panel(PRIMERS, SIZES), List.of(), DETAILS, List.of(), List.of());
+        Path html = HtmlReport.write(new HtmlReport.Input(Files.writeString(dir.resolve("report.tsv"), ""), rows, List.of("S"), Set.of(),
+                panel(PRIMERS, SIZES), List.of(), DETAILS, List.of(), List.of()));
         String page = Files.readString(html);
 
         assertTrue(page.contains("its <span class=\"tag\" title=\"made by one primer alone: its-F on both strands,"
@@ -431,8 +431,8 @@ class HtmlReportTest {
             rows.add(ca.canada.inspection.pcr.TestRows.of("S" + (i % 100), "its", 101, 534, 434, "c" + i, "", "its-F",
                     "its-R", 0, 0, 0, 0, '+', null, 0, 0));
         }
-        Path html = HtmlReport.write(Files.writeString(dir.resolve("report.tsv"), ""), rows, List.of(), Set.of(),
-                panel(PRIMERS, SIZES), List.of(), DETAILS, List.of(), List.of());
+        Path html = HtmlReport.write(new HtmlReport.Input(Files.writeString(dir.resolve("report.tsv"), ""), rows, List.of(), Set.of(),
+                panel(PRIMERS, SIZES), List.of(), DETAILS, List.of(), List.of()));
         String page = Files.readString(html);
 
         assertEquals(HtmlReport.MAX_LISTED, count(page, "<tr data-s="));
@@ -457,8 +457,8 @@ class HtmlReportTest {
             }
         };
 
-        assertThrows(IllegalStateException.class, () -> HtmlReport.write(tsv, List.of(), failing, Set.of(),
-                panel(PRIMERS, SIZES), List.of(), DETAILS, List.of(), List.of()));
+        assertThrows(IllegalStateException.class, () -> HtmlReport.write(new HtmlReport.Input(tsv, List.of(), failing, Set.of(),
+                panel(PRIMERS, SIZES), List.of(), DETAILS, List.of(), List.of())));
 
         try (java.util.stream.Stream<Path> files = Files.list(dir)) {
             assertEquals(List.of("report.tsv"), files.map(file -> file.getFileName().toString()).toList());

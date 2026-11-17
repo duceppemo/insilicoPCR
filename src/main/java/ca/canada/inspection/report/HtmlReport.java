@@ -196,7 +196,7 @@ public final class HtmlReport {
     }
 
     /**
-     * Writes {@code <report>.html} next to {@code reportTsv}.
+     * What the page is made of.
      *
      * @param reportTsv    consolidated report just written; names the page
      * @param rows         its rows, as the run made them: the page shows exactly these
@@ -209,14 +209,29 @@ public final class HtmlReport {
      * @param inputIssues  files that could not be analysed; their samples are listed apart, as
      *                     neither positive nor negative
      * @param splits       assays without a product whose product could span a break in the assembly
+     * @param maxListed    the most rows "All amplicons" lists ({@link #MAX_LISTED})
+     */
+    public record Input(Path reportTsv, List<ReportRow> rows, Collection<String> sampleNames, Set<String> fastqSamples,
+                        PrimerPanel primers, List<Finding> findings, RunDetails runDetails,
+                        List<InputCheck.Issue> inputIssues, List<SplitAcrossContigs.Split> splits, int maxListed) {
+
+        /** A run's page, listing at most {@link #MAX_LISTED} amplicons. */
+        public Input(Path reportTsv, List<ReportRow> rows, Collection<String> sampleNames, Set<String> fastqSamples,
+                     PrimerPanel primers, List<Finding> findings, RunDetails runDetails,
+                     List<InputCheck.Issue> inputIssues, List<SplitAcrossContigs.Split> splits) {
+            this(reportTsv, rows, sampleNames, fastqSamples, primers, findings, runDetails, inputIssues, splits,
+                    MAX_LISTED);
+        }
+    }
+
+    /**
+     * Writes {@code <report>.html} next to {@code input.reportTsv()}.
+     *
      * @return the HTML file written
      */
-    public static Path write(Path reportTsv, List<ReportRow> rows, Collection<String> sampleNames,
-                             Set<String> fastqSamples,
-                             PrimerPanel primers, List<Finding> findings, RunDetails runDetails,
-                             List<InputCheck.Issue> inputIssues, List<SplitAcrossContigs.Split> splits) {
-        Path html = pathFor(reportTsv);
-        ExpectedSizes sizes = primers.expectedSizes();
+    public static Path write(Input input) {
+        Path html = pathFor(input.reportTsv());
+        PrimerPanel primers = input.primers();
         // Written as it is made: built whole in memory, the page of a large run (millions of amplicon rows)
         // outgrew the largest string Java holds, after all the BLAST work, and the run failed. Written beside
         // it, then moved over it: a failure part way left a page cut short where the page is looked for.
@@ -224,9 +239,10 @@ public final class HtmlReport {
         try {
             try (java.io.Writer out = Files.newBufferedWriter(part, StandardCharsets.UTF_8)) {
                 Page page = new Page(out);
-                render(page, reportTsv.getFileName().toString(), products(rows, primers), sampleNames,
-                        fastqSamples, List.copyOf(primers.assays().keySet()),
-                        sizes, findings, runDetails, inputIssues, splits);
+                List<Product> products = products(input.rows(), primers);
+                ReportGrid grid = ReportGrid.of(products, input.sampleNames(), List.copyOf(primers.assays().keySet()),
+                        primers.expectedSizes(), input.findings(), input.splits());
+                render(page, input, products, grid);
                 page.flush();
             }
             ca.canada.inspection.util.OutputFiles.moveOver(part, html);
@@ -242,7 +258,6 @@ public final class HtmlReport {
         }
         return html;
     }
-
 
     /** The HTML page of a consolidated report: {@code report(1).html} for {@code report(1).tsv}. */
     public static Path pathFor(Path reportTsv) {
@@ -269,61 +284,25 @@ public final class HtmlReport {
         return new Cell(State.of(verdict.kind()), products, verdict.note());
     }
 
-    static void render(Page html, String reportName, List<Product> products, Collection<String> sampleNames,
-                         Set<String> fastqSamples, List<String> assays, ExpectedSizes sizes,
-                         List<Finding> findings, RunDetails runDetails,
-                         List<InputCheck.Issue> inputIssues, List<SplitAcrossContigs.Split> splits) {
-        Set<String> samples = new TreeSet<>(sampleNames);
-        Set<String> assayOrder = new TreeSet<>(assays);
-        Map<String, List<Product>> byPair = new HashMap<>();
-        for (Product product : products) {
-            samples.add(product.sample());
-            assayOrder.add(product.assay());
-            byPair.computeIfAbsent(key(product.sample(), product.assay()), ignored -> new ArrayList<>()).add(product);
-        }
-        Map<String, Finding> findingByPair = new HashMap<>();
-        for (Finding finding : findings) {
-            findingByPair.putIfAbsent(key(finding.sample(), finding.assay()), finding);
-        }
-        Map<String, SplitAcrossContigs.Split> splitByPair = new HashMap<>();
-        for (SplitAcrossContigs.Split split : splits) {
-            splitByPair.putIfAbsent(key(split.sample(), split.assay()), split);
-        }
-        // sample -> assay -> cell, in display order
-        Map<String, Map<String, Cell>> grid = new LinkedHashMap<>();
-        Map<State, Integer> totals = new EnumMap<>(State.class);
-        for (String sample : samples) {
-            Map<String, Cell> row = new LinkedHashMap<>();
-            for (String assay : assayOrder) {
-                String key = key(sample, assay);
-                Cell cell = cell(assay, byPair.getOrDefault(key, List.of()), sizes, findingByPair.get(key),
-                        splitByPair.get(key));
-                row.put(assay, cell);
-                totals.merge(cell.state(), 1, Integer::sum);
-            }
-            grid.put(sample, row);
-        }
-        boolean anyDeclared = assayOrder.stream().anyMatch(sizes.assays()::contains);
-        boolean anyUndeclared = assayOrder.stream().anyMatch(assay -> !sizes.assays().contains(assay));
-
+    static void render(Page html, Input input, List<Product> products, ReportGrid grid) {
+        String reportName = input.reportTsv().getFileName().toString();
+        ExpectedSizes sizes = input.primers().expectedSizes();
         html.append("<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n")
                 .append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n")
                 .append("<title>insilicoPCR report</title>\n<style>\n").append(page("report.css")).append("</style>\n</head>\n<body>\n")
                 .append("<main>\n<header>\n<h1>insilicoPCR report</h1>\n<p class=\"sub\">")
-                .append(escape(String.join(" · ", headline(runDetails, reportName)))).append("</p>\n</header>\n");
+                .append(escape(String.join(" · ", headline(input.runDetails(), reportName)))).append("</p>\n</header>\n");
 
-        long notAnalysed = inputIssues.stream().map(InputCheck.Issue::sample).distinct().count();
-        // The primer file's assays: a column of products of two assays (A+B) is not one (it read "6 assays" for 5).
-        int assayCount = assays.isEmpty() ? assayOrder.size() : new TreeSet<>(assays).size();
-        tiles(html, samples.size(), assayCount, products.size(), totals, anyDeclared, anyUndeclared,
-                (int) notAnalysed);
-        inputSection(html, inputIssues);
-        gridSection(html, grid, assayOrder, sizes, fastqSamples, totals, anyDeclared);
-        assaySection(html, grid, assayOrder, sizes);
-        productSection(html, products, sizes, reportName);
-        readSection(html, findings);
-        splitSection(html, splits);
-        detailSection(html, runDetails, reportName, anyDeclared);
+        long notAnalysed = input.inputIssues().stream().map(InputCheck.Issue::sample).distinct().count();
+        tiles(html, grid.samples().size(), grid.assayCount(), products.size(), grid.totals(), grid.anyDeclared(),
+                grid.anyUndeclared(), (int) notAnalysed);
+        inputSection(html, input.inputIssues());
+        gridSection(html, grid.cells(), grid.assays(), sizes, input.fastqSamples(), grid.totals(), grid.anyDeclared());
+        assaySection(html, grid.cells(), grid.assays(), sizes);
+        productSection(html, products, sizes, reportName, input.maxListed());
+        readSection(html, input.findings());
+        splitSection(html, input.splits());
+        detailSection(html, input.runDetails(), reportName, grid.anyDeclared());
 
         html.append("</main>\n<script>\n").append(page("report.js")).append("</script>\n</body>\n</html>\n");
     }
@@ -622,7 +601,8 @@ public final class HtmlReport {
         html.append("</div>\n</section>\n");
     }
 
-    private static void productSection(Page html, List<Product> products, ExpectedSizes sizes, String reportName) {
+    private static void productSection(Page html, List<Product> products, ExpectedSizes sizes, String reportName,
+                                       int maxListed) {
         boolean probes = products.stream().anyMatch(product -> product.row().probe() != null);
         boolean labels = !sizes.isEmpty();
         html.append("<section id=\"amplicons\">\n<h2>All amplicons</h2>\n");
@@ -635,7 +615,7 @@ public final class HtmlReport {
                 .append("Show all</button><span id=\"rowCount\" class=\"hint\" aria-live=\"polite\"></span></div>\n")
                 // Past the rows listed, a click on a grid cell finds none: the page says where they are.
                 .append("<div class=\"scroll\"><table class=\"rows\" id=\"rows\"")
-                .append(products.size() > MAX_LISTED ? " data-capped=\"" + escape(reportName) + "\"" : "")
+                .append(products.size() > maxListed ? " data-capped=\"" + escape(reportName) + "\"" : "")
                 .append(">\n<thead><tr><th>Sample</th><th>Assay</th>")
                 .append("<th class=\"num\">Size (bp)</th>").append(labels ? "<th>Size check</th>" : "")
                 .append("<th>Found on</th><th>Location</th><th class=\"num\" title=\"Forward / reverse primer mismatches\">")
@@ -643,7 +623,7 @@ public final class HtmlReport {
                 .append("3′ F/R</th><th class=\"num\" title=\"Bases at the 5' end of each primer that do not pair with the template,")
                 .append(" forward / reverse; the mismatch columns do not count them\">5′ unpaired F/R</th><th>Strand</th>")
                 .append(probes ? "<th>Probe</th><th class=\"num\">Probe mismatches</th>" : "").append("</tr></thead>\n<tbody>\n");
-        for (Product product : products.subList(0, Math.min(products.size(), MAX_LISTED))) {
+        for (Product product : products.subList(0, Math.min(products.size(), maxListed))) {
             String contig = product.row().contig();
             int comma = contig.indexOf(',');
             String source = comma > 0 ? contig.substring(0, comma) : contig;
@@ -689,8 +669,8 @@ public final class HtmlReport {
             html.append("</tr>\n");
         }
         html.append("</tbody></table></div>\n");
-        if (products.size() > MAX_LISTED) {
-            html.append("<p class=\"hint\">The first ").append(String.format(java.util.Locale.ROOT, "%,d", MAX_LISTED))
+        if (products.size() > maxListed) {
+            html.append("<p class=\"hint\">The first ").append(String.format(java.util.Locale.ROOT, "%,d", maxListed))
                     .append(" of ").append(String.format(java.util.Locale.ROOT, "%,d", products.size()))
                     .append(" amplicons are listed here, and the filter searches those: ")
                     .append(escape(reportName)).append(" has every one. The grid and the counts above cover them all.</p>\n");
@@ -792,10 +772,6 @@ public final class HtmlReport {
                         : "declare the product size an assay is designed to give in the primer file"
                         + " (e.g. <code>&gt;assay-F size=434</code>) to have products of that size marked.")
                 .append("</p>\n</section>\n");
-    }
-
-    private static String key(String sample, String assay) {
-        return sample + "\u0000" + assay;
     }
 
     static String escape(String text) {

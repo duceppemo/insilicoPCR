@@ -82,11 +82,11 @@ public final class ReportGenerator {
         diagnostics.logLines().forEach(monitor::warning);
         List<SplitAcrossContigs.Split> splits = assemblySplits(context);
         splits.forEach(split -> monitor.warning("Warning: " + split.message()));
-        Path html = HtmlReport.write(report, rows, context.samples().keySet(), fastqSampleNames(context.samples()),
+        Path html = HtmlReport.write(new HtmlReport.Input(report, rows, context.samples().keySet(), fastqSampleNames(context.samples()),
                 context.primers(), diagnostics.findings(),
                 RunSettings.details(Version.VERSION, context.config(), context.hasFastqSamples(),
                         context.dependencies().versions(), context.primers().mixGroups().groups()),
-                context.inputIssues(), splits);
+                context.inputIssues(), splits));
         written.add(html);
         monitor.info("HTML report written to " + html);
         List<String> qaLines = new ArrayList<>(QaLogWriter.inputIssueLines(context.inputIssues()));

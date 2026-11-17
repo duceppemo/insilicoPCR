@@ -150,202 +150,12 @@ public final class ReadExtensionStage {
                 files.baitedReadsFasta(), seedsFile);
         int reach = options.maxAmpliconLength() > 0 ? options.maxAmpliconLength() : ReadExtensionCaller.DEFAULT_REACH;
 
-        // In rounds: the baited reads run out about a fragment from each primer, and a product longer than
-        // what they cover never closed, however deep the sample (before 0.15.3: 1.5 to 2 kb). Each round baits
-        // the sample's reads again from the ends of extended reads that grew, of the assays not yet closed, and
-        // extends those assays' seeds again through every read baited so far, each read once (ReadPool), until
-        // each assay closes, no end grows, no read is new, or MAX_ROUNDS. An assay closed in a round keeps that
-        // round's extended reads and products; a round that fails keeps what the rounds before it found.
+        // In rounds (ExtensionRounds): products longer than the baited reads reach close as the reads are baited
+        // again from the ends of the extended reads.
         Map<String, String> seedBases = new HashMap<>();
         seeds.forEach(seed -> seedBases.put(seed.id(), seedReads.get(seed.read()).sequence()));
-        // Built when a round first baits new reads: 27 s on 9.7 million baited reads, for a sample whose assays
-        // all closed in round 1, which never used it.
-        ReadPool pooled = null;
-        List<Path> pool = new ArrayList<>(List.of(baitedReads));
-        // Whether files.candidateReads() holds the reads checked in the round of `latest` (a check that failed part
-        // way may have cut it short): the check after the rounds then takes its reads from them.
-        boolean latestChecked = false;
-        Map<String, Outcome> settled = new java.util.TreeMap<>();
-        Hits roundHits = new Hits();
-        Map<String, String> settledReads = new java.util.LinkedHashMap<>();
-        List<String> settledHits = new ArrayList<>();
-        Map<String, Outcome> latest = Map.of();
-        Map<String, String> latestReads = Map.of();
-        List<String> latestHits = List.of();
-        Map<String, int[]> sides = Map.of();
-        List<Seed> open = seeds;
-        Path roundSeeds = files.extensionRoundSeeds();
-        for (int round = 1; ; round++) {
-            stopIfCancelled(settings);
-            Map<String, Integer> lengths;
-            Map<String, Outcome> current;
-            try {
-                writeSeedBases(open, seedBases, roundSeeds);
-                settings.bbtools().extend(roundSeeds, pool, extendedFile, ReadExtensionCaller.K, reach)
-                        .run(settings.search().monitor());
-                if (!Files.isRegularFile(extendedFile)) {
-                    throw new PipelineException("Tadpole wrote no extended reads");
-                }
-                lengths = SequenceFileUtils.sequenceLengths(extendedFile);
-                ReadLevelStage.runBlast(settings.search(), settings.search().threads(), extendedFile, hitsFile);
-                roundHits = extendedHits(name, hitsFile, extendedFile, lengths, primers, options,
-                        settings.search().monitor()::warning);
-                current = ReadExtensionCaller.evaluate(name, roundHits, lengths, open, primers, options, reach, known);
-            } catch (PipelineException | UncheckedIOException e) {
-                if (round == 1) {
-                    throw e;
-                }
-                stopIfCancelled(settings);
-                notes.add("read extension of sample " + name + " stopped at round " + round + " (" + e.getMessage()
-                        + "); the products of the rounds before are kept");
-                break;
-            }
-            // Assays done this round keep this round's extended reads and outcome: those with a closed product the
-            // read pairs support, and those whose extended reads loop, towards the product, in a tandem repeat they
-            // cannot cross (they take no more rounds). A closed product the pairs do not support (a wrong turn,
-            // closed from one side) leaves its assay open: settled on it, the real product was not looked for.
-            Map<String, Outcome> closedNow = new java.util.LinkedHashMap<>();
-            current.forEach((assay, outcome) -> {
-                if (!outcome.closed().isEmpty()) {
-                    closedNow.put(assay, outcome);
-                }
-            });
-            Map<String, String> roundReads = readFasta(extendedFile, lengths.keySet());
-            Map<String, Outcome> checkedNow;
-            ca.canada.inspection.util.OutputFiles.deleteQuietly(files.extensionUnionReads());
-            try {
-                // The ends every open seed grew this round, written before the check: those of the seeds still
-                // open after it are among them, and are baited in the same pass over the sample's reads as the
-                // candidate products (each pass reads files of gigabytes; two a round took 70 of S3's 77 s).
-                Path ends = null;
-                if (!closedNow.isEmpty() && round < MAX_ROUNDS
-                        && writeGrownEnds(sides(open, seedBases, roundReads), sides, roundReads, files.extensionEnds())) {
-                    ends = files.extensionEnds();
-                }
-                if (!closedNow.isEmpty()) {
-                    latestChecked = false; // the check rewrites the file; it holds the round's reads once it is done
-                }
-                checkedNow = closedNow.isEmpty() ? Map.of()
-                        : checkAgainstReadPairs(settings, closedNow, extendedFile, files, sample, ends, null);
-            } catch (PipelineException | UncheckedIOException e) {
-                // As a round that fails before it (it lost the sample's whole extension, the rounds before it too).
-                if (round == 1) {
-                    throw e;
-                }
-                stopIfCancelled(settings);
-                notes.add("read extension of sample " + name + " stopped at round " + round + " (" + e.getMessage()
-                        + "); the products of the rounds before are kept");
-                break;
-            }
-            latest = current;
-            latestReads = roundReads;
-            latestHits = Files.isRegularFile(hitsFile) ? linesOf(hitsFile) : List.of();
-            if (!closedNow.isEmpty()) {
-                latestChecked = true;
-            }
-            Set<String> doneNow = new HashSet<>();
-            for (Map.Entry<String, Outcome> entry : current.entrySet()) {
-                String assay = entry.getKey();
-                Outcome checked = checkedNow.get(assay);
-                if (checked != null && !checked.called().isEmpty()) {
-                    settled.put(assay, checked);
-                    doneNow.add(assay);
-                    continue;
-                }
-                String repeat = entry.getValue().closed().isEmpty()
-                        ? ReadExtensionCaller.tandemRepeat(innerEnds(assay, open, latestReads, roundHits, primers)) : null;
-                if (repeat != null) {
-                    settled.put(assay, entry.getValue().withTandemRepeat(repeat));
-                    doneNow.add(assay);
-                }
-            }
-            Set<String> doneSeeds = new HashSet<>();
-            open.stream().filter(seed -> doneNow.contains(seed.assay())).forEach(seed -> doneSeeds.add(seed.id()));
-            for (String id : doneSeeds) {
-                String read = latestReads.get(id);
-                if (read != null) {
-                    settledReads.put(id, read);
-                }
-            }
-            latestHits.stream().filter(line -> doneSeeds.contains(line.substring(0, Math.max(0, line.indexOf('\t')))))
-                    .forEach(settledHits::add);
-            open = open.stream().filter(seed -> !doneNow.contains(seed.assay())).toList();
-            if (open.isEmpty() || round == MAX_ROUNDS) {
-                break;
-            }
-            // The ends of the open seeds' extended reads that grew this round: an end that did not, baited again,
-            // brings back the reads it brought before. A failure here keeps what the rounds so far found.
-            try {
-                Map<String, int[]> now = sides(open, seedBases, latestReads);
-                if (!writeGrownEnds(now, sides, latestReads, files.extensionEnds())) {
-                    break;
-                }
-                sides = now;
-                // From this round's pass, when it baited from these ends already; else a pass of their own.
-                if (Files.isRegularFile(files.extensionUnionReads())) {
-                    settings.bbtools().recruitFrom(files.extensionEnds(), files.extensionUnionReads(), sample.isPaired(),
-                            files.extensionRoundReads(), ReadExtensionCaller.K).run(settings.search().monitor());
-                } else {
-                    settings.bbtools().recruit(files.extensionEnds(), sample.files(), files.extensionRoundReads(),
-                            ReadExtensionCaller.K).run(settings.search().monitor());
-                }
-                if (pooled == null) {
-                    pooled = ReadPool.of(baitedReads);
-                }
-                int added = pooled.addNew(files.extensionRoundReads(), files.extensionReads());
-                ca.canada.inspection.util.OutputFiles.deleteQuietly(files.extensionRoundReads());
-                if (added == 0) {
-                    break; // no read the extension has not had
-                }
-                if (pool.size() == 1) {
-                    pool.add(files.extensionReads());
-                }
-            } catch (PipelineException | UncheckedIOException e) {
-                stopIfCancelled(settings);
-                notes.add("read extension of sample " + name + " stopped after round " + round + " ("
-                        + e.getMessage() + "); the products of the rounds so far are kept");
-                break;
-            }
-        }
-        ca.canada.inspection.util.OutputFiles.deleteQuietly(roundSeeds);
-        // The sample's extended reads and their hits: those of each assay as of the round it closed in, the
-        // others' as of the last round.
-        Map<String, Outcome> unsettled = new java.util.LinkedHashMap<>(latest);
-        unsettled.keySet().removeAll(settled.keySet());
-        Map<String, String> finalReads = new java.util.TreeMap<>(latestReads);
-        finalReads.putAll(settledReads);
-        // What the extended reads of an assay still open ran into, towards the product, for its diagnostics.
-        for (Map.Entry<String, Outcome> entry : unsettled.entrySet()) {
-            if (entry.getValue().closed().isEmpty()) {
-                String repeat = ReadExtensionCaller.tandemRepeat(innerEnds(entry.getKey(), seeds, latestReads,
-                        roundHits, primers));
-                if (repeat != null) {
-                    entry.setValue(entry.getValue().withTandemRepeat(repeat));
-                }
-            }
-        }
-        List<String> finalHits = new ArrayList<>(settledHits);
-        latestHits.stream().filter(line -> !line.equals(BlastTsv.HEADER) && !settledReads.containsKey(
-                line.substring(0, Math.max(0, line.indexOf('\t'))))).forEach(finalHits::add);
-        writeExtended(finalReads, extendedFile, finalHits, hitsFile);
-
-        // The assays settled on a supported product were checked in their round; the others are checked now, from
-        // the reads their round's check baited (with more candidates: the same reads as a pass of their own).
-        Path baited = null;
-        boolean anyClosed = unsettled.values().stream().anyMatch(outcome -> !outcome.closed().isEmpty());
-        if (anyClosed && latestChecked && Files.isRegularFile(files.candidateReads())) {
-            try {
-                baited = Files.move(files.candidateReads(), files.extensionUnionReads(),
-                        java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-            } catch (IOException e) {
-                baited = null; // a pass over the sample's reads, as before
-            }
-        }
-        Map<String, Outcome> sampleOutcomes = new java.util.TreeMap<>(
-                checkAgainstReadPairs(settings, unsettled, extendedFile, files, sample, null, baited));
-        ca.canada.inspection.util.OutputFiles.deleteQuietly(files.extensionUnionReads());
-        ca.canada.inspection.util.OutputFiles.deleteQuietly(files.extensionUnionRef());
-        sampleOutcomes.putAll(settled);
+        Map<String, Outcome> sampleOutcomes = new ExtensionRounds(settings, files, sample, primers, options, seeds,
+                seedBases, known, reach, notes).run();
         outcomes.put(name, sampleOutcomes);
 
         Map<String, String> readOfSeed = new HashMap<>();
@@ -452,7 +262,7 @@ public final class ReadExtensionStage {
     }
 
     /** Writes the seeds {@code seeds} as FASTA, for a round of the extension. */
-    private static void writeSeedBases(List<Seed> seeds, Map<String, String> seedBases, Path file) {
+    static void writeSeedBases(List<Seed> seeds, Map<String, String> seedBases, Path file) {
         try (BufferedWriter writer = Files.newBufferedWriter(file, StandardCharsets.UTF_8)) {
             for (Seed seed : seeds) {
                 writer.write(">" + seed.id() + "\n" + seedBases.get(seed.id()) + "\n");
@@ -463,7 +273,7 @@ public final class ReadExtensionStage {
     }
 
     /** Writes the sample's extended reads and their accepted hits, kept in its folder. */
-    private static void writeExtended(Map<String, String> reads, Path extendedFile, List<String> hits, Path hitsFile) {
+    static void writeExtended(Map<String, String> reads, Path extendedFile, List<String> hits, Path hitsFile) {
         try (BufferedWriter writer = Files.newBufferedWriter(extendedFile, StandardCharsets.UTF_8)) {
             for (Map.Entry<String, String> read : reads.entrySet()) {
                 writer.write(">" + read.getKey() + "\n" + read.getValue() + "\n");
@@ -481,7 +291,7 @@ public final class ReadExtensionStage {
         }
     }
 
-    private static List<String> linesOf(Path file) {
+    static List<String> linesOf(Path file) {
         try {
             return Files.readAllLines(file, StandardCharsets.UTF_8);
         } catch (IOException e) {
@@ -664,7 +474,7 @@ public final class ReadExtensionStage {
         return extended;
     }
 
-    private static void stopIfCancelled(Settings settings) {
+    static void stopIfCancelled(Settings settings) {
         if (settings.search().monitor().isCancelled()) {
             throw new CancellationException("Read extension was cancelled.");
         }

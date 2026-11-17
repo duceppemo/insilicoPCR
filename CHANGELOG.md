@@ -36,7 +36,9 @@
   adapter read-through baited every adapter dimer of the library in the
   second baiting: 72% of SRR35797377's 23.7 million reads, all assembled (2
   minutes, 535 MB, for the report of 14 seconds). The anchors are trimmed of
-  adapters (BBTools' list) and poly-G tails before they bait.
+  adapters (BBTools' list) and poly-G tails before they bait, each mate on its
+  own (an adapter dimer's mate is kept). On 48 Brucella read sets the calls
+  are those of before.
 - An assembly broken inside a primer site (the primer's 3' end on the next
   contig) left the assay negative without a word: a primer hit rejected only
   because its 3' end runs off a contig is kept for the "Primers at contig
@@ -356,7 +358,13 @@
   over it, and work files deleted quietly, go through one helper
   (`OutputFiles`; the HTML report is now moved atomically too); a BBTools
   command names its own program in the log; positions on a circle are put
-  there by one function; unused methods removed. The documented quick build
+  there by one function; unused methods removed. The read extension's rounds
+  are a class of their own (`ExtensionRounds`, a method a step); the HTML
+  report takes one `Input` and builds its grid apart (`ReportGrid`, tested
+  without HTML); the FASTQ diagnostics' log and QAlog lines come from one
+  table of statuses. A test of the HTML report's listing cap takes under a
+  second (16 s), and the FASTQ steps are tested with stand-in programs. The
+  documented quick build
   (`-DexcludedGroups=end-to-end -Djacoco.haltOnFailure=false`) named a
   property surefire ignores.
 - FASTQ mode is faster on large samples, with the same results: a round of the

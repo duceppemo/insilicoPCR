@@ -44,8 +44,16 @@ public final class PrimerService {
      * @param expectedSizes product sizes the headers declare ({@code size=}, {@code other=})
      * @param mixGroups     the assays the headers say share a reaction ({@code mix=})
      */
-    public record PrimerFile(Map<String, String> sequences, ExpectedSizes expectedSizes, MixGroups mixGroups) {
+    /**
+     * @param warnings what the run says of the file without refusing it: a {@code key=value} word in a header that the
+     *                 program does not read
+     */
+    public record PrimerFile(Map<String, String> sequences, ExpectedSizes expectedSizes, MixGroups mixGroups,
+                             List<String> warnings) {
     }
+
+    /** The {@code key=value} words of a primer header the program reads: the rest is free text. */
+    static final List<String> HEADER_KEYS = List.of("size", "other", "mix");
 
     private PrimerService() {
     }
@@ -55,8 +63,10 @@ public final class PrimerService {
      *
      * @return the validated primers, degenerate ones expanded, with the sizes the file declares
      */
-    public static PrimerPanel loadAndPrepare(PipelineConfig config, PipelineDirectories directories) {
+    public static PrimerPanel loadAndPrepare(PipelineConfig config, PipelineDirectories directories,
+                                             java.util.function.Consumer<String> warning) {
         PrimerFile file = read(config.primers());
+        file.warnings().forEach(warning);
         Map<String, String> preparedPrimers = expandPrimers(file.sequences());
         writePrimerDatabase(directories.primerDatabase(), preparedPrimers);
         return PrimerPanel.of(preparedPrimers, file.expectedSizes(), file.mixGroups());
@@ -122,10 +132,18 @@ public final class PrimerService {
         descriptions.keySet().retainAll(fasta.keySet());
         fasta.keySet().forEach(PrimerService::validatePrimerId);
         checkAssaysComplete(fasta.keySet(), file);
+        for (String assay : PrimerId.byAssay(fasta.keySet()).keySet()) {
+            if (assay.contains("+")) {
+                // Only in a mix= reaction before 1.0: alone, a+b still read as a product of two assays.
+                throw new PipelineException("Assay " + assay + " has '+' in its ID, which the report uses to join the"
+                        + " names of two assays (the product of assays sharing a reaction, mix=): rename it (primer"
+                        + " file " + file + ")");
+            }
+        }
         try {
             MixGroups mixGroups = MixGroups.fromHeaders(descriptions);
             mixGroups.checkNames(PrimerId.byAssay(fasta.keySet()).keySet());
-            return new PrimerFile(fasta, ExpectedSizes.fromHeaders(descriptions), mixGroups);
+            return new PrimerFile(fasta, ExpectedSizes.fromHeaders(descriptions), mixGroups, unknownKeys(descriptions));
         } catch (IllegalArgumentException e) {
             // The message says it all; without the cause, which reads as a bug (RunFailure).
             throw new PipelineException(e.getMessage() + " (primer file " + file + ")");
@@ -203,6 +221,29 @@ public final class PrimerService {
     }
 
     /** Fails on an assay that lacks a forward or a reverse primer, naming the primers it lacks. */
+    /**
+     * The warnings for {@code key=value} words of the headers whose key the program does not read ({@link
+     * #HEADER_KEYS}): left as free text, they would start to change what the file does if a later release read
+     * them; and a key mistyped ({@code sise=420}) was ignored without a word.
+     */
+    static List<String> unknownKeys(Map<String, String> descriptions) {
+        List<String> warnings = new ArrayList<>();
+        descriptions.forEach((primerId, description) -> {
+            for (String word : description.trim().split("\\s+")) {
+                java.util.regex.Matcher key = UNKNOWN_KEY.matcher(word);
+                if (key.matches() && !HEADER_KEYS.contains(key.group(1).toLowerCase(java.util.Locale.ROOT))) {
+                    warnings.add("Warning: the header of primer " + primerId + " holds " + word + ", which insilicoPCR"
+                            + " does not read (it reads size=, other= and mix=): it is ignored. Write it otherwise"
+                            + " (such as \"" + key.group(1) + " " + word.substring(key.group(1).length() + 1) + "\")"
+                            + " if it is a note.");
+                }
+            }
+        });
+        return warnings;
+    }
+
+    private static final java.util.regex.Pattern UNKNOWN_KEY = java.util.regex.Pattern.compile("([A-Za-z][A-Za-z0-9_]*)=.*");
+
     private static void checkAssaysComplete(Iterable<String> ids, Path file) {
         List<String> missing = new ArrayList<>();
         PrimerId.byAssay(ids).forEach((assay, primers) -> {

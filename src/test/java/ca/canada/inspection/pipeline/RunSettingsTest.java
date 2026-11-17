@@ -95,7 +95,7 @@ class RunSettingsTest {
     @Test
     void theBbtoolsMemoryIsListedWithTheFastqSettings() {
         assertEquals("24 GB for the programs running at once", value(RunSettings.of(config().bbtoolsMemory(24).build(),
-                true), "BBTools memory"));
-        assertTrue(value(RunSettings.of(config().build(), true), "BBTools memory").startsWith("automatic"));
+                true), "Memory"));
+        assertTrue(value(RunSettings.of(config().build(), true), "Memory").startsWith("automatic"));
     }
 }

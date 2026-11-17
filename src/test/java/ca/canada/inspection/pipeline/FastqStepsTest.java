@@ -109,7 +109,7 @@ class FastqStepsTest {
         Path output = dir.resolve("out");
         PipelineConfig config = PipelineConfig.builder(input, output, primerFile).threads(1).build();
         PipelineDirectories directories = PipelineDirectories.create(output);
-        PrimerPanel primers = PrimerService.loadAndPrepare(config, directories);
+        PrimerPanel primers = PrimerService.loadAndPrepare(config, directories, warning -> { });
         return new PipelineContext(config, new RuntimeDependencies(layout), directories,
                 InputCheck.scan(input, InputCheck.Depth.QUICK, 1).samples(), primers, 8, List.of(), programs);
     }

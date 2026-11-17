@@ -46,6 +46,25 @@ class PrimerServiceTest {
     }
 
     @Test
+    void aPlusInAnyAssayIdIsRefusedAndUnknownHeaderKeysAreNamed(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir)
+            throws java.io.IOException {
+        // a+b alone (no mix=) was let through, its rows reading as a product of two assays.
+        java.nio.file.Path plus = java.nio.file.Files.writeString(dir.resolve("plus.fasta"),
+                ">a+b-F\nACGTACGTAC\n>a+b-R\nTTGGCCAATT\n");
+        PipelineException error = assertThrows(PipelineException.class, () -> PrimerService.read(plus));
+        assertTrue(error.getMessage().startsWith("Assay a+b has '+' in its ID"), error.getMessage());
+
+        // A key the program does not read: ignored, but said (a later release reading it would change the file).
+        java.nio.file.Path keys = java.nio.file.Files.writeString(dir.resolve("keys.fasta"),
+                ">a-F size=300 Tm=60 FAM-BHQ1\nACGTACGTAC\n>a-R sise=300 MIX=p1 note:x=y\nTTGGCCAATT\n");
+        java.util.List<String> warnings = PrimerService.read(keys).warnings();
+        assertEquals(2, warnings.size(), warnings.toString());
+        assertTrue(warnings.get(0).startsWith("Warning: the header of primer a-F holds Tm=60, which insilicoPCR does not"
+                + " read (it reads size=, other= and mix=)"), warnings.get(0));
+        assertTrue(warnings.get(1).contains("primer a-R holds sise=300"), warnings.get(1));
+    }
+
+    @Test
     void nonConformingPrimerIdsAreRejectedAtLoadTime() {
         assertThrows(RuntimeException.class, () -> PrimerService.expand(map("16S_27F", "ACGT")));   // no dash
         assertThrows(RuntimeException.class, () -> PrimerService.expand(map("assay-fwd", "ACGT"))); // bad type char
@@ -87,7 +106,7 @@ class PrimerServiceTest {
         var config = PipelineConfig.builder(input, out, primerFile).build();
         var directories = PipelineDirectories.create(out);
 
-        PrimerPanel prepared = PrimerService.loadAndPrepare(config, directories);
+        PrimerPanel prepared = PrimerService.loadAndPrepare(config, directories, warning -> { });
         Map<String, String> primers = prepared.sequences();
 
         assertTrue(prepared.expectedSizes().isEmpty());
@@ -168,7 +187,7 @@ class PrimerServiceTest {
         var config = PipelineConfig.builder(input, dir.resolve("out2"), primerFile).build();
 
         PrimerPanel prepared = PrimerService.loadAndPrepare(config,
-                PipelineDirectories.create(dir.resolve("out2")));
+                PipelineDirectories.create(dir.resolve("out2")), warning -> { });
 
         assertEquals(java.util.Set.of("its-F", "its-R_0", "its-R_1", "plain-F", "plain-R"), prepared.ids());
         assertEquals("target", prepared.expectedSizes().labelText("its", 420));
@@ -245,7 +264,7 @@ class PrimerServiceTest {
         java.nio.file.Path out = dir.resolve("out3");
         var config = PipelineConfig.builder(degenerate, out, degenerate).build();
         var error = org.junit.jupiter.api.Assertions.assertThrows(PipelineException.class,
-                () -> PrimerService.loadAndPrepare(config, PipelineDirectories.create(out)));
+                () -> PrimerService.loadAndPrepare(config, PipelineDirectories.create(out), warning -> { }));
         org.junit.jupiter.api.Assertions.assertTrue(error.getMessage().startsWith("Primer wide-F is too degenerate"),
                 error.getMessage());
     }
@@ -260,7 +279,7 @@ class PrimerServiceTest {
         assertEquals("Primer X-F is degenerate: its sequences are named X-F_0 to X-F_1, and X-F_1 is also the ID"
                         + " of a primer; give that primer another ID",
                 assertThrows(PipelineException.class,
-                        () -> PrimerService.loadAndPrepare(config, PipelineDirectories.create(out))).getMessage());
+                        () -> PrimerService.loadAndPrepare(config, PipelineDirectories.create(out), warning -> { })).getMessage());
 
         java.nio.file.Path noHeader = java.nio.file.Files.writeString(dir.resolve("plain.txt"), "ACGTACGTACGT\n");
         assertEquals("The primer file " + noHeader + " has a sequence before its first header line (a line starting"

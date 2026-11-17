@@ -48,7 +48,7 @@ public final class RunSettings {
             settings.add(new Setting("Read-level calls (FASTQ, --read-min-fraction)",
                     readLevelCalls(config.readMinFraction())));
             settings.add(new Setting("Read extension (FASTQ, --read-extension)", readExtension(config.readExtension())));
-            settings.add(new Setting("BBTools memory (FASTQ, --bbtools-memory)", bbtoolsMemory(config.bbtoolsMemoryGiB())));
+            settings.add(new Setting("Memory (--memory)", bbtoolsMemory(config.bbtoolsMemoryGiB())));
         }
         return settings;
     }

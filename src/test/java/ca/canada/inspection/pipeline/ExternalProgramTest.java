@@ -144,6 +144,24 @@ class ExternalProgramTest {
     }
 
     @Test
+    void onTheConsoleAProgramsStandardOutputGoesToStandardErrorToo() throws IOException {
+        // makeblastdb's lines went to standard output, among insilicoPCR's own, into what a script reads.
+        List<String> command = program("Chatty", """
+                System.out.println("Building a new DB");
+                System.out.flush();
+                """);
+        PrintStream console = System.out;
+        ByteArrayOutputStream standardOutput = new ByteArrayOutputStream();
+        try {
+            System.setOut(new PrintStream(standardOutput, true, StandardCharsets.UTF_8));
+            assertTrue(new String(onTheConsole(command, null), StandardCharsets.UTF_8).contains("Building a new DB"));
+        } finally {
+            System.setOut(console);
+        }
+        assertEquals("", standardOutput.toString(StandardCharsets.UTF_8));
+    }
+
+    @Test
     void onTheConsoleTheErrorOutputIsPassedOnByteForByte() throws IOException {
         // A carriage return and a byte that is not UTF-8 come out as they went in.
         List<String> command = program("Bytes", """

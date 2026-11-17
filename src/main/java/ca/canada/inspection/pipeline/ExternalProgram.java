@@ -33,16 +33,15 @@ final class ExternalProgram {
         if (workingDirectory != null) {
             builder.directory(workingDirectory.toFile());
         }
-        // The output is read to recognise a program saying it ran out of memory: on the console
-        // only the error output, copied to standard error unchanged, byte for byte.
+        // The output is read to recognise a program saying it ran out of memory. On the console, both its outputs go
+        // to standard error: standard output holds this program's own lines only (makeblastdb's went there, among
+        // them, into what a script reads).
         Consumer<String> output = monitor.programOutput();
         boolean console = output == null;
         if (console) {
             builder.redirectInput(ProcessBuilder.Redirect.INHERIT);
-            builder.redirectOutput(ProcessBuilder.Redirect.INHERIT);
-        } else {
-            builder.redirectErrorStream(true);
         }
+        builder.redirectErrorStream(true);
         Process process;
         // The job object made before the program starts, so that it is put in it at once (WindowsJob).
         WindowsJob.prepare();
@@ -62,7 +61,7 @@ final class ExternalProgram {
         // (and the program is then killed below); a blocking read would not stop.
         FutureTask<Boolean> reading = new FutureTask<>(() -> {
             try {
-                return console ? copyToConsole(process.getErrorStream(), AppPaths.isWindows() ? OUTPUT_ENCODING : null,
+                return console ? copyToConsole(process.getInputStream(), AppPaths.isWindows() ? OUTPUT_ENCODING : null,
                         System.err) : passLines(process.getInputStream(), output);
             } catch (IOException | RuntimeException e) {
                 process.destroyForcibly(); // or it may block on a full pipe, and waitFor() with it

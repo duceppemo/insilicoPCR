@@ -170,7 +170,7 @@ class BbtoolsCommandsTest {
         String message = BbtoolsCommands.outOfMemoryMessage("Tadpole", " on sample s", 8);
 
         assertTrue(message.startsWith("Tadpole ran out of memory on sample s with -Xmx8g, all it had. Give the BBTools"
-                + " programs more with --bbtools-memory <GB>"), message);
+                + " programs more with --memory <GB>"), message);
         assertTrue(message.endsWith("use fewer threads (-t, or Threads in the application) instead."), message);
     }
 

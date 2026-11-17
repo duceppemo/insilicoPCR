@@ -300,7 +300,7 @@ class EndToEndTest {
         assertTrue(RunFailure.isForTheUser(error));
         assertTrue(RunFailure.lines(error).stream().anyMatch(line -> line.contains(
                 "Tadpole ran out of memory on sample big with -Xmx4g, all it had. Give the BBTools programs more with"
-                        + " --bbtools-memory")), RunFailure.lines(error).toString());
+                        + " --memory")), RunFailure.lines(error).toString());
         assertTrue(monitor.warnings.isEmpty(), monitor.warnings.toString());
     }
 
@@ -920,7 +920,7 @@ class EndToEndTest {
                 real.blastBinDirectory(), java);
         PipelineConfig config = config(reads, output);
         PipelineDirectories directories = PipelineDirectories.create(output);
-        PrimerPanel primers = PrimerService.loadAndPrepare(config, directories);
+        PrimerPanel primers = PrimerService.loadAndPrepare(config, directories, warning -> { });
         PipelineContext context = new PipelineContext(config, new RuntimeDependencies(layout), directories,
                 InputCheck.scan(reads, InputCheck.Depth.QUICK, 2).samples(), primers, budgetGiB, List.of(), monitor);
         // The baiting searches its first catch for the primers: their database comes first, as in a run.

@@ -39,7 +39,7 @@ public record PipelineConfig(
             throw new IllegalArgumentException("-t (threads) must be at least 1, not " + threads);
         }
         if (bbtoolsMemoryGiB < 0) {
-            throw new IllegalArgumentException("bbtools-memory must be a number of GB, or 0 for automatic, got: "
+            throw new IllegalArgumentException("--memory must be a number of GB, or 0 for automatic, got: "
                     + bbtoolsMemoryGiB);
         }
         if (!validEvalue(evalue)) {

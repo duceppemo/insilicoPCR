@@ -342,7 +342,7 @@ class EndToEndTest {
         for (String row : rows.subList(1, rows.size())) {
             String[] cells = row.split("\t", -1);
             if (FastqDiagnostics.Status.valueOf(cells[header.indexOf("Status")]).isCalled()) {
-                String pair = cells[header.indexOf("Sample")] + " " + cells[header.indexOf("Gene")];
+                String pair = cells[header.indexOf("Sample")] + " " + cells[header.indexOf("Assay")];
                 assertTrue(reported.contains(pair), pair + " is called in the diagnostics but has no row: " + reported);
             }
         }
@@ -513,7 +513,7 @@ class EndToEndTest {
         // compared with the circle's other end.
         pipeline(PipelineConfig.builder(input, output, primers).threads(2).evalue(1e-3).build()).run();
 
-        assertEquals(List.of("plasmid circ 2901-100 200 circ-P 2991-10 20"), cells(report(output), "Sample", "Gene",
+        assertEquals(List.of("plasmid circ 2901-100 200 circ-P 2991-10 20"), cells(report(output), "Sample", "Assay",
                 "GenomeLocation", "AmpliconSize", "Probe", "ProbeLocation", "ProbeSize"));
     }
 
@@ -543,7 +543,7 @@ class EndToEndTest {
         pipeline(PipelineConfig.builder(input, output, primers).threads(2).ampliconOptions(
                 ca.canada.inspection.pcr.AmpliconOptions.builder().mismatches(1).build()).build()).run();
 
-        assertEquals(List.of("plasmid a 2901-100 200 a-P 2998-23 26"), cells(report(output), "Sample", "Gene",
+        assertEquals(List.of("plasmid a 2901-100 200 a-P 2998-23 26"), cells(report(output), "Sample", "Assay",
                 "GenomeLocation", "AmpliconSize", "Probe", "ProbeLocation", "ProbeSize"));
     }
 
@@ -646,7 +646,7 @@ class EndToEndTest {
 
         pipeline(PipelineConfig.builder(input, output, primers).threads(2).build()).run();
 
-        List<String> rows = cells(report(output), "Sample", "Gene", "AmpliconSize", "Contig", "GenomeLocation");
+        List<String> rows = cells(report(output), "Sample", "Assay", "AmpliconSize", "Contig", "GenomeLocation");
         assertEquals(1, rows.size(), rows::toString);
         assertTrue(rows.getFirst().startsWith("loop mt 1300 contig_"), rows::toString);
         // Round the contig's origin: it starts after it ends.
@@ -959,7 +959,7 @@ class EndToEndTest {
         List<String> rows = lines(report);
         List<String> header = List.of(rows.getFirst().split("\t", -1));
         int sample = header.indexOf("Sample");
-        int gene = header.indexOf("Gene");
+        int gene = header.indexOf("Assay");
         int size = header.indexOf("AmpliconSize");
         int check = header.indexOf("SizeCheck");
         return rows.stream().skip(1).map(row -> row.split("\t", -1))

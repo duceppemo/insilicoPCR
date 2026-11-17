@@ -69,6 +69,10 @@ public final class ReportGenerator {
         RunMonitor monitor = context.monitor();
         Path report = ConsolidatedReport.write(context.directories().consolidated(), rows, context.primers());
         written.add(report);
+        // Named on standard output for scripts: only the HTML report was, and report(2).tsv had to be guessed.
+        monitor.info("Report written to " + report);
+        written.add(ca.canada.inspection.report.SamplesReport.write(report, context.samples().values(),
+                context.inputIssues(), rows));
         if (context.config().gel()) {
             written.addAll(GelImageWriter.write(report, SyntheticGelImage.defaultPng(report), context.samples().keySet(),
                     monitor::info, monitor::warning));

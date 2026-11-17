@@ -50,9 +50,9 @@ class ConsolidatedReportTest {
         List<String> lines = Files.readAllLines(report);
 
         assertEquals(2, lines.size(), "header + one amplicon row expected, got: " + lines);
-        assertTrue(lines.get(0).startsWith("Sample\tGene\tGenomeLocation\tAmpliconSize"));
-        assertTrue(lines.get(0).endsWith("Forward3PrimeMismatches\tReverse3PrimeMismatches\tStrand"
-                + "\tForward5PrimeUnaligned\tReverse5PrimeUnaligned"));
+        // Every column, though no assay has a probe or a size (1.0): the header is the format.
+        assertEquals(ConsolidatedReport.HEADER, lines.get(0));
+        assertTrue(lines.get(1).endsWith("\t\t\t\t\t0\t0\tdesigned\tassembly\t"), lines.get(1));
 
         String[] row = lines.get(1).split("\t", -1);
         assertEquals("sampleA", row[0]);
@@ -77,8 +77,7 @@ class ConsolidatedReportTest {
         List<String> lines = Files.readAllLines(report);
 
         assertEquals(2, lines.size());
-        assertTrue(lines.get(0).endsWith("Probe\tProbeLocation\tProbeSize\tProbeMismatches"
-                + "\tForward5PrimeUnaligned\tReverse5PrimeUnaligned"));
+        assertEquals(ConsolidatedReport.HEADER, lines.get(0));
         String[] row = lines.get(1).split("\t", -1);
         assertEquals("assay-P", row[13]);
         assertEquals("300-319", row[14]);
@@ -112,14 +111,13 @@ class ConsolidatedReportTest {
         List<String> lines = Files.readAllLines(report);
 
         assertEquals(3, lines.size(), "header + PCR row + qPCR row expected, got: " + lines);
-        assertTrue(lines.get(0).endsWith("Probe\tProbeLocation\tProbeSize\tProbeMismatches"
-                + "\tForward5PrimeUnaligned\tReverse5PrimeUnaligned"));
+        assertEquals(ConsolidatedReport.HEADER, lines.get(0));
 
         String[] pcrRow = lines.get(1).split("\t", -1);
         assertEquals("assay", pcrRow[1]);
-        assertEquals(19, pcrRow.length, "probe columns must be padded for probe-less assays");
+        assertEquals(22, pcrRow.length, "every column, the probe ones empty for probe-less assays");
         assertEquals("", pcrRow[13]);
-        assertEquals("0", pcrRow[17], "the unaligned columns follow the padded probe columns");
+        assertEquals("0", pcrRow[17], "the 5' columns follow the probe columns");
 
         String[] qpcrRow = lines.get(2).split("\t", -1);
         assertEquals("taq", qpcrRow[1]);
@@ -215,21 +213,21 @@ class ConsolidatedReportTest {
                 ConsolidatedReport.write(tempDir, Products.ofRun(samples, PrimerPanel.of(primers.sequences(), sizes), DEFAULTS, Map.of()), PrimerPanel.of(primers.sequences(), sizes)));
 
         assertEquals(4, lines.size(), "header + three rows expected, got: " + lines);
-        assertTrue(lines.get(0).endsWith("Strand\tForward5PrimeUnaligned\tReverse5PrimeUnaligned\tSizeCheck"), lines.get(0));
+        assertTrue(lines.get(0).endsWith("Pairing\tSource\tSizeCheck"), lines.get(0));
         Map<String, String> labelBySize = new HashMap<>();
         for (String line : lines.subList(1, lines.size())) {
             String[] row = line.split("\t", -1);
-            assertEquals(16, row.length, line);
-            labelBySize.put(row[1] + ":" + row[3], row[15]);
+            assertEquals(22, row.length, line);
+            labelBySize.put(row[1] + ":" + row[3], row[row.length - 1]);
         }
         assertEquals(Map.of("assay:500", "target", "assay:60", "unexpected", "plain:200", ""), labelBySize);
 
-        // Without a declaration the report is as before: same rows, no extra column.
+        // Without a declaration: the same rows and columns, the size check empty (before 1.0, no such column).
         List<String> plain = Files.readAllLines(ConsolidatedReport.write(tempDir, Products.ofRun(samples, primers, DEFAULTS, Map.of()), primers));
         assertEquals(4, plain.size());
-        assertTrue(plain.get(0).endsWith("\tStrand\tForward5PrimeUnaligned\tReverse5PrimeUnaligned"), plain.get(0));
+        assertEquals(ConsolidatedReport.HEADER, plain.get(0));
         for (int i = 1; i < lines.size(); i++) {
-            assertEquals(plain.get(i), lines.get(i).substring(0, lines.get(i).lastIndexOf('\t')));
+            assertEquals(plain.get(i), lines.get(i).substring(0, lines.get(i).lastIndexOf('\t') + 1));
         }
     }
 
@@ -251,8 +249,8 @@ class ConsolidatedReportTest {
         List<String> header = List.of(lines.get(0).split("\t", -1));
         String[] row = lines.get(1).split("\t", -1);
         assertEquals("0", row[header.indexOf("ForwardMismatches")], "unaligned 5' bases are not mismatches");
-        assertEquals("8", row[header.indexOf("Forward5PrimeUnaligned")]);
-        assertEquals("0", row[header.indexOf("Reverse5PrimeUnaligned")]);
+        assertEquals("8", row[header.indexOf("Forward5PrimeUnpaired")]);
+        assertEquals("0", row[header.indexOf("Reverse5PrimeUnpaired")]);
         // The product still counts the whole primer.
         assertEquals("500", row[header.indexOf("AmpliconSize")]);
     }
@@ -266,14 +264,15 @@ class ConsolidatedReportTest {
         ExpectedSizes sizes = ExpectedSizes.fromHeaders(Map.of("assay-F", "size=70 other=500"));
         // A read-level row, as FASTQ mode adds them.
         ReportRow readRow = TestRows.of("sampleA", "assay", 11, 80, 70, "read_1", "FASTQ read-level call: ...",
-                "assay-F", "assay-R", 0, 0, 0, 0, '+', new ReportRow.Probe("assay-P", 35, 54, 0), 0, 0);
+                "assay-F", "assay-R", 0, 0, 0, 0, '+', new ReportRow.Probe("assay-P", 35, 54, 0), 0, 0)
+                .calledFrom(new ReportRow.Source.Reads(3, 4, "75%"), "FASTQ read-level call: ...");
 
         List<String> lines = Files.readAllLines(ConsolidatedReport.write(tempDir, Products.ofRun(samples, PrimerPanel.of(primers.sequences(), sizes), DEFAULTS, Map.of("sampleA", List.of(readRow))), PrimerPanel.of(primers.sequences(), sizes)));
 
-        assertTrue(lines.get(0).endsWith("ProbeMismatches\tForward5PrimeUnaligned\tReverse5PrimeUnaligned\tSizeCheck"), lines.get(0));
+        assertEquals(ConsolidatedReport.HEADER, lines.get(0));
         assertEquals(3, lines.size());
-        assertTrue(lines.get(1).endsWith("\tassay-P\t300-319\t20\t0\t0\t0\tother"), lines.get(1));
-        assertTrue(lines.get(2).endsWith("\tassay-P\t35-54\t20\t0\t0\t0\ttarget"), lines.get(2));
+        assertTrue(lines.get(1).endsWith("\tassay-P\t300-319\t20\t0\t0\t0\tdesigned\tassembly\tother"), lines.get(1));
+        assertTrue(lines.get(2).endsWith("\tassay-P\t35-54\t20\t0\t0\t0\tdesigned\treads\ttarget"), lines.get(2));
     }
 
     @org.junit.jupiter.api.Test

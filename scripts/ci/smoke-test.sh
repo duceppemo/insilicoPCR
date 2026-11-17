@@ -101,7 +101,7 @@ READS_REPORT="$READS_RESULTS/consolidated_report/report.tsv"
 products() {
   tr -d '\r' < "$1" | awk -F '\t' '
     NR == 1 { for (i = 1; i <= NF; i++) column[$i] = i; next }
-    { print $column["Sample"], $column["Gene"], $column["AmpliconSize"], $column["SizeCheck"] }' | sort
+    { print $column["Sample"], $column["Assay"], $column["AmpliconSize"], $column["SizeCheck"] }' | sort
 }
 EXPECTED_PRODUCTS=$'isolate_01 stxQ 118 target\nisolate_01 toxA 312 target'
 if [[ "$(products "$READS_REPORT")" != "$EXPECTED_PRODUCTS" ]]; then

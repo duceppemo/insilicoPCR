@@ -65,7 +65,7 @@ public final class ReportTsv {
         List<String> header = List.of(cells(headerLine));
         boolean hasHeader = header.contains(ReportColumn.SIZE.header());
         Map<String, Integer> columns = new HashMap<>();
-        List<String> names = hasHeader ? header : ReportColumn.FIRST.stream().map(ReportColumn::header).toList();
+        List<String> names = hasHeader ? header : ReportColumn.ALL.stream().map(ReportColumn::header).toList();
         for (int i = 0; i < names.size(); i++) {
             columns.putIfAbsent(names.get(i), i);
         }
@@ -184,17 +184,17 @@ public final class ReportTsv {
                         : fields.numberOrZero(ReportColumn.PROBE_SIZE));
         String strand = fields.text(ReportColumn.STRAND);
         String description = fields.text(ReportColumn.CONTIG_DESCRIPTION);
-        return new ReportRow(fields.text(ReportColumn.SAMPLE), fields.text(ReportColumn.GENE),
+        return new ReportRow(fields.text(ReportColumn.SAMPLE), fields.text(ReportColumn.ASSAY),
                 new ReportRow.Site(location[0], location[1], size, fields.text(ReportColumn.CONTIG), description,
                         strand.isEmpty() ? ' ' : strand.charAt(0)),
-                new ReportRow.Binding(fields.text(ReportColumn.FORWARD_PRIMERS),
+                new ReportRow.Binding(fields.text(ReportColumn.FORWARD_PRIMER),
                         fields.numberOrZero(ReportColumn.FORWARD_MISMATCHES),
                         fields.numberOrZero(ReportColumn.FORWARD_THREE_PRIME),
-                        fields.numberOrZero(ReportColumn.FORWARD_UNALIGNED)),
-                new ReportRow.Binding(fields.text(ReportColumn.REVERSE_PRIMERS),
+                        fields.numberOrZero(ReportColumn.FORWARD_UNPAIRED)),
+                new ReportRow.Binding(fields.text(ReportColumn.REVERSE_PRIMER),
                         fields.numberOrZero(ReportColumn.REVERSE_MISMATCHES),
                         fields.numberOrZero(ReportColumn.REVERSE_THREE_PRIME),
-                        fields.numberOrZero(ReportColumn.REVERSE_UNALIGNED)),
+                        fields.numberOrZero(ReportColumn.REVERSE_UNPAIRED)),
                 probe, source(description));
     }
 
@@ -222,10 +222,13 @@ public final class ReportTsv {
         return ReportRow.Source.ASSEMBLY;
     }
 
-    /** One line's values, by column name. */
+    /** One line's values, by column name: its name since 1.0, or the one an earlier release gave it. */
     private record Fields(Map<String, Integer> columns, String[] values) {
         String text(ReportColumn column) {
             Integer index = columns.get(column.header());
+            for (int i = 0; index == null && i < column.aliases().size(); i++) {
+                index = columns.get(column.aliases().get(i));
+            }
             return index == null || index >= values.length ? "" : values[index];
         }
 

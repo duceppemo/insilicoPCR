@@ -51,7 +51,7 @@ class ReportTsvTest {
 
     @Test
     void aFileSavedByASpreadsheetReads() throws IOException {
-        String header = String.join("\t", ReportColumn.FIRST.stream().map(ReportColumn::header).toList());
+        String header = String.join("\t", ReportColumn.ALL.subList(0, ReportColumn.STRAND.ordinal() + 1).stream().map(ReportColumn::header).toList());
         String product = "S\tits\t11-444\t434\tcontig_1\t\tits-F\tits-R\t0\t0\t0\t0\t+";
         // With a byte order mark before the header...
         Path withMark = Files.writeString(dir.resolve("mark.tsv"), "\uFEFF" + header + "\n" + product + "\n");
@@ -131,7 +131,7 @@ class ReportTsvTest {
 
     @Test
     void aHeaderRepeatedByConcatenatedReportsIsSkipped() throws IOException {
-        String header = String.join("\t", ReportColumn.FIRST.stream().map(ReportColumn::header).toList());
+        String header = String.join("\t", ReportColumn.ALL.subList(0, ReportColumn.STRAND.ordinal() + 1).stream().map(ReportColumn::header).toList());
         String product = "S\tits\t11-444\t434\tcontig_1\t\tits-F\tits-R\t0\t0\t0\t0\t+";
         Path joined = Files.writeString(dir.resolve("joined.tsv"),
                 header + "\n" + product + "\n" + header + "\n" + product.replace("S\t", "T\t") + "\n");
@@ -141,7 +141,7 @@ class ReportTsvTest {
     @Test
     void aReportSavedInTheWindowsEncodingReads() throws IOException {
         // Excel's "Text (Tab delimited)": an accented letter is one byte, not UTF-8.
-        String text = String.join("\t", ReportColumn.FIRST.stream().map(ReportColumn::header).toList()) + "\n"
+        String text = String.join("\t", ReportColumn.ALL.subList(0, ReportColumn.STRAND.ordinal() + 1).stream().map(ReportColumn::header).toList()) + "\n"
                 + "S\tits\t11-444\t434\tcontig_1\tsouche résistante\tits-F\tits-R\t0\t0\t0\t0\t+\n";
         Path report = Files.write(dir.resolve("excel.tsv"), text.getBytes(java.nio.charset.Charset.forName("windows-1252")));
         assertEquals("souche résistante", ReportTsv.read(report).getFirst().contigDescription());
@@ -150,7 +150,7 @@ class ReportTsvTest {
     @Test
     void theSizeCheckOfEachRowReadsBack() throws IOException {
         // As the run writes it when the primer file declares sizes: the last column.
-        String header = String.join("\t", ReportColumn.FIRST.stream().map(ReportColumn::header).toList())
+        String header = String.join("\t", ReportColumn.ALL.subList(0, ReportColumn.STRAND.ordinal() + 1).stream().map(ReportColumn::header).toList())
                 + "\tSizeCheck";
         Path report = Files.write(dir.resolve("checked.tsv"), List.of(header,
                 "S\tits\t11-444\t434\tcontig_1\t\tits-F\tits-R\t0\t0\t0\t0\t+\ttarget",
@@ -169,7 +169,7 @@ class ReportTsvTest {
     void aReportSavedAsUnicodeTextWithQuotedCellsReads() throws IOException {
         // Excel's "Unicode Text": UTF-16 with a byte order mark; a cell holding a quote or a comma
         // is put between quotes, its own quotes doubled.
-        String header = String.join("\t", ReportColumn.FIRST.stream().map(ReportColumn::header).toList());
+        String header = String.join("\t", ReportColumn.ALL.subList(0, ReportColumn.STRAND.ordinal() + 1).stream().map(ReportColumn::header).toList());
         String text = header + "\r\n" + "\"S,1 \"\"a\"\"\"\tits\t11-444\t434\tcontig_1\t\tits-F\tits-R\t0\t0\t0\t0\t+\r\n";
         byte[] utf16 = text.getBytes(java.nio.charset.StandardCharsets.UTF_16LE);
         byte[] withMark = new byte[utf16.length + 2];

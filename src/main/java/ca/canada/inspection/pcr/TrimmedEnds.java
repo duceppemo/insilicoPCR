@@ -202,6 +202,42 @@ public final class TrimmedEnds {
         return new Side(leftSide, wanted, compared, unpaired, new String(query), new String(subject));
     }
 
+    /**
+     * {@code hit}, a primer's ({@link #extend extended} on {@code template}), with its 3' bases that lie past the
+     * end of its linear query added to the alignment as pairing: whether the primer binds there, its 3' end on the
+     * next piece of the genome (a contig ends inside its site). {@code null} when no 3' base of it lies past the
+     * end (or the query is a circle, a probe's hit, or not known).
+     */
+    public static BlastResult pairedPastTheEnd(BlastResult hit, Template template) {
+        int beyond = hit.threePrimeUncovered();
+        if (template == null || template.circle() > 0 || PrimerId.isProbe(hit.subjectID()) || beyond == 0
+                || hit.primerSeq() == null || hit.primerSeq().length() != hit.slen() || hit.qseq() == null
+                || hit.sseq() == null) {
+            return null;
+        }
+        boolean plus = hit.isPlusStrand();
+        int length = template.bases().length();
+        if (plus ? hit.qend() + beyond <= length : hit.qstart() - beyond >= 1) {
+            return null; // left out within the query: its bases do not pair
+        }
+        StringBuilder bases = new StringBuilder();
+        if (plus) {
+            for (int k = 1; k <= beyond; k++) {
+                bases.append(oligoBaseInQueryOrientation(hit, hit.send() + k, true));
+            }
+            return new BlastResult(hit.queryID(), hit.subjectID(), hit.mismatch(), hit.gaps(), hit.qstart(),
+                    hit.qend() + beyond, hit.sstart(), hit.send() + beyond, hit.slen(), hit.length() + beyond,
+                    hit.qseq() + bases, hit.sseq() + bases, hit.primerSeq(), hit.fivePrimeUnpaired(),
+                    hit.fivePrimeFree());
+        }
+        for (int k = beyond; k >= 1; k--) { // left to right: oligo positions sstart + beyond down to sstart + 1
+            bases.append(oligoBaseInQueryOrientation(hit, hit.sstart() + k, false));
+        }
+        return new BlastResult(hit.queryID(), hit.subjectID(), hit.mismatch(), hit.gaps(), hit.qstart() - beyond,
+                hit.qend(), hit.sstart() + beyond, hit.send(), hit.slen(), hit.length() + beyond, bases + hit.qseq(),
+                bases + hit.sseq(), hit.primerSeq(), hit.fivePrimeUnpaired(), hit.fivePrimeFree());
+    }
+
     private static char oligoBaseInQueryOrientation(BlastResult hit, int oligoPosition, boolean plus) {
         char base = Character.toUpperCase(hit.primerSeq().charAt(oligoPosition - 1));
         return plus ? base : Dna.complement(base);

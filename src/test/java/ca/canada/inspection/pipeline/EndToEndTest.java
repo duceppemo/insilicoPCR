@@ -268,8 +268,8 @@ class EndToEndTest {
                 "Running the samples that ran out of memory again, one at a time, with 2 threads and -Xmx8g: big"),
                 monitor.messages.toString());
         assertTrue(monitor.messages.contains("Completed sample big"), monitor.messages.toString());
-        // Run again from the assembly on: no baiting twice.
-        assertEquals(4, executed(monitor, "jgi.BBDuk").size());
+        // Run again from the assembly on: no baiting twice (two baitings and the anchors' trimming, a sample).
+        assertEquals(6, executed(monitor, "jgi.BBDuk").size());
         // The assembly: its k-mers loaded on the sample's threads, its contigs built on one (buildthreads=1).
         assertEquals(List.of("threads=1", "threads=2"), executed(monitor, "assemble.Tadpole"));
         // Only "small" is left to merge at once: it runs alone, with everything, and so does "big" after it.
@@ -558,6 +558,35 @@ class EndToEndTest {
     }
 
     @Test
+    void anAssemblyBrokenInsideAPrimerSiteIsNamedAsOneThatMaySpanTheBreak() throws IOException {
+        // The forward primer at 1,001-1,020, the assembly breaking after 1,018: its last 2 bases are on the next
+        // contig. Rejected (2 mismatches at its 3' end), the hit was never seen by the split check, and the
+        // assay was negative without a word.
+        java.util.Random random = new java.util.Random(59);
+        StringBuilder genome = new StringBuilder();
+        while (genome.length() < 3_000) {
+            genome.append("ACGT".charAt(random.nextInt(4)));
+        }
+        String forward = "GATCGGAAGAGCACACGTCT";
+        String reverse = "CTTGCCAGTAGCGTCATACG";
+        genome.replace(1_000, 1_020, forward);
+        genome.replace(1_480, 1_500, reverseComplement(reverse));
+        Path input = Files.createDirectory(directory.resolve("cut-in"));
+        Files.writeString(input.resolve("broken.fasta"), ">c1\n" + genome.substring(0, 1_018) + "\n>c2\n"
+                + genome.substring(1_018) + "\n");
+        Path primers = Files.writeString(directory.resolve("cut-primers.fasta"), ">cut-F\n" + forward + "\n>cut-R\n"
+                + reverse + "\n");
+        Path output = directory.resolve("cut-out");
+
+        pipeline(PipelineConfig.builder(input, output, primers).threads(2).build()).run();
+
+        assertEquals(List.of(), products(report(output)));
+        String qaLog = Files.readString(output.resolve("QAlog.txt"));
+        assertTrue(qaLog.contains("Primers at contig ends") && qaLog.contains("assay cut")
+                && qaLog.contains("its 3' end past the contig's end"), qaLog);
+    }
+
+    @Test
     void theMiniAssemblyGivesTheSameContigsOnOneThreadAsOnSixteen() throws IOException {
         // Its k-mers loaded on every thread, its contigs built on one: built on several, the contigs differed between
         // runs of the same reads (a circle written from another point, contigs numbered otherwise).
@@ -600,7 +629,7 @@ class EndToEndTest {
         while (circle.length() < 1_500) {
             circle.append("ACGT".charAt(random.nextInt(4)));
         }
-        String forward = "GATCGGAAGAGCACACGTCT";
+        String forward = "TGCAGTCCATGAGCTACGGA"; // not an adapter: the anchors are trimmed of those
         String reverse = "CTTGCCAGTAGCGTCATACG";
         circle.replace(1_100, 1_120, forward);
         circle.replace(880, 900, reverseComplement(reverse));

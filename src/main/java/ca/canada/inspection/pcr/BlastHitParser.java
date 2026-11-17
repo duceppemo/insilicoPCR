@@ -62,6 +62,25 @@ public final class BlastHitParser {
                 .filter(hit -> accepts(hit, options));
     }
 
+    /**
+     * A primer's hit {@link #parse} rejects only because its 3' end runs off the end of a linear query (a contig
+     * ends inside its site), when it would be accepted were its bases past the end to pair: for the warning that
+     * a product could span the break ({@link SplitAcrossContigs}), never for a product. The hit as on the query.
+     */
+    public static Optional<BlastResult> cutByQueryEnd(String line, PrimerPanel primers, AmpliconOptions options,
+                                                      Function<BlastResult, TrimmedEnds.Template> templates) {
+        int fivePrimeFree = options.maxFivePrimeTruncation();
+        return toHit(line, primers)
+                .filter(hit -> !PrimerId.isProbe(hit.subjectID()) && TrimmedEnds.needsTemplate(hit, options))
+                .flatMap(hit -> {
+                    TrimmedEnds.Template template = templates.apply(hit);
+                    BlastResult onQuery = TrimmedEnds.extend(hit, template, fivePrimeFree).withFivePrimeFree(fivePrimeFree);
+                    BlastResult paired = TrimmedEnds.pairedPastTheEnd(onQuery, template);
+                    return paired != null && !accepts(onQuery, options) && accepts(paired, options)
+                            ? Optional.of(onQuery) : Optional.empty();
+                });
+    }
+
     private static Optional<BlastResult> toHit(String line, PrimerPanel primers) {
         String[] fields = line.split("\t", -1);
         if (fields.length < EXPECTED_FIELDS) {

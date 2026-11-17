@@ -260,6 +260,8 @@ class CliConfigTest {
         // An integer too large for one is said to be so, not "must be an integer".
         assertEquals("--mismatches is too large, got: 99999999999 (at most 2147483647)",
                 assertThrows(IllegalArgumentException.class, () -> parse("-m", "99999999999")).getMessage());
+        assertEquals("--mismatches is too small, got: -99999999999 (at least -2147483648)",
+                assertThrows(IllegalArgumentException.class, () -> parse("-m", "-99999999999")).getMessage());
         assertEquals("--threads must be an integer, got: 2.5",
                 assertThrows(IllegalArgumentException.class, () -> parse("-t", "2.5")).getMessage());
     }

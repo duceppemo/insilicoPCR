@@ -44,10 +44,11 @@
 
 ### Fixed
 
-- Primers overlapping head to head: a 5' mismatch BLAST kept in its alignment
-  (within `--5p-truncation`) did not stop the other primer's 3' end landing on
-  it, as one left out of the alignment does since 0.15.4: such a product was
-  reported.
+- Primers overlapping head to head: the other primer's 3' end must lie past
+  every base of a primer that does not pair with the template: a mismatch or
+  an indel BLAST kept in its alignment did not count (0.15.4 counted only the
+  5' bases it left out), nor 3' bases left out. Such products, which cannot
+  be made (the strand the primer made carries those bases), were reported.
 - FASTQ: two read sets left out for their file names (a comma, an equals
   sign) failed the run, the assemblies beside them with it, as if BBTools
   could not run; they are left out with a message ("BBTools cannot be given
@@ -57,8 +58,7 @@
   start in it.
 - Windows: only a folder reparse point (a junction) where a run writes is
   refused as a link: 0.15.4 refused any reparse point, such as a file of a
-  deduplicated volume. On Linux, a link named `LOG.TXT` (not a name a run
-  writes there) is no longer refused.
+  deduplicated volume.
 - The command line checks the primer file's sequences before it makes the
   output folder: a primer with a letter that is not a base left an empty
   folder behind.
@@ -68,8 +68,8 @@
   overlap.
 - `--tadpole-k` longer than a sample's reads leaves its mini-assembly empty:
   a warning says so (only blastn's "Query is Empty" did).
-- Messages: an integer too large for the program (`-m 99999999999`) is said
-  to be so, not "not an integer"; `-e -1` is named as `--evalue` and as given;
+- Messages: an integer too large or too small for the program
+  (`-m 99999999999`) is said to be so, not "not an integer"; `-e -1` is named as `--evalue` and as given;
   `-1e-400` and `0d` are no longer "too small"; the Tadpole settings give the
   same bound for 0 and -1; a primer header with no ID says so.
 - Linux launcher: `--enable-native-access`, as on Windows: `--gel` printed

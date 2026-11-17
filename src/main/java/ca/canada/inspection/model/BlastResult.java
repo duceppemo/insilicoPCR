@@ -131,29 +131,29 @@ public record BlastResult(
 	}
 
 	/**
-	 * Query position next to the innermost of the {@link #fivePrimeFree} mismatches (or indels) kept in the alignment
-	 * near the oligo's 5' end, on the side of its 3' end: the 5'-most position from which the oligo pairs again (plus
-	 * strand: right of it; minus strand: left of it). {@link Integer#MIN_VALUE} when it has none, or when the aligned
-	 * bases are not known ({@link #hasAlignedBases}).
+	 * Query position next to the mismatch or indel of the alignment nearest the oligo's 3' end, on that side: from
+	 * there to the end of the alignment, the oligo pairs without a break (plus strand: right of it; minus strand: left
+	 * of it). {@link Integer#MIN_VALUE} when the alignment has none, or when its bases are not known
+	 * ({@link #hasAlignedBases}).
 	 */
-	public int pairsAgainAfterFivePrimeFree() {
-		if (fivePrimeFree <= 0 || !hasAlignedBases()) {
+	public int pairsAgainAfterLastMismatch() {
+		if (!hasAlignedBases()) {
 			return Integer.MIN_VALUE;
 		}
 		boolean plus = isPlusStrand();
-		int seen = 0;
-		// Walked from the oligo's 5' end: left to right on the plus strand, right to left on the minus strand.
-		int position = plus ? qstart - 1 : qend + 1;
+		// Walked from the oligo's 3' end: right to left on the plus strand, left to right on the minus strand.
+		int position = plus ? qend + 1 : qstart - 1;
 		for (int k = 0; k < qseq.length(); k++) {
-			int i = plus ? k : qseq.length() - 1 - k;
+			int i = plus ? qseq.length() - 1 - k : k;
 			char q = Character.toUpperCase(qseq.charAt(i));
 			char s = Character.toUpperCase(sseq.charAt(i));
 			if (q != '-') {
-				position += plus ? 1 : -1;
+				position += plus ? -1 : 1;
 			}
-			if (q != s && ++seen == fivePrimeFree) {
-				// A gap in the query lies between two query bases: the next one is where pairing resumes.
-				return plus ? position + 1 : position - 1;
+			if (q != s) {
+				// A gap in the query lies between two query bases: pairing resumes at the one on the 3' side, the last
+				// walked. Otherwise at the base past this one.
+				return q == '-' ? position : plus ? position + 1 : position - 1;
 			}
 		}
 		return Integer.MIN_VALUE;

@@ -28,13 +28,13 @@ public record PipelineDirectories(Path output, Path detailed, Path consolidated)
      * ({@code primer_tmp.fasta} and BLAST's files beside it), the logs, the lock, and the two report folders.
      */
     static boolean written(String name) {
-        return written(name, CASE_INSENSITIVE);
+        // Whatever the case, on every system: a share mounted on Linux may ignore case as Windows and macOS do, and a
+        // link named Detailed_Report there is the folder a run writes in (an exact match on Linux would let it
+        // through); a link named LOG.TXT refused where a run never writes that name is the lesser harm.
+        return written(name, true);
     }
 
-    /**
-     * As {@link #written(String)}, on a file system that ignores case ({@code ignoringCase}): on Windows and macOS,
-     * Detailed_Report is the folder a run writes in; on Linux it is not, and a link named LOG.TXT was refused there.
-     */
+    /** As {@link #written(String)}, matching the names whatever their case ({@code ignoringCase}) or exactly. */
     static boolean written(String name, boolean ignoringCase) {
         String n = ignoringCase ? name.toLowerCase(java.util.Locale.ROOT) : name;
         String qaLog = ignoringCase ? "qalog" : "QAlog";
@@ -43,10 +43,6 @@ public record PipelineDirectories(Path output, Path detailed, Path consolidated)
         return n.startsWith("primer_tmp.fasta") || n.startsWith(qaLog) || n.startsWith("log.txt") || n.equals(lock)
                 || n.equals("detailed_report") || n.equals(CONSOLIDATED);
     }
-
-    /** Whether the system's file names ignore case, as Windows' and macOS's do by default. */
-    private static final boolean CASE_INSENSITIVE = AppPaths.isWindows()
-            || System.getProperty("os.name", "").toLowerCase(java.util.Locale.ROOT).contains("mac");
 
     /**
      * Whether {@code entry} leads elsewhere: a symbolic link, or on Windows a junction (a link to a folder that

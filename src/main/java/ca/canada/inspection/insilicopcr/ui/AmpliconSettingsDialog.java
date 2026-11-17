@@ -46,10 +46,10 @@ public final class AmpliconSettingsDialog {
     private AmpliconSettingsDialog() {
     }
 
-    /** @return the edited settings, or empty when the dialog was cancelled */
     /** The label of {@code --5p-truncation}, in the dialog, its summary and its messages. */
     static final String TRUNCATION_LABEL = "Max 5' unpaired bases";
 
+    /** @return the edited settings, or empty when the dialog was cancelled */
     public static Optional<AmpliconSettings> show(Window owner, AmpliconSettings current) {
         var dialog = new SettingsDialog();
         dialog.section("Probe");

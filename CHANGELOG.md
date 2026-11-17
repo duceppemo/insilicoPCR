@@ -1,5 +1,55 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- Primers overlapping head to head (0.15.3): a pair was taken as facing each
+  other when one primer's 3' end lay on 5' bases of the other that BLAST left
+  out and that do not pair with the template (or were not compared with it).
+  Such a product cannot be made: the 3' end sits on a mismatch in the strand
+  the other primer made. Those 5' bases count only where they pair, as before
+  0.15.3 where they do not.
+- *Primers at contig ends* (0.15.3) named chance matches: a hit whose 3' end
+  runs off a contig end must now have at least 12 of its bases (or half the
+  primer, if more) aligned on the contig. Hits of 7 to 9 bases had made every such
+  warning on 2,022 Brucella genomes (71), and took the place of the real pair
+  0.15.0 named. Its "at least N bp" now counts the primer bases past the
+  contig ends too (two 17-mers made "at least 15 bp").
+- FASTQ input: an output folder with `#` in its path failed every run with
+  reads, BBTools reading the `#` of a file it writes as the mate's number (it
+  wrote into `run12` and `run22` beside `run#2`). The files are named from
+  their folder; a sample whose own file name has a `#` is left out with a
+  message.
+- Command line: the input, the primer file and the output folder are checked
+  before the output folder is made, as the application does: a primer file
+  with a mistake left an empty output folder (and its lock file) behind, and
+  an output that is a file failed as "Unable to create directory".
+- Application: a run refused because another run holds its output folder
+  added its lines to that run's `log.txt`; it writes nothing there now.
+- Windows: an output folder holding a junction where a run writes (made with
+  `mklink /J`, which Java does not see as a link) is refused as one holding a
+  symbolic link is; and those names are matched whatever their case
+  (`Detailed_Report`). Sample names `COM0`, `LPT0`, `COM¹` to `LPT³`, `CONIN$`
+  and `CONOUT$`, which Windows keeps for devices, are left out with a message
+  as `COM1` was.
+- Windows, command line: what BLAST+ and BBTools print is shown in the
+  console's own encoding: accents in their messages came out wrong in
+  `cmd.exe` ("RÚsultats").
+- Report files end their lines in LF on every system: on Windows, `report.tsv`,
+  `QAlog.txt` and others ended them in CRLF, the HTML report and others in LF.
+- Application: an e-value too small for a number (`1e-400`) is said to be so,
+  in the command line's words, not to be "not greater than 0"; messages name
+  the window's settings beside the command-line options (`-t`,
+  `--bbtools-memory`, `--input-check quick`).
+
+### Changed
+
+- The HTML report lists at most 10,000 amplicons (50,000 in 0.15.3): a page of
+  50,000 took some 40 seconds to open. The grid and counts still cover every
+  product, and `report.tsv` has every row.
+- Application: **Mismatches** offers 0 to 10, not 0 to 3.
+
 ## 0.15.3 (2026-11-16)
 
 ### Added

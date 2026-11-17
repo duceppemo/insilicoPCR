@@ -436,7 +436,7 @@ class HtmlReportTest {
         String page = Files.readString(html);
 
         assertEquals(HtmlReport.MAX_LISTED, count(page, "<tr data-s="));
-        assertTrue(page.contains("The first 50,000 of 50,010 amplicons are listed here, and the filter searches those:"
+        assertTrue(page.contains("The first 10,000 of 10,010 amplicons are listed here, and the filter searches those:"
                 + " report.tsv has every one."), "the note");
         assertEquals(100, count(page, "<tr data-sample="), "the grid has every sample");
     }

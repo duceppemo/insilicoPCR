@@ -45,7 +45,7 @@ final class ExternalProgram {
         }
         Process process;
         // The job object made before the program starts, so that it is put in it at once (WindowsJob).
-        WindowsJob.active();
+        WindowsJob.prepare();
         try {
             process = builder.start();
         } catch (IOException e) {

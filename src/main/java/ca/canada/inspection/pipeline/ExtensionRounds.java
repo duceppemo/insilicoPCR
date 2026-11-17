@@ -301,7 +301,7 @@ final class ExtensionRounds {
                 baited = Files.move(files.candidateReads(), files.extensionUnionReads(),
                         java.nio.file.StandardCopyOption.REPLACE_EXISTING);
             } catch (IOException e) {
-                baited = null; // a pass over the sample's reads, as before
+                // baited stays null: a pass over the sample's reads, as before
             }
         }
         Map<String, Outcome> sampleOutcomes = new TreeMap<>(ReadExtensionStage.checkAgainstReadPairs(settings,

@@ -430,7 +430,9 @@ public final class InputCheck {
         if (files.isEmpty()) {
             return faults;
         }
-        // Daemon threads: a window closed during the check must not leave the program running.
+        // Daemon threads: a window closed during the check must not leave the program running. Not closed in a
+        // try-with-resources: close() waits for every file, and a cancelled run must not (shutdownNow, below).
+        //noinspection resource
         ExecutorService pool = Executors.newFixedThreadPool(Math.clamp(threads, 1, files.size()), task -> {
             Thread worker = new Thread(task, "input-check");
             worker.setDaemon(true);

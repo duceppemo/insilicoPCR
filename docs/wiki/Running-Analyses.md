@@ -103,15 +103,15 @@ Standard PCR assays and qPCR/probe assays can be mixed in the same primer FASTA 
 
 ## Parameters
 
-| Parameter | Purpose |
-|---|---|
-| Threads | Number of worker threads; FASTQ samples processed at once share them, and the memory: see [Threads and memory in FASTQ mode](Command-line-Interface#threads-and-memory-in-fastq-mode) |
-| Mismatches | Allowed mismatches + indels per primer (3' bases that do not pair with the template count) |
-| E-value | BLASTN e-value threshold |
-| Amplicon settings… | Probe mismatches, 3'-end check, 5' truncation, min/max amplicon length (default max 5000; 0 disables the limit) |
-| FASTQ settings… | Tadpole mini-assembly settings, the read-level call threshold and the read extension |
+| Parameter | Command line | Default | Purpose |
+|---|---|---|---|
+| Threads | `-t` | the processors, less one in the window | Number of worker threads; FASTQ samples processed at once share them, and the memory: see [Threads and memory in FASTQ mode](Command-line-Interface#threads-and-memory-in-fastq-mode) |
+| Mismatches | `-m` | 0 (the window offers 0 to 10) | Allowed mismatches + indels per primer (3' bases that do not pair with the template count) |
+| E-value | `-e` | 1e5 | BLASTN e-value threshold |
+| Amplicon settings… | `--probe-mismatches`, `--3p-window`, `--3p-penalty`, `--5p-truncation`, `--min-length`, `-l` | see [Amplicon Calling](Amplicon-Calling) | Probe mismatches, 3'-end check, 5' truncation, min/max amplicon length (default max 5000; 0 disables the limit) |
+| FASTQ settings… | the Tadpole options, `--read-min-fraction`, `--read-extension`, `--bbtools-memory` | see [Command-line Interface](Command-line-Interface) | Tadpole mini-assembly settings, the read-level call threshold, the read extension and the BBTools programs' memory |
 
-Every GUI setting has a command-line equivalent; see [Command-line Interface](Command-line-Interface), [Amplicon Calling](Amplicon-Calling) and [GUI Overview](GUI-Overview).
+Every setting of the window has a command-line equivalent. The command line has a few the window does not: `--input-check quick` (the window checks every read), `--gel` (the window has its own gel viewer), and any number of mismatches; see [Command-line Interface](Command-line-Interface), [Amplicon Calling](Amplicon-Calling) and [GUI Overview](GUI-Overview).
 
 ## Outputs
 

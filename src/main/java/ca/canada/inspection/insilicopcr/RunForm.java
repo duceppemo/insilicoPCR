@@ -52,6 +52,10 @@ record RunForm(Path input, Path output, Path primers, int threads, int mismatche
         } catch (NumberFormatException e) {
             evalue = Double.NaN;
         }
+        if (PipelineConfig.tooSmallForANumber(evalueText, evalue)) {
+            // 1e-400 was told it was not above 0.
+            return new Outcome.Invalid("E-value " + PipelineConfig.tooSmallMessage(evalueText) + ".");
+        }
         if (!PipelineConfig.validEvalue(evalue)) {
             return new Outcome.Invalid("E-value must be a number greater than 0, e.g. "
                     + PipelineConfig.DEFAULT_EVALUE_TEXT + ".");

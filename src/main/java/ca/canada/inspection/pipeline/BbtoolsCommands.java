@@ -95,7 +95,8 @@ record BbtoolsCommands(String javaCommand, Path bbtoolsJar, int childMemoryGiB, 
                         + " GB each, or run on a computer with more memory.";
         // Exit code 3 is any OutOfMemoryError; this one is not about the heap.
         return program + " ran out of memory" + where + " with -Xmx" + memoryGiB + "g, " + advice
-                + " If its output says \"unable to create native thread\", use fewer threads (-t) instead.";
+                + " If its output says \"unable to create native thread\", use fewer threads (-t, or Threads in the"
+                + " application) instead.";
     }
 
     BbtoolsCommands {

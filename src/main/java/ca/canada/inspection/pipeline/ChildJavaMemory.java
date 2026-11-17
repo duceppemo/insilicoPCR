@@ -25,6 +25,7 @@ public final class ChildJavaMemory {
     }
 
     /** The default, in words: the one place it is written (the help, the window, the run's settings). */
+    @SuppressWarnings("ConstantValue") // in words while the share is three quarters, in figures if it changes
     public static String automatic() {
         String share = FREE_MEMORY_SHARE == 0.75 ? "three quarters" : Math.round(FREE_MEMORY_SHARE * 100) + "%";
         return share + " of the memory insilicoPCR leaves free on the computer (a job's limit on a cluster), at least"

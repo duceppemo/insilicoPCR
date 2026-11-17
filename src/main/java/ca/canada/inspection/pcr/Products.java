@@ -122,7 +122,7 @@ public final class Products {
                     }
                 }
             }
-            bestPerProduct(assayRows).forEach(found::add);
+            found.addAll(bestPerProduct(assayRows));
         }
         crossAssayProducts(found::add, sampleName, contigs, hits, options, primers);
         oncePerReaction(found, primers.mixGroups()).forEach(rows);

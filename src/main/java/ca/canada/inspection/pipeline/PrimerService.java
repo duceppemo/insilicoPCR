@@ -93,6 +93,11 @@ public final class PrimerService {
                 if (line.startsWith(">")) {
                     putFastaEntry(fasta, currentId, sequence, file);
                     currentId = SequenceFileUtils.fastaId(line);
+                    if (currentId.isEmpty()) {
+                        // Said as "naming convention:  (the role letter ...", a blank where the ID goes.
+                        throw new PipelineException("The primer file " + file + " has a header with no ID (a line"
+                                + " \"" + line + "\"): give each primer an ID after the >, such as stxA-F");
+                    }
                     // The ID first: ">tox A-F" twice was "tox appears twice", with IDs to use (tox_1) refused too.
                     validatePrimerId(currentId);
                     if (descriptions.containsKey(currentId)) {

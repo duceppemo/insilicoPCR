@@ -21,13 +21,13 @@ class InputValidatorTest {
     }
 
     private Path primers() throws IOException {
-        return Files.writeString(dir.resolve("primers.fasta"), ">a-F\nACGT\n>a-R\nACGT\n");
+        return Files.writeString(dir.resolve("primers.fasta"), ">a-F\nACGTACGTAC\n>a-R\nTTGGCCAATT\n");
     }
 
     @Test
     void validSingleFileInputPasses() throws IOException {
         Path input = fasta("genome.fasta");
-        Path primers = Files.writeString(dir.resolve("primers.fasta"), ">a-F\nACGT\n>a-R\nACGT\n");
+        Path primers = Files.writeString(dir.resolve("primers.fasta"), ">a-F\nACGTACGTAC\n>a-R\nTTGGCCAATT\n");
         assertEquals("", InputValidator.validate(input, dir.resolve("out"), primers));
     }
 
@@ -35,7 +35,7 @@ class InputValidatorTest {
     void validDirectoryInputPasses() throws IOException {
         Path inputDir = Files.createDirectories(dir.resolve("inputs"));
         Files.writeString(inputDir.resolve("genome.fasta"), ">seq1\nACGT\n");
-        Path primers = Files.writeString(dir.resolve("primers.fasta"), ">a-F\nACGT\n>a-R\nACGT\n");
+        Path primers = Files.writeString(dir.resolve("primers.fasta"), ">a-F\nACGTACGTAC\n>a-R\nTTGGCCAATT\n");
         assertEquals("", InputValidator.validate(inputDir, dir.resolve("out"), primers));
     }
 
@@ -115,7 +115,7 @@ class InputValidatorTest {
         // "size=420-450" holds a dash: the role must still be read from the ID alone.
         Path input = fasta("genome2.fasta");
         Path primers = Files.writeString(dir.resolve("sized.fasta"),
-                ">a-F size=420-450 other=575\nACGT\n>a-R reverse primer\nACGT\n>a-P\tFAM-BHQ1\nACGT\n");
+                ">a-F size=420-450 other=575\nACGTACGTAC\n>a-R reverse primer\nTTGGCCAATT\n>a-P\tFAM-BHQ1\nGGCCTTAAGG\n");
         assertEquals("", InputValidator.validate(input, dir.resolve("out2"), primers));
     }
 

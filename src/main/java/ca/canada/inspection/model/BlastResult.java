@@ -130,6 +130,40 @@ public record BlastResult(
 		return isPlusStrand() ? qstart - fivePrimeUncovered() : qend + fivePrimeUncovered();
 	}
 
+	/**
+	 * Query position next to the innermost of the {@link #fivePrimeFree} mismatches (or indels) kept in the alignment
+	 * near the oligo's 5' end, on the side of its 3' end: the 5'-most position from which the oligo pairs again (plus
+	 * strand: right of it; minus strand: left of it). {@link Integer#MIN_VALUE} when it has none, or when the aligned
+	 * bases are not known ({@link #hasAlignedBases}).
+	 */
+	public int pairsAgainAfterFivePrimeFree() {
+		if (fivePrimeFree <= 0 || !hasAlignedBases()) {
+			return Integer.MIN_VALUE;
+		}
+		boolean plus = isPlusStrand();
+		int seen = 0;
+		// Walked from the oligo's 5' end: left to right on the plus strand, right to left on the minus strand.
+		int position = plus ? qstart - 1 : qend + 1;
+		for (int k = 0; k < qseq.length(); k++) {
+			int i = plus ? k : qseq.length() - 1 - k;
+			char q = Character.toUpperCase(qseq.charAt(i));
+			char s = Character.toUpperCase(sseq.charAt(i));
+			if (q != '-') {
+				position += plus ? 1 : -1;
+			}
+			if (q != s && ++seen == fivePrimeFree) {
+				// A gap in the query lies between two query bases: the next one is where pairing resumes.
+				return plus ? position + 1 : position - 1;
+			}
+		}
+		return Integer.MIN_VALUE;
+	}
+
+	/** Whether the hit's aligned bases are known, column for column. */
+	public boolean hasAlignedBases() {
+		return qseq != null && sseq != null && qseq.length() == sseq.length();
+	}
+
 	/** Query position of the full primer's leftmost base, unaligned bases included. */
 	public int fullStart() {
 		return qstart - (isPlusStrand() ? fivePrimeUncovered() : threePrimeUncovered());

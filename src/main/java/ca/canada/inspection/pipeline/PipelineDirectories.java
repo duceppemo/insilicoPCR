@@ -28,12 +28,25 @@ public record PipelineDirectories(Path output, Path detailed, Path consolidated)
      * ({@code primer_tmp.fasta} and BLAST's files beside it), the logs, the lock, and the two report folders.
      */
     static boolean written(String name) {
-        // Whatever the case: on Windows and macOS, Detailed_Report is the folder a run writes in.
-        String lower = name.toLowerCase(java.util.Locale.ROOT);
-        return lower.startsWith("primer_tmp.fasta") || lower.startsWith("qalog") || lower.startsWith("log.txt")
-                || lower.equals(OutputLock.FILE_NAME.toLowerCase(java.util.Locale.ROOT))
-                || lower.equals("detailed_report") || lower.equals(CONSOLIDATED);
+        return written(name, CASE_INSENSITIVE);
     }
+
+    /**
+     * As {@link #written(String)}, on a file system that ignores case ({@code ignoringCase}): on Windows and macOS,
+     * Detailed_Report is the folder a run writes in; on Linux it is not, and a link named LOG.TXT was refused there.
+     */
+    static boolean written(String name, boolean ignoringCase) {
+        String n = ignoringCase ? name.toLowerCase(java.util.Locale.ROOT) : name;
+        String qaLog = ignoringCase ? "qalog" : "QAlog";
+        String lock = ignoringCase ? OutputLock.FILE_NAME.toLowerCase(java.util.Locale.ROOT) : OutputLock.FILE_NAME;
+        // The other names are lower case already.
+        return n.startsWith("primer_tmp.fasta") || n.startsWith(qaLog) || n.startsWith("log.txt") || n.equals(lock)
+                || n.equals("detailed_report") || n.equals(CONSOLIDATED);
+    }
+
+    /** Whether the system's file names ignore case, as Windows' and macOS's do by default. */
+    private static final boolean CASE_INSENSITIVE = AppPaths.isWindows()
+            || System.getProperty("os.name", "").toLowerCase(java.util.Locale.ROOT).contains("mac");
 
     /**
      * Whether {@code entry} leads elsewhere: a symbolic link, or on Windows a junction (a link to a folder that
@@ -42,12 +55,23 @@ public record PipelineDirectories(Path output, Path detailed, Path consolidated)
      */
     static boolean leadsElsewhere(Path entry) {
         try {
-            java.nio.file.attribute.BasicFileAttributes attributes = Files.readAttributes(entry,
-                    java.nio.file.attribute.BasicFileAttributes.class, java.nio.file.LinkOption.NOFOLLOW_LINKS);
-            return attributes.isSymbolicLink() || attributes.isOther();
+            return leadsElsewhere(Files.readAttributes(entry, java.nio.file.attribute.BasicFileAttributes.class,
+                    java.nio.file.LinkOption.NOFOLLOW_LINKS), Files.isDirectory(entry), AppPaths.isWindows());
         } catch (IOException e) {
             return false; // gone since it was listed
         }
+    }
+
+    /**
+     * As {@link #leadsElsewhere(Path)}, from an entry's own attributes. On Windows, Java reads every reparse point
+     * that is not a symbolic link as "other": a junction, which is a folder, but also a file of a deduplicated
+     * volume or one a cloud service keeps, which a run may well overwrite (0.15.4 refused a reused folder holding
+     * one); only one that leads to a folder is taken for a link there. Read without following it, a junction is not
+     * a folder: {@code followedToAFolder} is whether it is one once followed.
+     */
+    static boolean leadsElsewhere(java.nio.file.attribute.BasicFileAttributes attributes, boolean followedToAFolder,
+                                  boolean windows) {
+        return attributes.isSymbolicLink() || attributes.isOther() && (!windows || followedToAFolder);
     }
 
     /**

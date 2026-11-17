@@ -18,12 +18,24 @@ import java.util.function.Consumer;
 final class OutputLock implements AutoCloseable {
     static final String FILE_NAME = ".insilicoPCR.lock";
 
+    /**
+     * The lock files this program holds, by real path. A second run of the application into a held folder is refused
+     * from here, before it opens the file: on Linux, closing that second channel (after its tryLock failed) let go of
+     * the lock the first run held, and the folder was no longer held.
+     */
+    private static final java.util.Set<Path> HELD = java.util.concurrent.ConcurrentHashMap.newKeySet();
+    /** Channels that found the lock held here by another path to the file: kept open, as closing them would free it. */
+    @SuppressWarnings("MismatchedQueryAndUpdateOfCollection") // held, never read: it keeps them open
+    private static final java.util.List<FileChannel> KEPT_OPEN = new java.util.concurrent.CopyOnWriteArrayList<>();
+
     private final FileChannel channel;
     private final FileLock lock;
+    private final Path held;
 
-    private OutputLock(FileChannel channel, FileLock lock) {
+    private OutputLock(FileChannel channel, FileLock lock, Path held) {
         this.channel = channel;
         this.lock = lock;
+        this.held = held;
     }
 
     /**
@@ -35,30 +47,55 @@ final class OutputLock implements AutoCloseable {
      */
     static OutputLock take(Path output, Consumer<String> warning) {
         Path file = output.resolve(FILE_NAME);
+        Path key = heldKey(output);
+        if (!HELD.add(key)) {
+            throw new OutputFolderInUse(output);
+        }
+        try {
+            return take(output, file, key, warning);
+        } catch (RuntimeException | Error e) {
+            HELD.remove(key);
+            throw e;
+        }
+    }
+
+    /** The folder as the system has it (links resolved), so that two paths to it are one. */
+    private static Path heldKey(Path output) {
+        try {
+            return output.toRealPath().resolve(FILE_NAME);
+        } catch (IOException notThere) {
+            return output.toAbsolutePath().normalize().resolve(FILE_NAME);
+        }
+    }
+
+    /** As {@link #take(Path, Consumer)}, once {@code key} is held here. */
+    static OutputLock take(Path output, Path file, Path key, Consumer<String> warning) {
         FileChannel channel;
         try {
             channel = FileChannel.open(file, StandardOpenOption.CREATE, StandardOpenOption.WRITE);
         } catch (IOException e) {
             warning.accept("Warning: could not lock the output folder (" + e.getMessage() + "): do not run another"
                     + " run into it at the same time");
-            return new OutputLock(null, null);
+            return new OutputLock(null, null, key); // held in this program all the same
         }
         FileLock lock;
         try {
             lock = channel.tryLock();
         } catch (OverlappingFileLockException heldHere) {
-            lock = null; // by another run of this program (the application)
+            // By another run of this program, through another path to the file: closing this channel would free it.
+            KEPT_OPEN.add(channel);
+            throw new OutputFolderInUse(output);
         } catch (IOException e) {
             closeQuietly(channel);
             warning.accept("Warning: could not lock the output folder (" + e.getMessage() + "): do not run another"
                     + " run into it at the same time");
-            return new OutputLock(null, null);
+            return new OutputLock(null, null, key); // held in this program all the same
         }
         if (lock == null) {
             closeQuietly(channel);
             throw new OutputFolderInUse(output);
         }
-        return new OutputLock(channel, lock);
+        return new OutputLock(channel, lock, key);
     }
 
     @Override
@@ -71,6 +108,9 @@ final class OutputLock implements AutoCloseable {
             // Released with the channel anyway.
         }
         closeQuietly(channel);
+        if (held != null) {
+            HELD.remove(held);
+        }
     }
 
     private static void closeQuietly(FileChannel channel) {

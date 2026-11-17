@@ -58,7 +58,12 @@ public record PipelineConfig(
      * and was told it was not above 0. The command line and the window say so in the same words.
      */
     public static boolean tooSmallForANumber(String text, double value) {
-        return value == 0 && !text.strip().matches("[+-]?0*\\.?0*([eE][+-]?\\d+)?");
+        // Read exactly: -1e-400 is below 0, and 0d or 0x0p0 are 0 (all were told "too small"), whatever Java reads.
+        try {
+            return value == 0 && new java.math.BigDecimal(text.strip()).signum() > 0;
+        } catch (NumberFormatException notDecimal) {
+            return false;
+        }
     }
 
     /** What is said of an e-value {@link #tooSmallForANumber}, after the option's or field's name. */

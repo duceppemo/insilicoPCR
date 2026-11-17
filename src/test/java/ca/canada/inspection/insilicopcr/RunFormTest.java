@@ -49,6 +49,11 @@ class RunFormTest {
         RunForm.Outcome.Invalid invalid = assertInstanceOf(RunForm.Outcome.Invalid.class, form(" 1e-400").toConfig());
         assertEquals("E-value 1e-400 is too small for a number of the program (it reads as 0): give 1e-300 or more.",
                 invalid.message());
+        // Below 0, or 0 written otherwise: not "too small".
+        for (String evalue : new String[]{"-1e-400", "0d", "0x0p0", "0e-5"}) {
+            assertEquals("E-value must be a number greater than 0, e.g. 1e5.",
+                    assertInstanceOf(RunForm.Outcome.Invalid.class, form(evalue).toConfig()).message(), evalue);
+        }
     }
 
     @Test

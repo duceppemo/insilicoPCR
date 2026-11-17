@@ -133,11 +133,12 @@ public final class SplitAcrossContigs {
                 return null; // convergent: a product on the contig, or none for another reason
             }
         }
-        // Summed as a long: two chromosomes of over a gigabase overflowed an int into a negative size. The bases of
-        // the two contigs, and those missing between them: at least the longer of the two primers' 3' parts that run
-        // off a contig end (left out, two 17-mers each cut after 7 bases made "at least 15 bp").
-        long minimumSize = (long) forward.toQueryEnd(forwardLength) + reverse.toQueryEnd(reverseLength)
-                + Math.max(pastTheEnd(forward, forwardLength), pastTheEnd(reverse, reverseLength));
+        // Summed as a long: two chromosomes of over a gigabase overflowed an int into a negative size. A product
+        // holds each primer in full, so never less than the longer one: two 17-mers each cut after 7 bases made "at
+        // least 15 bp". Not more either: the primer bases past a contig end may be on the other contig (contigs that
+        // overlap, as a de Bruijn assembler's do), so adding them (0.15.4) could overstate it.
+        long minimumSize = Math.max((long) forward.toQueryEnd(forwardLength) + reverse.toQueryEnd(reverseLength),
+                Math.max(forward.slen(), reverse.slen()));
         if (minimumSize > Integer.MAX_VALUE) {
             return null; // longer than any product looked for
         }
@@ -153,11 +154,6 @@ public final class SplitAcrossContigs {
      */
     static int reach(AmpliconOptions options) {
         return options.maxAmpliconLength() > 0 ? options.maxAmpliconLength() : ReadExtensionCaller.DEFAULT_REACH;
-    }
-
-    /** Primer bases past the end of its contig, in the direction it extends: those of a site the end cuts. */
-    static int pastTheEnd(BlastResult hit, int contigLength) {
-        return Math.max(0, hit.isPlusStrand() ? hit.fullEnd() - contigLength : 1 - hit.fullStart());
     }
 
     /** Contig bases past the primer's 3' end, in the direction it extends (also in the FASTQ diagnostics). */

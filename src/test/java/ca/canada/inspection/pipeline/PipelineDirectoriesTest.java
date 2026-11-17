@@ -45,20 +45,49 @@ class PipelineDirectoriesTest {
     }
 
     @org.junit.jupiter.api.Test
-    @org.junit.jupiter.api.condition.DisabledOnOs(org.junit.jupiter.api.condition.OS.WINDOWS)
-    void theNamesARunWritesAreMatchedWhateverTheirCase(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir)
-            throws java.io.IOException {
+    void theNamesARunWritesAreMatchedWhateverTheirCaseWhereTheSystemIgnoresIt() {
         // On Windows and macOS, a link named Detailed_Report is the folder the run writes in: it was let through.
-        org.junit.jupiter.api.Assertions.assertTrue(PipelineDirectories.written("Detailed_Report"));
-        org.junit.jupiter.api.Assertions.assertTrue(PipelineDirectories.written("QALOG.txt"));
-        org.junit.jupiter.api.Assertions.assertTrue(PipelineDirectories.written("Primer_Tmp.fasta.nhr"));
-        org.junit.jupiter.api.Assertions.assertTrue(PipelineDirectories.written(".insilicoPCR.LOCK"));
-        org.junit.jupiter.api.Assertions.assertFalse(PipelineDirectories.written("reads"));
+        org.junit.jupiter.api.Assertions.assertTrue(PipelineDirectories.written("Detailed_Report", true));
+        org.junit.jupiter.api.Assertions.assertTrue(PipelineDirectories.written("QALOG.txt", true));
+        org.junit.jupiter.api.Assertions.assertTrue(PipelineDirectories.written("Primer_Tmp.fasta.nhr", true));
+        org.junit.jupiter.api.Assertions.assertTrue(PipelineDirectories.written(".insilicoPCR.LOCK", true));
+        org.junit.jupiter.api.Assertions.assertFalse(PipelineDirectories.written("reads", true));
+        // Where case counts (Linux), LOG.TXT is not log.txt: a link by that name was refused (0.15.4).
+        org.junit.jupiter.api.Assertions.assertFalse(PipelineDirectories.written("LOG.TXT.d", false));
+        org.junit.jupiter.api.Assertions.assertFalse(PipelineDirectories.written("Detailed_Report", false));
+        org.junit.jupiter.api.Assertions.assertTrue(PipelineDirectories.written("QAlog(1).txt", false));
+        org.junit.jupiter.api.Assertions.assertTrue(PipelineDirectories.written(".insilicoPCR.lock", false));
+    }
 
-        java.nio.file.Path elsewhere = java.nio.file.Files.createDirectories(dir.resolve("elsewhere"));
-        java.nio.file.Path output = java.nio.file.Files.createDirectories(dir.resolve("run"));
-        java.nio.file.Files.createSymbolicLink(output.resolve("Consolidated_Report"), elsewhere);
-        org.junit.jupiter.api.Assertions.assertThrows(PipelineException.class, () -> PipelineDirectories.create(output));
+    @org.junit.jupiter.api.Test
+    void onWindowsOnlyAFolderReparsePointIsTakenForALink() {
+        // Java reads every Windows reparse point that is not a symbolic link as "other", and, without following it,
+        // not as a folder: a junction (a folder once followed) but also a deduplicated file, which made a reused
+        // output folder refused (0.15.4).
+        org.junit.jupiter.api.Assertions.assertTrue(PipelineDirectories.leadsElsewhere(attributes(false, true, false),
+                true, true), "a junction");
+        org.junit.jupiter.api.Assertions.assertFalse(PipelineDirectories.leadsElsewhere(attributes(false, true, false),
+                false, true), "a deduplicated file");
+        org.junit.jupiter.api.Assertions.assertTrue(PipelineDirectories.leadsElsewhere(attributes(true, false, false),
+                false, true), "a symbolic link");
+        org.junit.jupiter.api.Assertions.assertTrue(PipelineDirectories.leadsElsewhere(attributes(false, true, false),
+                false, false), "a pipe elsewhere");
+        org.junit.jupiter.api.Assertions.assertFalse(PipelineDirectories.leadsElsewhere(attributes(false, false, true),
+                true, true), "a folder");
+    }
+
+    private static java.nio.file.attribute.BasicFileAttributes attributes(boolean link, boolean other, boolean folder) {
+        return new java.nio.file.attribute.BasicFileAttributes() {
+            public java.nio.file.attribute.FileTime lastModifiedTime() { return null; }
+            public java.nio.file.attribute.FileTime lastAccessTime() { return null; }
+            public java.nio.file.attribute.FileTime creationTime() { return null; }
+            public boolean isRegularFile() { return !link && !other && !folder; }
+            public boolean isDirectory() { return folder; }
+            public boolean isSymbolicLink() { return link; }
+            public boolean isOther() { return other; }
+            public long size() { return 0; }
+            public Object fileKey() { return null; }
+        };
     }
 
     @org.junit.jupiter.api.Test

@@ -1,0 +1,5 @@
+Sample	Status	Input	Files	Products	Reason
+ERR6501878	analysed	reads	ERR6501878_1.fastq.gz; ERR6501878_2.fastq.gz	0	
+SRR17090570	analysed	reads	SRR17090570_1.fastq.gz; SRR17090570_2.fastq.gz	2	
+linnocua_CLIP11262	analysed	assembly	linnocua_CLIP11262.fasta	0	
+lmono_EGDe	analysed	assembly	lmono_EGDe.fasta	2	

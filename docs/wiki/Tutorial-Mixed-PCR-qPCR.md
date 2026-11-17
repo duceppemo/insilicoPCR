@@ -6,7 +6,7 @@ This tutorial walks through a complete, realistic insilicoPCR run using **public
 - a **genome assembly** (FASTA) and **raw Illumina reads** (FASTQ) as inputs,
 - a **positive control** (*Listeria monocytogenes*) and a **negative control** (*Listeria innocua*, the classic *hly*-negative near-neighbor used for exclusivity testing).
 
-The steps below use the command line from an extracted portable release; [section 7](#7-the-same-run-in-the-gui) does the same run in the GUI. Every table and picture on this page comes from running exactly these steps with version 0.15.2, and the primer file and the reports of that run are in the repository under [`docs/examples/tutorial/`](https://github.com/duceppemo/insilicoPCR/tree/master/docs/examples/tutorial).
+The steps below use the command line from an extracted portable release; [section 7](#7-the-same-run-in-the-gui) does the same run in the GUI. Every table and picture on this page comes from running exactly these steps with version 1.0.0, and the primer file and the reports of that run are in the repository under [`docs/examples/tutorial/`](https://github.com/duceppemo/insilicoPCR/tree/master/docs/examples/tutorial).
 
 ## 1. The assays
 
@@ -84,7 +84,7 @@ What happens, per sample:
 - accepted hits are paired into amplicons (convergent orientation, ≤ 5000 bp by default, perfect 3' ends — see [Amplicon Calling](Amplicon-Calling));
 - `--gel` additionally renders the synthetic gel image (requires a graphical environment).
 
-The run takes well under a minute on a desktop machine (14 seconds here). It writes, under `tutorial_results/`:
+The run takes well under a minute on a desktop machine (12 seconds here). It writes, under `tutorial_results/`:
 
 | File | What it is |
 |---|---|

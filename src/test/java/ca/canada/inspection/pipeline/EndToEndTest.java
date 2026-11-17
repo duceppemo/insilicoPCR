@@ -775,27 +775,30 @@ class EndToEndTest {
         pipeline(config(input, output), monitor).run();
 
         assertTrue(monitor.warnings.stream().anyMatch(line -> line.startsWith("Warning: run=2_R1.fastq.gz")
-                && line.contains("BBDuk cannot read the reads") && line.contains("equals sign")), monitor.warnings.toString());
+                && line.contains("BBTools cannot be given the file") && line.contains("equals sign")), monitor.warnings.toString());
         assertEquals(List.of("isolate_03 toxA 312 target"), products(report(output)));
         assertEquals(1, lines(output.resolve("QAlog.txt")).stream()
                 .filter(line -> line.startsWith("Sample not analysed: ")).count());
     }
 
     @Test
-    void whenBbdukRefusesEveryReadSetTheRunFailsWhateverAssembliesBesideThem() throws IOException {
-        // Every read set left out with an assembly beside them ran to the end, exit 0: a BBTools that cannot run
-        // looked like reads that are all faulty.
+    void readSetsLeftOutForTheirNamesAreTheFilesFaultAndTheAssembliesBesideThemAreRun() throws IOException {
+        // Two read sets BBTools cannot be given for their names (a comma, an equals sign) were counted as BBDuk failing
+        // on every read set, a fault of the program's: the run failed, the assembly beside them with it.
         Path input = Files.createDirectory(directory.resolve("all-refused"));
         Files.copy(EXAMPLE.resolve("genomes").resolve("isolate_03.fasta"), input.resolve("isolate_03.fasta"));
-        for (String name : List.of("a=1", "b=2")) {
+        for (String name : List.of("a=1", "b,2")) {
             Files.copy(EXAMPLE.resolve("reads").resolve("isolate_01_R1.fastq.gz"), input.resolve(name + "_R1.fastq.gz"));
             Files.copy(EXAMPLE.resolve("reads").resolve("isolate_01_R2.fastq.gz"), input.resolve(name + "_R2.fastq.gz"));
         }
+        Recorder monitor = new Recorder();
+        Path output = directory.resolve("all-refused-results");
 
-        PipelineException error = assertThrows(PipelineException.class,
-                () -> pipeline(config(input, directory.resolve("all-refused-results"))).run());
+        pipeline(config(input, output), monitor).run();
 
-        assertEquals("BBDuk could not read the reads of any sample", error.getMessage());
+        assertEquals(List.of("isolate_03 toxA 312 target"), products(report(output)));
+        assertEquals(2, monitor.warnings.stream().filter(line -> line.contains("BBTools cannot be given the file"))
+                .count(), monitor.warnings.toString());
     }
 
     @Test

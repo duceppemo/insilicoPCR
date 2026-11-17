@@ -97,16 +97,23 @@ public final class AmpliconCaller {
     }
 
     /**
-     * Query position of the primer's 5'-most base known to pair with the template: the full primer's
-     * when its unaligned 5' bases were compared with the template and all pair, the alignment's
-     * otherwise (left edge on the plus strand, right edge on the minus strand).
+     * Query position of the primer's 5'-most base from which it pairs with the template without a break: the full
+     * primer's when its unaligned 5' bases were compared with the template and all pair, the alignment's otherwise
+     * (BLAST never ends an alignment next to a base that pairs, so the base it left out next to it does not), and
+     * past the innermost mismatch it kept aligned within {@code --5p-truncation} of the 5' end (0.15.4 let the other
+     * primer's 3' end sit on such a mismatch). Left edge on the plus strand, right edge on the minus strand.
      */
     private static int pairedFivePrimeEdge(BlastResult hit) {
-        boolean paired = hit.fivePrimeUnpaired() == 0;
-        if (hit.isPlusStrand()) {
-            return paired ? hit.fullStart() : hit.qstart();
+        boolean plus = hit.isPlusStrand();
+        int edge = hit.fivePrimeUnpaired() == 0 ? (plus ? hit.fullStart() : hit.fullEnd()) : (plus ? hit.qstart() : hit.qend());
+        if (hit.fivePrimeFree() > 0) {
+            int pairsAgain = hit.pairsAgainAfterFivePrimeFree();
+            if (pairsAgain == Integer.MIN_VALUE) {
+                return plus ? hit.qend() : hit.qstart(); // where its mismatches lie is not known: no overlap at all
+            }
+            return pairsAgain;
         }
-        return paired ? hit.fullEnd() : hit.qend();
+        return edge;
     }
 
 

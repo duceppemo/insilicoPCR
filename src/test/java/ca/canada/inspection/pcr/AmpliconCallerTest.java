@@ -185,6 +185,30 @@ class AmpliconCallerTest {
     }
 
     @Test
+    void aFivePrimeMismatchBlastKeptAlignedStopsTheOtherPrimersThreePrimeEndAsATrimmedOneDoes() {
+        // Forward at 301-320 with a mismatch at its 5th base (305), within --5p-truncation: BLAST keeps it aligned.
+        // A reverse whose 3' end is on it was reported (0.15.4), though its 3' end would sit on a mismatch in the
+        // strand the forward made; as when BLAST leaves the base out, it is not.
+        String template = "ACGTGCGTACGTACGTACGT";
+        BlastResult forward = TestHits.plusHit("a-F", "c1", 301, template, TestHits.PRIMER_20).withFivePrimeFree(5);
+        assertEquals(1, forward.fivePrimeFree());
+        assertEquals(306, forward.pairsAgainAfterFivePrimeFree());
+
+        assertTrue(AmpliconCaller.call(forward, TestHits.minusHit("a-R", "c1", 305), DEFAULTS).isEmpty(), "on it");
+        assertTrue(AmpliconCaller.call(forward, TestHits.minusHit("a-R", "c1", 303), DEFAULTS).isEmpty(), "before it");
+        assertEquals(25, AmpliconCaller.call(forward, TestHits.minusHit("a-R", "c1", 306), DEFAULTS).orElseThrow().size(),
+                "past it");
+
+        // The mirror image on the minus strand: the reverse at 303-322, its 5' end at 322, a mismatch at its 5th base
+        // (318); a forward ending on it (299-318) gives no product, one ending at 317 does.
+        String reverseTemplate = "ACGTACGTACGTACGCACGT"; // query orientation: its 5th base from the right differs
+        BlastResult reverse = TestHits.minusHit("a-R", "c1", 303, reverseTemplate, TestHits.PRIMER_20).withFivePrimeFree(5);
+        assertEquals(317, reverse.pairsAgainAfterFivePrimeFree());
+        assertTrue(AmpliconCaller.call(TestHits.plusHit("a-F", "c1", 299), reverse, DEFAULTS).isEmpty());
+        assertTrue(AmpliconCaller.call(TestHits.plusHit("a-F", "c1", 298), reverse, DEFAULTS).isPresent());
+    }
+
+    @Test
     void minusPrimerFacesByItsFivePrimeBasesOnlyWhereTheyPair() {
         // The mirror image: reverse at 303-322 (minus strand), its 5' bases 319-322 left out by BLAST; the forward
         // at 301-320 ends on them.

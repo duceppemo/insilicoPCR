@@ -56,25 +56,27 @@ class SplitAcrossContigsTest {
     }
 
     @Test
-    void primersCutByTheContigEndsCountTheirBasesPastTheEndsInTheSize() {
-        // Forward on the last 12 bases of contig_1 (8 past its end), reverse on the first 14 of contig_2 (6 past its
-        // start). The missing piece holds at least the forward's 8: 12 + 14 + 8. Left out, the size was 26 bp,
-        // below either primer's length.
+    void aProductAcrossTheBreakIsNeverSaidShorterThanItsLongerPrimer() {
+        // Forward on the last 12 bases of contig_1, reverse on the first 6 of contig_2: 18 bases on the contigs, but a
+        // product holds each 20-mer in full (two 17-mers cut after 7 bases made "at least 15 bp"). The bases past
+        // the ends are not added: they may be on the other contig, where contigs overlap.
         BlastResult forward = TestHits.truncatedPlusHit("assay-F", "contig_1", 989, 1, 12, PRIMER_20);
         BlastResult full = minusHit("assay-R", "contig_2", 1);
-        BlastResult reverse = new BlastResult("contig_2", "assay-R", 0, 0, 1, 14, 14, 1, 20, 14,
+        BlastResult reverse = new BlastResult("contig_2", "assay-R", 0, 0, 1, 6, 6, 1, 20, 6,
+                full.qseq().substring(0, 6), full.sseq().substring(0, 6), PRIMER_20);
+        BlastResult longer = new BlastResult("contig_2", "assay-R", 0, 0, 1, 14, 14, 1, 20, 14,
                 full.qseq().substring(0, 14), full.sseq().substring(0, 14), PRIMER_20);
+
+        assertEquals(20, find(cut(forward, reverse), DEFAULTS).getFirst().minimumSize());
+        assertEquals(12 + 14, find(cut(forward, longer), DEFAULTS).getFirst().minimumSize());
+    }
+
+    private static Sample cut(BlastResult forward, BlastResult reverse) {
         Sample sample = new Sample("genome");
         sample.setFileType(Sample.FileType.FASTA);
         sample.hits().addCutByEnd("assay-F", forward);
         sample.hits().addCutByEnd("assay-R", reverse);
-
-        Split split = find(sample, DEFAULTS).getFirst();
-
-        assertEquals(12 + 14 + 8, split.minimumSize());
-        assertEquals(8, SplitAcrossContigs.pastTheEnd(forward, 1000));
-        assertEquals(6, SplitAcrossContigs.pastTheEnd(reverse, 800));
-        assertEquals(0, SplitAcrossContigs.pastTheEnd(plusHit("assay-F", "contig_1", 941), 1000));
+        return sample;
     }
 
     @Test

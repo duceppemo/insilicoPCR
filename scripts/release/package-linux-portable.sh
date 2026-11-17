@@ -96,7 +96,7 @@ if [[ "$(locale charmap 2>/dev/null)" != "UTF-8" ]] && locale -a 2>/dev/null | g
   export LC_ALL=C.UTF-8
 fi
 
-exec "$JAVA" -p "$DIR/lib:$DIR/insilicoPCR.jar" -m ca.canada.inspection.insilicopcr/ca.canada.inspection.dispatchpcr.Dispatcher "$@"
+exec "$JAVA" --enable-native-access=ca.canada.inspection.insilicopcr,javafx.graphics -p "$DIR/lib:$DIR/insilicoPCR.jar" -m ca.canada.inspection.insilicopcr/ca.canada.inspection.dispatchpcr.Dispatcher "$@"
 EOF
 
 chmod +x "$STAGE_DIR/run-insilicoPCR.sh"

@@ -44,6 +44,13 @@ class PipelineFailuresTest {
         assertEquals(InputValidator.validate(input, output, badPrimers), error.getMessage());
         assertTrue(!Files.exists(output), "no output folder made");
 
+        // A primer whose sequence is not bases: refused there too, not after the folder was made.
+        Path notBases = Files.writeString(directory.resolve("xx.fasta"), ">a-F\nACGTXXACGTACGTACGTAC\n>a-R\nACGTACGTACGTACGTACGT\n");
+        error = assertThrows(PipelineException.class,
+                () -> new InSilicoPcrPipeline(PipelineConfig.builder(input, output, notBases).build(), RunMonitor.CONSOLE).run());
+        assertTrue(error.getMessage().contains("not bases"), error.getMessage());
+        assertTrue(!Files.exists(output), "no output folder made");
+
         Path aFile = Files.writeString(directory.resolve("taken"), "");
         Path primers = Files.writeString(directory.resolve("good.fasta"),
                 ">a-F\nACGTACGTACGTACGTACGT\n>a-R\nACGTACGTACGTACGTACGT\n");

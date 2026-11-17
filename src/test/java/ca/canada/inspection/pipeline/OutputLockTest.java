@@ -31,6 +31,30 @@ class OutputLockTest {
     }
 
     @Test
+    void aSecondRunRefusedInThisProgramLeavesTheFolderHeldForOtherProcesses() throws Exception {
+        // The window: Stop, then Run into the same folder before the first run's thread ended. The second run's
+        // channel, closed after its tryLock failed, let go of the first run's lock on Linux: another process got in.
+        List<String> warnings = new ArrayList<>();
+        try (OutputLock first = OutputLock.take(dir, warnings::add)) {
+            assertThrows(OutputFolderInUse.class, () -> OutputLock.take(dir, warnings::add));
+            assertThrows(OutputFolderInUse.class, () -> OutputLock.take(dir.resolve("."), warnings::add),
+                    "another path to the folder");
+
+            String javaCommand = ProcessHandle.current().info().command().orElse("java");
+            Process other = new ProcessBuilder(javaCommand, "-cp", System.getProperty("java.class.path"),
+                    LockHolder.class.getName(), dir.toString()).redirectErrorStream(true).start();
+            try {
+                other.getOutputStream().close();
+                String said = new String(other.getInputStream().readAllBytes());
+                assertTrue(other.waitFor(30, java.util.concurrent.TimeUnit.SECONDS));
+                assertTrue(!said.startsWith("locked") && said.contains("Another run is using the output folder"), said);
+            } finally {
+                other.destroyForcibly();
+            }
+        }
+    }
+
+    @Test
     void aRunInAnotherProcessHoldsTheFolderToo() throws Exception {
         // The case that matters (two command-line runs), where the operating system's lock refuses the
         // second; within one program the overlap is found before it asks.

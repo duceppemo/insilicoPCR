@@ -135,6 +135,12 @@ class CliConfigTest {
         assertEquals(new TadpoleOptions(25, 3, 2, 100), config.tadpole());
         assertThrows(IllegalArgumentException.class, () -> parse("--tadpole-k", "0"));
         assertThrows(IllegalArgumentException.class, () -> parse("--tadpole-min-contig", "-1"));
+        // -1 was told ">= 0" and 0 ">= 1": both now the bound itself.
+        for (String value : new String[]{"0", "-1"}) {
+            IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                    () -> parse("--tadpole-min-contig", value));
+            assertEquals("Invalid Tadpole setting: --tadpole-min-contig must be >= 1, got: " + value, error.getMessage());
+        }
     }
 
     @Test
@@ -244,5 +250,13 @@ class CliConfigTest {
                 assertThrows(IllegalArgumentException.class, () -> parse("--bbtools-memory", "-1")).getMessage());
         assertEquals("Invalid Tadpole setting: --tadpole-min-contig must be >= 1, got: 0",
                 assertThrows(IllegalArgumentException.class, () -> parse("--tadpole-min-contig", "0")).getMessage());
+        // Below 0 or 0, as given and named as the option ("evalue must be ..., got: -1.0").
+        assertEquals("--evalue must be a number greater than 0, e.g. 1e5, got: -1",
+                assertThrows(IllegalArgumentException.class, () -> parse("-e", "-1")).getMessage());
+        // An integer too large for one is said to be so, not "must be an integer".
+        assertEquals("--mismatches is too large, got: 99999999999 (at most 2147483647)",
+                assertThrows(IllegalArgumentException.class, () -> parse("-m", "99999999999")).getMessage());
+        assertEquals("--threads must be an integer, got: 2.5",
+                assertThrows(IllegalArgumentException.class, () -> parse("-t", "2.5")).getMessage());
     }
 }

@@ -61,6 +61,11 @@ public final class CliConfig {
                 // 1e-400 reads as 0: the message said "got: 0.0", not what was given.
                 throw new IllegalArgumentException("--evalue " + PipelineConfig.tooSmallMessage(cmd.getOptionValue("evalue")));
             }
+            if (!PipelineConfig.validEvalue(evalue)) {
+                // As given, and named as the option: "evalue must be ..., got: -1.0".
+                throw new IllegalArgumentException("--evalue must be a number greater than 0, e.g. "
+                        + PipelineConfig.DEFAULT_EVALUE_TEXT + ", got: " + cmd.getOptionValue("evalue"));
+            }
             config.evalue(evalue);
         }
         if (cmd.hasOption("read-min-fraction")) {
@@ -109,11 +114,13 @@ public final class CliConfig {
 
     private static TadpoleOptions tadpoleOptions(CommandLine cmd) {
         try {
+            // Their bounds are TadpoleOptions' (the window's too): checked here as well, -1 was told ">= 0" and 0
+            // ">= 1".
             return new TadpoleOptions(
-                    parseNonNegative(cmd, "tadpole-k", TadpoleOptions.DEFAULT_K),
-                    parseNonNegative(cmd, "tadpole-min-seed", TadpoleOptions.DEFAULT_MIN_COUNT_SEED),
-                    parseNonNegative(cmd, "tadpole-min-cov", TadpoleOptions.DEFAULT_MIN_COVERAGE),
-                    parseNonNegative(cmd, "tadpole-min-contig", TadpoleOptions.DEFAULT_MIN_CONTIG)
+                    integerOr(cmd, "tadpole-k", TadpoleOptions.DEFAULT_K),
+                    integerOr(cmd, "tadpole-min-seed", TadpoleOptions.DEFAULT_MIN_COUNT_SEED),
+                    integerOr(cmd, "tadpole-min-cov", TadpoleOptions.DEFAULT_MIN_COVERAGE),
+                    integerOr(cmd, "tadpole-min-contig", TadpoleOptions.DEFAULT_MIN_CONTIG)
             );
         } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException("Invalid Tadpole setting: " + e.getMessage(), e);
@@ -184,12 +191,24 @@ public final class CliConfig {
     }
 
     private static int parseInt(CommandLine cmd, String option) {
-        String value = cmd.getOptionValue(option);
+        return integer(option, cmd.getOptionValue(option));
+    }
+
+    /** {@code value} of {@code --option} as an integer; one too large for it is said to be so, not "not an integer". */
+    static int integer(String option, String value) {
         try {
             return Integer.parseInt(value);
         } catch (NumberFormatException e) {
+            if (value != null && value.matches("[+-]?\\d+")) {
+                throw new IllegalArgumentException("--" + option + " is too large, got: " + value + " (at most "
+                        + Integer.MAX_VALUE + ")");
+            }
             throw new IllegalArgumentException("--" + option + " must be an integer, got: " + value);
         }
+    }
+
+    private static int integerOr(CommandLine cmd, String option, int defaultValue) {
+        return cmd.hasOption(option) ? parseInt(cmd, option) : defaultValue;
     }
 
     private static double parseDouble(CommandLine cmd, String option) {
@@ -206,12 +225,7 @@ public final class CliConfig {
         if (value == null) {
             return defaultValue;
         }
-        int parsed;
-        try {
-            parsed = Integer.parseInt(value);
-        } catch (NumberFormatException e) {
-            throw new IllegalArgumentException("--" + option + " must be an integer, got: " + value);
-        }
+        int parsed = integer(option, value);
         if (parsed < 0) {
             throw new IllegalArgumentException("--" + option + " must be >= 0, got: " + value);
         }

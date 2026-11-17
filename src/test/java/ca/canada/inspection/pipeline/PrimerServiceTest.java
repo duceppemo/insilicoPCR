@@ -36,6 +36,16 @@ class PrimerServiceTest {
     }
 
     @Test
+    void aHeaderWithNoIdIsNamedAsSuch(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir) throws java.io.IOException {
+        // Said as "... naming convention:  (the role letter ...": a blank where the ID goes.
+        java.nio.file.Path file = java.nio.file.Files.writeString(dir.resolve("p.fasta"),
+                ">a-F\nACGTACGTAC\n>\nACGTACGTAC\n>a-R\nTTGGCCAATT\n");
+        PipelineException error = assertThrows(PipelineException.class, () -> PrimerService.read(file));
+        assertEquals("The primer file " + file + " has a header with no ID (a line \">\"): give each primer an ID after"
+                + " the >, such as stxA-F", error.getMessage());
+    }
+
+    @Test
     void nonConformingPrimerIdsAreRejectedAtLoadTime() {
         assertThrows(RuntimeException.class, () -> PrimerService.expand(map("16S_27F", "ACGT")));   // no dash
         assertThrows(RuntimeException.class, () -> PrimerService.expand(map("assay-fwd", "ACGT"))); // bad type char

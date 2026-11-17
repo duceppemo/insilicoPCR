@@ -1,8 +1,11 @@
 package ca.canada.inspection.pipeline;
 
 import ca.canada.inspection.model.Sample;
+import ca.canada.inspection.util.FastqRecords;
 import ca.canada.inspection.util.InputCheck;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
@@ -151,21 +154,52 @@ public final class FastqProcessor {
         if (refused.isEmpty()) {
             return;
         }
-        // Every read set refused, or every sample: the fault is not the files' (a BBTools that cannot run, an
-        // argument it rejects). Counted among the read sets: assemblies beside them ran, and a run of reads
-        // that all went missing ended as if it had worked.
-        if (refused.size() == context.samples().size() || refused.size() == readSets && readSets > 1) {
-            throw new PipelineException("BBDuk could not read the reads of any sample",
-                    refused.values().iterator().next());
+        // Every read set BBDuk was given refused, or every sample: the fault is not the files' (a BBTools that cannot
+        // run, an argument it rejects). Counted among the read sets: assemblies beside them ran, and a run of reads
+        // that all went missing ended as if it had worked. A read set left out for its file's name (a comma, an
+        // equals sign) is the file's fault, and BBDuk never saw it: two such sets failed the run, the assemblies
+        // beside them with it.
+        List<String> byBbduk = programAtFault(refused, readSets, context.samples().size());
+        if (!byBbduk.isEmpty()) {
+            throw new PipelineException("BBDuk could not read the reads of any sample (" + String.join(", ", byBbduk)
+                    + ")", refused.get(byBbduk.getFirst()));
         }
         refused.keySet().stream().sorted().forEach(name -> {
             Sample sample = context.samples().remove(name);
-            InputCheck.Issue issue = new InputCheck.Issue(name, sample.files().stream()
-                    .map(file -> file.getFileName().toString()).toList(), "BBDuk cannot read the reads",
-                    "its message is in the log above: " + refused.get(name).getMessage());
+            PipelineException why = refused.get(name);
+            InputCheck.Issue issue = why instanceof BbtoolsCommands.UnusablePath
+                    ? new InputCheck.Issue(name, fileNames(sample), "BBTools cannot be given the file", why.getMessage())
+                    : new InputCheck.Issue(name, fileNames(sample), "BBDuk cannot read the reads",
+                    "its message is in the log above: " + why.getMessage());
             context.inputIssues().add(issue);
             context.monitor().warning("Warning: " + issue.line());
         });
+        if (context.samples().isEmpty()) {
+            throw new PipelineException("No sample of " + context.config().input() + " can be analysed: every input"
+                    + " file is faulty (each is named in a warning above)");
+        }
+    }
+
+    private static List<String> fileNames(Sample sample) {
+        return sample.files().stream().map(file -> file.getFileName().toString()).toList();
+    }
+
+    /**
+     * The read sets BBDuk refused, sorted, when the fault is the program's rather than the files' (every read set it
+     * was given refused, more than one or the run's only sample): empty otherwise. Read sets left out for their file's
+     * name ({@link BbtoolsCommands.UnusablePath}) are the files' fault and do not count: BBDuk never saw them.
+     *
+     * @param readSets the run's read sets, samples the read steps took
+     * @param samples  the run's samples, assemblies included
+     */
+    static List<String> programAtFault(Map<String, PipelineException> refused, int readSets, int samples) {
+        List<String> byBbduk = refused.entrySet().stream()
+                .filter(entry -> entry.getValue() instanceof ProgramFailedException).map(Map.Entry::getKey).sorted()
+                .toList();
+        int named = refused.size() - byBbduk.size();
+        int given = readSets - named;
+        boolean all = !byBbduk.isEmpty() && byBbduk.size() == given && (given > 1 || samples - named == 1);
+        return all ? byBbduk : List.of();
     }
 
     private static String describe(ChildJavaMemory.Share share) {
@@ -246,8 +280,32 @@ public final class FastqProcessor {
     private static void assemble(PipelineContext context, BbtoolsCommands commands, Sample sample) {
         SampleFiles files = context.directories().sample(sample.getName());
         Path output = files.assembly();
-        run(context, commands.assemble(files.doubleTargetMatches(), output,
-                context.config().tadpole()));
+        int k = context.config().tadpole().k();
+        run(context, commands.assemble(files.doubleTargetMatches(), output, context.config().tadpole()));
+        String warning = longerThanTheReads(k, output, files.doubleTargetMatches(), sample.getName());
+        if (warning != null) {
+            context.monitor().warning(warning);
+        }
+    }
+
+    /**
+     * The warning that {@code --tadpole-k} is longer than every read Tadpole was given, when its assembly is empty
+     * for it: --tadpole-k 200 on 150-base reads built nothing, without a word ("Query is Empty" from blastn). Null
+     * otherwise, an empty assembly of a sample whose reads hold no product among them.
+     */
+    static String longerThanTheReads(int k, Path assembly, Path reads, String sample) {
+        try {
+            if (!Files.isRegularFile(assembly) || Files.size(assembly) > 0 || !Files.isRegularFile(reads)) {
+                return null;
+            }
+            int[] longest = {0};
+            FastqRecords.forEach(reads, record -> longest[0] = Math.max(longest[0], record.sequence().length()));
+            return longest[0] > 0 && k > longest[0] ? "Warning: --tadpole-k " + k + " is longer than the reads of"
+                    + " sample " + sample + " (" + longest[0] + " bases at most): its mini-assembly is empty, and its"
+                    + " products are looked for in the reads only" : null;
+        } catch (IOException | java.io.UncheckedIOException e) {
+            return null; // the steps after it read these files and say what is wrong with them
+        }
     }
 
     private static void run(PipelineContext context, BbtoolsCommands.Command command) {

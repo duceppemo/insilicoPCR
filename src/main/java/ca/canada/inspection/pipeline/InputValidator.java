@@ -26,7 +26,8 @@ public final class InputValidator {
             return "Primer file does not exist or is not a regular file: " + primerFile;
         }
         try {
-            PrimerService.read(primerFile);
+            // Its sequences too (bases, degenerate ones): a primer with an X left an empty output folder behind.
+            PrimerService.expand(PrimerService.read(primerFile).sequences());
         } catch (PipelineException e) {
             return e.getMessage();
         }

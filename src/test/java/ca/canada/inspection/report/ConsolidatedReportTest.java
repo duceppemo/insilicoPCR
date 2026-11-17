@@ -287,5 +287,12 @@ class ConsolidatedReportTest {
         org.junit.jupiter.api.Assertions.assertEquals(dir.resolve("report.tsv"), ConsolidatedReport.nextAvailableReportFile(dir));
         java.nio.file.Files.writeString(dir.resolve("report(4).tsv"), "");
         org.junit.jupiter.api.Assertions.assertEquals(dir.resolve("report(5).tsv"), ConsolidatedReport.nextAvailableReportFile(dir));
+        // The last number: the next would not be counted, and written again by every run after it. Refused, and
+        // the run checks it before its work.
+        java.nio.file.Files.writeString(dir.resolve("report(999999).tsv"), "");
+        IllegalStateException full = org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class,
+                () -> ConsolidatedReport.checkRoomFor(dir));
+        org.junit.jupiter.api.Assertions.assertTrue(full.getMessage().contains("no report number is left"),
+                full.getMessage());
     }
 }

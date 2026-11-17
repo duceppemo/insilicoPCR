@@ -207,7 +207,8 @@ public final class Products {
      */
     private static List<ReportRow> bestPerProduct(List<ReportRow> rows) {
         Map<List<Object>, ReportRow> best = new java.util.LinkedHashMap<>();
-        java.util.Comparator<ReportRow> order = ReportRow.BEST_BOUND.thenComparing(ReportRow.VARIANT_ORDER);
+        java.util.Comparator<ReportRow> order = ReportRow.BEST_BOUND.thenComparing(ReportRow.VARIANT_ORDER)
+                .thenComparing(ReportRow.PROBE_FIRST);
         for (ReportRow row : rows) {
             // The size too: the start is clamped to 1 at a contig start, where primers of different
             // lengths make products of different sizes at one location.

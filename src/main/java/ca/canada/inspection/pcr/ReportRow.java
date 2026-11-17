@@ -120,6 +120,15 @@ public record ReportRow(String sample, String assay, Site site, Binding forward,
             .thenComparing(ReportRow::reversePrimer)
             .thenComparing(ReportRow::probeId);
 
+    /**
+     * Among rows of one product, the one whose probe site comes first from the product's start (on a circle,
+     * past its origin after the sites before it): two sites of the probe in one product, equally bound, showed
+     * the one BLAST listed first.
+     */
+    public static final Comparator<ReportRow> PROBE_FIRST = Comparator.comparingLong(row -> row.probe() == null ? 0
+            : row.probe().start() >= row.start() ? row.probe().start() - (long) row.start()
+            : Integer.MAX_VALUE + (long) row.probe().start());
+
     public int start() {
         return site.start();
     }

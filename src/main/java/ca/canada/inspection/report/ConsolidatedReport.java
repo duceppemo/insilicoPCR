@@ -96,7 +96,24 @@ public final class ConsolidatedReport {
         } catch (IOException e) {
             throw new UncheckedIOException("Unable to write consolidated report: " + consolidatedDir, e);
         }
+        if (highest + 1 >= MAX_NUMBER) {
+            // A report numbered past it would not be counted, and written again by the run after.
+            throw new IllegalStateException("The folder " + consolidatedDir + " holds report(" + highest + ").tsv:"
+                    + " no report number is left in it; choose another output folder");
+        }
         return consolidatedDir.resolve(highest < 0 ? "report.tsv" : "report(" + (highest + 1) + ").tsv");
+    }
+
+    /**
+     * Fails now, rather than after the run's work, when {@code consolidatedDir} has no report number left
+     * ({@link #nextAvailableReportFile}).
+     *
+     * @throws IllegalStateException with the message to show
+     */
+    public static void checkRoomFor(Path consolidatedDir) {
+        if (Files.isDirectory(consolidatedDir)) {
+            nextAvailableReportFile(consolidatedDir);
+        }
     }
 
     /** The highest report number a folder is taken to hold: a report(99999999999).tsv is not one of a run's. */

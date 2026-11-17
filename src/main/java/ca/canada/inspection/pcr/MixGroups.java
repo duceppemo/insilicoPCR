@@ -98,7 +98,8 @@ public final class MixGroups {
     public void checkNames(Set<String> assays) {
         groups().forEach((group, members) -> {
             for (String member : members) {
-                if (member.contains("+")) {
+                // Alone in its reaction, it makes no product of two assays to be confused with.
+                if (members.size() > 1 && member.contains("+")) {
                     throw new IllegalArgumentException("Assay " + member + " shares the reaction " + group + " (mix=)"
                             + " and has '+' in its ID, which joins the names of two assays in a product of both: rename"
                             + " it");

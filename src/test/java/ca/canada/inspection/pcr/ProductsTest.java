@@ -124,6 +124,22 @@ class ProductsTest {
     }
 
     @Test
+    void ofTwoEquallyBoundProbeSitesInAProductTheFirstFromItsStartIsShown() {
+        // BLAST listed the site at 450 first: the row showed it, not the one at 301 before it.
+        Map<String, String> sequences = Map.of("q-F", PRIMER_20, "q-R", PRIMER_20, "q-P", PRIMER_20);
+        Sample sample = new Sample("S");
+        sample.hits().add("q-F", plusHit("q-F", "c1", 101));
+        sample.hits().add("q-R", minusHit("q-R", "c1", 581));
+        sample.hits().add("q-P", plusHit("q-P", "c1", 450));
+        sample.hits().add("q-P", plusHit("q-P", "c1", 301));
+
+        List<ReportRow> rows = Products.of(sample, PrimerPanel.of(sequences), AmpliconOptions.withMismatches(0));
+
+        assertEquals(List.of("101-600 probe 301-320"), rows.stream().map(row -> row.start() + "-" + row.end()
+                + " probe " + row.probe().start() + "-" + row.probe().end()).toList());
+    }
+
+    @Test
     void twoForwardPrimersOfAssaysInOneReactionMakeAProductOfBoth() {
         // a-F on the plus strand, b-F on the minus strand facing it: a product of the two assays' mix.
         Sample sample = new Sample("S");

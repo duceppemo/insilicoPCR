@@ -32,6 +32,18 @@
 
 ### Fixed
 
+- Round 13 fixes:
+  - Primers overlapping head to head faced away when BLAST left the 5' bases
+    of one unaligned past the other's 3' end, and their product (shorter than
+    a primer and `--5p-truncation`) was dropped: they face each other by the
+    primers in full, as the size counts them.
+  - The report numbers: from `report(999999).tsv` on, the next report's
+    number was one the folder's readers ignore, and every run after it failed
+    after its work. A folder with no number left is refused at the start.
+  - An assay alone in its `mix=` reaction with `+` in its ID was refused; only
+    assays sharing a reaction are.
+  - Of two probe sites in a product, equally bound, the row shows the one
+    nearest the product's start (it showed the first BLAST listed).
 - Reports, round 12: an assay whose extended reads loop in a tandem repeat
   (`EXTENSION_IN_TANDEM_REPEAT`) was explained in the HTML report as a product
   too long for the reads, and left out of its read-level evidence: the mark's

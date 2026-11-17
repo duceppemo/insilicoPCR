@@ -167,13 +167,41 @@ class AmpliconCallerTest {
         // 303-322 ends inside those free bases. By the aligned bases the pair faced away, and the 22-bp product,
         // which the size counts on the full primers, was dropped.
         String primer = "ACGTACGTACGTACGTACGT";
-        BlastResult forward = TestHits.truncatedPlusHit("a-F", "c1", 305, 5, 20, primer);
+        BlastResult forward = withFivePrimeUnpaired(TestHits.truncatedPlusHit("a-F", "c1", 305, 5, 20, primer), 0);
         BlastResult reverse = TestHits.minusHit("a-R", "c1", 303);
 
         Amplicon amplicon = AmpliconCaller.call(forward, reverse, DEFAULTS).orElseThrow();
 
         assertEquals("301-322", amplicon.start() + "-" + amplicon.end());
         assertEquals(22, amplicon.size());
+
+        // The reverse's 3' end on forward 5' bases that do not pair (or were not compared with the template) sits
+        // on a mismatch in the strand the forward made: no product, as before 0.15.3.
+        assertTrue(AmpliconCaller.call(withFivePrimeUnpaired(forward, 1), reverse, DEFAULTS).isEmpty());
+        assertTrue(AmpliconCaller.call(withFivePrimeUnpaired(forward, -1), reverse, DEFAULTS).isEmpty());
+        // A reverse whose 3' end is on the aligned bases faces the forward whatever its 5' bases.
+        assertTrue(AmpliconCaller.call(withFivePrimeUnpaired(forward, 1), TestHits.minusHit("a-R", "c1", 305),
+                DEFAULTS).isPresent());
+    }
+
+    @Test
+    void minusPrimerFacesByItsFivePrimeBasesOnlyWhereTheyPair() {
+        // The mirror image: reverse at 303-322 (minus strand), its 5' bases 319-322 left out by BLAST; the forward
+        // at 301-320 ends on them.
+        String primer = "ACGTACGTACGTACGTACGT";
+        BlastResult full = TestHits.minusHit("a-R", "c1", 303);
+        BlastResult reverse = new BlastResult(full.queryID(), full.subjectID(), 0, 0, 303, 318, 20, 5, 20, 16,
+                full.qseq().substring(0, 16), full.sseq().substring(0, 16), primer, 0);
+        BlastResult forward = TestHits.plusHit("a-F", "c1", 301);
+
+        assertEquals(22, AmpliconCaller.call(forward, reverse, DEFAULTS).orElseThrow().size());
+        assertTrue(AmpliconCaller.call(forward, withFivePrimeUnpaired(reverse, 2), DEFAULTS).isEmpty());
+    }
+
+    private static BlastResult withFivePrimeUnpaired(BlastResult hit, int unpaired) {
+        return new BlastResult(hit.queryID(), hit.subjectID(), hit.mismatch(), hit.gaps(), hit.qstart(), hit.qend(),
+                hit.sstart(), hit.send(), hit.slen(), hit.length(), hit.qseq(), hit.sseq(), hit.primerSeq(), unpaired,
+                hit.fivePrimeFree());
     }
 
     @Test

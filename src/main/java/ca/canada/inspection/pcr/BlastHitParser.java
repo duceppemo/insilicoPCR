@@ -66,6 +66,9 @@ public final class BlastHitParser {
      * A primer's hit {@link #parse} rejects only because its 3' end runs off the end of a linear query (a contig
      * ends inside its site), when it would be accepted were its bases past the end to pair: for the warning that
      * a product could span the break ({@link SplitAcrossContigs}), never for a product. The hit as on the query.
+     * At least {@link #minimumOnQuery} of the primer's bases must be aligned on the query: a few bases at a contig's
+     * end match some primer by chance (7 to 9 of them made every such warning on 2,022 genomes in 0.15.3). Its 5'
+     * bases left out of the alignment do not count, though on the contig: with them, 8 aligned bases were 13.
      */
     public static Optional<BlastResult> cutByQueryEnd(String line, PrimerPanel primers, AmpliconOptions options,
                                                       Function<BlastResult, TrimmedEnds.Template> templates) {
@@ -76,9 +79,25 @@ public final class BlastHitParser {
                     TrimmedEnds.Template template = templates.apply(hit);
                     BlastResult onQuery = TrimmedEnds.extend(hit, template, fivePrimeFree).withFivePrimeFree(fivePrimeFree);
                     BlastResult paired = TrimmedEnds.pairedPastTheEnd(onQuery, template);
-                    return paired != null && !accepts(onQuery, options) && accepts(paired, options)
+                    return paired != null && alignedBases(onQuery) >= minimumOnQuery(onQuery.slen())
+                            && !accepts(onQuery, options) && accepts(paired, options)
                             ? Optional.of(onQuery) : Optional.empty();
                 });
+    }
+
+    /**
+     * Fewest bases of a primer {@code primerLength} long that must be aligned on a contig for its site to be taken as cut
+     * by the contig's end ({@link #cutByQueryEnd}): 12, or half the primer when that is more.
+     */
+    static int minimumOnQuery(int primerLength) {
+        return Math.max(MIN_CUT_ON_QUERY, (primerLength + 1) / 2);
+    }
+
+    private static final int MIN_CUT_ON_QUERY = 12;
+
+    /** The primer's bases in the alignment. */
+    private static int alignedBases(BlastResult hit) {
+        return Math.abs(hit.send() - hit.sstart()) + 1;
     }
 
     private static Optional<BlastResult> toHit(String line, PrimerPanel primers) {

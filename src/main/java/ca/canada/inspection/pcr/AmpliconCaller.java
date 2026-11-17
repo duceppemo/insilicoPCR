@@ -53,8 +53,11 @@ public final class AmpliconCaller {
         // one past the other is upstream of it once round the origin: its positions go on from there.
         // The primers in full, as the product counts them: by the bases BLAST aligned, a primer whose
         // unaligned 5' bases reach past the other's 3' end faced away, and its short product was dropped.
+        // Those 5' bases count only where they pair with the template: the other primer's 3' end on 5'
+        // bases that do not pair would sit on a mismatch in the strand the first primer made.
         int round = 0;
-        if (rightExtending.fullStart() > leftExtending.fullStart() || rightExtending.fullEnd() > leftExtending.fullEnd()) {
+        if (pairedFivePrimeEdge(rightExtending) > leftExtending.fullStart()
+                || rightExtending.fullEnd() > pairedFivePrimeEdge(leftExtending)) {
             if (circle <= 0) {
                 return Optional.empty();
             }
@@ -91,6 +94,19 @@ public final class AmpliconCaller {
                     size, strand, circle));
         }
         return Optional.of(new Amplicon(forward.queryID(), Math.max(1, productStart), end, size, strand, 0));
+    }
+
+    /**
+     * Query position of the primer's 5'-most base known to pair with the template: the full primer's
+     * when its unaligned 5' bases were compared with the template and all pair, the alignment's
+     * otherwise (left edge on the plus strand, right edge on the minus strand).
+     */
+    private static int pairedFivePrimeEdge(BlastResult hit) {
+        boolean paired = hit.fivePrimeUnpaired() == 0;
+        if (hit.isPlusStrand()) {
+            return paired ? hit.fullStart() : hit.qstart();
+        }
+        return paired ? hit.fullEnd() : hit.qend();
     }
 
 

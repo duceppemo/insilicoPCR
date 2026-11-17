@@ -39,6 +39,32 @@ class BlastHitParserTest {
     }
 
     @Test
+    void aPrimerCutByTheContigEndNeedsTwelveBasesOrHalfOfItOnTheContig() {
+        // A 20-mer whose first n bases are the last n of a contig: its 3' end runs off the end. With 12 on the
+        // contig it is a cut site; with 11, a chance match of a few bases (7 to 9 made every warning on 2,022
+        // genomes in 0.15.3).
+        for (int onContig : new int[]{12, 11}) {
+            String contig = "TTTTTTTTTT" + PRIMER_20.substring(0, onContig);
+            String aligned = PRIMER_20.substring(0, onContig);
+            String blastLine = line("assay-F", 0, 0, 20, onContig, 11, 10 + onContig, aligned, 1, onContig, aligned);
+            Optional<BlastResult> cut = BlastHitParser.cutByQueryEnd(blastLine, PRIMERS, STRICT,
+                    hit -> new TrimmedEnds.Template(contig));
+            assertEquals(onContig >= 12, cut.isPresent(), onContig + " bases on the contig");
+        }
+        // Primer bases 2 to 12 aligned on the last 11 bases of the contig, base 1 (within --5p-truncation) left out
+        // though on the contig: 11 aligned, not 12 (8 aligned and 5 left out made a warning on 2,022 genomes).
+        String contig = "TTTTTTTTTA" + PRIMER_20.substring(1, 12);
+        String aligned = PRIMER_20.substring(1, 12);
+        String blastLine = line("assay-F", 0, 0, 20, 11, 11, 21, aligned, 2, 12, aligned);
+        assertTrue(BlastHitParser.cutByQueryEnd(blastLine, PRIMERS, STRICT, hit -> new TrimmedEnds.Template(contig))
+                .isEmpty());
+        assertEquals(12, BlastHitParser.minimumOnQuery(20));
+        assertEquals(12, BlastHitParser.minimumOnQuery(23));
+        assertEquals(13, BlastHitParser.minimumOnQuery(25));
+        assertEquals(15, BlastHitParser.minimumOnQuery(30));
+    }
+
+    @Test
     void anOligoThePrimerFileDoesNotHoldIsAnError() {
         // Skipped, every hit of a primer whose ID BLAST changed (Caf##-F for Café-F) was lost without a word.
         String blastLine = line("Caf##-F", 0, 0, 20, 20, 101, 120, PRIMER_20, 1, 20, PRIMER_20);

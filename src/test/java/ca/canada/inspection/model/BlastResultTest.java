@@ -7,6 +7,17 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class BlastResultTest {
 
     @Test
+    void whereAKeptFivePrimeMismatchLiesIsUnknownWithoutTheAlignedBases() {
+        String bases = "ACGTACGTACGTACGTACGT";
+        // A mismatch counted free, the aligned bases unknown: no position to give.
+        BlastResult unknown = new BlastResult("c", "a-F", 1, 0, 101, 120, 1, 20, 20, 20, null, null, bases, 0, 1);
+        assertEquals(Integer.MIN_VALUE, unknown.pairsAgainAfterFivePrimeFree());
+        // One counted free that the alignment does not show (all its bases pair): none either.
+        BlastResult none = new BlastResult("c", "a-F", 0, 0, 101, 120, 1, 20, 20, 20, bases, bases, bases, 0, 1);
+        assertEquals(Integer.MIN_VALUE, none.pairsAgainAfterFivePrimeFree());
+    }
+
+    @Test
     void aGapAtTheEdgeOfTheFivePrimeAllowanceCountsTheSameOnBothStrands() {
         // A template base between oligo bases 5 and 6, with --5p-truncation 5: free on the plus strand, counted on
         // the minus strand. Counted at the oligo base on its 3' side (6) on both, it counts on both.

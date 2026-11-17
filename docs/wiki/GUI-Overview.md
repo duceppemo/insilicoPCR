@@ -14,7 +14,7 @@ The GUI lets users select:
 - primer FASTA file
 - output directory
 - number of worker threads (one fewer than the computer's processors at most, so the window stays responsive; the command line's `-t` default is all of them)
-- allowed primer mismatches (0 to 3; `-m` on the command line takes any number)
+- allowed primer mismatches (0 to 10; `-m` on the command line takes any number)
 - BLAST e-value
 
 Paths can also be typed or pasted into the input, primer and output fields: a leading `~` is your home folder, and a relative path is made absolute.
@@ -38,7 +38,7 @@ The application runs the same pipeline as the command line (since 0.14.0), so FA
 
 On Linux, starting the launcher from a terminal is recommended because startup messages and errors are also visible in the console.
 
-`QAlog.txt` is rewritten at the end of every run that finishes, as on the command line; it names the report the run wrote and the samples it analysed. At the end of every run, finished, failed or stopped, what the window showed of it is added to `log.txt` in its output folder (before 0.15.1, `log.txt` was written for the last run only, when the window closed), under a line giving the run's date and time and its input, primer file and output folder (since 0.15.3: the runs of a folder followed one another in it, without them). Closing the window during a run stops it and the external tools it runs; the run still adds to `log.txt` (`Run cancelled`) and leaves the `QAlog.txt` of the last finished run in the folder.
+Every run that finishes writes its log, as on the command line: `QAlog.txt` with `report.tsv`, `QAlog(1).txt` with `report(1).tsv`, and so on; it names the report the run wrote and the samples it analysed. At the end of every run, finished, failed or stopped, what the window showed of it is added to `log.txt` in its output folder (before 0.15.1, `log.txt` was written for the last run only, when the window closed), under a line giving the run's date and time and its input, primer file and output folder (since 0.15.3: the runs of a folder followed one another in it, without them). Closing the window during a run stops it and the external tools it runs; the run still adds to `log.txt` (`Run cancelled`) and leaves the logs of the finished runs in the folder. A run refused because another run holds the folder writes nothing in it, not even `log.txt` (before 0.15.4 its lines went into the other run's).
 
 ## Post-run actions
 

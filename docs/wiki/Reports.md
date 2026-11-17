@@ -18,8 +18,8 @@ If a `report.tsv` already exists in the output folder, a new run writes `report(
 Every run writes `report.html` next to `report.tsv` (`report(1).html` next to `report(1).tsv`, and so on). It
 is one self-contained file: open it in any browser, offline, or send it to a colleague. It follows the
 browser's light or dark theme and prints. It shows exactly the rows of the TSV and hides none (on a run of more
-than 50,000 amplicons, "All amplicons" lists the first 50,000, saying so, while the grid and the counts cover every
-one, and a click on a grid cell whose rows are past them says `report.tsv` has them: since 0.15.3, before which such a page, millions of rows, could not be opened, or even written); a printout shows
+than 10,000 amplicons, "All amplicons" lists the first 10,000, saying so, while the grid and the counts cover every
+one, and a click on a grid cell whose rows are past them says `report.tsv` has them: since 0.15.3, before which such a page, millions of rows, could not be opened, or even written; 0.15.3 listed 50,000, a page that took some 40 seconds to open); a printout shows
 every row, whatever the filter boxes or a click on a cell left on screen (before 0.15.2 it left out the rows they
 hid, without saying so). After a click on a cell, the browser's Back button shows every row again.
 

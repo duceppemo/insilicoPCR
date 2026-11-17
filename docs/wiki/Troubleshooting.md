@@ -85,7 +85,7 @@ The message is `Tadpole ran out of memory on sample <name> with -Xmx<n>g` (or `B
 
 - Below 64 GB (`all it had`): give the BBTools programs more with `--bbtools-memory <GB>` (in the application, **FASTQ settings…**), as much as the computer can spare, or run on a computer with more memory.
 - At 64 GB (`the most insilicoPCR gives a BBTools program`): more memory does not help. The sample holds too many reads that match the primers; check the primers and the `-m` and `--5p-truncation` settings.
-- If the program's output above the message says `unable to create native thread`, it is the computer's limit on threads, not memory: use fewer threads with `-t`.
+- If the program's output above the message says `unable to create native thread`, it is the computer's limit on threads, not memory: use fewer threads with `-t` (in the application, **Threads**).
 
 When the read extension runs out of memory, the run goes on: the sample's assays stay as the read-level search left them, and a `Warning:` line in the log, and in `QAlog.txt`, says `read extension could not be run for sample <name> (Tadpole ran out of memory ...)`.
 

@@ -53,6 +53,19 @@ public record PipelineConfig(
         }
     }
 
+    /**
+     * Whether {@code text}, read as {@code value}, is a number above 0 too small for a double: 1e-400 reads as 0,
+     * and was told it was not above 0. The command line and the window say so in the same words.
+     */
+    public static boolean tooSmallForANumber(String text, double value) {
+        return value == 0 && !text.strip().matches("[+-]?0*\\.?0*([eE][+-]?\\d+)?");
+    }
+
+    /** What is said of an e-value {@link #tooSmallForANumber}, after the option's or field's name. */
+    public static String tooSmallMessage(String text) {
+        return text.strip() + " is too small for a number of the program (it reads as 0): give 1e-300 or more";
+    }
+
     /** Whether blastn takes {@code evalue}: a finite number above 0. */
     public static boolean validEvalue(double evalue) {
         return evalue > 0.0 && Double.isFinite(evalue);

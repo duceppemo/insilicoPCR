@@ -200,6 +200,9 @@ public class MainRun extends Application {
         return field;
     }
 
+    /** The most mismatches the window offers ({@code -m}). */
+    static final int MAX_MISMATCHES = 10;
+
     private ComboBox<Integer> addMismatchControls(GridPane pane) {
         var prompt = promptText("Mismatches");
         prompt.setTextAlignment(TextAlignment.LEFT);
@@ -212,7 +215,12 @@ public class MainRun extends Application {
                 + "pair with the template also count. Independently, the primer 3' end is checked separately "
                 + "(see Amplicon settings)."));
         field.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
-        field.getItems().addAll(0, 1, 2, 3);
+        // Up to 10, not 3: the rules (Amplicon-Calling) name sites that need -m 4 and more, which the window could
+        // not ask for. The command line takes any number.
+        for (int mismatches = 0; mismatches <= MAX_MISMATCHES; mismatches++) {
+            field.getItems().add(mismatches);
+        }
+        field.setVisibleRowCount(6);
         field.getSelectionModel().selectFirst();
         pane.add(field, 44, 9, 4, 3);
         return field;

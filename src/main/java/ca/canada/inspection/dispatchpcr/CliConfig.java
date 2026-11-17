@@ -57,10 +57,9 @@ public final class CliConfig {
         }
         if (cmd.hasOption("evalue")) {
             double evalue = parseDouble(cmd, "evalue");
-            if (evalue == 0 && !cmd.getOptionValue("evalue").matches("[+-]?0*\\.?0*([eE][+-]?\\d+)?")) {
+            if (PipelineConfig.tooSmallForANumber(cmd.getOptionValue("evalue"), evalue)) {
                 // 1e-400 reads as 0: the message said "got: 0.0", not what was given.
-                throw new IllegalArgumentException("--evalue " + cmd.getOptionValue("evalue") + " is too small for a"
-                        + " number of the program (it reads as 0): give 1e-300 or more");
+                throw new IllegalArgumentException("--evalue " + PipelineConfig.tooSmallMessage(cmd.getOptionValue("evalue")));
             }
             config.evalue(evalue);
         }

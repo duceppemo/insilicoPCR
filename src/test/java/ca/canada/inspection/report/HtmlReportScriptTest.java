@@ -116,7 +116,7 @@ class HtmlReportScriptTest {
 
     @Test
     void aCellOfASampleBeyondTheRowsListedSaysWhereItsRowsAre() throws Exception {
-        // The page lists the first 50,000 amplicons (here 100, the same code): a click on a later sample's cell
+        // The page lists the first 10,000 amplicons (here 100, the same code): a click on a later sample's cell
         // found none, and said "0 of 50000 shown" as if it had none.
         int listed = 100;
         List<ReportRow> rows = new ArrayList<>();

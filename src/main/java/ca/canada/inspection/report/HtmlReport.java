@@ -680,9 +680,10 @@ public final class HtmlReport {
 
     /**
      * The most rows "All amplicons" lists: a run of thousands of samples has millions, a page no browser
-     * opens; report.tsv has them all, and the grid and counts cover every product.
+     * opens; report.tsv has them all, and the grid and counts cover every product. 10,000, not 50,000 (0.15.3): a
+     * page of 50,000 rows was 36 MB and took some 40 seconds to open, one of 10,000 a few seconds.
      */
-    static final int MAX_LISTED = 50_000;
+    static final int MAX_LISTED = 10_000;
 
     private static void readSection(Page html, List<Finding> findings) {
         List<Finding> shown = findings.stream()

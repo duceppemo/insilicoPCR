@@ -70,7 +70,8 @@ public final class InSilicoPcrPipeline {
         done(Step.PRIMERS);
 
         monitor.info("Checking the input files (" + (config.inputCheck() == InputCheck.Depth.FULL
-                ? "every read; --input-check quick reads the first one only" : "first read only") + ")");
+                ? "every read; on the command line, --input-check quick reads the first one only"
+                : "first read only") + ")");
         InputCheck.Result checked = InputCheck.scan(config.input(), config.inputCheck(), config.threads(), config.output());
         if (checked.files() == 0) {
             throw new PipelineException(InputCheck.noInputFiles(config.input()));
@@ -159,7 +160,7 @@ public final class InSilicoPcrPipeline {
         int processors = Runtime.getRuntime().availableProcessors();
         if (context.config().threads() > processors) {
             // -t 1000 on 64 processors: 4 BBDuk runs of 250 threads each, slower, not faster.
-            monitor.warning("Warning: -t " + context.config().threads() + " is more than the " + processors
+            monitor.warning("Warning: " + context.config().threads() + " threads (-t) is more than the " + processors
                     + " processors the program sees: the threads take turns on them");
         }
         monitor.info("Application root: " + context.dependencies().appRoot());
@@ -169,6 +170,7 @@ public final class InSilicoPcrPipeline {
         monitor.info("Child Java memory: " + context.childJavaMemoryBudgetGiB() + " GB for the BBTools programs"
                 + " running at once, at most " + ChildJavaMemory.MAX_CHILD_GIB + " GB each"
                 + (context.config().bbtoolsMemoryGiB() > 0 ? " (--bbtools-memory)"
-                : " (three quarters of the memory insilicoPCR leaves free; --bbtools-memory sets it)"));
+                : " (three quarters of the memory insilicoPCR leaves free; --bbtools-memory, or BBTools memory"
+                + " in the window's FASTQ settings, sets it)"));
     }
 }

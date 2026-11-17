@@ -37,9 +37,9 @@ final class WindowsJob {
     private WindowsJob() {
     }
 
-    /** Whether the programs started from now on end with this program (Windows only). */
-    static boolean active() {
-        return JOB != null;
+    /** Makes the job object, on Windows, if not made yet: before the first program starts. */
+    static void prepare() {
+        // Loading the class made it (JOB); nothing else to do.
     }
 
     /** Puts {@code process} in the job, on Windows; elsewhere, or if that fails, does nothing. */

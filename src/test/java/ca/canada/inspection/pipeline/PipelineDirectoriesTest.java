@@ -61,18 +61,19 @@ class PipelineDirectoriesTest {
 
     @org.junit.jupiter.api.Test
     void onWindowsOnlyAFolderReparsePointIsTakenForALink() {
-        // Java reads every Windows reparse point that is not a symbolic link as "other": a junction (a folder) but
-        // also a deduplicated file, which made a reused output folder refused (0.15.4).
-        org.junit.jupiter.api.Assertions.assertTrue(PipelineDirectories.leadsElsewhere(attributes(false, true, true), true),
-                "a junction");
-        org.junit.jupiter.api.Assertions.assertFalse(PipelineDirectories.leadsElsewhere(attributes(false, true, false), true),
-                "a deduplicated file");
-        org.junit.jupiter.api.Assertions.assertTrue(PipelineDirectories.leadsElsewhere(attributes(true, false, false), true),
-                "a symbolic link");
-        org.junit.jupiter.api.Assertions.assertTrue(PipelineDirectories.leadsElsewhere(attributes(false, true, false), false),
-                "a pipe elsewhere");
-        org.junit.jupiter.api.Assertions.assertFalse(PipelineDirectories.leadsElsewhere(attributes(false, false, true), true),
-                "a folder");
+        // Java reads every Windows reparse point that is not a symbolic link as "other", and, without following it,
+        // not as a folder: a junction (a folder once followed) but also a deduplicated file, which made a reused
+        // output folder refused (0.15.4).
+        org.junit.jupiter.api.Assertions.assertTrue(PipelineDirectories.leadsElsewhere(attributes(false, true, false),
+                true, true), "a junction");
+        org.junit.jupiter.api.Assertions.assertFalse(PipelineDirectories.leadsElsewhere(attributes(false, true, false),
+                false, true), "a deduplicated file");
+        org.junit.jupiter.api.Assertions.assertTrue(PipelineDirectories.leadsElsewhere(attributes(true, false, false),
+                false, true), "a symbolic link");
+        org.junit.jupiter.api.Assertions.assertTrue(PipelineDirectories.leadsElsewhere(attributes(false, true, false),
+                false, false), "a pipe elsewhere");
+        org.junit.jupiter.api.Assertions.assertFalse(PipelineDirectories.leadsElsewhere(attributes(false, false, true),
+                true, true), "a folder");
     }
 
     private static java.nio.file.attribute.BasicFileAttributes attributes(boolean link, boolean other, boolean folder) {

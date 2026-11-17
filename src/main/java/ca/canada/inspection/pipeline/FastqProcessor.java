@@ -150,7 +150,7 @@ public final class FastqProcessor {
     }
 
     /** Leaves the samples of {@code refused} out of the run, named in warnings and in its input issues. */
-    private static void leaveOut(PipelineContext context, Map<String, PipelineException> refused, int readSets) {
+    static void leaveOut(PipelineContext context, Map<String, PipelineException> refused, int readSets) {
         if (refused.isEmpty()) {
             return;
         }

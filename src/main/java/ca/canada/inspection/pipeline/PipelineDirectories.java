@@ -56,7 +56,7 @@ public record PipelineDirectories(Path output, Path detailed, Path consolidated)
     static boolean leadsElsewhere(Path entry) {
         try {
             return leadsElsewhere(Files.readAttributes(entry, java.nio.file.attribute.BasicFileAttributes.class,
-                    java.nio.file.LinkOption.NOFOLLOW_LINKS), AppPaths.isWindows());
+                    java.nio.file.LinkOption.NOFOLLOW_LINKS), Files.isDirectory(entry), AppPaths.isWindows());
         } catch (IOException e) {
             return false; // gone since it was listed
         }
@@ -66,10 +66,12 @@ public record PipelineDirectories(Path output, Path detailed, Path consolidated)
      * As {@link #leadsElsewhere(Path)}, from an entry's own attributes. On Windows, Java reads every reparse point
      * that is not a symbolic link as "other": a junction, which is a folder, but also a file of a deduplicated
      * volume or one a cloud service keeps, which a run may well overwrite (0.15.4 refused a reused folder holding
-     * one); only a folder is taken for a link there.
+     * one); only one that leads to a folder is taken for a link there. Read without following it, a junction is not
+     * a folder: {@code followedToAFolder} is whether it is one once followed.
      */
-    static boolean leadsElsewhere(java.nio.file.attribute.BasicFileAttributes attributes, boolean windows) {
-        return attributes.isSymbolicLink() || attributes.isOther() && (!windows || attributes.isDirectory());
+    static boolean leadsElsewhere(java.nio.file.attribute.BasicFileAttributes attributes, boolean followedToAFolder,
+                                  boolean windows) {
+        return attributes.isSymbolicLink() || attributes.isOther() && (!windows || followedToAFolder);
     }
 
     /**

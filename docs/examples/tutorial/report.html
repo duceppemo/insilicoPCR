@@ -69,7 +69,8 @@ button.chip { cursor: pointer; } button.chip:hover, button.chip:focus-visible { 
 .chip.amplified { background: var(--amplified); color: #fff; }
 .chip.other { border-color: var(--other); }
 .chip.unexpected { border-color: var(--unexpected); border-style: dashed; }
-.chip.inconclusive, .chip.unconfirmed { border: 2px dotted var(--ink-3); color: var(--ink-2); }
+.chip.inconclusive { border: 2px dotted var(--ink-3); color: var(--ink-2); }
+.chip.unconfirmed { border: 2px dashed var(--ink-3); color: var(--ink-2); }
 .chip.unchecked { color: var(--ink-3); min-width: 0; padding: 0; font-weight: 400; }
 .chip.across_ends { color: var(--ink-2); min-width: 0; padding: 0; font-weight: 400; }
 .chip.none { color: var(--line-2); min-width: 0; padding: 0; font-weight: 400; }
@@ -107,7 +108,7 @@ details .names { margin-top: 6px; }
 <main>
 <header>
 <h1>insilicoPCR report</h1>
-<p class="sub">2026-11-15 16:45 · version 0.15.2 · report.tsv</p>
+<p class="sub">2026-11-17 13:17 · version 1.0.0 · report.tsv</p>
 </header>
 <section class="tiles" aria-label="Summary">
 <div class="tile"><span class="n">4</span><span class="l">samples</span></div>
@@ -158,8 +159,8 @@ details .names { margin-top: 6px; }
 <div class="scroll"><table class="rows" id="rows">
 <thead><tr><th>Sample</th><th>Assay</th><th class="num">Size (bp)</th><th>Size check</th><th>Found on</th><th>Location</th><th class="num" title="Forward / reverse primer mismatches">Mismatches F/R</th><th class="num" title="Imperfections in the 3' window, forward / reverse">3′ F/R</th><th class="num" title="Bases at the 5' end of each primer that do not pair with the template, forward / reverse; the mismatch columns do not count them">5′ unpaired F/R</th><th>Strand</th><th>Probe</th><th class="num">Probe mismatches</th></tr></thead>
 <tbody>
-<tr data-s="SRR17090570" data-a="hly702"><td>SRR17090570</td><td>hly702</td><td class="num">702</td><td><span class="chip target">✓ target</span></td><td title="contig_0,len=2492,cov=19.8,gc=0.360,class=long/medium/unanchored,min=2,max=51,hh=0.552,caga=0.523">contig_0</td><td>660-1361</td><td class="num">0 / 0</td><td class="num">0 / 0</td><td class="num" title="forward primer 18 of 18 bases, reverse primer 17 of 18 bases"><span class="part">◐</span> 0 / 1</td><td>-</td><td></td><td class="num"></td></tr>
-<tr data-s="SRR17090570" data-a="hlyQ"><td>SRR17090570</td><td>hlyQ</td><td class="num">112</td><td><span class="chip target">✓ target</span></td><td title="contig_0,len=2492,cov=19.8,gc=0.360,class=long/medium/unanchored,min=2,max=51,hh=0.552,caga=0.523">contig_0</td><td>1257-1368</td><td class="num">0 / 0</td><td class="num">0 / 0</td><td class="num" title="forward primer 19 of 19 bases, reverse primer 24 of 24 bases">0 / 0</td><td>-</td><td>hlyQ-P</td><td class="num">0</td></tr>
+<tr data-s="SRR17090570" data-a="hly702"><td>SRR17090570</td><td>hly702</td><td class="num">702</td><td><span class="chip target">✓ target</span></td><td title="contig_0,len=2492,cov=18.8,gc=0.360,class=long/medium/unanchored,min=2,max=51,hh=0.552,caga=0.523">contig_0</td><td>660-1361</td><td class="num">0 / 0</td><td class="num">0 / 0</td><td class="num" title="forward primer 18 of 18 bases, reverse primer 17 of 18 bases"><span class="part">◐</span> 0 / 1</td><td>-</td><td></td><td class="num"></td></tr>
+<tr data-s="SRR17090570" data-a="hlyQ"><td>SRR17090570</td><td>hlyQ</td><td class="num">112</td><td><span class="chip target">✓ target</span></td><td title="contig_0,len=2492,cov=18.8,gc=0.360,class=long/medium/unanchored,min=2,max=51,hh=0.552,caga=0.523">contig_0</td><td>1257-1368</td><td class="num">0 / 0</td><td class="num">0 / 0</td><td class="num" title="forward primer 19 of 19 bases, reverse primer 24 of 24 bases">0 / 0</td><td>-</td><td>hlyQ-P</td><td class="num">0</td></tr>
 <tr data-s="lmono_EGDe" data-a="hly702"><td>lmono_EGDe</td><td>hly702</td><td class="num">702</td><td><span class="chip target">✓ target</span></td><td title="NC_003210.1 — Listeria monocytogenes EGD-e chromosome, complete genome">NC_003210.1</td><td>205963-206664</td><td class="num">0 / 0</td><td class="num">0 / 0</td><td class="num" title="forward primer 18 of 18 bases, reverse primer 18 of 18 bases">0 / 0</td><td>+</td><td></td><td class="num"></td></tr>
 <tr data-s="lmono_EGDe" data-a="hlyQ"><td>lmono_EGDe</td><td>hlyQ</td><td class="num">112</td><td><span class="chip target">✓ target</span></td><td title="NC_003210.1 — Listeria monocytogenes EGD-e chromosome, complete genome">NC_003210.1</td><td>205956-206067</td><td class="num">0 / 0</td><td class="num">0 / 0</td><td class="num" title="forward primer 19 of 19 bases, reverse primer 24 of 24 bases">0 / 0</td><td>+</td><td>hlyQ-P</td><td class="num">0</td></tr>
 </tbody></table></div>
@@ -167,8 +168,8 @@ details .names { margin-top: 6px; }
 <section>
 <h2>Run details</h2>
 <dl class="details">
-<dt>Date</dt><dd>2026-11-15 16:45</dd>
-<dt>insilicoPCR version</dt><dd>0.15.2</dd>
+<dt>Date</dt><dd>2026-11-17 13:17</dd>
+<dt>insilicoPCR version</dt><dd>1.0.0</dd>
 <dt>Input</dt><dd>/data/tutorial/tutorial_input</dd>
 <dt>Primer file</dt><dd>/data/tutorial/listeria_assays.fasta</dd>
 <dt>Output folder</dt><dd>/data/tutorial/tutorial_results</dd>
@@ -182,8 +183,9 @@ details .names { margin-top: 6px; }
 <dt>Input check (--input-check)</dt><dd>full</dd>
 <dt>Tadpole assembly (FASTQ, --tadpole-...)</dt><dd>k=31 mincountseed=2 mincov=1 mincontig=60</dd>
 <dt>Read-level calls (FASTQ, --read-min-fraction)</dt><dd>at least 2 reads or read pairs and 30% of informative reads</dd>
-<dt>Read extension (FASTQ, --read-extension)</dt><dd>unreported: for assays in no contig and in no read, when reads carry both primers, up to 150 reads per primer are extended through the baited reads (Tadpole mode=extend k=31 branchmult1=1 branchmult2=1 mincountextend=2); a product needs at least 2 extended reads seeded from each primer, and read pairs holding each of its windows (the largest window of 100, 150, ... bases whose median is held by 10 pairs; none held by fewer than 2 or 10% of the median), and no repeat that long with another copy in the sample</dd>
-<dt>BBTools memory (FASTQ, --bbtools-memory)</dt><dd>automatic: three quarters of the memory insilicoPCR leaves free, at least half of its heap</dd>
+<dt>Read extension (FASTQ, --read-extension)</dt><dd>unreported: for assays in no contig and in no read, when reads carry both primers, up to 150 reads per primer are extended through the reads baited in rounds (Tadpole mode=extend k=31 branchmult1=1 branchmult2=1 mincountextend=2); a product needs at least 2 extended reads seeded from one primer, and read pairs holding each of its windows (the largest window of 100, 150, ... bases whose median is held by 10 pairs; none held by fewer than 2 or 10% of the median), and no repeat that long with another copy in the sample</dd>
+<dt>Memory (--memory)</dt><dd>automatic: three quarters of the memory insilicoPCR leaves free on the computer (a job&#39;s limit on a cluster), at least half of its own heap</dd>
+<dt>Tools</dt><dd>BLAST+ 2.17.0, BBTools 40.04, Java 26.0.2.1+1 (Eclipse Adoptium)</dd>
 </dl>
 <p class="hint">This page shows the rows of <code>report.tsv</code>, in the same folder. insilicoPCR reports every product a PCR would amplify, whatever its size; the size check compares each product with the sizes declared in the primer file and removes nothing.</p>
 </section>
@@ -228,7 +230,10 @@ details .names { margin-top: 6px; }
     });
     rowFilter.value = '';
     showAll.hidden = false;
-    rowCount.textContent = sample + ' · ' + assay + ': ' + shown + ' of ' + rows.length + ' shown';
+    var capped = document.getElementById('rows').dataset.capped;
+    rowCount.textContent = sample + ' · ' + assay + ': ' + (shown === 0 && capped
+        ? 'not among the amplicons listed here; ' + capped + ' has them'
+        : shown + ' of ' + rows.length + ' shown');
   }
   if (rowFilter) {
     rowFilter.addEventListener('input', typed);

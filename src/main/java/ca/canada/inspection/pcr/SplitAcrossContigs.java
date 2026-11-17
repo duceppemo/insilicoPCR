@@ -59,7 +59,8 @@ public final class SplitAcrossContigs {
 
         private static String hit(BlastResult hit, int toEnd) {
             return hit.subjectID() + " at " + hit.qstart() + "-" + hit.qend() + "(" + (hit.isPlusStrand() ? '+' : '-')
-                    + "), " + toEnd + " bp from the end";
+                    + "), " + (hit.threePrimeUncovered() > 0 ? "its 3' end past the contig's end"
+                    : toEnd + " bp from the end");
         }
     }
 
@@ -79,8 +80,12 @@ public final class SplitAcrossContigs {
             if (reported.contains(assay)) {
                 continue;
             }
-            List<BlastResult> forward = sample.hits().of(group.forward());
-            List<BlastResult> reverse = sample.hits().of(group.reverse());
+            // With the primers whose 3' end runs off a contig end: a break inside a primer's site left the assay
+            // negative without a word.
+            List<BlastResult> forward = new ArrayList<>(sample.hits().of(group.forward()));
+            forward.addAll(sample.hits().cutByEnd(group.forward()));
+            List<BlastResult> reverse = new ArrayList<>(sample.hits().of(group.reverse()));
+            reverse.addAll(sample.hits().cutByEnd(group.reverse()));
             if (forward.isEmpty() || reverse.isEmpty()) {
                 continue; // a primer that does not bind: an ordinary negative
             }

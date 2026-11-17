@@ -71,6 +71,13 @@ final class BlastTsv {
      */
     static Set<String> keepAccepted(Path path, List<Path> searched, PrimerPanel primers, AmpliconOptions options,
                                     java.util.function.UnaryOperator<String> toContig, Hits into) {
+        // An assembly's: its primer hits cut by a contig end are kept too, for the split warning.
+        return keepAccepted(path, searched, primers, options, toContig, into, true);
+    }
+
+    private static Set<String> keepAccepted(Path path, List<Path> searched, PrimerPanel primers,
+                                            AmpliconOptions options, java.util.function.UnaryOperator<String> toContig,
+                                            Hits into, boolean keepCutByEnd) {
         Objects.requireNonNull(path, "path");
         // Written beside it with the folder's usual permissions, then moved over it: a temporary file
         // (Files.createTempFile) is readable by its owner only, and so was the hit file it became, to
@@ -97,7 +104,7 @@ final class BlastTsv {
                                 } catch (IOException e) {
                                     throw new WriteFailed(e);
                                 }
-                            });
+                            }, keepCutByEnd);
                         }
                     }
                 } catch (WriteFailed e) {
@@ -131,6 +138,7 @@ final class BlastTsv {
     /** As {@link #keepAccepted(Path, List, PrimerPanel, AmpliconOptions, java.util.function.UnaryOperator, Hits)}, for a query searched whole. */
     static Set<String> keepAccepted(Path path, List<Path> searched, PrimerPanel primers, AmpliconOptions options,
                                     Hits into) {
-        return keepAccepted(path, searched, primers, options, java.util.function.UnaryOperator.identity(), into);
+        // Reads' (each read ends somewhere): no hit cut by an end is kept.
+        return keepAccepted(path, searched, primers, options, java.util.function.UnaryOperator.identity(), into, false);
     }
 }

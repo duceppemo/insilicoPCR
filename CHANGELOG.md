@@ -32,6 +32,15 @@
 
 ### Fixed
 
+- FASTQ: a bait anchor (a first-bait read with a primer site) ending in
+  adapter read-through baited every adapter dimer of the library in the
+  second baiting: 72% of SRR35797377's 23.7 million reads, all assembled (2
+  minutes, 535 MB, for the report of 14 seconds). The anchors are trimmed of
+  adapters (BBTools' list) and poly-G tails before they bait.
+- An assembly broken inside a primer site (the primer's 3' end on the next
+  contig) left the assay negative without a word: a primer hit rejected only
+  because its 3' end runs off a contig is kept for the "Primers at contig
+  ends" warning (never for a product), which names it.
 - Round 13 fixes:
   - Primers overlapping head to head faced away when BLAST left the 5' bases
     of one unaligned past the other's 3' end, and their product (shorter than

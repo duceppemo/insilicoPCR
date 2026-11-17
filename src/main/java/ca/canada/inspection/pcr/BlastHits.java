@@ -55,6 +55,18 @@ public final class BlastHits {
     public static Set<String> read(BufferedReader lines, List<Path> searched, Hits into, PrimerPanel primers,
                                    AmpliconOptions options, java.util.function.UnaryOperator<String> toContig,
                                    java.util.function.Consumer<String> accepted) throws IOException {
+        return read(lines, searched, into, primers, options, toContig, accepted, false);
+    }
+
+    /**
+     * @param keepCutByEnd whether to keep, apart, the primer hits rejected only because their 3' end runs off a
+     *                     contig ({@link BlastHitParser#cutByQueryEnd}): an assembly's, for the split warning; not
+     *                     reads', every one of which ends somewhere
+     */
+    public static Set<String> read(BufferedReader lines, List<Path> searched, Hits into, PrimerPanel primers,
+                                   AmpliconOptions options, java.util.function.UnaryOperator<String> toContig,
+                                   java.util.function.Consumer<String> accepted, boolean keepCutByEnd)
+            throws IOException {
         try (QueryTemplates templates = new QueryTemplates(searched, into.circles())) {
             String line;
             while ((line = lines.readLine()) != null) {
@@ -62,10 +74,15 @@ public final class BlastHits {
                     continue;
                 }
                 String kept = line;
-                BlastHitParser.parse(line, primers, options, templates).ifPresent(hit -> {
-                    into.add(hit.subjectID(), hit);
+                java.util.Optional<ca.canada.inspection.model.BlastResult> hit =
+                        BlastHitParser.parse(line, primers, options, templates);
+                if (hit.isPresent()) {
+                    into.add(hit.get().subjectID(), hit.get());
                     accepted.accept(kept);
-                });
+                } else if (keepCutByEnd) {
+                    BlastHitParser.cutByQueryEnd(line, primers, options, templates)
+                            .ifPresent(cut -> into.addCutByEnd(cut.subjectID(), cut));
+                }
             }
             return templates.missing();
         }

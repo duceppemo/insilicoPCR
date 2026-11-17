@@ -156,6 +156,30 @@ record BbtoolsCommands(String javaCommand, Path bbtoolsJar, int childMemoryGiB, 
     }
 
     /**
+     * Cuts adapter read-through (BBTools' own adapter list, {@code ref=adapters}) and poly-G tails off
+     * {@code reads}, one file, pairs one mate after the other when {@code paired}: the bait anchors, before
+     * they bait (an adapter in one baited every adapter dimer of the library). Small files: a fraction of a
+     * second.
+     */
+    Command trimAdapters(Path reads, boolean paired, Path output) {
+        Path directory = directoryOf(output);
+        List<String> arguments = start("jgi.BBDuk");
+        arguments.addAll(List.of(
+                "in=" + argument(directory, reads),
+                "out=" + argument(directory, output),
+                "ref=adapters",
+                // Each mate on its own (not tpe, and rieb=f): an adapter dimer's mate cut to nothing took its
+                // mate, a genuine anchor holding the primer site, with it.
+                "ktrim=r", "k=23", "mink=11", "hdist=1", paired ? "tbo" : "tbo=f", "rieb=f",
+                "trimpolyg=10",
+                "interleaved=" + (paired ? "t" : "f"),
+                SAME_ORDER,
+                "overwrite=t",
+                "threads=" + threads));
+        return new Command(directory, arguments);
+    }
+
+    /**
      * Second pass: recruit reads overlapping the first-pass matches. Exact k-mer
      * matching suffices here; expanding this much larger reference by hdist grows
      * the k-mer table by ~hdist^k-fold (tens of billions of entries at hdist=2 on a

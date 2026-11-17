@@ -31,6 +31,14 @@ public record SampleFiles(Path directory, String name) {
         return directory.resolve(name + "_baitAnchors.fastq.gz");
     }
 
+    /**
+     * The anchors with adapter read-through and poly-G tails cut off: what the second baiting baits from. One
+     * anchor ending in a TruSeq adapter baited every adapter dimer of a library, 72% of its reads.
+     */
+    Path baitAnchorsTrimmed() {
+        return directory.resolve(name + "_baitAnchorsTrimmed.fastq.gz");
+    }
+
     /** The first baiting's reads as FASTA, searched for the primers (removed after). */
     Path baitAnchorsQuery() {
         return directory.resolve(name + "_baitAnchors.query.fasta");
@@ -145,7 +153,8 @@ public record SampleFiles(Path directory, String name) {
         if (!fastq) {
             return List.of(blastReport());
         }
-        return List.of(blastReport(), targetMatches(), baitAnchors(), baitAnchorsQuery(), baitAnchorsHits(),
+        return List.of(blastReport(), targetMatches(), baitAnchors(), baitAnchorsTrimmed(), baitAnchorsQuery(),
+                baitAnchorsHits(),
                 doubleTargetMatches(), assembly(), mergedReads(),
                 unmergedReads(), baitedReadsFasta(), baitedReadsHits(), extensionSeeds(), extendedReads(),
                 extensionCandidates(), candidateReads(), extendedReadsHits(), extensionEnds(), extensionRoundReads(),

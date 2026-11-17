@@ -229,8 +229,15 @@ public final class FastqProcessor {
         int anchors = BaitAnchors.write(context, files, sample.isPaired(), threads);
         context.monitor().info("Sample " + sample.getName() + ": " + anchors + " first-bait read(s) hold an accepted"
                 + " primer site");
+        // Their adapter read-through and poly-G tails cut off first: they baited every adapter dimer and poly-G
+        // read of a library (72% of SRR35797377's reads), all of it then assembled, for the same report.
+        Path bait = files.baitAnchors();
+        if (anchors > 0) {
+            run(context, "BBDuk", commands.trimAdapters(files.baitAnchors(), sample.isPaired(), files.baitAnchorsTrimmed()));
+            bait = files.baitAnchorsTrimmed();
+        }
         run(context, "BBDuk", commands.secondBait(
-                files.baitAnchors(),
+                bait,
                 sample.files(),
                 files.doubleTargetMatches()
         ));

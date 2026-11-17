@@ -17,6 +17,8 @@ import java.util.function.Supplier;
 public final class Hits {
     private final HashMap<String, ArrayList<BlastResult>> byOligo = new HashMap<>();
     private final HashMap<String, String> descriptions = new HashMap<>();
+    /** Primer hits whose 3' end runs off the end of a contig, by oligo: for the split warning only. */
+    private final HashMap<String, ArrayList<BlastResult>> cutByEnd = new HashMap<>();
     /** The circular sequences, each with its length as a circle ({@link ca.canada.inspection.util.Circles}). */
     private final HashMap<String, Integer> circles = new HashMap<>();
     /** Results worked out from the hits and descriptions (the products), until either changes. */
@@ -32,6 +34,23 @@ public final class Hits {
     public synchronized void describe(String id, String description) {
         descriptions.put(id, description);
         derived.clear();
+    }
+
+    /**
+     * Adds a hit of oligo {@code oligoId} whose 3' end runs off the end of its contig: not a site a product is
+     * made from, but where one could span the break ({@code SplitAcrossContigs}).
+     */
+    public synchronized void addCutByEnd(String oligoId, BlastResult hit) {
+        cutByEnd.computeIfAbsent(oligoId, ignored -> new ArrayList<>()).add(hit);
+    }
+
+    /** The hits of {@code oligoIds} cut by a contig end ({@link #addCutByEnd}), in that order. */
+    public synchronized List<BlastResult> cutByEnd(Collection<String> oligoIds) {
+        List<BlastResult> hits = new ArrayList<>();
+        for (String id : oligoIds) {
+            hits.addAll(cutByEnd.getOrDefault(id, new ArrayList<>()));
+        }
+        return hits;
     }
 
     /** Records that sequence {@code id} is a circle of {@code length} bases: its products may cross its origin. */

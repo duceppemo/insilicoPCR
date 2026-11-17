@@ -15,7 +15,7 @@ class GelTextTest {
 
     @Test
     void tooltipOfOneAmplicon() {
-        assertEquals("Sample: isolate_01\nGene: toxA\nAmplicon size: 312 bp", GelText.tooltip(List.of(TOXA)));
+        assertEquals("Sample: isolate_01\nAssay: toxA\nAmplicon size: 312 bp", GelText.tooltip(List.of(TOXA)));
     }
 
     @Test
@@ -84,9 +84,9 @@ class GelTextTest {
         GelBand unexpected = new GelBand("s", "its", 500, ca.canada.inspection.pcr.ExpectedSizes.Label.UNEXPECTED);
         GelBand plain = new GelBand("s", "plain", 200);
 
-        assertEquals("Sample: s\nGene: its\nAmplicon size: 500 bp\nSize check: unexpected",
+        assertEquals("Sample: s\nAssay: its\nAmplicon size: 500 bp\nSize check: unexpected",
                 GelText.tooltip(List.of(unexpected)));
-        assertEquals("Sample: s\nGene: plain\nAmplicon size: 200 bp", GelText.tooltip(List.of(plain)));
+        assertEquals("Sample: s\nAssay: plain\nAmplicon size: 200 bp", GelText.tooltip(List.of(plain)));
         assertEquals("s its 500 unexpected", GelText.searchText(List.of(unexpected)));
         assertEquals(true, GelText.details("t", List.of(unexpected)).endsWith("s\tits\t500 bp\tunexpected"));
     }

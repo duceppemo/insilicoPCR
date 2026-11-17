@@ -216,7 +216,7 @@ public record BlastResult(
 	 * <pre>
 	 * distance from 3' terminus:  0 -> 3   1-2 -> 2   3+ -> 1
 	 * primer base is G or C at distance 0-2: +1
-	 * insertion/deletion: +1
+	 * insertion/deletion: as a mismatch at its place (a template base with no primer base: no G/C point), +1
 	 * </pre>
 	 *
 	 * <p>A perfect 3' window scores 0. A single mismatch on the terminal base of

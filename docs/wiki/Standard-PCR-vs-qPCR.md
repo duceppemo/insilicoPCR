@@ -34,6 +34,6 @@ Mixed primer files are fully supported. The probe requirement follows each assay
 - assays **with** a `-P` entry use qPCR reporting (probe required);
 - assays **without** a probe use standard PCR reporting.
 
-When at least one assay in the file defines a probe, the consolidated report includes the probe columns (`Probe`, `ProbeLocation`, `ProbeSize`, `ProbeMismatches`); those columns are left empty on rows of probe-less assays.
+The consolidated report has the probe columns (`Probe`, `ProbeLocation`, `ProbeSize`, `ProbeMismatches`) whatever the primer file holds (since 1.0; before, only when at least one assay in the file defined a probe); those columns are left empty on rows of probe-less assays.
 
 > Versions before 0.8.0 switched the whole report to qPCR mode as soon as any `-P` primer was present, silently dropping all probe-less assays. If you need that behavior for some reason, run the assay types separately.

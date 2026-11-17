@@ -14,7 +14,7 @@ final class GelText {
         if (bands.size() == 1) {
             GelBand band = bands.getFirst();
             return "Sample: " + band.sampleName() + '\n'
-                    + "Gene: " + band.geneName() + '\n'
+                    + "Assay: " + band.geneName() + '\n'
                     + "Amplicon size: " + band.ampliconSize() + " bp" + sizeCheck(band, "\nSize check: ")
                     + (band.pairingTag().isEmpty() ? "" : "\nMade by: " + band.pairingTag());
         }

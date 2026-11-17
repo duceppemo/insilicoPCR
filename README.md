@@ -86,7 +86,7 @@ Or use the command line, from the extracted folder:
 ./runtime/linux/jdk/bin/java -jar insilicoPCR.jar -i genomes/ -p primers.fasta -o results/
 ```
 
-**4. Read the results.** Open `results/consolidated_report/report.html` in a web browser (in the desktop app: **View HTML Report**). The same results are in `report.tsv`, one row per amplicon.
+**4. Read the results.** Open `results/consolidated_report/report.html` in a web browser (in the desktop app: **View HTML Report**). The same results are in `report.tsv`, one row per amplicon, and `report_samples.tsv` lists every sample with its number of products.
 
 Next steps: the [tutorial](https://github.com/duceppemo/insilicoPCR/wiki/Tutorial-Mixed-PCR-qPCR) runs two assays on public *Listeria* genomes and reads, and the [command-line reference](https://github.com/duceppemo/insilicoPCR/wiki/Command-line-Interface) lists every option.
 

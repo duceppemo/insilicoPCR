@@ -114,7 +114,7 @@ public final class InteractiveGelViewer {
         Label selectedLabel = new Label("No band selected");
         Label matchLabel = new Label();
         TextField searchField = new TextField();
-        searchField.setPromptText("Search sample, gene, or size");
+        searchField.setPromptText("Search sample, assay, or size");
         Button clearSearchButton = new Button("Clear");
 
         HBox toolbar = new HBox(8, savePngButton, saveSvgButton, savePdfButton, new Label("Color:"), colorMode,
@@ -446,7 +446,7 @@ public final class InteractiveGelViewer {
         showDetails.setOnAction(event -> showBandDetails(bandNode));
         MenuItem copySample = new MenuItem("Copy sample name");
         copySample.setOnAction(event -> copyToClipboard(bandNode.sampleName()));
-        MenuItem copyGenes = new MenuItem("Copy gene name(s)");
+        MenuItem copyGenes = new MenuItem("Copy assay name(s)");
         copyGenes.setOnAction(event -> copyToClipboard(bandNode.geneNames()));
         MenuItem copySizes = new MenuItem("Copy amplicon size(s)");
         copySizes.setOnAction(event -> copyToClipboard(bandNode.ampliconSizes()));

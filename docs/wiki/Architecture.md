@@ -28,7 +28,7 @@ Each package depends only on those below it in this table, so there are no cycle
 | `insilicopcr` (and `insilicopcr.ui`) | The application window and its dialogs | `pipeline`, `gel`, `report`, `pcr`, `util` |
 | `pipeline` | The run: its steps, the external programs, the runtime layout (`AppPaths`); no JavaFX (`PackageRulesTest`) | `gel`, `report`, `pcr`, `model`, `util` |
 | `gel` | The synthetic gel: its geometry, the viewers, the image files | `report` (to read `report.tsv`), `pcr` |
-| `report` | The files a run writes and reads back: `report.tsv` (its columns in `ReportColumn`, written by `ConsolidatedReport`, read by `ReportTsv`), the HTML report, the FASTQ diagnostics | `pcr`, `model`, `util` |
+| `report` | The files a run writes and reads back: `report.tsv` (its columns in `ReportColumn`, written by `ConsolidatedReport`, read by `ReportTsv`), `report_samples.tsv`, the HTML report, the FASTQ diagnostics | `pcr`, `model`, `util` |
 | `pcr` | The analysis core: primer IDs, hit filtering, amplicon calling, read-level calls; no report file | `model`, `util` |
 | `util` | Input checks, sequence file helpers, the version (`Version`, filled in from `pom.xml` at build time) | `model` |
 | `model` | `Sample` (its name, files and type, and its `Hits`), `Hits` (accepted primer hits on a set of sequences, with their descriptions) and `BlastResult` | nothing |
@@ -86,6 +86,7 @@ The files are written and read by `ca.canada.inspection.report`:
 | `ConsolidatedReport` | Writes the run's rows as `report.tsv` (standard and qPCR modes); it finds nothing |
 | `ReportTsv` | Reads a `report.tsv` back into `ReportRow`s with their size check, by column name, for the gel (of a run, a past run or a report opened in the application), refusing a file that is not a report; UTF-8, UTF-16 or the Windows encoding, cells a spreadsheet quoted unquoted. A finished run's HTML report is made from its rows, not from the file |
 | `HtmlReport` | Writes the self-contained HTML report from the run's `ReportRow`s (the verdict of each sample and assay from `pcr.AssayVerdict`): sample-by-assay grid, per-assay summary, amplicon table; its style and script are the resources `report.css` and `report.js` |
+| `SamplesReport` | Writes `report_samples.tsv` beside the report: every sample, analysed or left out and why, with its products counted (since 1.0) |
 | `FastqDiagnosticsReport` | Writes `report_fastq_diagnostics.tsv` from the `FastqDiagnostics` findings |
 
 Three classes outside these packages take part in every run as well:

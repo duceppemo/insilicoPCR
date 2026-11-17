@@ -168,7 +168,7 @@ public final class Dispatcher {
                         + AmpliconOptions.DEFAULT_THREE_PRIME_WINDOW).build());
         options.addOption(Option.builder().longOpt("3p-penalty").hasArg().argName("score")
                 .desc("Maximum weighted 3'-end penalty (mismatch: 3 at terminus, 2 at -1/-2, 1 beyond;"
-                        + " +1 if a G/C pair is broken near the terminus; +1 for indels); default: "
+                        + " +1 if a G/C pair is broken near the terminus; an indel scores as a mismatch at its place, +1); default: "
                         + AmpliconOptions.DEFAULT_THREE_PRIME_PENALTY).build());
         options.addOption(Option.builder().longOpt("probe-mismatches").hasArg().argName("n")
                 .desc("Allowed mismatches+indels per hydrolysis probe; probes bind hotter than primers"

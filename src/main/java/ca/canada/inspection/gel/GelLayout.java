@@ -81,7 +81,7 @@ record GelLayout(double gelLeft,
         if (genes.isEmpty()) {
             return 0;
         }
-        int longest = "Gene legend".length();
+        int longest = GelColorMode.GENE.legendTitle().length();
         for (String gene : genes) {
             longest = Math.max(longest, gene.length());
         }

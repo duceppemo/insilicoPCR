@@ -23,8 +23,10 @@ Two buttons above the log open the remaining settings. Each dialog has **Default
 
 | Dialog | Settings | Command-line equivalents |
 |---|---|---|
-| **Amplicon settings…** | probe mismatches (blank = same as primers), 3' window, max 3' penalty, max 5' unaligned bases, min and max amplicon length | `--probe-mismatches`, `--3p-window`, `--3p-penalty`, `--5p-truncation`, `--min-length`, `--max-length` |
-| **FASTQ settings…** | Tadpole k-mer length, min k-mer count to seed, min contig coverage, min contig length; min share of informative reads for read-level calls; which assays reads are extended for, to find products longer than a read (unreported, target or off); the BBTools memory (empty: automatic) | `--tadpole-k`, `--tadpole-min-seed`, `--tadpole-min-cov`, `--tadpole-min-contig`, `--read-min-fraction`, `--read-extension`, `--bbtools-memory` |
+| **Amplicon settings…** | probe mismatches (blank = same as primers), 3' window, max 3' penalty, max 5' unpaired bases, min and max amplicon length | `--probe-mismatches`, `--3p-window`, `--3p-penalty`, `--5p-truncation`, `--min-length`, `--max-length` |
+| **FASTQ settings…** | Tadpole k-mer length, min k-mer count to seed, min contig coverage, min contig length; min share of informative reads for read-level calls; which assays reads are extended for, to find products longer than a read (unreported, target or off); the memory for BBTools and BLAST (empty: automatic; it sizes the BLAST searches of assemblies too) | `--tadpole-k`, `--tadpole-min-seed`, `--tadpole-min-cov`, `--tadpole-min-contig`, `--read-min-fraction`, `--read-extension`, `--memory` (`--bbtools-memory` before 1.0) |
+
+![The Amplicon settings and FASTQ settings dialogs, with their defaults](https://raw.githubusercontent.com/duceppemo/insilicoPCR/master/docs/assets/gui/settings-dialogs.png)
 
 See [Amplicon Calling](Amplicon-Calling) and [FASTQ mode and false negatives](Reports#fastq-mode-and-false-negatives) for what they do.
 
@@ -34,7 +36,7 @@ After the inputs are selected, click **Run** to start the analysis. The run firs
 
 The application displays progress and log output during the run, including the output of the external tools (BBDuk, Tadpole, BBMerge, BLAST).
 
-The application runs the same pipeline as the command line (since 0.14.0), so FASTQ samples are baited and assembled several at a time, sharing the threads and memory; the log says how (`BBTools: 2 samples at a time, each with 4 threads and -Xmx4g`). The BBTools programs' memory is worked out from the computer; **FASTQ settings…**, **BBTools memory** sets it instead (on a computer shared with others, say); see [Threads and memory in FASTQ mode](Command-line-Interface#threads-and-memory-in-fastq-mode).
+The application runs the same pipeline as the command line (since 0.14.0), so FASTQ samples are baited and assembled several at a time, sharing the threads and memory; the log says how (`BBTools: 2 samples at a time, each with 4 threads and -Xmx4g`). The BBTools programs' memory is worked out from the computer; **FASTQ settings…**, **Memory for BBTools and BLAST** sets it instead (on a computer shared with others, say); see [Threads and memory in FASTQ mode](Command-line-Interface#threads-and-memory-in-fastq-mode).
 
 On Linux, starting the launcher from a terminal is recommended because startup messages and errors are also visible in the console.
 

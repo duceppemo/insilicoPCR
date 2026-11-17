@@ -47,6 +47,9 @@ public final class AmpliconSettingsDialog {
     }
 
     /** @return the edited settings, or empty when the dialog was cancelled */
+    /** The label of {@code --5p-truncation}, in the dialog, its summary and its messages. */
+    static final String TRUNCATION_LABEL = "Max 5' unpaired bases";
+
     public static Optional<AmpliconSettings> show(Window owner, AmpliconSettings current) {
         var dialog = new SettingsDialog();
         dialog.section("Probe");
@@ -61,12 +64,13 @@ public final class AmpliconSettingsDialog {
                         + AmpliconOptions.DEFAULT_THREE_PRIME_WINDOW + ".");
         TextField penalty = dialog.field("Max 3' penalty", String.valueOf(current.threePrimePenalty()),
                 "Maximum weighted penalty inside the 3' window (--3p-penalty). A mismatch scores 3 on the terminal "
-                        + "base, 2 at -1/-2 and 1 beyond; +1 if it breaks a G/C pair near the terminus; +1 for an "
-                        + "indel. 0 requires a perfect 3' end; 3 tolerates one A/T terminal mismatch. Default "
+                        + "base, 2 at -1/-2 and 1 beyond; +1 if it breaks a G/C pair near the terminus; an indel scores "
+                        + "as a mismatch at its place, plus 1. 0 requires a perfect 3' end; 3 tolerates one A/T terminal mismatch. Default "
                         + AmpliconOptions.DEFAULT_THREE_PRIME_PENALTY + ".");
-        TextField truncation = dialog.field("Max 5' unaligned bases", String.valueOf(current.fivePrimeTruncation()),
-                "Primer bases allowed to be unaligned at the harmless 5' end (--5p-truncation). One 5'-proximal "
-                        + "mismatch makes BLAST trim the whole tail. Default "
+        // "Unpaired", as the report's 5' columns since 1.0: the bases may be mismatched in BLAST's alignment too.
+        TextField truncation = dialog.field(TRUNCATION_LABEL, String.valueOf(current.fivePrimeTruncation()),
+                "Bases at a primer's harmless 5' end that may differ from the template, or be left out of BLAST's "
+                        + "alignment, without counting as mismatches (--5p-truncation). Default "
                         + AmpliconOptions.DEFAULT_FIVE_PRIME_TRUNCATION + ".");
         dialog.section("Product size");
         TextField minLength = dialog.field("Min amplicon (bp)", String.valueOf(current.minLength()),
@@ -101,7 +105,7 @@ public final class AmpliconSettingsDialog {
         return (settings.isDefault() ? "Defaults" : "Changed from defaults (*)")
                 + "\nProbe mismatches: " + (settings.probeMismatches() == null ? "as primers" : settings.probeMismatches())
                 + "\n3' window " + settings.threePrimeWindow() + ", max 3' penalty " + settings.threePrimePenalty()
-                + "\nMax 5' unaligned bases: " + settings.fivePrimeTruncation()
+                + "\n" + TRUNCATION_LABEL + ": " + settings.fivePrimeTruncation()
                 + "\nAmplicon size: " + settings.minLength() + " to "
                 + (settings.maxLength() == 0 ? "unlimited" : settings.maxLength() + " bp");
     }
@@ -123,7 +127,7 @@ public final class AmpliconSettingsDialog {
         return new AmpliconSettings(probeMismatches,
                 SettingsDialog.parseInt(window, "3' window", 0),
                 SettingsDialog.parseInt(penalty, "Max 3' penalty", 0),
-                SettingsDialog.parseInt(truncation, "Max 5' unaligned bases", 0),
+                SettingsDialog.parseInt(truncation, TRUNCATION_LABEL, 0),
                 min, max);
     }
 }

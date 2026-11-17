@@ -116,7 +116,7 @@ class GelReportReaderTest {
         List<GelBand> bands = GelReportReader.read(file, List.of()).get("s1");
 
         assertEquals(List.of("one primer", "two assays", ""), bands.stream().map(GelBand::pairingTag).toList());
-        assertEquals("Sample: s1\nGene: one\nAmplicon size: 400 bp\nMade by: one primer",
+        assertEquals("Sample: s1\nAssay: one\nAmplicon size: 400 bp\nMade by: one primer",
                 GelText.tooltip(List.of(bands.getFirst())));
         assertEquals("tip\n\nRows:\ns1\ta+b\t300 bp\ttwo assays", GelText.details("tip", List.of(bands.get(1))));
     }

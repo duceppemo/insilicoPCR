@@ -81,9 +81,9 @@ Releases before 0.9.0 ran the second baiting pass with the `-m` mismatch budget 
 
 ## FASTQ run fails with `ran out of memory on sample`
 
-The message is `Tadpole ran out of memory on sample <name> with -Xmx<n>g` (or `BBDuk`, `BBMerge`). The sample had all the memory insilicoPCR gives a BBTools program: `--bbtools-memory` when given, otherwise three quarters of the memory it leaves free on the computer, at least half of its own heap; up to 64 GB. (Samples that run out of only their share, when several run at once, are run again alone automatically; see [Threads and memory in FASTQ mode](Command-line-Interface#threads-and-memory-in-fastq-mode).)
+The message is `Tadpole ran out of memory on sample <name> with -Xmx<n>g` (or `BBDuk`, `BBMerge`). The sample had all the memory insilicoPCR gives a BBTools program: `--memory` (`--bbtools-memory` before 1.0) when given, otherwise three quarters of the memory it leaves free on the computer, at least half of its own heap; up to 64 GB. (Samples that run out of only their share, when several run at once, are run again alone automatically; see [Threads and memory in FASTQ mode](Command-line-Interface#threads-and-memory-in-fastq-mode).)
 
-- Below 64 GB (`all it had`): give the BBTools programs more with `--bbtools-memory <GB>` (in the application, **FASTQ settings…**), as much as the computer can spare, or run on a computer with more memory.
+- Below 64 GB (`all it had`): give the BBTools programs more with `--memory <GB>` (in the application, **FASTQ settings…**), as much as the computer can spare, or run on a computer with more memory.
 - At 64 GB (`the most insilicoPCR gives a BBTools program`): more memory does not help. The sample holds too many reads that match the primers; check the primers and the `-m` and `--5p-truncation` settings.
 - If the program's output above the message says `unable to create native thread`, it is the computer's limit on threads, not memory: use fewer threads with `-t` (in the application, **Threads**).
 
@@ -102,6 +102,8 @@ These cases remain negative by design (see also the figure on [Limitations](Limi
 - **The extended reads end in a tandem repeat** ((AT)n, (CAG)n, a VNTR) **and loop in it** (`EXTENSION_IN_TANDEM_REPEAT`, since 0.15.3). The extension cannot cross a repeat longer than its k-mers, so a product through it is neither shown nor ruled out: the HTML report marks the sample inconclusive, and `ReadDetail` names the repeat's unit. Confirm on an assembly of long reads, or by PCR.
 - **The run used `--read-extension off`.** The diagnostics then say `NOT_IN_READS` with the longest amplicon the reads could have held, and when the primer file declares the assay's size, the HTML report marks the sample "not checkable from reads" instead of negative.
 - **`WEAK_READ_SUPPORT`**: complete amplicons are in the reads, but in under `--read-min-fraction` (default 30%) of the reads covering the locus. This is the signature of contamination, and also of a locus of which only some copies match the primers and probe. Read the counts in `ReadDetail`, and lower `--read-min-fraction` if the sample is known to be mixed.
+
+A `--tadpole-k` longer than a sample's reads leaves its mini-assembly empty: Tadpole builds no contig from reads shorter than its k-mers. Since 1.0 the run says so, `Warning: --tadpole-k 200 is longer than the reads of sample <name> (150 bases at most): its mini-assembly is empty, and its products are looked for in the reads only` (before, only blastn's `Query is Empty` showed it). Use a k shorter than the reads; the default is 31.
 
 ## FASTQ run seems to hang after BLAST
 
@@ -125,7 +127,7 @@ Primer FASTA IDs must end with:
 
 See [Primer FASTA Format](Primer-FASTA-Format).
 
-Since 0.12.0 the command line reports a mistake in the primer file (an ID without a role suffix, characters that are not bases, a `size=` that cannot be read, two different sizes for one assay; since 0.15.3 also an ID with a character outside ASCII, and `other=` without `size=`; an ID whose role letter is followed by more letters, such as `stxQ-FAM`, `toxA-Rev` or `toxA-F2`, or written in lower case, `toxA-f`: `Primer ID must follow the <assay>-F / <assay>-R / <assay>-P naming convention: stxQ-FAM (the role letter ends the ID, or comes before an underscore: ...)`; an oligo of fewer than 7 bases: `Primer toxA-F is 6 bases long: BLAST finds no site of an oligo under 7 bases...`; a character that is not a base, named: `Primer sequence of toxA-F holds characters that are not bases (*)`) as one `Error:` line and exits with code 1. Earlier releases printed a Java stack trace for the same mistakes.
+Since 0.12.0 the command line reports a mistake in the primer file (an ID without a role suffix, characters that are not bases, a `size=` that cannot be read, two different sizes for one assay; since 0.15.3 also an ID with a character outside ASCII, and `other=` without `size=`; an ID whose role letter is followed by more letters, such as `stxQ-FAM`, `toxA-Rev` or `toxA-F2`, or written in lower case, `toxA-f`: `Primer ID must follow the <assay>-F / <assay>-R / <assay>-P naming convention: stxQ-FAM (the role letter ends the ID, or comes before an underscore: ...)`; an oligo of fewer than 7 bases: `Primer toxA-F is 6 bases long: BLAST finds no site of an oligo under 7 bases...`; a character that is not a base, named: `Primer sequence of toxA-F holds characters that are not bases (*)`; since 1.0 also a header with no ID, and `+` in any assay ID) as one `Error:` line and exits with code 1, before it makes the output folder (since 1.0 for a mistake in a sequence too, which left an empty output folder behind). A `key=value` word in a header that insilicoPCR does not read (`Tm=60`, a mistyped `sise=420`) is not an error: since 1.0 it is named in a `Warning:` line and ignored. Earlier releases printed a Java stack trace for the same mistakes.
 
 Since 0.12.1 a failing external tool (BLAST+, BBTools) is reported the same way: the tool's own message, then `Error:` with the stage that failed and `Cause:` with the full command line and its exit code. Copy the command line to run the tool by hand.
 
@@ -178,6 +180,8 @@ Use:
 ```bash
 ./runtime/linux/jdk/bin/java -jar insilicoPCR.jar -h
 ```
+
+A mistake on the command line prints `Error: <what is wrong>` and `Run insilicoPCR --help for the options.` on standard error, and exits with code 2 (since 1.0; before, the whole help followed on standard output). See [Exit codes](Command-line-Interface#exit-codes-and-stopping-a-run).
 
 ## Getting help
 

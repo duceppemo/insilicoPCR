@@ -7,7 +7,7 @@ enum GelColorMode {
     /** Black bands, as on a stained gel: amplicons of one size are one band. */
     BLACK("Black", null, band -> ""),
     /** Each band in its assay's colour, with a gene legend. */
-    GENE("By gene", "Gene legend", GelBand::geneName),
+    GENE("By assay", "Assay legend", GelBand::geneName),
     /**
      * Each band by what its size is for its assay (the report's {@code SizeCheck}): target,
      * other known product, unexpected, or no size declared; with a legend of these.

@@ -48,8 +48,9 @@ public final class RunSettings {
             settings.add(new Setting("Read-level calls (FASTQ, --read-min-fraction)",
                     readLevelCalls(config.readMinFraction())));
             settings.add(new Setting("Read extension (FASTQ, --read-extension)", readExtension(config.readExtension())));
-            settings.add(new Setting("Memory (--memory)", bbtoolsMemory(config.bbtoolsMemoryGiB())));
         }
+        // For assemblies too: it sizes the BLAST searches running at once (since 0.15.3).
+        settings.add(new Setting("Memory (--memory)", bbtoolsMemory(config.bbtoolsMemoryGiB())));
         return settings;
     }
 

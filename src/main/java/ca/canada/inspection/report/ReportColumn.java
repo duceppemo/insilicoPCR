@@ -2,7 +2,6 @@ package ca.canada.inspection.report;
 
 import ca.canada.inspection.pcr.ReportRow;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.function.Function;
 
@@ -11,48 +10,58 @@ import java.util.function.Function;
  * name in the header and the text of a row. {@link ConsolidatedReport} writes the header and
  * the rows from this list, and {@link ReportTsv} finds the columns by these names, so the
  * three cannot disagree. The size check ({@code ExpectedSizes.COLUMN}), worked out from the
- * primer file rather than the row, follows them when the primer file declares sizes.
+ * primer file rather than the row, follows them.
+ *
+ * <p>Since 1.0 every report has every column, in this order, empty where it does not apply (a
+ * row without a probe; no size declared): the header is the format, and a column is never
+ * inserted before another because of what the primer file holds. Columns renamed for 1.0 keep
+ * their old names as {@link #aliases}, so that the program still reads earlier reports.</p>
  */
 public enum ReportColumn {
     SAMPLE("Sample", ReportRow::sample),
-    GENE("Gene", ReportRow::assay),
+    ASSAY("Assay", ReportRow::assay, "Gene"),
     LOCATION("GenomeLocation", ReportRow::location),
     SIZE("AmpliconSize", row -> String.valueOf(row.size())),
     CONTIG("Contig", ReportRow::contig),
-    CONTIG_DESCRIPTION("Contig Description", ReportRow::contigDescription),
-    FORWARD_PRIMERS("ForwardPrimers", ReportRow::forwardPrimer),
-    REVERSE_PRIMERS("ReversePrimers", ReportRow::reversePrimer),
+    CONTIG_DESCRIPTION("ContigDescription", ReportRow::contigDescription, "Contig Description"),
+    FORWARD_PRIMER("ForwardPrimer", ReportRow::forwardPrimer, "ForwardPrimers"),
+    REVERSE_PRIMER("ReversePrimer", ReportRow::reversePrimer, "ReversePrimers"),
     FORWARD_MISMATCHES("ForwardMismatches", row -> String.valueOf(row.forwardMismatches())),
     REVERSE_MISMATCHES("ReverseMismatches", row -> String.valueOf(row.reverseMismatches())),
     FORWARD_THREE_PRIME("Forward3PrimeMismatches", row -> String.valueOf(row.forwardThreePrime())),
     REVERSE_THREE_PRIME("Reverse3PrimeMismatches", row -> String.valueOf(row.reverseThreePrime())),
     STRAND("Strand", row -> String.valueOf(row.strand())),
-    /** The probe columns, present when an assay of the run has a probe; empty for a row without one. */
+    /** The probe columns: empty for a row without a probe (before 1.0, left out when no assay had one). */
     PROBE("Probe", row -> row.probe() == null ? "" : row.probe().id()),
     PROBE_LOCATION("ProbeLocation", row -> row.probe() == null ? "" : row.probe().start() + "-" + row.probe().end()),
     PROBE_SIZE("ProbeSize", row -> row.probe() == null ? "" : String.valueOf(row.probe().size())),
     PROBE_MISMATCHES("ProbeMismatches", row -> row.probe() == null ? "" : String.valueOf(row.probe().mismatches())),
     /**
-     * Per primer, the bases at its 5' end that do not pair with the template: of the bases
-     * BLAST left out of the alignment, those that differ from the template (or lie beyond its
-     * end). The mismatch columns do not count them (the run's {@code --5p-truncation} allows
-     * them), so without these a primer held by its last few bases reads as a perfect match.
+     * Per primer, the bases at its 5' end that do not pair with the template, within
+     * {@code --5p-truncation} of it: those BLAST left out of the alignment that differ from the
+     * template (or lie beyond its end), and the mismatches it kept there. The mismatch columns do
+     * not count them (the run's {@code --5p-truncation} allows them), so without these a primer
+     * held by its last few bases reads as a perfect match. Named "Unaligned" before 1.0, when it
+     * counted only bases BLAST left out.
      */
-    FORWARD_UNALIGNED("Forward5PrimeUnaligned", row -> String.valueOf(row.forwardUnpaired())),
-    REVERSE_UNALIGNED("Reverse5PrimeUnaligned", row -> String.valueOf(row.reverseUnpaired()));
+    FORWARD_UNPAIRED("Forward5PrimeUnpaired", row -> String.valueOf(row.forwardUnpaired()), "Forward5PrimeUnaligned"),
+    REVERSE_UNPAIRED("Reverse5PrimeUnpaired", row -> String.valueOf(row.reverseUnpaired()), "Reverse5PrimeUnaligned"),
+    /** How the primers came together: {@code designed}, {@code one-primer} or {@code two-assays}. */
+    PAIRING("Pairing", row -> pairing(row.pairing())),
+    /** What the call was made on: {@code assembly}, {@code reads} (read-level) or {@code extension}. */
+    SOURCE("Source", row -> source(row.source()));
 
-    /**
-     * The columns of every report, before the probe columns: what a file without a header
-     * (saved from a spreadsheet without it) is read as.
-     */
-    public static final List<ReportColumn> FIRST = List.of(values()).subList(0, PROBE.ordinal());
+    /** Every column, in report order: what a file without a header (saved from a spreadsheet so) is read as. */
+    public static final List<ReportColumn> ALL = List.of(values());
 
     private final String header;
     private final Function<ReportRow, String> value;
+    private final List<String> aliases;
 
-    ReportColumn(String header, Function<ReportRow, String> value) {
+    ReportColumn(String header, Function<ReportRow, String> value, String... aliases) {
         this.header = header;
         this.value = value;
+        this.aliases = List.of(aliases);
     }
 
     /** The column's name in the header line. */
@@ -60,20 +69,34 @@ public enum ReportColumn {
         return header;
     }
 
+    /** Names the column had in earlier releases, which {@link ReportTsv} still reads. */
+    public List<String> aliases() {
+        return aliases;
+    }
+
+    /** A pairing as the report writes it. */
+    public static String pairing(ReportRow.Pairing pairing) {
+        return switch (pairing) {
+            case DESIGNED -> "designed";
+            case ONE_PRIMER -> "one-primer";
+            case TWO_ASSAYS -> "two-assays";
+        };
+    }
+
+    /** A source as the report writes it. */
+    public static String source(ReportRow.Source source) {
+        return switch (source) {
+            case ReportRow.Source.Assembly assembly -> "assembly";
+            case ReportRow.Source.Reads reads -> "reads";
+            case ReportRow.Source.Extension extension -> "extension";
+        };
+    }
+
     /** The row's value in this column, as one TSV cell. */
     public String value(ReportRow row) {
         return cell(value.apply(row));
     }
 
-    /** Whether this is one of the probe columns. */
-    public boolean isProbeColumn() {
-        return ordinal() >= PROBE.ordinal() && ordinal() <= PROBE_MISMATCHES.ordinal();
-    }
-
-    /** The columns of a report, with or without the probe columns. */
-    public static List<ReportColumn> of(boolean probeColumns) {
-        return Arrays.stream(values()).filter(column -> probeColumns || !column.isProbeColumn()).toList();
-    }
 
     /**
      * Text as one TSV cell: a tab or a line break (a FASTA header's description may hold one)

@@ -33,23 +33,20 @@ public final class ConsolidatedReport {
      */
     public static Path write(Path consolidatedDir, List<ReportRow> rows, PrimerPanel primers) {
         ExpectedSizes expectedSizes = primers.expectedSizes();
-        // The probe columns are present whenever at least one assay defines a probe.
-        boolean probeColumns = primers.anyProbe();
-        boolean sizeColumn = !expectedSizes.isEmpty();
-        List<ReportColumn> columns = ReportColumn.of(probeColumns);
+        // Every column, every report (since 1.0): the probe columns and the size check were left out when no assay
+        // had a probe or a size, which moved the columns after them.
+        List<ReportColumn> columns = ReportColumn.ALL;
         Path report = nextAvailableReportFile(consolidatedDir);
 
         // A new file: never over another run's report. Its lines end in LF on every system, as the other files a
         // run writes do: on Windows, newLine() wrote CRLF in some files and not others.
         try (BufferedWriter writer = Files.newBufferedWriter(report, StandardCharsets.UTF_8,
                 java.nio.file.StandardOpenOption.CREATE_NEW, java.nio.file.StandardOpenOption.WRITE)) {
-            writer.write(header(probeColumns, sizeColumn));
+            writer.write(HEADER);
             writer.write('\n');
             for (ReportRow row : rows) {
                 writer.write(String.join("\t", columns.stream().map(column -> column.value(row)).toList()));
-                if (sizeColumn) {
-                    writer.write("\t" + expectedSizes.labelText(row.assay(), row.size()));
-                }
+                writer.write("\t" + expectedSizes.labelText(row.assay(), row.size()));
                 writer.write('\n');
             }
         } catch (IOException e) {
@@ -135,11 +132,7 @@ public final class ConsolidatedReport {
         return digits.length() > 7 || Integer.parseInt(digits) >= MAX_NUMBER ? -1 : Integer.parseInt(digits);
     }
 
-    private static String header(boolean probeColumns, boolean sizeColumn) {
-        List<String> columns = new ArrayList<>(ReportColumn.of(probeColumns).stream().map(ReportColumn::header).toList());
-        if (sizeColumn) {
-            columns.add(ExpectedSizes.COLUMN);
-        }
-        return String.join("\t", columns);
-    }
+    /** The header line of every report: its columns ({@link ReportColumn}), then the size check. */
+    public static final String HEADER = String.join("\t", java.util.stream.Stream.concat(
+            ReportColumn.ALL.stream().map(ReportColumn::header), java.util.stream.Stream.of(ExpectedSizes.COLUMN)).toList());
 }

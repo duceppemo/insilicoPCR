@@ -15,7 +15,7 @@ import java.util.List;
 public final class FastqDiagnosticsReport {
 
     public static final String HEADER = String.join("\t",
-            "Sample", "Gene", "Status", "Assembly", "ReadsWithForward", "ReadsWithReverse", "ReadsWithProbe",
+            "Sample", "Assay", "Status", "Assembly", "ReadsWithForward", "ReadsWithReverse", "ReadsWithProbe",
             "CheckableLength", "ReadDetail", "AssemblyDetail");
 
     private FastqDiagnosticsReport() {

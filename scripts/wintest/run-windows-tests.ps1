@@ -140,7 +140,7 @@ function Read-Rows([string]$Tsv) {
     return @([IO.File]::ReadAllLines((Long $Tsv)) | ForEach-Object { $_.TrimEnd("`r") })
 }
 
-# "Sample Gene Size SizeCheck" per row, sorted: what a FASTQ run must find.
+# "Sample Assay Size SizeCheck" per row, sorted: what a FASTQ run must find.
 function Get-Products([string]$Tsv) {
     $rows = Read-Rows $Tsv
     if ($null -eq $rows -or $rows.Count -lt 1) { return '' }
@@ -149,7 +149,7 @@ function Get-Products([string]$Tsv) {
     $items = foreach ($r in $rows[1..($rows.Count - 1)]) {
         if ($r -eq '') { continue }
         $c = $r.Split("`t")
-        "{0} {1} {2} {3}" -f $c[$ix['Sample']], $c[$ix['Gene']], $c[$ix['AmpliconSize']], $c[$ix['SizeCheck']]
+        "{0} {1} {2} {3}" -f $c[$ix['Sample']], $c[$ix['Assay']], $c[$ix['AmpliconSize']], $c[$ix['SizeCheck']]
     }
     return (@($items) | Sort-Object) -join '; '
 }

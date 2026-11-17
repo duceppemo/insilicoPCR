@@ -37,7 +37,7 @@ scripts/ci/smoke-test.sh insilicoPCR-<version>-linux-x64.zip
 
 ```bash
 export JAVA_HOME=/path/to/jdk-26
-scripts/release/package-linux-portable.sh 0.15.3
+scripts/release/package-linux-portable.sh 0.15.4
 ```
 
 Expected artifacts:
@@ -52,7 +52,7 @@ release/insilicoPCR-<version>-linux-x64.zip.sha256
 With PowerShell 7 (`pwsh`; `scripts\release-windows.bat` starts it when it is installed):
 
 ```powershell
-scripts/release-windows.ps1 -Version 0.15.3
+scripts/release-windows.ps1 -Version 0.15.4
 ```
 
 Windows PowerShell 5.1 is refused: it ran `./mvnw`, the Unix script, instead of `mvnw.cmd`, and its `Compress-Archive` writes ZIP entry names with backslashes. A failed Maven build stops the script, rather than packaging what an earlier build left in `target`.

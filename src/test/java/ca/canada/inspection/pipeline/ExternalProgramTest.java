@@ -26,6 +26,28 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /** The external programs are stood in for by the Java runtime running the tests, on every platform. */
 class ExternalProgramTest {
 
+    @Test
+    void onTheWindowsConsoleAProgramsAccentsAreWrittenInTheConsolesOwnEncoding() throws IOException {
+        // The programs print in the computer's code page (1252); cmd.exe shows its own (850): "Résultats" came out
+        // as "RÚsultats". Read in the first and written in the second, it is right.
+        java.nio.charset.Charset ansi = java.nio.charset.Charset.forName("windows-1252");
+        java.nio.charset.Charset oem = java.nio.charset.Charset.forName("IBM850");
+        String said = "Writing to C:\\Résultats\\x.fq\n" + BbtoolsCommands.OUT_OF_MEMORY_LINE + "\n";
+        ByteArrayOutputStream shown = new ByteArrayOutputStream();
+
+        boolean outOfMemory = ExternalProgram.copyToConsole(new java.io.ByteArrayInputStream(said.getBytes(ansi)), ansi,
+                new PrintStream(shown, true, oem));
+
+        assertEquals(said, shown.toString(oem));
+        assertTrue(outOfMemory, "the out-of-memory line is still recognised");
+
+        // Elsewhere, byte for byte.
+        ByteArrayOutputStream copied = new ByteArrayOutputStream();
+        ExternalProgram.copyToConsole(new java.io.ByteArrayInputStream(said.getBytes(StandardCharsets.UTF_8)), null,
+                new PrintStream(copied, true, StandardCharsets.UTF_8));
+        assertArrayEquals(said.getBytes(StandardCharsets.UTF_8), copied.toByteArray());
+    }
+
     private static final String JAVA = ProcessHandle.current().info().command().orElse("java");
 
     @TempDir
@@ -129,7 +151,12 @@ class ExternalProgramTest {
                 System.err.flush();
                 """);
 
-        assertArrayEquals(new byte[] {'5', '%', '\r', '9', (byte) 0xE9, '\n'}, onTheConsole(command, null));
+        byte[] said = {'5', '%', '\r', '9', (byte) 0xE9, '\n'};
+        // On Windows, read in the code page the programs print in and written in the console's encoding (here the
+        // test's UTF-8): 0xE9 is é there.
+        byte[] shown = AppPaths.isWindows()
+                ? new String(said, ExternalProgram.OUTPUT_ENCODING).getBytes(StandardCharsets.UTF_8) : said;
+        assertArrayEquals(shown, onTheConsole(command, null));
     }
 
     @Test

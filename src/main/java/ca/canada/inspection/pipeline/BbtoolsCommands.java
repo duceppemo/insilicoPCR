@@ -157,8 +157,8 @@ record BbtoolsCommands(String javaCommand, Path bbtoolsJar, int childMemoryGiB, 
         arguments.addAll(List.of(
                 "in=" + argument(directory, interleavedPairs),
                 "interleaved=t",
-                "out=" + argument(directory, merged),
-                "outu=" + argument(directory, unmerged),
+                "out=" + outputArgument(directory, merged),
+                "outu=" + outputArgument(directory, unmerged),
                 "overwrite=t",
                 SAME_ORDER,
                 "threads=" + threads));
@@ -176,7 +176,7 @@ record BbtoolsCommands(String javaCommand, Path bbtoolsJar, int childMemoryGiB, 
         List<String> arguments = start("jgi.BBDuk");
         arguments.addAll(List.of(
                 "in=" + argument(directory, reads),
-                "out=" + argument(directory, output),
+                "out=" + outputArgument(directory, output),
                 "ref=adapters",
                 // Each mate on its own (not tpe, and rieb=f): an adapter dimer's mate cut to nothing took its
                 // mate, a genuine anchor holding the primer site, with it.
@@ -235,7 +235,7 @@ record BbtoolsCommands(String javaCommand, Path bbtoolsJar, int childMemoryGiB, 
         List<String> arguments = start("assemble.Tadpole");
         arguments.addAll(List.of(
                 "in=" + argument(directory, reads),
-                "out=" + argument(directory, output),
+                "out=" + outputArgument(directory, output),
                 "overwrite=t",
                 "threads=" + threads,
                 "buildthreads=1",
@@ -255,7 +255,7 @@ record BbtoolsCommands(String javaCommand, Path bbtoolsJar, int childMemoryGiB, 
         List<String> arguments = start("assemble.Tadpole");
         arguments.addAll(List.of(
                 "in=" + argument(directory, seeds),
-                "out=" + argument(directory, output),
+                "out=" + outputArgument(directory, output),
                 "mode=extend",
                 "el=" + reach,
                 "er=" + reach,
@@ -313,8 +313,23 @@ record BbtoolsCommands(String javaCommand, Path bbtoolsJar, int childMemoryGiB, 
      * @throws PipelineException when it still has a comma or an equals sign, which BBTools would split it at
      */
     static String argument(Path directory, Path file) {
+        return argument(directory, file, false);
+    }
+
+    /**
+     * As {@link #argument(Path, Path)}, for a file BBTools writes: one whose path has a {@code #} is given relative
+     * to the folder too. In a name it writes, BBTools reads {@code #} as the place of the mate's number: it wrote
+     * {@code /data/run#2/x.fq} as {@code /data/run12/x.fq} and {@code /data/run22/x.fq}, and the run failed.
+     *
+     * @throws PipelineException when the file's own name has a {@code #}
+     */
+    static String outputArgument(Path directory, Path file) {
+        return argument(directory, file, true);
+    }
+
+    private static String argument(Path directory, Path file, boolean written) {
         Path absolute = file.toAbsolutePath().normalize();
-        if (!splitByBbtools(absolute.toString())) {
+        if (!splitByBbtools(absolute.toString(), written)) {
             return absolute.toString();
         }
         Path real = onDisk(absolute);
@@ -333,6 +348,10 @@ record BbtoolsCommands(String javaCommand, Path bbtoolsJar, int childMemoryGiB, 
             throw new UnusablePath("BBTools reads an equals sign in a file name as the start of the value, and"
                     + " cannot read " + absolute + ": remove the '=' from the name of the file or of its folder");
         }
+        if (written && argument.indexOf('#') >= 0) {
+            throw new UnusablePath("BBTools reads a # in the name of a file it writes as the place of a mate's"
+                    + " number, and cannot write " + absolute + ": remove the # from the name of the read file");
+        }
         return argument;
     }
 
@@ -343,9 +362,12 @@ record BbtoolsCommands(String javaCommand, Path bbtoolsJar, int childMemoryGiB, 
         }
     }
 
-    /** Whether BBTools would read {@code path} as something else: a list (a comma), or a value from its '='. */
-    private static boolean splitByBbtools(String path) {
-        return path.indexOf(',') >= 0 || path.indexOf('=') >= 0;
+    /**
+     * Whether BBTools would read {@code path} as something else: a list (a comma), a value from its '=', or, in a
+     * file it writes, two files, one per mate (a '#').
+     */
+    private static boolean splitByBbtools(String path, boolean written) {
+        return path.indexOf(',') >= 0 || path.indexOf('=') >= 0 || written && path.indexOf('#') >= 0;
     }
 
     /** {@code path} with its symbolic links resolved, as far as it exists (an output may not, yet). */
@@ -380,7 +402,7 @@ record BbtoolsCommands(String javaCommand, Path bbtoolsJar, int childMemoryGiB, 
             arguments.add("in=" + argument(directory, reads.getFirst()));
             arguments.add("interleaved=f");
         }
-        arguments.add("outm=" + argument(directory, output));
+        arguments.add("outm=" + outputArgument(directory, output));
         return new Command(directory, arguments);
     }
 }

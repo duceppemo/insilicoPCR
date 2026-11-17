@@ -17,7 +17,7 @@ public final class LogFiles {
                 StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
             for (var line : text.split("\\R")) {
                 writer.write(line);
-                writer.newLine();
+                writer.write('\n');
             }
         } catch (IOException e) {
             throw new PipelineException("Unable to append run log: " + logPath, e);

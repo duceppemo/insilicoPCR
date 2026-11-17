@@ -110,7 +110,7 @@ final class QaLogWriter {
 
     private static void writeLine(BufferedWriter writer, String line) throws IOException {
         writer.write(line);
-        writer.newLine();
+        writer.write('\n');
     }
 
     /** What QAlog.txt says about the input that was left out; empty when nothing was. */

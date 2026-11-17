@@ -311,10 +311,21 @@ public final class InputCheck {
         }));
     }
 
-    /** Names Windows keeps for its devices: no folder can have one, whatever the extension after it. */
-    private static final Set<String> WINDOWS_DEVICES = Set.of("con", "prn", "aux", "nul",
-            "com1", "com2", "com3", "com4", "com5", "com6", "com7", "com8", "com9",
-            "lpt1", "lpt2", "lpt3", "lpt4", "lpt5", "lpt6", "lpt7", "lpt8", "lpt9");
+    /**
+     * Names Windows keeps for its devices: no folder can have one, whatever the extension after it. COM and LPT
+     * with 0 to 9 or a superscript 1, 2 or 3 (as Microsoft lists them), and the console's own two names.
+     */
+    private static final Set<String> WINDOWS_DEVICES = windowsDevices();
+
+    private static Set<String> windowsDevices() {
+        Set<String> names = new HashSet<>(Set.of("con", "prn", "aux", "nul", "conin$", "conout$"));
+        for (String port : List.of("com", "lpt")) {
+            for (char digit : "0123456789\u00b9\u00b2\u00b3".toCharArray()) {
+                names.add(port + digit);
+            }
+        }
+        return Set.copyOf(names);
+    }
 
     /**
      * Why Windows cannot make a results folder named {@code sample}, or {@code null}. A name ending in

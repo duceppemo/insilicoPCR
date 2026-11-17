@@ -28,8 +28,26 @@ public record PipelineDirectories(Path output, Path detailed, Path consolidated)
      * ({@code primer_tmp.fasta} and BLAST's files beside it), the logs, the lock, and the two report folders.
      */
     static boolean written(String name) {
-        return name.startsWith("primer_tmp.fasta") || name.startsWith("QAlog") || name.startsWith("log.txt")
-                || name.equals(OutputLock.FILE_NAME) || name.equals("detailed_report") || name.equals(CONSOLIDATED);
+        // Whatever the case: on Windows and macOS, Detailed_Report is the folder a run writes in.
+        String lower = name.toLowerCase(java.util.Locale.ROOT);
+        return lower.startsWith("primer_tmp.fasta") || lower.startsWith("qalog") || lower.startsWith("log.txt")
+                || lower.equals(OutputLock.FILE_NAME.toLowerCase(java.util.Locale.ROOT))
+                || lower.equals("detailed_report") || lower.equals(CONSOLIDATED);
+    }
+
+    /**
+     * Whether {@code entry} leads elsewhere: a symbolic link, or on Windows a junction (a link to a folder that
+     * {@link Files#isSymbolicLink} does not see; Java reads it as "other"). A pipe or a device where a run writes is
+     * no place for its files either.
+     */
+    static boolean leadsElsewhere(Path entry) {
+        try {
+            java.nio.file.attribute.BasicFileAttributes attributes = Files.readAttributes(entry,
+                    java.nio.file.attribute.BasicFileAttributes.class, java.nio.file.LinkOption.NOFOLLOW_LINKS);
+            return attributes.isSymbolicLink() || attributes.isOther();
+        } catch (IOException e) {
+            return false; // gone since it was listed
+        }
     }
 
     /**
@@ -38,7 +56,7 @@ public record PipelineDirectories(Path output, Path detailed, Path consolidated)
      * QAlog.txt.part, detailed_report/&lt;sample&gt;) made the run overwrite, or delete, the file it points to,
      * outside the folder. A run makes no link itself. Links elsewhere in the folder are no concern of the run's
      * (an input folder inside it with linked reads, a .venv): before 0.15.3 any link within three levels was
-     * refused. The output folder may itself be a link.
+     * refused. The output folder may itself be a link. Junctions too (Windows): a run wrote through them.
      */
     static void refuseLinks(Path output) {
         if (!Files.isDirectory(output)) {
@@ -47,11 +65,11 @@ public record PipelineDirectories(Path output, Path detailed, Path consolidated)
         List<Path> links = new java.util.ArrayList<>();
         try (java.util.stream.Stream<Path> entries = Files.list(output.toRealPath())) {
             for (Path entry : entries.filter(entry -> written(entry.getFileName().toString())).sorted().toList()) {
-                if (Files.isSymbolicLink(entry)) {
+                if (leadsElsewhere(entry)) {
                     links.add(entry);
                 } else if (Files.isDirectory(entry)) {
                     try (java.util.stream.Stream<Path> inside = Files.walk(entry, DEPTH)) {
-                        inside.filter(Files::isSymbolicLink).sorted().forEach(links::add);
+                        inside.filter(PipelineDirectories::leadsElsewhere).sorted().forEach(links::add);
                     }
                 }
             }
@@ -59,9 +77,10 @@ public record PipelineDirectories(Path output, Path detailed, Path consolidated)
             return; // listed again as the run writes; a folder it cannot read fails there
         }
         if (!links.isEmpty()) {
-            throw new PipelineException("The output folder " + output + " holds symbolic links where a run writes ("
-                    + String.join(", ", links.stream().limit(5).map(Path::toString).toList()) + "): a run would write"
-                    + " through them, into the files they point to. Remove them, or choose another output folder.");
+            throw new PipelineException("The output folder " + output + " holds symbolic links or junctions where a"
+                    + " run writes (" + String.join(", ", links.stream().limit(5).map(Path::toString).toList())
+                    + "): a run would write through them, into the files they point to. Remove them, or choose"
+                    + " another output folder.");
         }
     }
 

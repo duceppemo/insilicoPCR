@@ -369,6 +369,12 @@ class InputCheckTest {
         assertEquals("the sample name is one Windows keeps for a device", InputCheck.windowsFolderProblem("con"));
         assertEquals("the sample name is one Windows keeps for a device", InputCheck.windowsFolderProblem("COM1.v2"));
         assertEquals(null, InputCheck.windowsFolderProblem("console"));
+        // The ones the list missed: port 0, the superscript ports, the console's input and output.
+        for (String device : new String[]{"COM0", "lpt0", "COM\u00b9", "LPT\u00b3.reads", "CONIN$", "conout$"}) {
+            assertEquals("the sample name is one Windows keeps for a device", InputCheck.windowsFolderProblem(device),
+                    device);
+        }
+        assertEquals(null, InputCheck.windowsFolderProblem("COM10"));
         assertEquals(null, InputCheck.windowsFolderProblem("Sample 1"));
     }
 

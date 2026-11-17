@@ -284,9 +284,9 @@ public final class PrimerService {
             try (BufferedWriter writer = Files.newBufferedWriter(output, StandardCharsets.UTF_8)) {
                 for (Map.Entry<String, String> entry : primers.entrySet()) {
                     writer.write(">" + entry.getKey());
-                    writer.newLine();
+                    writer.write('\n');
                     writer.write(entry.getValue());
-                    writer.newLine();
+                    writer.write('\n');
                 }
             }
         } catch (IOException e) {

@@ -53,10 +53,23 @@ class DispatcherTest {
     }
 
     @Test
+    void aCommandThatCannotBeUsedExitsTwoBeforeAnythingStarts() throws IOException {
+        // -v -v exited 0 (an option given twice exits 2), and an output folder that is a file exited 1, as a failed run.
+        assertEquals(2, run("-v", "-v"));
+        Path primers = Files.writeString(directory.resolve("p.fasta"), ">a-F\nACGTACGTAC\n>a-R\nTTGGCCAATT\n");
+        Path input = Files.writeString(directory.resolve("g.fasta"), ">c\nACGTACGTACGT\n");
+        Path aFile = Files.writeString(directory.resolve("taken"), "");
+        assertEquals(2, run("-i", input.toString(), "-o", aFile.toString(), "-p", primers.toString()));
+        assertTrue(err().contains("Error: The output folder is a file: "), err());
+    }
+
+    @Test
     void anUnknownOptionIsAWrongCommandLine() {
         assertEquals(2, run("--no-such-option"));
         assertTrue(err().contains("Unrecognized option: --no-such-option"), err());
-        assertTrue(out().startsWith("usage: "), out());
+        // The message and where to look, on standard error; nothing on standard output (the help buried it there).
+        assertTrue(err().startsWith("Error: ") && err().contains("Run insilicoPCR --help for the options."), err());
+        assertEquals("", out());
     }
 
     @Test
@@ -110,7 +123,7 @@ class DispatcherTest {
 
         assertEquals(2, run("-i", first.toString(), directory.resolve("a_R2.fastq").toString(),
                 "-o", directory.resolve("out").toString(), "-p", primers.toString()));
-        assertTrue(err().startsWith("Unexpected argument(s): " + directory.resolve("a_R2.fastq")), err());
+        assertTrue(err().startsWith("Error: Unexpected argument(s): " + directory.resolve("a_R2.fastq")), err());
     }
 
     @Test

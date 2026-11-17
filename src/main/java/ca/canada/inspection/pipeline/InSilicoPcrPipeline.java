@@ -66,7 +66,7 @@ public final class InSilicoPcrPipeline {
         }
 
         // The primer file first: a mistake there is found at once, not after reading every input.
-        PrimerPanel primers = PrimerService.loadAndPrepare(config, directories);
+        PrimerPanel primers = PrimerService.loadAndPrepare(config, directories, monitor::warning);
         done(Step.PRIMERS);
 
         monitor.info("Checking the input files (" + (config.inputCheck() == InputCheck.Depth.FULL
@@ -169,8 +169,8 @@ public final class InSilicoPcrPipeline {
         monitor.info("Java: " + context.dependencies().javaCommand());
         monitor.info("Child Java memory: " + context.childJavaMemoryBudgetGiB() + " GB for the BBTools programs"
                 + " running at once, at most " + ChildJavaMemory.MAX_CHILD_GIB + " GB each"
-                + (context.config().bbtoolsMemoryGiB() > 0 ? " (--bbtools-memory)"
-                : " (three quarters of the memory insilicoPCR leaves free; --bbtools-memory, or BBTools memory"
+                + (context.config().bbtoolsMemoryGiB() > 0 ? " (--memory)"
+                : " (three quarters of the memory insilicoPCR leaves free; --memory, or BBTools memory"
                 + " in the window's FASTQ settings, sets it)"));
     }
 }

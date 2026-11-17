@@ -22,6 +22,10 @@ public final class CliConfig {
     private CliConfig() {
     }
 
+    /** The memory option; {@link #MEMORY_BEFORE_1_0} is the same, under its old name (it sizes BLAST too, since 0.15.3). */
+    static final String MEMORY = "memory";
+    static final String MEMORY_BEFORE_1_0 = "bbtools-memory";
+
     /** @throws IllegalArgumentException for a wrong command line, with a message saying what is wrong */
     public static PipelineConfig from(CommandLine cmd) {
         Path input = requiredPath(cmd, "input");
@@ -33,6 +37,11 @@ public final class CliConfig {
         }
         if (!Files.isRegularFile(primers)) {
             throw new IllegalArgumentException("Primer file does not exist or is not a regular file: " + primers);
+        }
+        if (Files.exists(output) && !Files.isDirectory(output)) {
+            // A command line that cannot be used (exit 2), as a missing input is: it exited 1, as a failed run.
+            throw new IllegalArgumentException("The output folder is a file: " + output
+                    + ". Choose a folder, or a name that is not taken.");
         }
 
         // Only what is given is set: the defaults are the builders' own (TadpoleOptions' for Tadpole), the application's too.
@@ -71,10 +80,15 @@ public final class CliConfig {
         if (cmd.hasOption("read-min-fraction")) {
             config.readMinFraction(parseFraction(cmd, "read-min-fraction"));
         }
-        if (cmd.hasOption("bbtools-memory")) {
-            int gib = parseInt(cmd, "bbtools-memory");
+        String memory = cmd.hasOption(MEMORY) ? MEMORY : cmd.hasOption(MEMORY_BEFORE_1_0) ? MEMORY_BEFORE_1_0 : null;
+        if (cmd.hasOption(MEMORY) && cmd.hasOption(MEMORY_BEFORE_1_0)) {
+            throw new IllegalArgumentException("--" + MEMORY + " and --" + MEMORY_BEFORE_1_0 + " are one option: give it"
+                    + " once");
+        }
+        if (memory != null) {
+            int gib = parseInt(cmd, memory);
             if (gib < 1) {
-                throw new IllegalArgumentException("--bbtools-memory must be at least 1 GB; leave it out for automatic");
+                throw new IllegalArgumentException("--" + memory + " must be at least 1 GB; leave it out for automatic");
             }
             config.bbtoolsMemory(gib);
         }

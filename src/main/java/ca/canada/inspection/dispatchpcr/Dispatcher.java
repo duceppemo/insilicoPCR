@@ -42,7 +42,10 @@ public final class Dispatcher {
     /**
      * Runs the command line.
      *
-     * @return the exit code: 0 done, 1 the run failed, 2 the command line is wrong
+     * @return the exit code: 0 done, 1 the run started and failed (a primer file refused for what it holds, no
+     *         sample that can be analysed, a program that failed), 2 the command line cannot be used as given (an
+     *         option unknown, given twice, or with a wrong value; a path that does not exist; an output folder that
+     *         is the input folder or a file): nothing was started
      */
     static int run(String[] args, PrintStream out, PrintStream err) {
         Options options = options();
@@ -50,6 +53,8 @@ public final class Dispatcher {
         // Only the command line is checked here: a failure of the run is not a usage error.
         try {
             CommandLine cmd = new DefaultParser().parse(options, args);
+            // First: -v -v printed the version and exited 0, as an option given twice exits 2.
+            CliConfig.checkGivenOnce(cmd);
             if (cmd.hasOption("help")) {
                 printHelp(out, options);
                 return 0;
@@ -60,7 +65,6 @@ public final class Dispatcher {
             }
             // "C:\my data\" -p ...: the backslash kept the quote, and -i took the rest of the line.
             CliConfig.checkQuotes(cmd);
-            CliConfig.checkGivenOnce(cmd);
             if (!cmd.getArgList().isEmpty()) {
                 // A shell pattern (-i reads/*.fastq.gz) gives -i its first file and leaves the
                 // others here: run, the run would quietly analyse one file.
@@ -70,8 +74,10 @@ public final class Dispatcher {
             }
             config = CliConfig.from(cmd);
         } catch (ParseException | IllegalArgumentException e) {
-            err.println(e.getMessage());
-            printHelp(out, options);
+            // The message and where to look, on standard error: the 82 lines of the help on standard output buried
+            // it, and went into the output a script reads.
+            err.println("Error: " + e.getMessage());
+            err.println("Run insilicoPCR --help for the options.");
             return 2;
         }
         try {
@@ -193,10 +199,12 @@ public final class Dispatcher {
                         + " (assays found in no contig and in no read), target (those, and assays that declare"
                         + " size= and show no product of that size yet), off (none); default: "
                         + ReadExtensionCaller.Mode.DEFAULT).build());
-        options.addOption(Option.builder().longOpt("bbtools-memory").hasArg().argName("GB")
+        options.addOption(Option.builder().longOpt(CliConfig.MEMORY).hasArg().argName("GB")
                 .desc("Memory in GB that the BBTools programs running at once share in FASTQ mode (" + ChildJavaMemory.limits()
                         + "), and that the BLAST searches running at once share, about 2 GB each, for assemblies too."
                         + " Set it on a computer shared with others; default: " + ChildJavaMemory.automatic()).build());
+        options.addOption(Option.builder().longOpt(CliConfig.MEMORY_BEFORE_1_0).hasArg().argName("GB")
+                .desc("Same as --" + CliConfig.MEMORY + " (its name before 1.0)").build());
         options.addOption(Option.builder().longOpt("input-check").hasArg().argName("full|quick")
                 .desc("How the input files are checked before the run. full: every read of every FASTQ file"
                         + " is read, and the two files of a pair must hold the same number of reads. quick: the"

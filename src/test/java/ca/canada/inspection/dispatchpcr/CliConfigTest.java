@@ -204,6 +204,10 @@ class CliConfigTest {
     void theBbtoolsMemoryIsWorkedOutUnlessGiven() throws Exception {
         assertEquals(PipelineConfig.AUTOMATIC_BBTOOLS_MEMORY, parse().bbtoolsMemoryGiB());
         assertEquals(24, parse("--bbtools-memory", "24").bbtoolsMemoryGiB());
+        // --memory since 1.0 (it sizes BLAST too); the old name still works, but not both.
+        assertEquals(12, parse("--memory", "12").bbtoolsMemoryGiB());
+        assertEquals("--memory and --bbtools-memory are one option: give it once", assertThrows(
+                IllegalArgumentException.class, () -> parse("--memory", "12", "--bbtools-memory", "12")).getMessage());
         assertThrows(IllegalArgumentException.class, () -> parse("--bbtools-memory", "0"));
         assertThrows(IllegalArgumentException.class, () -> parse("--bbtools-memory", "lots"));
     }

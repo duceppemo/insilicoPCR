@@ -77,7 +77,7 @@ public final class FastqSettingsDialog {
         dialog.section("Memory");
         TextField bbtoolsMemory = dialog.field("BBTools memory (GB, empty: automatic)",
                 current.bbtoolsMemoryGiB() > 0 ? String.valueOf(current.bbtoolsMemoryGiB()) : "",
-                "Memory the BBTools programs running at once share (--bbtools-memory): "
+                "Memory the BBTools programs running at once share (--memory): "
                         + ca.canada.inspection.pipeline.ChildJavaMemory.limits() + ". Set it on a computer shared with "
                         + "others. Empty: " + RunSettings.bbtoolsMemory(PipelineConfig.AUTOMATIC_BBTOOLS_MEMORY) + ".");
 

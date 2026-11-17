@@ -90,7 +90,7 @@ record BbtoolsCommands(String javaCommand, Path bbtoolsJar, int childMemoryGiB, 
     static String outOfMemoryMessage(String program, String where, int memoryGiB) {
         String advice = memoryGiB >= ChildJavaMemory.MAX_CHILD_GIB
                 ? "the most insilicoPCR gives a BBTools program."
-                : "all it had. Give the BBTools programs more with --bbtools-memory <GB> (in the application, under"
+                : "all it had. Give the BBTools programs more with --memory <GB> (in the application, under"
                         + " FASTQ settings), as much as the computer can spare, up to " + ChildJavaMemory.MAX_CHILD_GIB
                         + " GB each, or run on a computer with more memory.";
         // Exit code 3 is any OutOfMemoryError; this one is not about the heap.

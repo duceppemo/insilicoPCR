@@ -5,6 +5,10 @@ on:
     branches: [ main, master ]
     tags: [ 'v*' ]
   pull_request:
+  # Monthly, on master as it stands: whether the build still passes on the newest runner images,
+  # Java 25 update and Actions, and on the newest tools Bioconda users get (job newest-tools).
+  schedule:
+    - cron: '23 6 1 * *'
   workflow_dispatch:
     inputs:
       version:
@@ -167,6 +171,89 @@ jobs:
           export PATH="$RUNNER_TEMP/env/bin:$PATH" JAVA_HOME="$RUNNER_TEMP/env/lib/jvm"
           java -version
           scripts/ci/smoke-test.sh build/*linux-x64-no-runtime.zip
+
+  newest-tools:
+    name: Newest tools, and updates to bundle
+    # Monthly and manual runs only. conda-check pins the bundled versions, so that a pull request
+    # does not fail for a change elsewhere; this job takes the newest versions the Bioconda recipe
+    # allows (Java 25 or later, BLAST+ 2.17.0 or later, BBTools 40.x), as a new conda installation
+    # does, so that a break reaches us before users. It then compares what the latest release bundles
+    # with the newest Java 25 update, BLAST+ and BBTools, and opens an issue for those that are newer.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    needs: [ linux-zip ]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      issues: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Download the ZIP without a runtime
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: insilicoPCR-linux-x64-no-runtime
+          path: build
+
+      - name: Install Miniforge
+        uses: conda-incubator/setup-miniconda@be893c923ea9cf1cf7cd510fbdde27c7e18cbdcb # v4.1.0
+        with:
+          miniforge-version: latest
+          activate-environment: ''
+          auto-activate: false
+
+      - name: Install the newest Java, BLAST+ and BBTools the Bioconda recipe allows
+        shell: bash
+        run: |
+          "${CONDA:?setup-miniconda sets CONDA}/bin/conda" create --yes --quiet --prefix "$RUNNER_TEMP/env" --override-channels \
+            -c conda-forge -c bioconda 'openjdk>=25' 'blast>=2.17.0' 'bbmap>=40.04,<41'
+
+      - name: Smoke test with them
+        shell: bash
+        run: |
+          export PATH="$RUNNER_TEMP/env/bin:$PATH" JAVA_HOME="$RUNNER_TEMP/env/lib/jvm"
+          { java -version 2>&1 | head -n 1; blastn -version | head -n 1
+            bbduk.sh --version 2>&1 | grep -o 'BBTools version [0-9.]*' | head -n 1; } | tee -a "$GITHUB_STEP_SUMMARY"
+          scripts/ci/smoke-test.sh build/*linux-x64-no-runtime.zip
+
+      - name: Open an issue for newer versions to bundle
+        # Also when the smoke test failed: the two are independent.
+        if: success() || failure()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          export CONDA_EXE="${CONDA:?setup-miniconda sets CONDA}/bin/conda"
+          tag="$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName --jq .tagName)"
+          python3 -I scripts/ci/remote-zip-entry.py \
+            "https://github.com/$GITHUB_REPOSITORY/releases/download/$tag/insilicoPCR-${tag#v}-linux-x64.zip" \
+            VERSIONS.txt > "$RUNNER_TEMP/VERSIONS.txt"
+          scripts/ci/newer-versions.sh "$RUNNER_TEMP/VERSIONS.txt" > "$RUNNER_TEMP/newer.txt"
+          if [[ ! -s "$RUNNER_TEMP/newer.txt" ]]; then
+            echo "$tag bundles the newest Java 25 update, BLAST+ and BBTools." | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          # One issue per set of versions: a later run finds it, open or closed, and opens no other.
+          title="Newer versions to bundle: $(cut -d' ' -f1,2 "$RUNNER_TEMP/newer.txt" | paste -sd, - | sed 's/,/, /g')"
+          if gh issue list --repo "$GITHUB_REPOSITORY" --state all --search "\"$title\" in:title" \
+               --json title --jq '.[].title' | grep -qxF -- "$title"; then
+            echo "Already reported: $title" | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          {
+            echo "Newer versions of what the portable ZIPs of $tag bundle:"
+            echo
+            sed 's/^/- /' "$RUNNER_TEMP/newer.txt"
+            echo
+            echo "A release built now bundles the newest Java 25 update by itself (setup-java with check-latest)."
+            echo "BLAST+ and BBTools are the copies committed under runtime/ (Git LFS), replaced by hand."
+            echo "This run (${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}) tested the"
+            echo "ZIP without a runtime on the newest versions the Bioconda recipe allows."
+          } > "$RUNNER_TEMP/issue.md"
+          gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --body-file "$RUNNER_TEMP/issue.md"
+          echo "Opened: $title" >> "$GITHUB_STEP_SUMMARY"
 
   windows-zip:
     name: Windows portable ZIP

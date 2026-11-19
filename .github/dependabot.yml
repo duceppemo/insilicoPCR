@@ -1,0 +1,25 @@
+# Monthly pull requests for newer libraries (pom.xml) and GitHub Actions (pinned to commits in
+# .github/workflows). Minor and patch updates come grouped, one pull request per ecosystem; a major
+# version (JavaFX 27, JUnit 6, an Action's v8) comes alone, since it may need code changes. CI runs on
+# each pull request as on any other: merge when it passes.
+version: 2
+updates:
+  - package-ecosystem: maven
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: deps
+    groups:
+      maven-minor-and-patch:
+        update-types: [ minor, patch ]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: ci
+    groups:
+      actions-minor-and-patch:
+        update-types: [ minor, patch ]

@@ -7,6 +7,12 @@
 - JavaFX 27.0.1 (was 26.0.1), for the window and the synthetic gel; its
   license notices in `third_party/OpenJFX` follow (the IJG JPEG notice is now
   version 10). Libraries and build plugins are updated monthly by Dependabot.
+- BBTools 40.05 (was 40.04) in the portable ZIPs (#137). BBDuk, BBMerge and
+  Tadpole are unchanged in it; its file reading and writing were reworked.
+  Reports are the same as with 40.04 on the five-isolate genomes and reads,
+  SRR642185 and a 2 x 300 bp nematode sample whose 1.4 GB multi-member
+  (bcl-convert) FASTQ files BBDuk read whole (23,469,372 reads), in the same
+  time. CI's `conda-check` now installs BBTools 40.05.
 
 ### Documentation
 

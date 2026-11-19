@@ -63,7 +63,10 @@ fi
 
 cp "$ROOT/target/insilicoPCR.jar" "$STAGE_DIR/insilicoPCR.jar"
 cp -R "$ROOT/target/lib" "$STAGE_DIR/lib"
-cp -R "$JAVA_HOME" "$STAGE_DIR/runtime/linux/jdk"
+# Its files, links followed: JAVA_HOME may be a link (setup-java links a JDK the runner image has), and
+# cp -R would copy the link, not the JDK.
+mkdir -p "$STAGE_DIR/runtime/linux/jdk"
+cp -RL "$JAVA_HOME/." "$STAGE_DIR/runtime/linux/jdk/"
 
 mkdir -p "$STAGE_DIR/runtime/common" "$STAGE_DIR/runtime/linux"
 cp -R "$ROOT/runtime/common/bbmap" "$STAGE_DIR/runtime/common/bbmap"

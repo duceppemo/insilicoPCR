@@ -32,6 +32,8 @@ jobs:
         with:
           distribution: temurin
           java-version: '25'
+          # The newest Java 25 update, which the ZIPs bundle, not one the runner image holds.
+          check-latest: true
           cache: maven
 
       - name: Resolve release version
@@ -173,6 +175,8 @@ jobs:
         with:
           distribution: temurin
           java-version: '25'
+          # The newest Java 25 update, which the ZIPs bundle, not one the runner image holds.
+          check-latest: true
           cache: maven
 
       - name: Resolve release version

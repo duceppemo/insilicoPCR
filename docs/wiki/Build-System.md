@@ -12,7 +12,7 @@ insilicoPCR uses Maven with the Maven wrapper.
 ```bash
 git clone https://github.com/duceppemo/insilicoPCR.git
 cd insilicoPCR
-./mvnw test            # unit tests (JUnit 5) with JaCoCo coverage
+./mvnw test            # unit tests (JUnit 6) with JaCoCo coverage
 ./mvnw clean package
 ```
 

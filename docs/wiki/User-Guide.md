@@ -15,7 +15,7 @@ Portable releases include:
 
 - insilicoPCR
 - OpenJDK 25 (LTS) runtime
-- JavaFX 26.0.1 runtime
+- JavaFX 27.0.1 runtime
 - BBMap
 - NCBI BLAST+
 - platform launchers

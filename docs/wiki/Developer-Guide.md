@@ -21,7 +21,7 @@ This page summarizes the current project structure and points developers to the 
 ## Build and test
 
 ```bash
-./mvnw test           # JUnit 5 unit tests + JaCoCo coverage (target/site/jacoco/)
+./mvnw test           # JUnit 6 unit tests + JaCoCo coverage (target/site/jacoco/)
 ./mvnw clean package
 ```
 

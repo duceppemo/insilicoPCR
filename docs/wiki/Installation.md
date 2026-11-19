@@ -68,7 +68,7 @@ Each portable release includes:
 
 - insilicoPCR
 - OpenJDK 25 (LTS) runtime
-- JavaFX 26.0.1 runtime
+- JavaFX 27.0.1 runtime
 - BBTools/BBMap 40.04 (BBDuk, BBMerge and Tadpole, used in FASTQ mode)
 - NCBI BLAST+ 2.17.0 (Linux) or 2.15.0 (Windows)
 - platform launcher script

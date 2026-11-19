@@ -7,7 +7,7 @@ Thanks for considering a contribution! Bug reports, primer-handling edge cases, 
 ```bash
 git clone https://github.com/duceppemo/insilicoPCR.git
 cd insilicoPCR
-./mvnw test           # unit tests (JUnit 5) + JaCoCo coverage
+./mvnw test           # unit tests (JUnit 6) + JaCoCo coverage
 ./mvnw clean package  # builds target/insilicoPCR.jar
 java -jar target/insilicoPCR.jar -h
 ```

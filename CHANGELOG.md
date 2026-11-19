@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Changed
+
+- JavaFX 27.0.1 (was 26.0.1), for the window and the synthetic gel; its
+  license notices in `third_party/OpenJFX` follow (the IJG JPEG notice is now
+  version 10). Libraries and build plugins are updated monthly by Dependabot.
+
 ### Documentation
 
 - FASTQ mode: the reads a primer site baits, stated exactly ([Limitations,

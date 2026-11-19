@@ -11,7 +11,7 @@ Generated release output, Maven output, JavaFX SDK folders, and JDK/JRE folders 
 ## CI flow
 
 1. Check out the repository with Git LFS enabled.
-2. Install JDK 26 with `actions/setup-java`.
+2. Install JDK 25 (LTS) with `actions/setup-java`.
 3. Check the runtime folders with `scripts/dev/verify-runtime-layout.sh`; the bundled BBMap and BLAST+ are checked after packaging.
 4. Build with Maven.
 5. Copy the current CI JDK into the staged portable runtime.

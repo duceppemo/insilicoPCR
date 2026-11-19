@@ -3,6 +3,9 @@
 # compares the reports with the expected ones. Works on Linux and, under Git Bash, on
 # Windows.
 #
+# The ZIP without a runtime (for package managers) is run with the Java of JAVA_HOME (or on
+# PATH) and the BLAST+ and BBTools on PATH, as a conda environment gives them.
+#
 # usage: scripts/ci/smoke-test.sh <portable ZIP> [work directory]
 set -euo pipefail
 
@@ -18,12 +21,21 @@ unzip -q "$ZIP" -d "$WORK/app"
 JAR="$(find "$WORK/app" -maxdepth 2 -name insilicoPCR.jar | head -n 1)"
 [[ -n "$JAR" ]] || { echo "FAIL: no insilicoPCR.jar in $ZIP" >&2; exit 1; }
 APP="$(dirname "$JAR")"
-JAVA="$(find "$APP/runtime" -maxdepth 4 \( -name java -o -name java.exe \) -path '*jdk/bin/*' | head -n 1)"
-[[ -n "$JAVA" ]] || { echo "FAIL: no bundled Java under $APP/runtime" >&2; exit 1; }
+NOTICES=(LICENSE THIRD-PARTY-NOTICES.md third_party/OpenJFX/LICENSE third_party/OpenJFX/ASSEMBLY_EXCEPTION)
+if [[ -d "$APP/runtime" ]]; then
+  JAVA="$(find "$APP/runtime" -maxdepth 4 \( -name java -o -name java.exe \) -path '*jdk/bin/*' | head -n 1)"
+  [[ -n "$JAVA" ]] || { echo "FAIL: no bundled Java under $APP/runtime" >&2; exit 1; }
+  NOTICES+=(third_party/BBTools/license.txt third_party/BLAST/LICENSE)
+else
+  # No runtime: insilicoPCR must take the programs installed beside it.
+  if [[ -n "${JAVA_HOME:-}" && -x "$JAVA_HOME/bin/java" ]]; then JAVA="$JAVA_HOME/bin/java"; else JAVA="$(command -v java)"; fi
+  for program in blastn makeblastdb bbduk.sh; do
+    command -v "$program" > /dev/null || { echo "FAIL: $program is not on PATH, for a ZIP without a runtime" >&2; exit 1; }
+  done
+fi
 
-# The bundled programs' licenses: their redistribution requires them.
-for notice in LICENSE THIRD-PARTY-NOTICES.md third_party/BBTools/license.txt third_party/BLAST/LICENSE \
-              third_party/OpenJFX/LICENSE third_party/OpenJFX/ASSEMBLY_EXCEPTION; do
+# The licenses of what the ZIP bundles: their redistribution requires them.
+for notice in "${NOTICES[@]}"; do
   [[ -f "$APP/$notice" ]] || { echo "FAIL: $notice is not in $ZIP" >&2; exit 1; }
 done
 
@@ -55,7 +67,7 @@ echo "$REPORTED"
 [[ "$REPORTED" == "insilicoPCR "* ]] || { echo "FAIL: the launcher did not report a version" >&2; exit 1; }
 # A ZIP is named for its version, which the program must report: a release for its tag, any other
 # build for the version in pom.xml. Only a manual CI run may give its ZIPs a name of its own.
-ZIP_VERSION="$(basename "$ZIP" | sed -n 's/^insilicoPCR-\(.*\)-\(linux\|windows\)-x64\.zip$/\1/p')"
+ZIP_VERSION="$(basename "$ZIP" | sed -n 's/^insilicoPCR-\(.*\)-\(linux\|windows\)-x64\(-no-runtime\)\?\.zip$/\1/p')"
 if [[ "${GITHUB_EVENT_NAME:-}" == "workflow_dispatch" ]]; then
   echo "(manual CI build: its ZIP may be named otherwise, the version is not compared)"
 elif [[ -n "$ZIP_VERSION" && "$REPORTED" != "insilicoPCR $ZIP_VERSION" ]]; then

@@ -40,14 +40,20 @@ public record RuntimeDependencies(AppPaths.RuntimeLayout layout) {
         return layout.makeblastdbExecutable();
     }
 
-    public Path bbtoolsJar() {
+    /**
+     * Where BBTools' classes are, for {@code -cp}: {@code bbtools.jar} (the portable releases), or the
+     * {@code current} folder of an installed BBTools (conda's bbmap package).
+     */
+    public Path bbtoolsClassPath() {
         Path jar = bbmapDirectory().resolve(AppPaths.BBTOOLS_JAR);
-
-        if (!Files.isRegularFile(jar)) {
-            throw new PipelineException("Missing BBMap runtime: " + jar.toAbsolutePath());
+        if (Files.isRegularFile(jar)) {
+            return jar;
         }
-
-        return jar;
+        Path classes = bbmapDirectory().resolve(AppPaths.BBTOOLS_CLASSES);
+        if (Files.isDirectory(classes)) {
+            return classes;
+        }
+        throw new PipelineException("Missing BBMap runtime: " + jar.toAbsolutePath());
     }
 
     /** The versions found by {@link #versions()}, by the BLAST and BBTools folders they were asked of. */
@@ -55,7 +61,7 @@ public record RuntimeDependencies(AppPaths.RuntimeLayout layout) {
 
     /**
      * The versions of the programs the run uses, for its QAlog.txt and its report ("BLAST+ 2.17.0, BBTools 40.04,
-     * Java 26.0.2.1"): a result is audited with them. Asked of the programs once; "unknown" for one that does
+     * Java 25.0.4"): a result is audited with them. Asked of the programs once; "unknown" for one that does
      * not say.
      */
     public String versions() {
@@ -63,7 +69,7 @@ public record RuntimeDependencies(AppPaths.RuntimeLayout layout) {
         String bbtools;
         try {
             blast = blastn().toString();
-            bbtools = bbtoolsJar().toString();
+            bbtools = bbtoolsClassPath().toString();
         } catch (RuntimeException missing) {
             return "unknown (" + missing.getMessage() + ")";
         }

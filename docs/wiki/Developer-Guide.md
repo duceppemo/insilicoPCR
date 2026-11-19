@@ -13,7 +13,7 @@ This page summarizes the current project structure and points developers to the 
 
 ## Requirements
 
-- Java 26
+- Java 25 (LTS)
 - Maven wrapper included in the repository
 - Git
 - Platform runtime assets for release packaging

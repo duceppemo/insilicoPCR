@@ -1,5 +1,25 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- Java 25 (LTS): insilicoPCR is built for Java 25, and the portable ZIPs
+  bundle it, instead of Java 26, a short-term release whose updates ended
+  when Java 27 came out. It runs on Java 25 or later. Reports are the same as
+  with 1.0.0 (five-isolate genomes and reads, two FASTQ samples).
+
+### Added
+
+- `insilicoPCR-<version>-linux-x64-no-runtime.zip` in each release: insilicoPCR
+  and its libraries without Java, BLAST+ and BBTools, for package managers and
+  containers (the Bioconda package is made from it). Without a `runtime`
+  folder beside it, insilicoPCR runs the `blastn`, `makeblastdb` and BBTools
+  (`bbduk.sh`, its classes in `bbtools.jar` or in `current/`, as conda has
+  them) found on `PATH`, in the Java runtime that runs it; `QAlog.txt` names
+  them. Its launcher takes Java 25 or later from `JAVA_HOME` or `PATH`. CI
+  runs it on conda's Java, BLAST+ and BBTools before each release.
+
 ## 1.0.0 (2026-11-17)
 
 ### Changed (the 1.0 formats: what scripts may rely on)

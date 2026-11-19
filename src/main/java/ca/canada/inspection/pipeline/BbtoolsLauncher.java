@@ -66,11 +66,15 @@ public final class BbtoolsLauncher {
     /**
      * A {@code file:} URL of {@code jar} with its path as it is: no letter, and no space, percent-encoded.
      * A space left as {@code %20} would do no harm alone, but BBTools copies a path that has any percent
-     * code byte by byte, which garbles the letters outside ASCII.
+     * code byte by byte, which garbles the letters outside ASCII. A folder of classes (an installed BBTools'
+     * {@code current}) ends with {@code /}, which tells the class loader it is not a jar.
      */
     @SuppressWarnings("deprecation") // URL(String, String, String) is the constructor that encodes nothing
     static URL asIs(Path jar) throws MalformedURLException {
         String path = jar.toAbsolutePath().normalize().toString().replace('\\', '/');
+        if (java.nio.file.Files.isDirectory(jar) && !path.endsWith("/")) {
+            path += "/";
+        }
         return new URL("file", "", path.startsWith("/") ? path : "/" + path);
     }
 }

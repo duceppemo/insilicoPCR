@@ -10,11 +10,11 @@ import java.util.Objects;
  * merging (BBMerge), assembly and read extension (Tadpole).
  *
  * @param javaCommand    Java launcher used for the BBTools child processes
- * @param bbtoolsJar     bundled {@code bbtools.jar}
+ * @param bbtoolsClassPath BBTools' classes: {@code bbtools.jar}, or an installed BBTools' {@code current} folder
  * @param childMemoryGiB heap given to each BBTools child process
  * @param threads        threads given to each BBTools child process
  */
-record BbtoolsCommands(String javaCommand, Path bbtoolsJar, int childMemoryGiB, int threads) {
+record BbtoolsCommands(String javaCommand, Path bbtoolsClassPath, int childMemoryGiB, int threads) {
     /**
      * Makes BBDuk and BBMerge write reads in the order they read them. With several threads
      * they otherwise write them as each thread finishes, a different order every run, and
@@ -73,7 +73,7 @@ record BbtoolsCommands(String javaCommand, Path bbtoolsJar, int childMemoryGiB, 
 
     /** Commands for the bundled BBTools, each child with this heap and these threads. */
     static BbtoolsCommands of(RuntimeDependencies dependencies, int childMemoryGiB, int threads) {
-        return new BbtoolsCommands(dependencies.javaCommand(), dependencies.bbtoolsJar(), childMemoryGiB, threads);
+        return new BbtoolsCommands(dependencies.javaCommand(), dependencies.bbtoolsClassPath(), childMemoryGiB, threads);
     }
 
     /** Whether a BBTools child stopped because it ran out of memory. */
@@ -101,7 +101,7 @@ record BbtoolsCommands(String javaCommand, Path bbtoolsJar, int childMemoryGiB, 
 
     BbtoolsCommands {
         Objects.requireNonNull(javaCommand, "javaCommand");
-        Objects.requireNonNull(bbtoolsJar, "bbtoolsJar");
+        Objects.requireNonNull(bbtoolsClassPath, "bbtoolsClassPath");
         if (childMemoryGiB < 1) {
             throw new IllegalArgumentException("childMemoryGiB must be >= 1");
         }
@@ -268,18 +268,18 @@ record BbtoolsCommands(String javaCommand, Path bbtoolsJar, int childMemoryGiB, 
     }
 
     /**
-     * The Java runtime running {@code program} of the BBTools jar: directly, or through
-     * {@link BbtoolsLauncher} when the jar's path has a letter outside ASCII.
+     * The Java runtime running {@code program} of BBTools (its jar or its classes folder): directly, or through
+     * {@link BbtoolsLauncher} when that path has a letter outside ASCII.
      */
     private List<String> start(String program) {
         List<String> arguments = new ArrayList<>(List.of(javaCommand, "-ea", "-Xmx" + childMemoryGiB + "g",
                 EXIT_ON_OUT_OF_MEMORY));
-        if (BbtoolsLauncher.needed(bbtoolsJar)) {
-            BbtoolsLauncher.checkUsable(bbtoolsJar);
+        if (BbtoolsLauncher.needed(bbtoolsClassPath)) {
+            BbtoolsLauncher.checkUsable(bbtoolsClassPath);
             arguments.addAll(List.of("-cp", launcherClassPath(), BbtoolsLauncher.class.getName(),
-                    bbtoolsJar.toAbsolutePath().normalize().toString(), program));
+                    bbtoolsClassPath.toAbsolutePath().normalize().toString(), program));
         } else {
-            arguments.addAll(List.of("-cp", bbtoolsJar.toString(), program));
+            arguments.addAll(List.of("-cp", bbtoolsClassPath.toString(), program));
         }
         return arguments;
     }

@@ -27,11 +27,11 @@ jobs:
         with:
           lfs: true
 
-      - name: Set up JDK 26
+      - name: Set up JDK 25
         uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6
         with:
           distribution: temurin
-          java-version: '26'
+          java-version: '25'
           cache: maven
 
       - name: Resolve release version
@@ -108,6 +108,56 @@ jobs:
             release/*linux-x64.zip.sha256
           if-no-files-found: error
 
+      - name: Build the ZIP without a runtime
+        shell: bash
+        run: |
+          # For package managers (the Bioconda package) and containers: the program and its
+          # libraries, from the build above, without the bundled Java, BLAST+ and BBTools.
+          chmod +x scripts/release/package-no-runtime.sh
+          scripts/release/package-no-runtime.sh "${{ steps.version.outputs.value }}"
+
+      - name: Upload the ZIP without a runtime
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: insilicoPCR-linux-x64-no-runtime
+          path: |
+            release/*linux-x64-no-runtime.zip
+            release/*linux-x64-no-runtime.zip.sha256
+          if-no-files-found: error
+
+  conda-check:
+    name: ZIP without a runtime, on conda's tools
+    # The ZIP the Bioconda package is made from, run as a conda installation runs it: Java, BLAST+
+    # and BBTools from conda-forge and Bioconda (BBTools' classes in a folder, not a jar), found on PATH.
+    needs: [ linux-zip ]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Download the ZIP without a runtime
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: insilicoPCR-linux-x64-no-runtime
+          path: build
+
+      - name: Install Java 25, BLAST+ and BBTools from conda-forge and Bioconda
+        shell: bash
+        run: |
+          # The runner's Miniconda ($CONDA). The versions the portable ZIP bundles, so that a change
+          # in conda's packages does not fail a build; the Bioconda recipe takes later ones too.
+          "$CONDA/bin/conda" create --yes --quiet --prefix "$RUNNER_TEMP/env" --override-channels \
+            -c conda-forge -c bioconda 'openjdk=25' 'blast=2.17.0' 'bbmap=40.04'
+
+      - name: Smoke test with conda's tools
+        shell: bash
+        run: |
+          export PATH="$RUNNER_TEMP/env/bin:$PATH" JAVA_HOME="$RUNNER_TEMP/env/lib/jvm"
+          java -version
+          scripts/ci/smoke-test.sh build/*linux-x64-no-runtime.zip
+
   windows-zip:
     name: Windows portable ZIP
     runs-on: windows-latest
@@ -118,11 +168,11 @@ jobs:
         with:
           lfs: true
 
-      - name: Set up JDK 26
+      - name: Set up JDK 25
         uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6
         with:
           distribution: temurin
-          java-version: '26'
+          java-version: '25'
           cache: maven
 
       - name: Resolve release version
@@ -239,7 +289,7 @@ jobs:
   publish-github-release:
     name: Publish GitHub Release
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [ linux-zip, windows-zip, windows-harness ]
+    needs: [ linux-zip, conda-check, windows-zip, windows-harness ]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -248,7 +298,7 @@ jobs:
       - name: Download release artifacts
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
-          # The two ZIPs, not the harness results.
+          # The ZIPs, not the harness results.
           pattern: insilicoPCR-*
           path: dist
           merge-multiple: true
@@ -270,12 +320,14 @@ jobs:
           notes="source/docs/release-notes/${GITHUB_REF_NAME#v}.md"
           if [[ -f "$notes" ]]; then cp "$notes" release-notes.md; else : > release-notes.md; fi
 
-      - name: Publish portable ZIPs only
+      - name: Publish the ZIPs only
         uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3 # v3
         with:
           files: |
             dist/*linux-x64.zip
             dist/*linux-x64.zip.sha256
+            dist/*linux-x64-no-runtime.zip
+            dist/*linux-x64-no-runtime.zip.sha256
             dist/*windows-x64.zip
             dist/*windows-x64.zip.sha256
           body_path: release-notes.md

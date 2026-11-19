@@ -2,7 +2,7 @@
 target/
 build/
 out/
-release/
+/release/
 
 # Runtime layout: keep source-controlled bioinformatics tools, ignore generated/bundled JDK and JavaFX SDKs
 runtime/**/jdk*/

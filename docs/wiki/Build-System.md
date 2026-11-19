@@ -4,7 +4,7 @@ insilicoPCR uses Maven with the Maven wrapper.
 
 ## Requirements
 
-- Java 26
+- Java 25 (LTS)
 - Maven wrapper included in the repository
 
 ## Build
@@ -18,7 +18,7 @@ cd insilicoPCR
 
 The tests include whole runs of the five-isolate example (`EndToEndTest`), which use the BLAST+ and BBTools under `runtime/` (Git LFS) and are skipped without them. `./mvnw test` fails when line coverage drops below the floors set in `pom.xml` (the whole project, and the `pcr`, `util` and `pipeline` packages); without the tools, run `./mvnw test -Djacoco.haltOnFailure=false`. For a quicker build, `-DexcludedGroups=end-to-end -Djacoco.haltOnFailure=false` leaves out the whole runs (about 40 s instead of 2 minutes; the coverage floors need them).
 
-Development requires Java 26. End users should normally use the portable releases, which bundle their own Java.
+Development requires Java 25 or later (releases are built and tested with Java 25 LTS). End users should normally use the portable releases, which bundle their own Java.
 
 ## Output
 

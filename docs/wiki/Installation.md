@@ -67,7 +67,7 @@ You can also run it from PowerShell:
 Each portable release includes:
 
 - insilicoPCR
-- OpenJDK 26 runtime
+- OpenJDK 25 (LTS) runtime
 - JavaFX 26.0.1 runtime
 - BBTools/BBMap 40.04 (BBDuk, BBMerge and Tadpole, used in FASTQ mode)
 - NCBI BLAST+ 2.17.0 (Linux) or 2.15.0 (Windows)
@@ -86,3 +86,22 @@ The launcher passes its arguments to insilicoPCR: without any, it opens the wind
 ```
 
 See [Command-line Interface](Command-line-Interface) for every option.
+
+## Without the bundled programs (package managers, containers)
+
+Since 1.0.1, each release also has `insilicoPCR-<version>-linux-x64-no-runtime.zip` (about 9 MB): insilicoPCR and its libraries, without Java, BLAST+ and BBTools. The Bioconda package is made from it. It is for an environment that provides those programs already, such as a conda environment or a container:
+
+| Program | Version | Found as |
+|---|---|---|
+| Java | 25 or later | `JAVA_HOME`, or `java` on `PATH` |
+| NCBI BLAST+ | 2.17.0 tested | `blastn` and `makeblastdb` on `PATH` |
+| BBTools | 40.04 tested | `bbduk.sh` on `PATH`; its classes in `bbtools.jar` or `current/` beside it, links followed |
+
+```bash
+conda create -n insilicopcr -c conda-forge -c bioconda 'openjdk=25' 'blast=2.17.0' 'bbmap=40.04'
+conda activate insilicopcr
+unzip insilicoPCR-<version>-linux-x64-no-runtime.zip
+insilicoPCR-<version>-linux-x64-no-runtime/run-insilicoPCR.sh --version
+```
+
+insilicoPCR takes the programs on `PATH` only when there is no `runtime` folder beside it: a portable ZIP always runs its own. Each run writes the programs it used, with their versions, in `QAlog.txt` (`BLAST Location`, `BBTools Location`, `Tools:`). Results with the versions above are the same as with the portable ZIP; other versions of BLAST+ or BBTools may give other results. The JavaFX libraries in this ZIP are those for Linux x64.

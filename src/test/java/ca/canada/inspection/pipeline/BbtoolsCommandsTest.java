@@ -321,6 +321,17 @@ class BbtoolsCommandsTest {
     }
 
     @Test
+    void theLauncherGivesAFolderOfClassesWithItsSlash(@TempDir Path dir) throws java.io.IOException {
+        // conda's BBTools has its classes in a folder; without the slash the class loader reads it as a jar.
+        Path current = java.nio.file.Files.createDirectories(dir.resolve("Données Rémi").resolve("current"));
+
+        String url = BbtoolsLauncher.asIs(current).toString();
+
+        assertFalse(url.contains("%"), url);
+        assertTrue(url.endsWith("/Données Rémi/current/"), url);
+    }
+
+    @Test
     void aJarAtAPathWithAccentsAndAHashOrAPercentIsRefusedSayingWhy() {
         // "D:\Données\C# tools": # ends a URL's path, and encoded, it makes BBTools garble the é.
         for (String folder : List.of("Données C# tools", "Données 100%")) {
@@ -337,6 +348,18 @@ class BbtoolsCommandsTest {
     @Test
     @org.junit.jupiter.api.Tag("end-to-end")
     void bbdukRunsFromAnInstallationWhosePathHasAccents(@TempDir Path dir) throws java.io.IOException {
+        bbdukRunsFromAnInstallationWhosePathHasAccents(dir, false);
+    }
+
+    @Test
+    @org.junit.jupiter.api.Tag("end-to-end")
+    void bbdukRunsFromAFolderOfClassesWhosePathHasAccents(@TempDir Path dir) throws java.io.IOException {
+        // conda's BBTools: its classes in current/, its resources in the folder beside it.
+        bbdukRunsFromAnInstallationWhosePathHasAccents(dir, true);
+    }
+
+    private static void bbdukRunsFromAnInstallationWhosePathHasAccents(Path dir, boolean classesFolder)
+            throws java.io.IOException {
         Path bbmap = AppPaths.applicationRoot().resolve("runtime").resolve("common").resolve("bbmap");
         Path jar = bbmap.resolve("bbtools.jar");
         Path primes = bbmap.resolve("resources").resolve("primes.txt.gz");
@@ -344,7 +367,12 @@ class BbtoolsCommandsTest {
                 && java.nio.file.Files.size(jar) > 100_000 && java.nio.file.Files.size(primes) > 1_000,
                 "BBTools is not in runtime/ (Git LFS)");
         Path installed = java.nio.file.Files.createDirectories(dir.resolve("Données Rémi").resolve("bbmap"));
-        java.nio.file.Files.copy(jar, installed.resolve("bbtools.jar"));
+        Path classes = installed.resolve(classesFolder ? "current" : "bbtools.jar");
+        if (classesFolder) {
+            unzip(jar, classes);
+        } else {
+            java.nio.file.Files.copy(jar, classes);
+        }
         java.nio.file.Files.copy(primes, java.nio.file.Files.createDirectories(installed.resolve("resources"))
                 .resolve("primes.txt.gz"));
         Path example = Path.of("docs", "examples", "five-isolates").toAbsolutePath();
@@ -358,12 +386,29 @@ class BbtoolsCommandsTest {
             }
         };
 
-        new BbtoolsCommands(javaCommand, installed.resolve("bbtools.jar"), 1, 1)
+        new BbtoolsCommands(javaCommand, classes, 1, 1)
                 .firstBait(example.resolve("primers.fasta"), List.of(example.resolve("reads").resolve("isolate_01_R1.fastq.gz"),
                         example.resolve("reads").resolve("isolate_01_R2.fastq.gz")), out, 20, 0)
                 .run(monitor);
 
         assertFalse(lines.stream().anyMatch(line -> line.contains("Cannot find")), String.join("\n", lines));
         assertTrue(java.nio.file.Files.size(out) > 1_000, String.join("\n", lines));
+    }
+
+    private static void unzip(Path jar, Path folder) throws java.io.IOException {
+        try (java.util.zip.ZipInputStream in = new java.util.zip.ZipInputStream(java.nio.file.Files.newInputStream(jar))) {
+            for (java.util.zip.ZipEntry entry; (entry = in.getNextEntry()) != null; ) {
+                Path target = folder.resolve(entry.getName()).normalize();
+                if (!target.startsWith(folder)) {
+                    throw new java.io.IOException("entry outside the folder: " + entry.getName());
+                }
+                if (entry.isDirectory()) {
+                    java.nio.file.Files.createDirectories(target);
+                } else {
+                    java.nio.file.Files.createDirectories(target.getParent());
+                    java.nio.file.Files.copy(in, target);
+                }
+            }
+        }
     }
 }

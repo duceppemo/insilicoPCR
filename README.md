@@ -14,7 +14,7 @@
   <a href="../../releases"><img alt="Latest release" src="https://img.shields.io/github/v/release/duceppemo/insilicoPCR?display_name=tag"></a>
   <a href="https://zenodo.org/badge/latestdoi/828414474"><img alt="DOI" src="https://zenodo.org/badge/828414474.svg"></a>
   <a href="../../wiki"><img alt="Wiki" src="https://img.shields.io/badge/docs-Wiki-0ea5e9"></a>
-  <img alt="Java" src="https://img.shields.io/badge/Java-26-blue">
+  <img alt="Java" src="https://img.shields.io/badge/Java-25-blue">
   <img alt="Platform" src="https://img.shields.io/badge/platform-Windows%20%7C%20Linux-14b8a6">
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/github/license/duceppemo/insilicoPCR"></a>
 </p>

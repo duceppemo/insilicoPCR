@@ -9,13 +9,13 @@ Releases are fully automated: pushing a `v*` tag builds the Linux and Windows po
 ## CI release flow
 
 1. Check out the repository.
-2. Install JDK 26.
+2. Install JDK 25 (LTS).
 3. Validate runtime assets.
 4. Build with Maven.
-5. Stage the application, libraries, JDK, BBMap, and BLAST+.
+5. Stage the application, libraries, JDK, BBMap, and BLAST+ (and, for Linux, the application and libraries alone: the ZIP without a runtime).
 6. Create portable ZIP files.
 7. Create SHA256 checksum files.
-8. Smoke test: run the ZIP that was just built, on Linux and on Windows.
+8. Smoke test: run the ZIP that was just built, on Linux and on Windows, and the Linux ZIP without a runtime on conda's Java, BLAST+ and BBTools.
 9. Windows test harness: run the Windows ZIP through the situations a Windows user meets (see below).
 10. Publish release artifacts for version tags, once the steps above passed. The release's notes are `docs/release-notes/<version>.md`, when there is one (its highlights and what changes on upgrading), above the list of pull requests GitHub writes. Only this job may write to the repository; the workflow's other jobs, which run a pull request's code, only read it.
 
@@ -36,7 +36,7 @@ scripts/ci/smoke-test.sh insilicoPCR-<version>-linux-x64.zip
 ## Linux packaging
 
 ```bash
-export JAVA_HOME=/path/to/jdk-26
+export JAVA_HOME=/path/to/jdk-25
 scripts/release/package-linux-portable.sh 1.0.0
 ```
 
@@ -46,6 +46,17 @@ Expected artifacts:
 release/insilicoPCR-<version>-linux-x64.zip
 release/insilicoPCR-<version>-linux-x64.zip.sha256
 ```
+
+### The ZIP without a runtime
+
+After the Linux ZIP, `scripts/release/package-no-runtime.sh <version>` packs the same `target/insilicoPCR.jar` and `target/lib`, with a launcher that takes Java from `JAVA_HOME` or `PATH` (25 or later) and the licenses of the libraries it holds, without Java, BLAST+ and BBTools:
+
+```text
+release/insilicoPCR-<version>-linux-x64-no-runtime.zip
+release/insilicoPCR-<version>-linux-x64-no-runtime.zip.sha256
+```
+
+It is what the Bioconda package is made from (see [Installation](Installation#without-the-bundled-programs-package-managers-containers)). CI job `conda-check` installs Java 25, BLAST+ 2.17.0 and BBTools 40.04 from conda-forge and Bioconda, with the runner's Miniconda, and runs the smoke test on this ZIP with them on `PATH`; the release waits for it, and publishes the ZIP beside the portable ones.
 
 ## Windows packaging
 

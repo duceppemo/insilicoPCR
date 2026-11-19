@@ -103,7 +103,7 @@ class PipelineFailuresTest {
         RuntimeDependencies dependencies = new RuntimeDependencies(new AppPaths.RuntimeLayout(directory, directory,
                 directory, directory.resolve("java")));
 
-        PipelineException error = assertThrows(PipelineException.class, dependencies::bbtoolsJar);
+        PipelineException error = assertThrows(PipelineException.class, dependencies::bbtoolsClassPath);
 
         assertTrue(error.getMessage().startsWith("Missing BBMap runtime: "), error.getMessage());
         assertTrue(RunFailure.isForTheUser(error));

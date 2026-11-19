@@ -14,7 +14,7 @@ This guide explains how to install and run insilicoPCR from the portable release
 Portable releases include:
 
 - insilicoPCR
-- OpenJDK 26 runtime
+- OpenJDK 25 (LTS) runtime
 - JavaFX 26.0.1 runtime
 - BBMap
 - NCBI BLAST+

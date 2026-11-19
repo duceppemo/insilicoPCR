@@ -14,7 +14,11 @@ runtime/
       bin/
 ```
 
-The bundled JDK is intentionally not committed. GitHub Actions installs JDK 26, then the packaging scripts copy `JAVA_HOME` into the generated ZIP as `runtime/<platform>/jdk`.
+The bundled JDK is intentionally not committed. GitHub Actions installs JDK 25 (LTS), then the packaging scripts copy `JAVA_HOME` into the generated ZIP as `runtime/<platform>/jdk`.
+
+## Without a runtime folder
+
+When there is no `runtime` folder beside `insilicoPCR.jar` (the ZIP without a runtime, `scripts/release/package-no-runtime.sh`, and the Bioconda package made from it), `AppPaths` takes the programs installed beside insilicoPCR instead: `blastn` and `makeblastdb` from the first `PATH` folder that has both, BBTools from the folder `bbduk.sh` is in (links followed), its classes in `bbtools.jar` or in `current/` (conda's bbmap package), and the Java runtime running insilicoPCR for BBTools. A `runtime` folder, even an incomplete one, is always used as the portable layout: a ZIP missing a tool fails, it does not fall back to `PATH`.
 
 ## Why tools are committed
 

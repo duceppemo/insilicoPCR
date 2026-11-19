@@ -190,7 +190,7 @@ public record PipelineConfig(
         }
     }
 
-    /** Allowed primer mismatches; also used as BBDuk {@code hdist} when baiting reads. */
+    /** Allowed primer mismatches; also the edits (at most 2) BBDuk's first bait matches primer k-mers within. */
     public int mismatches() {
         return ampliconOptions.maxTotalMismatches();
     }

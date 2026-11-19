@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### Documentation
+
+- FASTQ mode: the reads a primer site baits, stated exactly ([Limitations,
+  Known gaps](https://github.com/duceppemo/insilicoPCR/wiki/Limitations#known-gaps)):
+  a site always baits when some k consecutive primer bases differ from it by
+  at most `-m` edits, at most 2, of which one deletion. The pages said `-m 3`
+  baited k-mers with 3 substitutions; BBDuk uses its edit limit (2) alone when
+  both are given, so it never did. Measured bait rates are given for sites
+  beyond the rule. Nothing changes in what a run does.
+
 ### Maintenance
 
 - A monthly CI run on `master`, which also tests the ZIP without a runtime on

@@ -32,7 +32,27 @@ With `--read-extension off`, products longer than a read or merged pair (about 5
 
 One case makes the report miss a product that a real PCR would give. Unlike the six above, **nothing in the output names it**: the assay simply shows no product. It is known and will be revisited; until then, keep it in mind when a negative matters. (Products of one primer alone, and of the primers of two assays in one reaction, are reported since 0.15.3: see [Amplicon Calling](Amplicon-Calling#stage-2-amplicon-calling).)
 
-**FASTQ: a primer site with many differences may bait no read.** Since 0.15.3 the reads are baited with BBDuk on k-mers shorter than the shortest primer by `--5p-truncation` (so a primer whose 5' bases do not match still baits, as a hit on an assembly is still accepted), but at least 16 plus `-m` bases long (and, when `-m` allows indels, one base shorter than the shortest primer, so that a deletion can be matched), allowing `-m` substitutions (`hdist`, at most 3, the most BBDuk allows) and `-m` insertions or deletions (`edist`, at most 2, the most BBDuk allows; none at `-m 0`). A site with more indels than that, or more 5' mismatches than the k-mer leaves out, may still bait no read: the same sample then gives the product as an assembly and none as reads, and because no read carries the primer, `report_fastq_diagnostics.tsv` does not list the assay either; when only one primer's site is missed, it lists the assay as `PARTIAL_BAIT`, which is then this gap, not a true negative. Before 0.15.3 the k-mers were as long as the shortest primer and substitutions only, so any indel, or 5' mismatches beyond `-m`, kept a site from baiting. When such sites are expected (divergent strains, degenerate or tailed primers), run the assay on an assembly of the reads as well.
+**FASTQ: a primer site with many differences may bait no read.** The first bait keeps a read, with its mate, when one of its k-mers matches a k-mer of a primer or probe within an edit budget:
+
+- **k** is the length of the shortest oligo less `--5p-truncation`, but at least 16 plus `-m`, and at most the shortest oligo's length (one base less when `-m` is 1 or more, so that a deletion can match). For a 20-base primer at the default `--5p-truncation 5`, k is 16 at `-m 0`, 17 at `-m 1`, 18 at `-m 2` and 19 at `-m 3`.
+- **The budget** is `-m` edits, at most 2: substitutions, insertions, and **at most one deletion** (a primer base the read lacks). At `-m 3` or more it is still 2. BBDuk matches 3 substitutions (`hdist=3`) only when it allows no indels (`edist=0`); insilicoPCR allows both, so BBDuk uses the edit budget alone. Up to this release these pages said `-m 3` baited 3 substitutions; it never did.
+
+A primer site therefore always baits its reads when some k consecutive bases of the primer differ from it by no more than that budget. A site that an assembly would give can fall outside it in three ways:
+
+1. **3 or more differences, at `-m 3` or more,** with 3 in every k-mer of the primer.
+2. **Two deletions,** with both in every k-mer.
+3. **5' mismatches that `--5p-truncation` lets an assembly hit leave unaligned,** beyond the bases the k-mer leaves out of the primer (its length less k). These count against the budget. A 20-base primer at `-m 0` has k = 16 and leaves out 4 bases. A mismatch at its 5th base from the 5' end, which `--5p-truncation 5` frees on an assembly, is in every k-mer, and the site baits no read.
+
+Measured on 300 random primers of each length, with the differences placed at random outside the 5' window, the share of sites that baited reads was as follows. A site within the budget baited in every case (1 or 2 substitutions; an insertion or deletion, with or without a substitution; two insertions). An indel can sometimes stand in for a substitution, which is why some sites outside the rule bait.
+
+| Primer length (k at `-m 2` / `-m 3`) | 2 deletions, `-m 2` | 2 deletions, `-m 3` | 3 substitutions, `-m 3` | deletion + 2 substitutions, `-m 3` | insertion + 2 substitutions, `-m 3` |
+|---|---|---|---|---|---|
+| 18 (17 / 17) | 43% | 40% | 68% | 58% | 70% |
+| 20 (18 / 19) | 50% | 29% | 60% | 45% | 59% |
+| 22 (18 / 19) | 64% | 48% | 82% | 74% | 85% |
+| 25 (20 / 20) | 61% | 62% | 94% | 89% | 93% |
+
+When a site baits no read, the same sample gives the product as an assembly and none as reads. Because no read carries the primer, `report_fastq_diagnostics.tsv` does not list the assay either. When only one primer's site is missed, it lists the assay as `PARTIAL_BAIT`, which is then this gap, not a true negative. Before 0.15.3 the k-mers were as long as the shortest primer and substitutions only, so any indel, or 5' mismatches beyond `-m`, kept a site from baiting. When such sites are expected (divergent strains, degenerate or tailed primers, `-m 3`), run the assay on an assembly of the reads as well.
 
 See also [Why is an amplicon I expected missing from the report?](FAQ#why-is-an-amplicon-i-expected-missing-from-the-report) for products the rules reject on purpose (size limit, 3'-end mismatches, orientation, probe).
 

@@ -133,15 +133,18 @@ record BbtoolsCommands(String javaCommand, Path bbtoolsClassPath, int childMemor
     static final int MAX_BAIT_INDELS = 2;
     /**
      * The most substitutions BBDuk matches k-mers within ({@code hdist}): it refuses more, and {@code -m 4}
-     * failed every run with reads. A primer site of more is baited when some k-mer of it holds 3 or fewer.
+     * failed every run with reads. In the first bait it adds nothing: BBDuk expands its k-mers by
+     * {@code edist} alone when that is above 0, as it is whenever {@code hdist} is, so that bait matches
+     * within {@code min(-m, 2)} edits (docs/wiki/Limitations.md, "Known gaps").
      */
     static final int MAX_BAIT_SUBSTITUTIONS = 3;
 
     /**
-     * First pass: keep reads sharing a k-mer with any primer, within {@code mismatches} substitutions
-     * ({@code hdist}) or that many edits, insertions and deletions included ({@code edist}, at most
-     * {@link #MAX_BAIT_INDELS}): {@code -m} counts all three, so that what a hit on an assembly would
-     * accept also baits reads.
+     * First pass: keep reads sharing a k-mer with any primer within {@code mismatches} edits, at most
+     * {@link #MAX_BAIT_INDELS} ({@code edist}): substitutions, insertions and one deletion, the most BBDuk
+     * matches in a k-mer (it has one base past the k-mer to shift in). {@code -m} counts all three, so that
+     * what a hit on an assembly would accept also baits reads. BBDuk ignores the {@code hdist} also given
+     * when {@code edist} is set: at {@code -m 3} a k-mer still matches within 2 edits, not 3 substitutions.
      */
     Command firstBait(Path primerDatabase, List<Path> reads, Path output, int kLength, int mismatches) {
         Command command = bbduk(primerDatabase, reads, output, mismatches);

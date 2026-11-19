@@ -145,12 +145,20 @@ jobs:
           name: insilicoPCR-linux-x64-no-runtime
           path: build
 
+      - name: Install Miniforge
+        # The runner image's Miniconda is not set up on ubuntu-latest ($CONDA is empty there).
+        uses: conda-incubator/setup-miniconda@be893c923ea9cf1cf7cd510fbdde27c7e18cbdcb # v4.1.0
+        with:
+          miniforge-version: latest
+          activate-environment: ''
+          auto-activate: false
+
       - name: Install Java 25, BLAST+ and BBTools from conda-forge and Bioconda
         shell: bash
         run: |
-          # The runner's Miniconda ($CONDA). The versions the portable ZIP bundles, so that a change
-          # in conda's packages does not fail a build; the Bioconda recipe takes later ones too.
-          "$CONDA/bin/conda" create --yes --quiet --prefix "$RUNNER_TEMP/env" --override-channels \
+          # The versions the portable ZIP bundles, so that a change in conda's packages does not
+          # fail a build; the Bioconda recipe takes later ones too.
+          "${CONDA:?setup-miniconda sets CONDA}/bin/conda" create --yes --quiet --prefix "$RUNNER_TEMP/env" --override-channels \
             -c conda-forge -c bioconda 'openjdk=25' 'blast=2.17.0' 'bbmap=40.04'
 
       - name: Smoke test with conda's tools

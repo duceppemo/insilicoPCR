@@ -632,7 +632,13 @@ public static class FakeData {
     # Two runs into one output folder: the second must stop, naming the first.
     $out = Join-Path $Work 'out\shared folder'
     $first = Start-Case 'lock-first-run' $Java (App-Args @('-i', "$big\reads", '-p', "$DataPlain\primers.fasta", '-o', $out, '-t', '2', '--input-check', 'quick'))
-    for ($i = 0; $i -lt 600 -and -not (Get-Descendants $first.Id | Where-Object Name -in 'java.exe', 'blastn.exe', 'makeblastdb.exe'); $i++) { Start-Sleep -Milliseconds 100 }
+    # Until the first run holds the folder: its lock file appears then. Bounded by time and by the run's
+    # end, never by a count of tries: a query of the processes (Get-CimInstance) can take seconds on a
+    # busy runner, and 600 of them once kept this loop going for the whole job (an hour).
+    $lockFile = Join-Path $out '.insilicoPCR.lock'
+    $deadline = (Get-Date).AddSeconds(60)
+    while (-not $first.HasExited -and -not (Test-Path -LiteralPath $lockFile) -and (Get-Date) -lt $deadline) { Start-Sleep -Milliseconds 100 }
+    # The first run ended before the second started: the second then runs, ends 0, and fails the case.
     $r = Run-Case 'lock-second-run' $Java (App-Args @('-i', "$DataPlain\genomes", '-p', "$DataPlain\primers.fasta", '-o', $out, '-t', '2'))
     Check-Run 'lock-second-run' $r $out 'none' 1 'Another run is using the output folder' | Out-Null
     $r = Wait-Case 'lock-first-run' $first
@@ -648,7 +654,9 @@ public static class FakeData {
         $p = Start-Case $k.Case $Java (App-Args @('-i', $k.Input, '-p', "$DataPlain\primers.fasta", '-o', $out, '-t', '2', '--input-check', 'quick'))
         $children = @()
         $working = { param($list) @($list | Where-Object { $_.Name -eq $k.Wait -and $_.CommandLine -match $k.Doing }) }
-        for ($i = 0; $i -lt 1200 -and -not (& $working $children); $i++) {
+        # At most 60 s, and not past the run's end (bounded by time, as the lock case above).
+        $deadline = (Get-Date).AddSeconds(60)
+        while (-not $p.HasExited -and (Get-Date) -lt $deadline -and -not (& $working $children)) {
             Start-Sleep -Milliseconds 50
             $children = @(Get-Descendants $p.Id)
         }

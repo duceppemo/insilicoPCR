@@ -25,6 +25,10 @@
   issue when a newer Java 25 update, BLAST+ or BBTools is out than the latest
   release bundles. Dependabot proposes newer libraries and GitHub Actions each
   month.
+- Windows test harness: its waits for a run to take its output folder, and for
+  a program to kill, end after 60 seconds or with the run, not after a count of
+  tries. Each try queries the processes, which took seconds on a busy runner,
+  and 600 tries once held the job for its whole hour.
 
 ## 1.0.1 (2026-11-19)
 

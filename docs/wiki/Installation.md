@@ -69,7 +69,7 @@ Each portable release includes:
 - insilicoPCR
 - OpenJDK 25 (LTS) runtime
 - JavaFX 27.0.1 runtime
-- BBTools/BBMap 40.04 (BBDuk, BBMerge and Tadpole, used in FASTQ mode)
+- BBTools/BBMap 40.05 (BBDuk, BBMerge and Tadpole, used in FASTQ mode)
 - NCBI BLAST+ 2.17.0 (Linux) or 2.15.0 (Windows)
 - platform launcher script
 
@@ -95,10 +95,10 @@ Since 1.0.1, each release also has `insilicoPCR-<version>-linux-x64-no-runtime.z
 |---|---|---|
 | Java | 25 or later | `JAVA_HOME`, or `java` on `PATH` |
 | NCBI BLAST+ | 2.17.0 tested | `blastn` and `makeblastdb` on `PATH` |
-| BBTools | 40.04 tested | `bbduk.sh` on `PATH`; its classes in `bbtools.jar` or `current/` beside it, links followed |
+| BBTools | 40.04 and 40.05 tested | `bbduk.sh` on `PATH`; its classes in `bbtools.jar` or `current/` beside it, links followed |
 
 ```bash
-conda create -n insilicopcr -c conda-forge -c bioconda 'openjdk=25' 'blast=2.17.0' 'bbmap=40.04'
+conda create -n insilicopcr -c conda-forge -c bioconda 'openjdk=25' 'blast=2.17.0' 'bbmap=40.05'
 conda activate insilicopcr
 unzip insilicoPCR-<version>-linux-x64-no-runtime.zip
 insilicoPCR-<version>-linux-x64-no-runtime/run-insilicoPCR.sh --version

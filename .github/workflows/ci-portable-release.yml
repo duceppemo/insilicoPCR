@@ -163,7 +163,7 @@ jobs:
           # The versions the portable ZIP bundles, so that a change in conda's packages does not
           # fail a build; the Bioconda recipe takes later ones too.
           "${CONDA:?setup-miniconda sets CONDA}/bin/conda" create --yes --quiet --prefix "$RUNNER_TEMP/env" --override-channels \
-            -c conda-forge -c bioconda 'openjdk=25' 'blast=2.17.0' 'bbmap=40.04'
+            -c conda-forge -c bioconda 'openjdk=25' 'blast=2.17.0' 'bbmap=40.05'
 
       - name: Smoke test with conda's tools
         shell: bash

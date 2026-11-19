@@ -6,7 +6,7 @@ insilicoPCR itself is under the MIT License (`LICENSE`).
 
 | Component | Version | Used for | License | Text | Source |
 |---|---|---|---|---|---|
-| BBTools (BBDuk, BBMerge, Tadpole) | 40.04 | baiting, merging and assembling reads (FASTQ input) | BSD-style license of the Lawrence Berkeley National Laboratory | `third_party/BBTools/license.txt` | https://sourceforge.net/projects/bbmap/ |
+| BBTools (BBDuk, BBMerge, Tadpole) | 40.05 | baiting, merging and assembling reads (FASTQ input) | BSD-style license of the Lawrence Berkeley National Laboratory | `third_party/BBTools/license.txt` | https://sourceforge.net/projects/bbmap/ |
 | NCBI BLAST+ (`blastn`, `makeblastdb`) | 2.17.0 (Linux), 2.15.0 (Windows) | searching the primers | Public domain (United States Government Work), with third-party components under their own licenses, listed in it | `third_party/BLAST/LICENSE` (the same text for both versions) | https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/ |
 | nghttp2 (`nghttp2.dll`, Windows release only, shipped with BLAST+) | as shipped with BLAST+ 2.15.0 | a library of BLAST+ on Windows | MIT License | `third_party/nghttp2/COPYING` | https://github.com/nghttp2/nghttp2 |
 | OpenJFX (JavaFX base, controls, graphics) | 27.0.1 | the application's window and the synthetic gel | GNU General Public License version 2, with the Classpath Exception; third-party components of javafx.graphics under their own licenses | `third_party/OpenJFX/` (`LICENSE`, `ASSEMBLY_EXCEPTION`, `ADDITIONAL_LICENSE_INFO`, `javafx.graphics/*.md`) | https://github.com/openjdk/jfx27u/tree/27.0.1-ga |

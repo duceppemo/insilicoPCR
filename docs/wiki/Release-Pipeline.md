@@ -56,7 +56,7 @@ release/insilicoPCR-<version>-linux-x64-no-runtime.zip
 release/insilicoPCR-<version>-linux-x64-no-runtime.zip.sha256
 ```
 
-It is what the Bioconda package is made from (see [Installation](Installation#without-the-bundled-programs-package-managers-containers)). CI job `conda-check` installs Java 25, BLAST+ 2.17.0 and BBTools 40.04 from conda-forge and Bioconda, with Miniforge, and runs the smoke test on this ZIP with them on `PATH`; the release waits for it, and publishes the ZIP beside the portable ones.
+It is what the Bioconda package is made from (see [Installation](Installation#without-the-bundled-programs-package-managers-containers)). CI job `conda-check` installs Java 25, BLAST+ 2.17.0 and BBTools 40.05 from conda-forge and Bioconda, with Miniforge, and runs the smoke test on this ZIP with them on `PATH`; the release waits for it, and publishes the ZIP beside the portable ones.
 
 ## Windows packaging
 

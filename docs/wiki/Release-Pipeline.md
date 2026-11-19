@@ -56,7 +56,7 @@ release/insilicoPCR-<version>-linux-x64-no-runtime.zip
 release/insilicoPCR-<version>-linux-x64-no-runtime.zip.sha256
 ```
 
-It is what the Bioconda package is made from (see [Installation](Installation#without-the-bundled-programs-package-managers-containers)). CI job `conda-check` installs Java 25, BLAST+ 2.17.0 and BBTools 40.04 from conda-forge and Bioconda, with the runner's Miniconda, and runs the smoke test on this ZIP with them on `PATH`; the release waits for it, and publishes the ZIP beside the portable ones.
+It is what the Bioconda package is made from (see [Installation](Installation#without-the-bundled-programs-package-managers-containers)). CI job `conda-check` installs Java 25, BLAST+ 2.17.0 and BBTools 40.04 from conda-forge and Bioconda, with Miniforge, and runs the smoke test on this ZIP with them on `PATH`; the release waits for it, and publishes the ZIP beside the portable ones.
 
 ## Windows packaging
 
@@ -88,6 +88,17 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\run-windows-tests.ps1 -Zip
 ```
 
 It writes only under its own folder (`work\`, `results\`), apart from a `subst` drive letter it removes; `-SkipBig` leaves out the large-input cases.
+
+## Monthly run and dependency updates
+
+On the first day of each month, CI runs on `master` as it stands, without publishing: the same build, tests, smoke tests and Windows harness, on the newest runner images, Java 25 update and conda packages. A failure there comes from something that changed outside the repository. GitHub mails it to whoever last changed the schedule in the workflow file. The monthly run and a manual run (Actions, *Run workflow*) also run job `newest-tools`:
+
+- It runs the smoke test on the ZIP without a runtime with the newest Java, BLAST+ and BBTools the Bioconda recipe allows (Java 25 or later, BLAST+ 2.17.0 or later, BBTools 40.x), as a new conda installation gets them. `conda-check` keeps the bundled versions, so that a pull request does not fail for a change elsewhere.
+- It reads `VERSIONS.txt` from the latest release's Linux ZIP (`scripts/ci/remote-zip-entry.py`, a few kilobytes of the ZIP) and compares it with the newest Temurin 25 update and the newest BLAST+ and BBTools on Bioconda (`scripts/ci/newer-versions.sh`). For those that are newer, it opens an issue, *Newer versions to bundle: …*, once for each set of versions. A release bundles the newest Java 25 update by itself. BLAST+ and BBTools are the copies under `runtime/`, which are replaced by hand.
+
+GitHub turns off the schedule of a repository with no activity for 60 days; *Enable workflow* on the Actions page turns it back on.
+
+Dependabot (`.github/dependabot.yml`) opens pull requests each month for newer libraries in `pom.xml` and newer GitHub Actions, which the workflows pin to commits. Minor and patch updates come in one pull request per ecosystem; a major version comes alone. CI tests each pull request as any other.
 
 ## Design principle
 

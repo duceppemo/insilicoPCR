@@ -6,6 +6,7 @@ The workflow is defined in `.github/workflows/ci-portable-release.yml` and runs 
 
 - pushes to `master` and pull requests: runs the unit tests with coverage (uploaded to Codecov), builds the Linux and Windows portable ZIPs, and stores them as workflow artifacts
 - manual `workflow_dispatch` with a custom version string
+- a monthly schedule (the first of the month): the same build, tests and smoke tests on `master`, plus job `newest-tools`, which tests the ZIP without a runtime on the newest conda tools and opens an issue for newer versions to bundle (also run by a manual run)
 - version tags matching `v*`: additionally publishes a GitHub Release with the ZIPs and `.sha256` checksum files (archived on Zenodo with a DOI)
 
 ## Creating a release

@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Maintenance
+
+- A monthly CI run on `master`, which also tests the ZIP without a runtime on
+  the newest Java, BLAST+ and BBTools the Bioconda recipe allows and opens an
+  issue when a newer Java 25 update, BLAST+ or BBTools is out than the latest
+  release bundles. Dependabot proposes newer libraries and GitHub Actions each
+  month.
+
 ## 1.0.1 (2026-11-19)
 
 ### Changed

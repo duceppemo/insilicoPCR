@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Documentation
+
+- Installation with conda: `conda create -n insilicopcr -c conda-forge -c
+  bioconda insilicopcr`, now that the Bioconda package exists (README,
+  Installation).
+
 ## 1.0.2 (2026-11-19)
 
 ### Changed

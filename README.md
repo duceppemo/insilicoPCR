@@ -40,7 +40,7 @@
 - **Every product is reported, whatever its size**, as a real PCR would amplify it. Declare the size an assay is designed to give and each product is labelled `target`, `other` or `unexpected`.
 - **Faulty input is named, not skipped.** Every file is checked before the run: an empty library, a download cut short or a malformed read leaves its sample out with a warning, and the other samples are run.
 - **Reports you can read.** A self-contained HTML report, a TSV table with per-primer mismatch details, and a synthetic gel.
-- **Nothing to install.** One portable ZIP for Windows or Linux holds the desktop app, the command line, Java, BBTools and BLAST+.
+- **Nothing to install.** One portable ZIP for Windows or Linux holds the desktop app, the command line, Java, BBTools and BLAST+. On Linux, conda installs it too, from Bioconda.
 - **Works with [primer-finder](https://github.com/duceppemo/primer-finder)**, which designs selective (q)PCR assays and writes primer files in this format.
 
 ### Which samples are positive?
@@ -68,6 +68,13 @@ Here both assays declare their product size. Green cells are products of that si
 ## Quick Start
 
 **1. Download** the portable ZIP for your system from the [Releases](https://github.com/duceppemo/insilicoPCR/releases) page and extract it. Nothing else needs to be installed.
+
+Or, on Linux, install it with conda, then run `insilicoPCR` in place of the launcher (with no option, it opens the window):
+
+```bash
+conda create -n insilicopcr -c conda-forge -c bioconda insilicopcr
+conda activate insilicopcr
+```
 
 **2. Write a primer file.** It is a FASTA file in which each ID ends in `-F` (forward), `-R` (reverse) or `-P` (probe, qPCR assays only); the text before the suffix names the assay. `size=` is optional and declares the expected product size:
 

@@ -211,9 +211,10 @@ each primer: the reads holding a primer site come with their mates (about one fr
 baiting adds the pairs that share a k-mer with one of them, mates included (about one more). A product longer than
 the baited reads cover from its two primers cannot be assembled whole, and the longer the product, the more often
 the assembly breaks inside it; [read extension](#read-extension-products-longer-than-a-read) baits further, in rounds.
-Baiting allows `-m` substitutions (at most 3, BBDuk's limit: `-m 4` and more stopped every run with reads before 0.15.3) and `-m` indels (at most 2: none at `-m 0`) on k-mers shorter than the primers by `--5p-truncation` (at least
+Baiting allows `-m` edits (at most 2, of which one deletion at most: none at `-m 0`) on k-mers shorter than the primers by `--5p-truncation` (at least
 16 plus `-m` bases, and shorter than the shortest primer; since 0.15.3, before which they were as long as the shortest
-primer, substitutions only): a primer site with more differences may still bait no read, a
+primer, substitutions only), and, at `-m 3` (since 1.0.3), 3 substitutions on 19-base k-mers of the oligos of 19 bases or
+more: a primer site with more differences may still bait no read, a
 [known gap](Limitations#known-gaps). The diagnostics then list the assay as `PARTIAL_BAIT` when the other primer
 baits reads, and not at all when neither does.
 

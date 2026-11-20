@@ -190,7 +190,10 @@ public record PipelineConfig(
         }
     }
 
-    /** Allowed primer mismatches; also the edits (at most 2) BBDuk's first bait matches primer k-mers within. */
+    /**
+     * Allowed primer mismatches; also the edits (at most 2) BBDuk's first bait matches primer k-mers within, and, at 3,
+     * the substitutions its substitution bait matches 19-base k-mers within.
+     */
     public int mismatches() {
         return ampliconOptions.maxTotalMismatches();
     }

@@ -135,16 +135,43 @@ record BbtoolsCommands(String javaCommand, Path bbtoolsClassPath, int childMemor
      * The most substitutions BBDuk matches k-mers within ({@code hdist}): it refuses more, and {@code -m 4}
      * failed every run with reads. In the first bait it adds nothing: BBDuk expands its k-mers by
      * {@code edist} alone when that is above 0, as it is whenever {@code hdist} is, so that bait matches
-     * within {@code min(-m, 2)} edits (docs/wiki/Limitations.md, "Known gaps").
+     * within {@code min(-m, 2)} edits (docs/wiki/Limitations.md, "Known gaps"). The substitution bait
+     * ({@link #substitutionBait}) matches them, at {@code -m 3} and more.
      */
     static final int MAX_BAIT_SUBSTITUTIONS = 3;
+
+    /**
+     * The substitution bait's k: 16 bases plus one for each of its 3 substitutions, as {@link #firstBaitK} keeps.
+     * 3 substitutions in 16-mers baited 49% of SRR642185's reads, in 19-mers 0.4% (exact 19-mers: 0.02%).
+     */
+    static final int SUBSTITUTION_BAIT_K = MIN_BAIT_K + MAX_BAIT_SUBSTITUTIONS;
+
+    /**
+     * Whether {@code -m mismatches} baits a second time for substitutions alone ({@link #substitutionBait}): when it
+     * allows more than the first bait's edits, and an oligo is as long as that bait's k (BBDuk takes no k-mer from a
+     * shorter one).
+     */
+    static boolean baitsSubstitutionsApart(int mismatches, int longestOligo) {
+        return mismatches > MAX_BAIT_INDELS && longestOligo >= SUBSTITUTION_BAIT_K;
+    }
+
+    /**
+     * Keeps reads sharing a k-mer of {@link #SUBSTITUTION_BAIT_K} bases with any oligo within {@code mismatches}
+     * substitutions, at most {@link #MAX_BAIT_SUBSTITUTIONS}, and no indel ({@code hdist} without {@code edist}): the
+     * sites the first bait's 2 edits miss at {@code -m 3}, such as 3 substitutions in the middle of a primer. Its reads
+     * are added to the first bait's.
+     */
+    Command substitutionBait(Path primerDatabase, List<Path> reads, Path output, int mismatches) {
+        return withOption(bbduk(primerDatabase, reads, output, mismatches), "k=" + SUBSTITUTION_BAIT_K);
+    }
 
     /**
      * First pass: keep reads sharing a k-mer with any primer within {@code mismatches} edits, at most
      * {@link #MAX_BAIT_INDELS} ({@code edist}): substitutions, insertions and one deletion, the most BBDuk
      * matches in a k-mer (it has one base past the k-mer to shift in). {@code -m} counts all three, so that
      * what a hit on an assembly would accept also baits reads. BBDuk ignores the {@code hdist} also given
-     * when {@code edist} is set: at {@code -m 3} a k-mer still matches within 2 edits, not 3 substitutions.
+     * when {@code edist} is set: at {@code -m 3} a k-mer still matches within 2 edits, not 3 substitutions,
+     * which {@link #substitutionBait} matches.
      */
     Command firstBait(Path primerDatabase, List<Path> reads, Path output, int kLength, int mismatches) {
         Command command = bbduk(primerDatabase, reads, output, mismatches);

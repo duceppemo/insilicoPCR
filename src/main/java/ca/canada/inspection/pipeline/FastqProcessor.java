@@ -52,8 +52,11 @@ public final class FastqProcessor {
         monitor.info("FastQ files identified, conducting baiting and assembly");
         int shortest = context.primers().sequences().values().stream().mapToInt(String::length).min()
                 .orElseThrow(() -> new PipelineException("Primer dictionary is empty"));
-        int kLength = BbtoolsCommands.firstBaitK(shortest, context.config().ampliconOptions().maxFivePrimeTruncation(),
-                context.config().mismatches());
+        int longest = context.primers().sequences().values().stream().mapToInt(String::length).max().orElseThrow();
+        int mismatches = context.config().mismatches();
+        FirstBait bait = new FirstBait(BbtoolsCommands.firstBaitK(shortest,
+                context.config().ampliconOptions().maxFivePrimeTruncation(), mismatches),
+                BbtoolsCommands.baitsSubstitutionsApart(mismatches, longest));
         int budget = context.childJavaMemoryBudgetGiB();
         int threads = context.config().threads();
         ChildJavaMemory.Share alone = ChildJavaMemory.share(budget, threads, 1);
@@ -86,7 +89,7 @@ public final class FastqProcessor {
             ParallelStageRunner.run(step.stageName, stepSamples, share.atOnce(), monitor, sample -> {
                 boolean extra = spare.tryAcquire();
                 try {
-                    runStep(step, context, extra ? withSpare : commands, sample, kLength);
+                    runStep(step, context, extra ? withSpare : commands, sample, bait);
                 } catch (ProgramFailedException e) {
                     if (refusedTheReads(step == ReadStep.FIRST_BAIT, e)) {
                         refused.put(sample.getName(), e);
@@ -128,7 +131,7 @@ public final class FastqProcessor {
             for (ReadStep step : ReadStep.values()) {
                 if (step.compareTo(from) >= 0 && step.appliesTo(sample)) {
                     try {
-                        runStep(step, context, whole, sample, kLength);
+                        runStep(step, context, whole, sample, bait);
                     } catch (ProgramFailedException e) {
                         throw outOfMemoryOrAsIs(e, sample, alone);
                     }
@@ -219,10 +222,17 @@ public final class FastqProcessor {
                 share.memoryGiB()), e);
     }
 
+    /**
+     * How the first bait baits: its k, and whether it baits a second time for substitutions alone
+     * ({@link BbtoolsCommands#substitutionBait}).
+     */
+    private record FirstBait(int k, boolean substitutionsApart) {
+    }
+
     private static void runStep(ReadStep step, PipelineContext context, BbtoolsCommands commands, Sample sample,
-                                int kLength) {
+                                FirstBait bait) {
         switch (step) {
-            case FIRST_BAIT -> bait(context, commands, sample, kLength);
+            case FIRST_BAIT -> bait(context, commands, sample, bait);
             case SECOND_BAIT -> secondBait(context, commands, sample, commands.threads());
             case ASSEMBLY -> assemble(context, commands, sample);
             case MERGE -> merge(context, commands, sample);
@@ -240,16 +250,43 @@ public final class FastqProcessor {
         return PipelineContext.fastqSamples(context.samples());
     }
 
-    private static void bait(PipelineContext context, BbtoolsCommands commands, Sample sample, int kLength) {
+    private static void bait(PipelineContext context, BbtoolsCommands commands, Sample sample, FirstBait bait) {
         context.directories().createSampleDirectory(sample.getName());
         SampleFiles files = context.directories().sample(sample.getName());
         run(context, commands.firstBait(
                 context.directories().primerDatabase(),
                 sample.files(),
                 files.targetMatches(),
-                kLength,
+                bait.k(),
                 context.config().mismatches()
         ));
+        if (bait.substitutionsApart()) {
+            baitSubstitutions(context, commands, sample, files);
+        }
+    }
+
+    /**
+     * At {@code -m 3}: the reads within 3 substitutions of an oligo that the first bait's 2 edits missed, added to
+     * its reads, each pair once. A pass over the reads like the first, that kept 0.4% of SRR642185's reads, where
+     * the first bait kept 18.6% at {@code -m 3}: the run took the same time.
+     */
+    private static void baitSubstitutions(PipelineContext context, BbtoolsCommands commands, Sample sample,
+                                          SampleFiles files) {
+        run(context, commands.substitutionBait(
+                context.directories().primerDatabase(),
+                sample.files(),
+                files.substitutionMatches(),
+                context.config().mismatches()
+        ));
+        int added = ReadPool.of(files.targetMatches()).addNew(files.substitutionMatches(), files.targetMatches());
+        try {
+            Files.deleteIfExists(files.substitutionMatches());
+        } catch (IOException e) {
+            throw new PipelineException("Could not remove " + files.substitutionMatches(), e);
+        }
+        context.monitor().info("Sample " + sample.getName() + ": " + added + " read(s) within "
+                + Math.min(context.config().mismatches(), BbtoolsCommands.MAX_BAIT_SUBSTITUTIONS)
+                + " substitutions of an oligo added to the first bait's");
     }
 
     /**

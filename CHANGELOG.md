@@ -1,5 +1,25 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- FASTQ mode at `-m 3` also baits the reads within 3 substitutions of an oligo
+  of 19 bases or more (a second BBDuk pass: 19-base k-mers, `hdist=3`, no
+  indel), whose reads are added to the first bait's. The first bait matches 2
+  edits at most: a site with 3 substitutions in each of its k-mers baited no
+  read, and its product was missed though an assembly gives it. Now 3
+  substitutions bait every site of a 20- to 25-base primer (51% to 97%
+  before). On SRR642185 at `-m 3` the pass added 0.4% of the reads, the run
+  took the same time and the reports were the same. Below `-m 3` nothing
+  changes. See Limitations, "Known gaps".
+
+### Documentation
+
+- Installation with conda: `conda create -n insilicopcr -c conda-forge -c
+  bioconda insilicopcr`, now that the Bioconda package exists (README,
+  Installation).
+
 ## 1.0.2 (2026-11-19)
 
 ### Changed

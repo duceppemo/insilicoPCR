@@ -1,8 +1,8 @@
 # Installation
 
-insilicoPCR is distributed as portable ZIP archives for Linux and Windows.
+insilicoPCR is distributed as portable ZIP archives for Linux and Windows, and as a [Bioconda](https://bioconda.github.io/) package for Linux.
 
-The portable releases are the recommended installation method for end users because they include the application and its required runtime tools.
+The portable releases are the recommended installation method for end users because they include the application and its required runtime tools. The Bioconda package suits those who manage their tools with conda (see [With conda](#with-conda-bioconda)).
 
 ## System requirements
 
@@ -86,6 +86,19 @@ The launcher passes its arguments to insilicoPCR: without any, it opens the wind
 ```
 
 See [Command-line Interface](Command-line-Interface) for every option.
+
+## With conda (Bioconda)
+
+On Linux x64, conda installs insilicoPCR with Java, BLAST+ and BBTools from the bioconda and conda-forge channels:
+
+```bash
+conda create -n insilicopcr -c conda-forge -c bioconda insilicopcr
+conda activate insilicopcr
+insilicoPCR --version
+insilicoPCR -i assemblies/ -p primers.fasta -o results/
+```
+
+`insilicoPCR` (or `insilicopcr`) takes the same options as the launcher of a ZIP and, without any, opens the window. The package is made from the ZIP without a runtime (below); Bioconda's bot updates it after each release, so it can be a release behind for a few days. conda chooses the newest Java (25 or later), BLAST+ (2.17.0 or later) and BBTools (40.x) the channels have; `QAlog.txt` names those a run used. If conda says the package is not available, its copy of the channel index may be older than the package: `conda clean --index-cache`, then create the environment again.
 
 ## Without the bundled programs (package managers, containers)
 

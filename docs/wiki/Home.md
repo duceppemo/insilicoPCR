@@ -56,7 +56,7 @@ Reported amplicons are restricted to primer pairs that could plausibly amplify i
 
 Every such product is reported, whatever its size, as a real PCR would amplify it. Results come as a TSV table and as a self-contained [HTML report](Reports#html-report) whose sample-by-assay grid shows which samples are positive for which assay. When the primer file [declares the product size](Primer-FASTA-Format#declaring-product-sizes-optional) an assay is designed to give, products of that size are told apart from products of any other size.
 
-Portable releases include Java, JavaFX, BBMap, and NCBI BLAST+, so end users do not need to install these tools separately.
+Portable releases include Java, JavaFX, BBMap, and NCBI BLAST+, so end users do not need to install these tools separately. On Linux, conda installs insilicoPCR with them from Bioconda (see [Installation](Installation#with-conda-bioconda)).
 
 ## Works with primer-finder
 

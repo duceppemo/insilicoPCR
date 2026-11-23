@@ -26,6 +26,14 @@ public record SampleFiles(Path directory, String name) {
         return directory.resolve(name + "_targetMatches.fastq.gz");
     }
 
+    /**
+     * The reads the substitution bait keeps at {@code -m 3} and more ({@link BbtoolsCommands#substitutionBait}): those
+     * not in {@link #targetMatches} yet are added to it, then this file is removed.
+     */
+    Path substitutionMatches() {
+        return directory.resolve(name + "_substitutionMatches.fastq.gz");
+    }
+
     /** The reads of the first baiting that hold an accepted primer site, with their mates: the second baiting's start. */
     Path baitAnchors() {
         return directory.resolve(name + "_baitAnchors.fastq.gz");
@@ -153,7 +161,7 @@ public record SampleFiles(Path directory, String name) {
         if (!fastq) {
             return List.of(blastReport());
         }
-        return List.of(blastReport(), targetMatches(), baitAnchors(), baitAnchorsTrimmed(), baitAnchorsQuery(),
+        return List.of(blastReport(), targetMatches(), substitutionMatches(), baitAnchors(), baitAnchorsTrimmed(), baitAnchorsQuery(),
                 baitAnchorsHits(),
                 doubleTargetMatches(), assembly(), mergedReads(),
                 unmergedReads(), baitedReadsFasta(), baitedReadsHits(), extensionSeeds(), extendedReads(),

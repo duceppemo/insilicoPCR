@@ -39,6 +39,23 @@ class BbtoolsCommandsTest {
     }
 
     @Test
+    void theSubstitutionBaitMatchesThreeSubstitutionsIn19MersWithoutIndels() {
+        // BBDuk ignores hdist when edist is set: the first bait matches 2 edits at -m 3, this one 3 substitutions.
+        List<String> command = commands.substitutionBait(Path.of("primers.fasta"), paired, Path.of("sub.fq.gz"), 3)
+                .arguments();
+        assertTrue(command.contains("jgi.BBDuk"));
+        assertTrue(command.contains("hdist=3") && command.contains("k=19"), command.toString());
+        assertTrue(command.stream().noneMatch(argument -> argument.startsWith("edist=")), command.toString());
+        assertTrue(command.contains("outm=" + abs("sub.fq.gz")));
+        assertTrue(commands.substitutionBait(Path.of("primers.fasta"), paired, Path.of("sub.fq.gz"), 8).arguments()
+                .contains("hdist=3"), "BBDuk refuses more than 3");
+
+        assertFalse(BbtoolsCommands.baitsSubstitutionsApart(2, 25), "2 edits: the first bait matches them");
+        assertTrue(BbtoolsCommands.baitsSubstitutionsApart(3, 19));
+        assertFalse(BbtoolsCommands.baitsSubstitutionsApart(3, 18), "no oligo as long as k: no k-mer to match");
+    }
+
+    @Test
     void firstBaitUsesPrimerDatabaseShortestPrimerAndMismatchBudget() {
         List<String> command = commands.firstBait(Path.of("primers.fasta"), paired, Path.of("out.fq.gz"), 17, 2).arguments();
 

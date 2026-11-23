@@ -47,6 +47,10 @@ class FastqStepsTest {
                     case "BBDuk" -> {
                         if (command.contains("ref=adapters")) {
                             Files.copy(path(directory, command, "in="), path(directory, command, "out="));
+                        } else if (command.stream().noneMatch(argument -> argument.startsWith("edist="))
+                                && command.contains("k=19")) {
+                            // The substitution bait: one pair of the first bait's, and one of its own.
+                            writeFastq(path(directory, command, "outm="), "p", 1, "q", 1);
                         } else {
                             writeFastq(path(directory, command, "outm="), 2);
                         }
@@ -83,11 +87,18 @@ class FastqStepsTest {
 
     /** Pairs of {@link #READ}, mates one after the other, gzipped (BBTools writes what the name says). */
     private static void writeFastq(Path file, int pairs) throws IOException {
+        writeFastq(file, "p", pairs);
+    }
+
+    /** {@code pairs} pairs named {@code <prefix>0}, {@code <prefix>1}... for each prefix and count given. */
+    private static void writeFastq(Path file, Object... prefixesAndPairs) throws IOException {
         StringBuilder reads = new StringBuilder();
-        for (int pair = 0; pair < pairs; pair++) {
-            for (int mate = 1; mate <= 2; mate++) {
-                reads.append("@p").append(pair).append('/').append(mate).append('\n').append(READ).append("\n+\n")
-                        .append("I".repeat(READ.length())).append('\n');
+        for (int i = 0; i < prefixesAndPairs.length; i += 2) {
+            for (int pair = 0; pair < (int) prefixesAndPairs[i + 1]; pair++) {
+                for (int mate = 1; mate <= 2; mate++) {
+                    reads.append('@').append(prefixesAndPairs[i]).append(pair).append('/').append(mate).append('\n')
+                            .append(READ).append("\n+\n").append("I".repeat(READ.length())).append('\n');
+                }
             }
         }
         try (OutputStream out = new GZIPOutputStream(Files.newOutputStream(file))) {
@@ -96,6 +107,10 @@ class FastqStepsTest {
     }
 
     private PipelineContext context(Programs programs) throws IOException {
+        return context(programs, 0);
+    }
+
+    private PipelineContext context(Programs programs, int mismatches) throws IOException {
         Path input = Files.createDirectories(dir.resolve("reads"));
         writeFastq(input.resolve("s_R1.fastq.gz"), 1);
         writeFastq(input.resolve("s_R2.fastq.gz"), 1);
@@ -107,7 +122,8 @@ class FastqStepsTest {
         Path blast = Files.createDirectories(runtime.resolve("blast"));
         AppPaths.RuntimeLayout layout = new AppPaths.RuntimeLayout(runtime, bbmap, blast, Path.of("java"));
         Path output = dir.resolve("out");
-        PipelineConfig config = PipelineConfig.builder(input, output, primerFile).threads(1).build();
+        PipelineConfig config = PipelineConfig.builder(input, output, primerFile).threads(1)
+                .ampliconOptions(ca.canada.inspection.pcr.AmpliconOptions.withMismatches(mismatches)).build();
         PipelineDirectories directories = PipelineDirectories.create(output);
         PrimerPanel primers = PrimerService.loadAndPrepare(config, directories, warning -> { });
         return new PipelineContext(config, new RuntimeDependencies(layout), directories,
@@ -134,6 +150,35 @@ class FastqStepsTest {
         assertEquals(8, countLines(files.baitAnchors()), "one pair, four lines a read");
         assertTrue(programs.messages.contains("Sample s: 1 first-bait read(s) hold an accepted primer site"),
                 programs.messages.toString());
+    }
+
+    @Test
+    void atThreeMismatchesTheReadsAreBaitedForSubstitutionsTooEachPairOnce() throws IOException {
+        Programs programs = new Programs();
+        PipelineContext context = context(programs, 3);
+
+        FastqProcessor.process(context);
+
+        assertEquals(List.of("BBDuk", "BBDuk", "blastn", "BBDuk", "BBDuk", "Tadpole", "BBMerge"), programs.run);
+        List<String> first = programs.commands.get(0);
+        List<String> substitutions = programs.commands.get(1);
+        assertTrue(first.contains("edist=2"), first.toString());
+        assertTrue(substitutions.contains("hdist=3") && substitutions.contains("k=19")
+                && substitutions.stream().noneMatch(argument -> argument.startsWith("edist=")), substitutions.toString());
+        SampleFiles files = context.directories().sample("s");
+        // p0 and p1 from the first bait, q0 added; p0 not twice.
+        assertEquals(3 * 8, countLines(files.targetMatches()));
+        assertTrue(Files.notExists(files.substitutionMatches()));
+        assertTrue(programs.messages.contains("Sample s: 2 read(s) within 3 substitutions of an oligo added to the"
+                + " first bait's"), programs.messages.toString());
+    }
+
+    @Test
+    void belowThreeMismatchesThereIsNoSubstitutionBait() throws IOException {
+        Programs programs = new Programs();
+        FastqProcessor.process(context(programs, 2));
+
+        assertEquals(List.of("BBDuk", "blastn", "BBDuk", "BBDuk", "Tadpole", "BBMerge"), programs.run);
     }
 
     private static int countLines(Path gzipped) throws IOException {

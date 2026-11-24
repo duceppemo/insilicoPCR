@@ -1,7 +1,7 @@
 {
   "title": "insilicoPCR",
   "upload_type": "software",
-  "license": "MIT",
+  "license": "GPL-3.0-or-later",
   "creators": [
     {
       "name": "Duceppe, Marc-Olivier",

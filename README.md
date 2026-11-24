@@ -129,4 +129,13 @@ Please also cite the underlying tools: NCBI BLAST+ and BBMap (BBDuk/Tadpole).
 
 ## License
 
-This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
+Copyright (C) 2026 His Majesty the King in Right of Canada, as represented by the Canadian Food Inspection
+Agency.
+
+insilicoPCR is free software: you can redistribute it and/or modify it under the terms of the GNU General
+Public License as published by the Free Software Foundation, either version 3 of the License, or (at your
+option) any later version. It is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See
+[LICENSE](LICENSE) for the full text.
+
+Releases up to 1.x were published under the MIT License, and stay under it.

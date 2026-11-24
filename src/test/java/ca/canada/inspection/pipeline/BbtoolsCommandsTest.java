@@ -25,10 +25,13 @@ class BbtoolsCommandsTest {
     void theFirstBaitsKLeavesTheTolerated5PrimeBasesOut() {
         // A primer whose 5' bases do not match baited no read with k as long as the primer, though the
         // assembly's search accepts the hit (--5p-truncation); nor could an indel be matched.
-        assertEquals(16, BbtoolsCommands.firstBaitK(20, 5, 0), "not below 16");
+        // Exact k-mers (-m 0) down to 13: a 20-base primer's 5th base, freed by --5p-truncation 5, is left out.
+        assertEquals(15, BbtoolsCommands.firstBaitK(20, 5, 0));
+        assertEquals(13, BbtoolsCommands.firstBaitK(17, 5, 0), "not below 13");
         assertEquals(19, BbtoolsCommands.firstBaitK(24, 5, 0));
         assertEquals(24, BbtoolsCommands.firstBaitK(24, 0, 0), "--5p-truncation 0: the whole primer");
-        assertEquals(14, BbtoolsCommands.firstBaitK(14, 5, 0), "a primer shorter than 16: its own length");
+        assertEquals(12, BbtoolsCommands.firstBaitK(12, 5, 0), "a primer shorter than 13: its own length");
+        assertEquals(17, BbtoolsCommands.firstBaitK(20, 5, 1), "with edits, not below 16 plus -m");
         // Each substitution allowed keeps one more base: 3 in a 16-mer baited 68 times the reads (PCN, -m 3).
         assertEquals(19, BbtoolsCommands.firstBaitK(22, 6, 3));
         // A k as long as the oligo could not match a deletion (BBDuk extends a k-mer past its end): one
@@ -36,6 +39,26 @@ class BbtoolsCommandsTest {
         assertEquals(21, BbtoolsCommands.firstBaitK(22, 6, 8));
         assertEquals(17, BbtoolsCommands.firstBaitK(18, 5, 2));
         assertEquals(18, BbtoolsCommands.firstBaitK(18, 0, 0), "no indel allowed: the whole oligo");
+    }
+
+    @Test
+    void shortOligosBaitInAPassOfTheirOwnWhenTheyWouldShortenTheOthersKmers() {
+        // The PCN panel at -m 1 --5p-truncation 8: 15- to 17-base oligos have k 14 to 16, under the floor of 17.
+        java.util.Map<String, String> panel = new java.util.LinkedHashMap<>();
+        panel.put("a-P", "A".repeat(15));
+        panel.put("a-F", "C".repeat(17));
+        panel.put("b-F", "G".repeat(18));
+        panel.put("b-R", "T".repeat(25));
+        assertEquals(List.of(new BbtoolsCommands.BaitGroup(14, List.of("a-P", "a-F")),
+                new BbtoolsCommands.BaitGroup(17, List.of("b-F", "b-R"))), BbtoolsCommands.baitGroups(panel, 8, 1));
+        // Every oligo at or above the floor: one pass, with the shortest's k, as before.
+        panel.remove("a-P");
+        panel.remove("a-F");
+        assertEquals(List.of(new BbtoolsCommands.BaitGroup(17, List.of("b-F", "b-R"))),
+                BbtoolsCommands.baitGroups(panel, 8, 1));
+        // Only short oligos: one pass too.
+        assertEquals(List.of(new BbtoolsCommands.BaitGroup(14, List.of("x-F"))),
+                BbtoolsCommands.baitGroups(java.util.Map.of("x-F", "A".repeat(15)), 8, 1));
     }
 
     @Test

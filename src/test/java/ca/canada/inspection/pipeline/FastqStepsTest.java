@@ -111,11 +111,16 @@ class FastqStepsTest {
     }
 
     private PipelineContext context(Programs programs, int mismatches) throws IOException {
+        return context(programs, mismatches, "");
+    }
+
+    /** {@code moreOligos}: FASTA records added to the primer file. */
+    private PipelineContext context(Programs programs, int mismatches, String moreOligos) throws IOException {
         Path input = Files.createDirectories(dir.resolve("reads"));
         writeFastq(input.resolve("s_R1.fastq.gz"), 1);
         writeFastq(input.resolve("s_R2.fastq.gz"), 1);
         Path primerFile = Files.writeString(dir.resolve("primers.fasta"), ">a-F\n" + FORWARD + "\n>a-R\n"
-                + "TGACTGCAATGCCTAGGATC\n");
+                + "TGACTGCAATGCCTAGGATC\n" + moreOligos);
         Path runtime = Files.createDirectories(dir.resolve("runtime"));
         Path bbmap = Files.createDirectories(runtime.resolve("bbmap"));
         Files.writeString(bbmap.resolve(AppPaths.BBTOOLS_JAR), "");
@@ -168,9 +173,35 @@ class FastqStepsTest {
         SampleFiles files = context.directories().sample("s");
         // p0 and p1 from the first bait, q0 added; p0 not twice.
         assertEquals(3 * 8, countLines(files.targetMatches()));
-        assertTrue(Files.notExists(files.substitutionMatches()));
+        assertTrue(Files.notExists(files.moreMatches()));
         assertTrue(programs.messages.contains("Sample s: 2 read(s) within 3 substitutions of an oligo added to the"
                 + " first bait's"), programs.messages.toString());
+    }
+
+    @Test
+    void aShortProbeBaitsInAPassOfItsOwnAndThePrimersKeepTheirLongerKmers() throws IOException {
+        Programs programs = new Programs();
+        // 20-base primers have k=17 at -m 1; the 15-base probe 14, which would have been every oligo's.
+        PipelineContext context = context(programs, 1, ">a-P\nCCTAGGCATTGCAGT\n");
+
+        FastqProcessor.process(context);
+
+        assertEquals(List.of("BBDuk", "BBDuk", "blastn", "BBDuk", "BBDuk", "Tadpole", "BBMerge"), programs.run);
+        Path database = context.directories().primerDatabase();
+        List<String> shortPass = programs.commands.get(0);
+        List<String> longPass = programs.commands.get(1);
+        assertTrue(shortPass.contains("k=14") && path(null, shortPass, "ref=").endsWith("primer_tmp.fasta.k14"),
+                shortPass.toString());
+        assertTrue(longPass.contains("k=17") && path(null, longPass, "ref=").endsWith("primer_tmp.fasta.k17"),
+                longPass.toString());
+        assertEquals(">a-P\nCCTAGGCATTGCAGT\n", Files.readString(database.resolveSibling("primer_tmp.fasta.k14")));
+        assertEquals(List.of(">a-F", ">a-R"), Files.readAllLines(database.resolveSibling("primer_tmp.fasta.k17")).stream()
+                .filter(line -> line.startsWith(">")).toList());
+        SampleFiles files = context.directories().sample("s");
+        assertEquals(2 * 8, countLines(files.targetMatches()), "the same two pairs from both passes, once each");
+        assertTrue(Files.notExists(files.moreMatches()));
+        assertTrue(programs.messages.contains("First baiting in 2 passes, so that short oligos do not shorten the k-mers"
+                + " of the others: oligos of 15 bases with k=14; oligos of 20 bases with k=17"), programs.messages.toString());
     }
 
     @Test

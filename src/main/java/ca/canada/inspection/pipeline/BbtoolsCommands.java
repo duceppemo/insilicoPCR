@@ -3,6 +3,7 @@ package ca.canada.inspection.pipeline;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -110,14 +111,27 @@ record BbtoolsCommands(String javaCommand, Path bbtoolsClassPath, int childMemor
         }
     }
 
-    /** The shortest k the first bait uses: below it, k-mers of a primer match unrelated reads too often. */
+    /** The shortest k the first bait uses when it allows edits: below it, k-mers of a primer match unrelated reads too often. */
     static final int MIN_BAIT_K = 16;
 
     /**
-     * The first bait's k: the shortest oligo's length less the 5' bases a hit may leave unaligned
-     * ({@code --5p-truncation}), so that a primer whose 5' bases do not match the reads still shares a
-     * k-mer with them, as a hit on an assembly would still be accepted; not below {@link #MIN_BAIT_K} plus
-     * the substitutions allowed ({@code mismatches}), nor above the shortest oligo. A k as long as the
+     * The shortest k the first bait uses at {@code -m 0}, exact k-mers. 13-mers of the oligos baited 0.34% of SRR642185's
+     * reads and 2.2% of a potato cyst nematode sample's (16-mers: 0.03%, 15-mers: 0.26%), 12-mers 4.3% and 27%. Exact
+     * 16-mers left a 20-base primer's 5th base in every k-mer: a mismatch there, which {@code --5p-truncation 5} frees on
+     * an assembly, baited no read.
+     */
+    static final int MIN_EXACT_BAIT_K = 13;
+
+    /** The shortest k the first bait uses at {@code -m mismatches}: {@link #MIN_EXACT_BAIT_K}, or 16 plus one a mismatch. */
+    static int baitKFloor(int mismatches) {
+        return mismatches == 0 ? MIN_EXACT_BAIT_K : MIN_BAIT_K + mismatches;
+    }
+
+    /**
+     * The first bait's k for oligos of {@code shortestOligo} bases: that length less the 5' bases a hit may leave
+     * unaligned ({@code --5p-truncation}), so that a primer whose 5' bases do not match the reads still shares a
+     * k-mer with them, as a hit on an assembly would still be accepted; not below {@link #baitKFloor} (16 plus
+     * the substitutions allowed, {@code mismatches}, or 13 for exact k-mers), nor above the oligo. A k as long as the
      * primer could not match across an indel either: the read's k-mer then spans one base more of the
      * template than the primer has. Each substitution allowed keeps one more base: 3 in a 16-mer matched
      * random reads, which baited 68 times the reads of a run at -m 3 and ran 3 times as long. When indels
@@ -126,7 +140,48 @@ record BbtoolsCommands(String javaCommand, Path bbtoolsClassPath, int childMemor
      */
     static int firstBaitK(int shortestOligo, int fivePrimeTruncation, int mismatches) {
         int longest = mismatches > 0 ? shortestOligo - 1 : shortestOligo;
-        return Math.min(longest, Math.max(MIN_BAIT_K + mismatches, shortestOligo - fivePrimeTruncation));
+        return Math.min(longest, Math.max(baitKFloor(mismatches), shortestOligo - fivePrimeTruncation));
+    }
+
+    /**
+     * A pass of the first bait: the oligos it baits with, and its k.
+     *
+     * @param k      the k-mer length
+     * @param oligos the oligos' names, as in the primer database
+     */
+    record BaitGroup(int k, List<String> oligos) {
+    }
+
+    /**
+     * The passes of the first bait. One k serves every oligo, the {@link #firstBaitK} of the shortest, unless oligos too
+     * short for {@link #baitKFloor} (their k is their own length, or one base less) would bring it down for the longer
+     * ones: then those short oligos bait in a pass of their own. A potato cyst nematode panel with 15-base probes
+     * baited 59% of a sample's reads at {@code -m 1} with k=14 for every oligo; its oligos of 15 to 17 bases at 14 and
+     * the others at 17 baited 2.9% and 0.9%, each pass 35 s on 30 million reads.
+     *
+     * @param oligos the oligos by name, as in the primer database
+     * @return one group, of every oligo, or two: the short oligos first
+     */
+    static List<BaitGroup> baitGroups(Map<String, String> oligos, int fivePrimeTruncation, int mismatches) {
+        int floor = baitKFloor(mismatches);
+        List<String> shorter = new ArrayList<>();
+        List<String> longer = new ArrayList<>();
+        int shorterK = Integer.MAX_VALUE;
+        int longerK = Integer.MAX_VALUE;
+        for (Map.Entry<String, String> oligo : oligos.entrySet()) {
+            int k = firstBaitK(oligo.getValue().length(), fivePrimeTruncation, mismatches);
+            if (k < floor) {
+                shorter.add(oligo.getKey());
+                shorterK = Math.min(shorterK, k);
+            } else {
+                longer.add(oligo.getKey());
+                longerK = Math.min(longerK, k);
+            }
+        }
+        if (shorter.isEmpty() || longer.isEmpty()) {
+            return List.of(new BaitGroup(Math.min(shorterK, longerK), List.copyOf(oligos.keySet())));
+        }
+        return List.of(new BaitGroup(shorterK, List.copyOf(shorter)), new BaitGroup(longerK, List.copyOf(longer)));
     }
 
     /** The most insertions and deletions BBDuk matches k-mers within ({@code edist}): it refuses more. */

@@ -7,6 +7,8 @@ import ca.canada.inspection.util.InputCheck;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.IntSummaryStatistics;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -50,13 +52,7 @@ public final class FastqProcessor {
 
         RunMonitor monitor = context.monitor();
         monitor.info("FastQ files identified, conducting baiting and assembly");
-        int shortest = context.primers().sequences().values().stream().mapToInt(String::length).min()
-                .orElseThrow(() -> new PipelineException("Primer dictionary is empty"));
-        int longest = context.primers().sequences().values().stream().mapToInt(String::length).max().orElseThrow();
-        int mismatches = context.config().mismatches();
-        FirstBait bait = new FirstBait(BbtoolsCommands.firstBaitK(shortest,
-                context.config().ampliconOptions().maxFivePrimeTruncation(), mismatches),
-                BbtoolsCommands.baitsSubstitutionsApart(mismatches, longest));
+        FirstBait bait = firstBait(context);
         int budget = context.childJavaMemoryBudgetGiB();
         int threads = context.config().threads();
         ChildJavaMemory.Share alone = ChildJavaMemory.share(budget, threads, 1);
@@ -223,10 +219,56 @@ public final class FastqProcessor {
     }
 
     /**
-     * How the first bait baits: its k, and whether it baits a second time for substitutions alone
-     * ({@link BbtoolsCommands#substitutionBait}).
+     * How the first bait baits: its passes, each a reference of oligos and a k ({@link BbtoolsCommands#baitGroups}), and
+     * whether it baits again for substitutions alone ({@link BbtoolsCommands#substitutionBait}).
      */
-    private record FirstBait(int k, boolean substitutionsApart) {
+    private record FirstBait(List<Pass> passes, boolean substitutionsApart) {
+    }
+
+    /** A pass of the first bait: the oligos' FASTA file, and the k. */
+    private record Pass(Path reference, int k) {
+    }
+
+    /**
+     * The first bait of the run: one pass with the primer database when one k serves every oligo, else a pass per
+     * group, each with its oligos written beside the database ({@code primer_tmp.fasta.k<k>}).
+     */
+    private static FirstBait firstBait(PipelineContext context) {
+        Map<String, String> oligos = context.primers().sequences();
+        if (oligos.isEmpty()) {
+            throw new PipelineException("Primer dictionary is empty");
+        }
+        int mismatches = context.config().mismatches();
+        int longest = oligos.values().stream().mapToInt(String::length).max().orElseThrow();
+        boolean substitutions = BbtoolsCommands.baitsSubstitutionsApart(mismatches, longest);
+        List<BbtoolsCommands.BaitGroup> groups = BbtoolsCommands.baitGroups(oligos,
+                context.config().ampliconOptions().maxFivePrimeTruncation(), mismatches);
+        Path database = context.directories().primerDatabase();
+        if (groups.size() == 1) {
+            return new FirstBait(List.of(new Pass(database, groups.getFirst().k())), substitutions);
+        }
+        List<Pass> passes = new ArrayList<>();
+        List<String> described = new ArrayList<>();
+        for (BbtoolsCommands.BaitGroup group : groups) {
+            Path reference = database.resolveSibling(database.getFileName() + ".k" + group.k());
+            StringBuilder fasta = new StringBuilder();
+            IntSummaryStatistics lengths = new IntSummaryStatistics();
+            for (String name : group.oligos()) {
+                fasta.append('>').append(name).append('\n').append(oligos.get(name)).append('\n');
+                lengths.accept(oligos.get(name).length());
+            }
+            try {
+                Files.writeString(reference, fasta.toString());
+            } catch (IOException e) {
+                throw new PipelineException("Could not write the oligos of a bait pass: " + reference, e);
+            }
+            passes.add(new Pass(reference, group.k()));
+            described.add("oligos of " + (lengths.getMin() == lengths.getMax() ? lengths.getMin() + " bases"
+                    : lengths.getMin() + " to " + lengths.getMax() + " bases") + " with k=" + group.k());
+        }
+        context.monitor().info("First baiting in " + passes.size() + " passes, so that short oligos do not shorten the"
+                + " k-mers of the others: " + String.join("; ", described));
+        return new FirstBait(List.copyOf(passes), substitutions);
     }
 
     private static void runStep(ReadStep step, PipelineContext context, BbtoolsCommands commands, Sample sample,
@@ -253,16 +295,28 @@ public final class FastqProcessor {
     private static void bait(PipelineContext context, BbtoolsCommands commands, Sample sample, FirstBait bait) {
         context.directories().createSampleDirectory(sample.getName());
         SampleFiles files = context.directories().sample(sample.getName());
-        run(context, commands.firstBait(
-                context.directories().primerDatabase(),
-                sample.files(),
-                files.targetMatches(),
-                bait.k(),
-                context.config().mismatches()
-        ));
+        Pass first = bait.passes().getFirst();
+        run(context, commands.firstBait(first.reference(), sample.files(), files.targetMatches(), first.k(),
+                context.config().mismatches()));
+        for (Pass more : bait.passes().subList(1, bait.passes().size())) {
+            run(context, commands.firstBait(more.reference(), sample.files(), files.moreMatches(), more.k(),
+                    context.config().mismatches()));
+            addMore(files);
+        }
         if (bait.substitutionsApart()) {
             baitSubstitutions(context, commands, sample, files);
         }
+    }
+
+    /** Adds the reads of {@link SampleFiles#moreMatches} not in the first bait's yet, each pair once; removes the file. */
+    private static int addMore(SampleFiles files) {
+        int added = ReadPool.of(files.targetMatches()).addNew(files.moreMatches(), files.targetMatches());
+        try {
+            Files.deleteIfExists(files.moreMatches());
+        } catch (IOException e) {
+            throw new PipelineException("Could not remove " + files.moreMatches(), e);
+        }
+        return added;
     }
 
     /**
@@ -275,15 +329,10 @@ public final class FastqProcessor {
         run(context, commands.substitutionBait(
                 context.directories().primerDatabase(),
                 sample.files(),
-                files.substitutionMatches(),
+                files.moreMatches(),
                 context.config().mismatches()
         ));
-        int added = ReadPool.of(files.targetMatches()).addNew(files.substitutionMatches(), files.targetMatches());
-        try {
-            Files.deleteIfExists(files.substitutionMatches());
-        } catch (IOException e) {
-            throw new PipelineException("Could not remove " + files.substitutionMatches(), e);
-        }
+        int added = addMore(files);
         context.monitor().info("Sample " + sample.getName() + ": " + added + " read(s) within "
                 + Math.min(context.config().mismatches(), BbtoolsCommands.MAX_BAIT_SUBSTITUTIONS)
                 + " substitutions of an oligo added to the first bait's");

@@ -59,12 +59,23 @@ public final class Products {
      */
     public static Map<String, Set<Integer>> sizes(Sample sample, PrimerPanel primers, AmpliconOptions options) {
         Map<String, Set<Integer>> sizes = new TreeMap<>();
+        designed(sample, primers, options).forEach((assay, rows) ->
+                rows.forEach(row -> sizes.computeIfAbsent(assay, ignored -> new TreeSet<>()).add(row.size())));
+        return sizes;
+    }
+
+    /**
+     * The rows of the products {@code sample}'s assays make as designed, per assay, as {@link #sizes} counts
+     * them: for what each primer site shows besides the size.
+     */
+    public static Map<String, List<ReportRow>> designed(Sample sample, PrimerPanel primers, AmpliconOptions options) {
+        Map<String, List<ReportRow>> designed = new TreeMap<>();
         for (ReportRow row : of(sample, primers, options)) {
             if (row.pairing() == ReportRow.Pairing.DESIGNED) {
-                sizes.computeIfAbsent(row.assay(), ignored -> new TreeSet<>()).add(row.size());
+                designed.computeIfAbsent(row.assay(), ignored -> new ArrayList<>()).add(row);
             }
         }
-        return sizes;
+        return designed;
     }
 
     /**

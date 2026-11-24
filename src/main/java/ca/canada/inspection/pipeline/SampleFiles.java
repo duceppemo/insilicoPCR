@@ -27,11 +27,12 @@ public record SampleFiles(Path directory, String name) {
     }
 
     /**
-     * The reads the substitution bait keeps at {@code -m 3} and more ({@link BbtoolsCommands#substitutionBait}): those
-     * not in {@link #targetMatches} yet are added to it, then this file is removed.
+     * The reads of a further pass of the first bait: the oligos of another length ({@link BbtoolsCommands#baitGroups}),
+     * or the substitution bait at {@code -m 3} and more ({@link BbtoolsCommands#substitutionBait}). Those not in
+     * {@link #targetMatches} yet are added to it, then this file is removed.
      */
-    Path substitutionMatches() {
-        return directory.resolve(name + "_substitutionMatches.fastq.gz");
+    Path moreMatches() {
+        return directory.resolve(name + "_moreMatches.fastq.gz");
     }
 
     /** The reads of the first baiting that hold an accepted primer site, with their mates: the second baiting's start. */
@@ -161,7 +162,7 @@ public record SampleFiles(Path directory, String name) {
         if (!fastq) {
             return List.of(blastReport());
         }
-        return List.of(blastReport(), targetMatches(), substitutionMatches(), baitAnchors(), baitAnchorsTrimmed(), baitAnchorsQuery(),
+        return List.of(blastReport(), targetMatches(), moreMatches(), baitAnchors(), baitAnchorsTrimmed(), baitAnchorsQuery(),
                 baitAnchorsHits(),
                 doubleTargetMatches(), assembly(), mergedReads(),
                 unmergedReads(), baitedReadsFasta(), baitedReadsHits(), extensionSeeds(), extendedReads(),

@@ -66,8 +66,51 @@ public final class ReadLevelCaller {
     }
 
     /**
+     * The read-level products to report next to the assembly's own rows: those with enough support that
+     * the assembly does not report with primer sites that pair as well. A contig can hold a product with
+     * primer bases past its ends, or a mismatch the reads do not show, which {@code -m} and
+     * {@code --5p-truncation} let through: the reads' product, whose primers pair better, is then reported
+     * too, rather than hidden behind the contig's.
+     *
+     * @param products  an assay's products seen in reads
+     * @param assembled the assay's products the assembly reports as designed; {@code null} or empty when
+     *                  it reports none
+     */
+    public static List<ReadCall> missingFromAssembly(List<ReadCall> products, List<ReportRow> assembled) {
+        return products.stream()
+                .filter(ReadCall::isReportable)
+                .filter(product -> assembledAsWell(product, assembled).isEmpty())
+                .toList();
+    }
+
+    /** The assembly's rows of {@code product}'s size whose primer sites pair at least as well as the reads'. */
+    private static List<ReportRow> assembledAsWell(ReadCall product, List<ReportRow> assembled) {
+        if (assembled == null) {
+            return List.of();
+        }
+        int unpaired = unpairedPrimerBases(product.row());
+        return assembled.stream()
+                .filter(row -> product.matches(row.size()) && unpairedPrimerBases(row) <= unpaired)
+                .toList();
+    }
+
+    /** Whether the assembly reports {@code product}'s size, whatever its primer sites. */
+    static boolean assembledAtItsSize(ReadCall product, List<ReportRow> assembled) {
+        return assembled != null && assembled.stream().anyMatch(row -> product.matches(row.size()));
+    }
+
+    /**
+     * Primer bases of a product that do not pair with its template: the mismatches {@code -m} counts and the
+     * 5' bases within {@code --5p-truncation} that do not pair (those past a contig or read end included).
+     */
+    static int unpairedPrimerBases(ReportRow row) {
+        return row.forwardMismatches() + row.forwardUnpaired() + row.reverseMismatches() + row.reverseUnpaired();
+    }
+
+    /**
      * The report rows of {@code sample}'s products that its reads hold and its mini-assembly
-     * does not report, by assay. A product the assembly reports is not repeated, but an assay
+     * does not report, by assay. A product the assembly reports is not repeated, unless its primer sites
+     * pair less well than the reads' ({@link #missingFromAssembly(List, List)}), and an assay
      * the assembly reports at another size only (both primers landing elsewhere) still gets
      * its read-level product.
      *
@@ -75,11 +118,11 @@ public final class ReadLevelCaller {
      */
     public static List<ReportRow> reportRows(Sample sample, PrimerPanel primers, AmpliconOptions options,
                                              ReadEvidence reads) {
-        Map<String, Set<Integer>> assembled = Products.sizes(sample, primers, options);
+        Map<String, List<ReportRow>> assembled = Products.designed(sample, primers, options);
         List<ReportRow> rows = new ArrayList<>();
         new TreeMap<>(reads.calls()).forEach((assay, products) ->
                 missingFromAssembly(products, assembled.get(assay)).stream()
-                        .map(ReadLevelCaller::reportRow)
+                        .map(product -> reportRow(product, assembledAtItsSize(product, assembled.get(assay))))
                         .forEach(rows::add));
         return rows;
     }
@@ -514,10 +557,22 @@ public final class ReadLevelCaller {
      * description saying where the call comes from.
      */
     public static ReportRow reportRow(ReadCall call) {
+        return reportRow(call, false);
+    }
+
+    /**
+     * As {@link #reportRow(ReadCall)}.
+     *
+     * @param assembledLessWell whether the mini-assembly reports the product, with primer sites that pair
+     *                          less well than the reads'
+     */
+    static ReportRow reportRow(ReadCall call, boolean assembledLessWell) {
         String original = call.row().contigDescription();
         return call.row().calledFrom(
                 new ReportRow.Source.Reads(call.supportingReads(), call.informativeReads(), percent(call.supportFraction())),
-                ROW_PREFIX + ": complete amplicon in " + call.supportSummary() + ", not in the mini-assembly"
+                ROW_PREFIX + ": complete amplicon in " + call.supportSummary()
+                        + (assembledLessWell ? ", in the mini-assembly only with primer sites that pair less well"
+                                : ", not in the mini-assembly")
                         + (original.isEmpty() ? "" : "; representative read " + original));
     }
 }

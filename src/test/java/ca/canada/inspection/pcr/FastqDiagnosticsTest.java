@@ -138,6 +138,34 @@ class FastqDiagnosticsTest {
     }
 
     @Test
+    void productTheAssemblyReportsWithLessPairedPrimerSitesIsCalledFromReadsToo() {
+        // The contig starts inside the forward primer: its 3 first bases lie before the contig,
+        // which --5p-truncation lets through, so the contig gives the 70 bp product with 3 primer
+        // bases unpaired. The reads hold it with every primer base paired: their call is reported
+        // too, not hidden behind the contig's (a 61 bp contig did that to a 72 bp PCN product).
+        Sample sample = fastqSample();
+        sample.hits().add("assay-F", TestHits.truncatedPlusHit("assay-F", "contig_0", 1, 4, 20, PRIMER_20));
+        sample.hits().add("assay-P", TestHits.plusHit("assay-P", "contig_0", 22));
+        sample.hits().add("assay-R", TestHits.minusHit("assay-R", "contig_0", 48));
+        ReadEvidence evidence = readsWithAmplicon(3);
+        ReportRow assembled = Products.of(sample, PRIMERS, DEFAULTS).getFirst();
+        assertEquals(70, assembled.size());
+        assertEquals(3, assembled.forwardUnpaired());
+
+        Finding finding = assess(sample, evidence, Map.of()).getFirst();
+
+        assertEquals(Status.CALLED_FROM_READS, finding.status());
+        assertEquals(Assembly.LESS_PAIRED_SITES, finding.assembly());
+        assertEquals("reports 70 bp, with primer sites that pair less well than the reads'", finding.assemblyDetail());
+        List<ReportRow> rows = ReadLevelCaller.reportRows(sample, PRIMERS, DEFAULTS, evidence);
+        assertEquals(1, rows.size());
+        assertEquals(0, rows.getFirst().forwardUnpaired());
+        assertTrue(rows.getFirst().contigDescription()
+                .contains("in the mini-assembly only with primer sites that pair less well"),
+                rows.getFirst().contigDescription());
+    }
+
+    @Test
     void weakProductIsNotAddedToAnAssayTheAssemblyReports() {
         Sample sample = fastqSample();
         sample.hits().add("assay-F", TestHits.plusHit("assay-F", "contig_0", 101));

@@ -1,5 +1,36 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- FASTQ mode at `-m 0` baits with k-mers of at least 13 bases (16 up to
+  1.0.3). A primer of 18 bases or more now leaves all 5 bases that
+  `--5p-truncation 5` frees out of its k-mers. Before, a 20-base primer with a
+  mismatch at its 5th base was in every 16-mer and baited no read, though an
+  assembly gives the product. 13-mers baited 0.34% of SRR642185's reads
+  (0.03% with 16-mers). Its run took 10 s instead of 7 s and gave the same
+  calls.
+- FASTQ mode: oligos too short for the bait's k floor (13 at `-m 0`, 16 plus
+  `-m` with edits) bait in a BBDuk pass of their own. Before, they brought
+  every oligo's k down to theirs. The other oligos keep the k of the shortest
+  of them, and the reads of both passes are pooled, each pair once. A
+  23-primer *Globodera* panel with 15-base probes at `-m 1 --5p-truncation 8`
+  baited 59% of a sample's reads with k=14. Now it baits 4.3%: k=14 for oligos
+  of 15 to 17 bases, k=17 for the others. The run took 38 minutes instead of 3
+  hours, and the assays with a product of the expected size were the same.
+  It gave 1,014 products instead of 2,511. The ones it no longer gives had a
+  mismatch or unpaired 5' bases in both primer sites, on contigs that were
+  assembled only because the single pass took most of the genome. See
+  Limitations, "Known gaps".
+- FASTQ mode: a product the mini-assembly reports with more primer bases
+  unpaired than the reads show no longer hides the reads' product, which is
+  reported too (`FastqDiagnostics` `Assembly` = `LESS_PAIRED_SITES`). On the
+  *Globodera* sample above, the more selective bait gave a 61 bp contig holding
+  the 72 bp ReidPal product, with 11 primer bases past its ends that
+  `--5p-truncation 8` let through. That contig's product replaced the read-level
+  call, whose primers pair completely.
+
 ## 1.0.3 (2026-11-23)
 
 ### Changed

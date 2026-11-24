@@ -23,6 +23,13 @@
   mismatch or unpaired 5' bases in both primer sites, on contigs that were
   assembled only because the single pass took most of the genome. See
   Limitations, "Known gaps".
+- FASTQ mode: a product the mini-assembly reports with more primer bases
+  unpaired than the reads show no longer hides the reads' product, which is
+  reported too (`FastqDiagnostics` `Assembly` = `LESS_PAIRED_SITES`). On the
+  *Globodera* sample above, the more selective bait gave a 61 bp contig holding
+  the 72 bp ReidPal product, with 11 primer bases past its ends that
+  `--5p-truncation 8` let through. That contig's product replaced the read-level
+  call, whose primers pair completely.
 
 ## 1.0.3 (2026-11-23)
 

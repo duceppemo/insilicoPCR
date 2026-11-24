@@ -256,7 +256,11 @@ stays at `WEAK_READ_SUPPORT` under the default; its `ReadDetail` gives the count
 (the target, and another place where both primers happen to land), each product is called on its own support
 and gets its own row, like separate bands on a gel. Sizes within 10 bp of each other are one product: length
 variants of a single locus. A product the mini-assembly already reports is not repeated; a product it lacks is
-added even when the assembly reports the same assay at another size. As everywhere in insilicoPCR, every
+added even when the assembly reports the same assay at another size. Since 1.0.4, a product the mini-assembly
+reports with more primer bases unpaired than the reads show is added too, and its description says so (`in the
+mini-assembly only with primer sites that pair less well`). That happens, for example, when a contig ends inside a
+primer and `--5p-truncation` lets the bases past its end through. Before, the contig's product hid the reads'
+product, whose primers pair completely. As everywhere in insilicoPCR, every
 product a real PCR would amplify is reported, whatever its size: check `AmpliconSize` against the size the
 assay is designed for before calling a test positive (the [`SizeCheck` column](#size-label-column)
 does that comparison for you when the primer file declares the size).
@@ -419,6 +423,7 @@ and `_extensionReads.fastq.gz`.
 | `SPLIT_ACROSS_CONTIGS` | Both primers hit contigs, never the same one. `AssemblyDetail` lists up to 3 hits per primer (then `+N more`) and each one's distance to the contig end in the primer's extension direction; short distances on both sides mean the assembly broke inside the amplicon |
 | `NO_VALID_PAIR` | Both primers share a contig but form no reportable amplicon (orientation, `--min-length`/`--max-length`, or missing probe) |
 | `OTHER_PRODUCT_ONLY` | The assembly reports the assay, but only at another size (listed in `AssemblyDetail`); the product in `ReadDetail` was added from reads |
+| `LESS_PAIRED_SITES` | The assembly reports the product, but with more primer bases unpaired than the reads show (mismatches, or 5' bases past a contig end that `--5p-truncation` lets through); the product in `ReadDetail` was added from reads too. Since 1.0.4: before, the contig's product hid the reads' |
 
 `QAlog.txt` also records the Tadpole settings used. The command-line options `--tadpole-k`,
 `--tadpole-min-seed`, `--tadpole-min-cov` and `--tadpole-min-contig`, or **FASTQ settings…** in the GUI, tune

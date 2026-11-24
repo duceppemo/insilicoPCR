@@ -110,7 +110,12 @@ public final class FastqDiagnostics {
          * The assembly reports the assay, but only at another size: the product called
          * from reads is one it lacks.
          */
-        OTHER_PRODUCT_ONLY
+        OTHER_PRODUCT_ONLY,
+        /**
+         * The assembly reports the product, but with primer sites that pair less well than the reads' (bases past
+         * a contig end, or a mismatch the reads do not show): the product called from reads is reported too.
+         */
+        LESS_PAIRED_SITES
     }
 
     /**
@@ -168,6 +173,7 @@ public final class FastqDiagnostics {
     public static List<Finding> assess(Sample sample, PrimerPanel primers, AmpliconOptions options,
                                        ReadEvidence reads, Map<String, Integer> contigLengths,
                                        Map<String, ReadExtensionCaller.Outcome> extension) {
+        Map<String, List<ReportRow>> assembledRows = Products.designed(sample, primers, options);
         Map<String, Set<Integer>> assembled = Products.sizes(sample, primers, options);
         Map<String, Set<String>> otherProducts = otherProducts(Products.of(sample, primers, options));
         List<Finding> findings = new ArrayList<>();
@@ -192,14 +198,18 @@ public final class FastqDiagnostics {
             Set<Integer> assembledSizes = assembled.get(assay);
             if (assembledSizes != null) {
                 // The assembly reports the assay: only a product it lacks needs explaining.
-                List<ReadCall> missing = ReadLevelCaller.missingFromAssembly(products, assembledSizes);
+                List<ReadCall> missing = ReadLevelCaller.missingFromAssembly(products, assembledRows.get(assay));
                 if (!missing.isEmpty() || !added.isEmpty() || !unconfirmed.isEmpty()) {
+                    boolean lessPaired = missing.stream()
+                            .anyMatch(product -> ReadLevelCaller.assembledAtItsSize(product, assembledRows.get(assay)));
                     findings.add(new Finding(sample.getName(), assay,
                             !missing.isEmpty() ? Status.CALLED_FROM_READS
                                     : !added.isEmpty() ? Status.CALLED_BY_EXTENSION : withheldStatus(unconfirmed),
-                            Assembly.OTHER_PRODUCT_ONLY, counts, checkable,
+                            lessPaired ? Assembly.LESS_PAIRED_SITES : Assembly.OTHER_PRODUCT_ONLY, counts, checkable,
                             missing.isEmpty() ? extended : describe(missing) + (extended.isEmpty() ? "" : "; " + extended),
-                            "reports " + join(assembledSizes) + " bp only"));
+                            lessPaired ? "reports " + join(assembledSizes) + " bp, with primer sites that pair less well"
+                                    + " than the reads'"
+                                    : "reports " + join(assembledSizes) + " bp only"));
                 }
                 continue;
             }

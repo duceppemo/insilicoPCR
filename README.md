@@ -23,7 +23,7 @@
 
 ## Overview
 
-**insilicoPCR** is a desktop and command-line application that tests PCR and qPCR assays *in silico* against **genome assemblies (FASTA)** and **sequencing reads (FASTQ)**. It reports the amplicons that could form in a real reaction: primer pairs convergent on opposite strands, within a product size limit, and free of destabilizing 3'-end mismatches. Use it to validate an assay design against reference genomes, to check **inclusivity** across target strains and **exclusivity** against near neighbours, to predict amplicon sizes, and to find out why an assay fails on particular isolates.
+**insilicoPCR** is a desktop and command-line application that tests PCR and qPCR assays *in silico* against **genome assemblies (FASTA)** and **sequencing reads (FASTQ)**. It reports the amplicons that could form in a real reaction: primer sites that melt at the annealing temperature, convergent on opposite strands, within a product size limit, and free of destabilizing 3'-end mismatches. Use it to validate an assay design against reference genomes, to check **inclusivity** across target strains and **exclusivity** against near neighbours, to predict amplicon sizes, and to find out why an assay fails on particular isolates.
 
 *Keywords: in silico PCR · virtual PCR · electronic PCR (e-PCR) · qPCR · TaqMan probe · primer specificity · assay validation · inclusivity / exclusivity testing · amplicon prediction · primer mismatch analysis · BLAST · BBMap · molecular diagnostics · food safety · genomics*
 
@@ -35,11 +35,11 @@
 
 - **Assemblies and reads.** FASTA genomes are searched directly; FASTQ reads (single or paired, gzipped or not) are baited and micro-assembled first, and a product the mini-assembly misses is called from the reads themselves, even one longer than a read.
 - **PCR and qPCR in one primer file.** An assay with a probe is reported only when the probe sits inside the amplicon. Degenerate (IUPAC) primers are expanded automatically.
-- **Realistic amplicon calling.** Primers must face each other on one contig, within a size limit, with a weighted 3'-end mismatch check that knows a terminal G/C mismatch is worse than an A/T one. Every product a tube would make is found: of one primer alone at an inverted repeat, of two assays sharing a multiplex reaction (`mix=`), and across the origin of a circular plasmid or chromosome.
-- **Sequence rules only.** Nothing models melting or annealing temperature, primer dimers, hairpins, efficiency or multiplex competition: a product is reported when its primers bind well enough, face each other and lie within the size limits. The cases where it can miss a product are on [Limitations](https://github.com/duceppemo/insilicoPCR/wiki/Limitations).
+- **Realistic amplicon calling.** Each primer and probe site is judged by its Tm on the template (Primer3's thermodynamic alignment, built in), the same rule for every assay. Primers must face each other on one contig, within a size limit, with a weighted 3'-end mismatch check that knows a terminal G/C mismatch is worse than an A/T one. Every product a tube would make is found: of one primer alone at an inverted repeat, of two assays sharing a multiplex reaction (`mix=`), and across the origin of a circular plasmid or chromosome.
+- **Sequence rules and one Tm.** A product is reported when its primer sites melt at `--anneal-temp` (default 60 °C) less `--tm-margin` (default 5 °C) or above, face each other and lie within the size limits. Nothing models primer dimers, hairpins, efficiency or multiplex competition. The cases where it can miss a product are on [Limitations](https://github.com/duceppemo/insilicoPCR/wiki/Limitations).
 - **Every product is reported, whatever its size**, as a real PCR would amplify it. Declare the size an assay is designed to give and each product is labelled `target`, `other` or `unexpected`.
 - **Faulty input is named, not skipped.** Every file is checked before the run: an empty library, a download cut short or a malformed read leaves its sample out with a warning, and the other samples are run.
-- **Reports you can read.** A self-contained HTML report, a TSV table with per-primer mismatch details, and a synthetic gel.
+- **Reports you can read.** A self-contained HTML report, a TSV table with each site's Tm and mismatches, a table of the assays that gave no product and why, and a synthetic gel.
 - **Nothing to install.** One portable ZIP for Windows or Linux holds the desktop app, the command line, Java, BBTools and BLAST+. On Linux, conda installs it too, from Bioconda.
 - **Works with [primer-finder](https://github.com/duceppemo/primer-finder)**, which designs selective (q)PCR assays and writes primer files in this format.
 
@@ -62,7 +62,7 @@ Here both assays declare their product size. Green cells are products of that si
 ### Desktop app or command line
 
 <p align="center">
-  <img src="docs/assets/gui/main-window.png" alt="The insilicoPCR window after a run: input, primer and output paths, threads, mismatches and e-value, the settings buttons, the run log, and the buttons to view the gel image and the HTML report" width="640">
+  <img src="docs/assets/gui/main-window.png" alt="The insilicoPCR window after a run: input, primer and output paths, threads, mismatches (the annealing temperature since 2.0) and e-value, the settings buttons, the run log, and the buttons to view the gel image and the HTML report" width="640">
 </p>
 
 ## Quick Start
@@ -93,7 +93,7 @@ Or use the command line, from the extracted folder:
 ./runtime/linux/jdk/bin/java -jar insilicoPCR.jar -i genomes/ -p primers.fasta -o results/
 ```
 
-**4. Read the results.** Open `results/consolidated_report/report.html` in a web browser (in the desktop app: **View HTML Report**). The same results are in `report.tsv`, one row per amplicon, and `report_samples.tsv` lists every sample with its number of products.
+**4. Read the results.** Open `results/consolidated_report/report.html` in a web browser (in the desktop app: **View HTML Report**). The same results are in `report.tsv`, one row per amplicon, `report_samples.tsv` lists every sample with its number of products, and `report_no_product.tsv` says why an assay gave no product in a sample.
 
 Next steps: the [tutorial](https://github.com/duceppemo/insilicoPCR/wiki/Tutorial-Mixed-PCR-qPCR) runs two assays on public *Listeria* genomes and reads, and the [command-line reference](https://github.com/duceppemo/insilicoPCR/wiki/Command-line-Interface) lists every option.
 

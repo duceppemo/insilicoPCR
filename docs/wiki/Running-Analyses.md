@@ -107,12 +107,12 @@ Standard PCR assays and qPCR/probe assays can be mixed in the same primer FASTA 
 | Parameter | Command line | Default | Purpose |
 |---|---|---|---|
 | Threads | `-t` | the processors, less one in the window | Number of worker threads; FASTQ samples processed at once share them, and the memory: see [Threads and memory in FASTQ mode](Command-line-Interface#threads-and-memory-in-fastq-mode) |
-| Mismatches | `-m` | 0 (the window offers 0 to 10) | Allowed mismatches + indels per primer (3' bases that do not pair with the template count) |
+| Anneal (°C) | `--anneal-temp` | 60 | Annealing temperature of the reaction. A primer or probe site is accepted when its Tm on the template reaches it less the Tm margin (55 °C by default), and a primer's 3' end passes the 3' rule. Replaces **Mismatches** of 1.x |
 | E-value | `-e` | 1e5 | BLASTN e-value threshold |
-| Amplicon settings… | `--probe-mismatches`, `--3p-window`, `--3p-penalty`, `--5p-truncation`, `--min-length`, `-l` | see [Amplicon Calling](Amplicon-Calling) | Probe mismatches, 3'-end check, 5' truncation, min/max amplicon length (default max 5000; 0 disables the limit) |
+| Amplicon settings… | `--tm-margin`, `--na`, `--mg`, `--dntp`, `--oligo-conc`, `--3p-window`, `--3p-penalty`, `--min-length`, `-l` | see [Amplicon Calling](Amplicon-Calling) | Tm margin and the reaction the Tm assumes, 3'-end check, min/max amplicon length (default max 5000; 0 disables the limit) |
 | FASTQ settings… | the Tadpole options, `--read-min-fraction`, `--read-extension`, `--memory` (`--bbtools-memory` before 1.0) | see [Command-line Interface](Command-line-Interface) | Tadpole mini-assembly settings, the read-level call threshold, the read extension and the BBTools programs' memory |
 
-Every setting of the window has a command-line equivalent. The command line has a few the window does not: `--input-check quick` (the window checks every read), `--gel` (the window has its own gel viewer), and any number of mismatches; see [Command-line Interface](Command-line-Interface), [Amplicon Calling](Amplicon-Calling) and [GUI Overview](GUI-Overview).
+Every setting of the window has a command-line equivalent. The command line has a few the window does not: `--input-check quick` (the window checks every read), and `--gel` (the window has its own gel viewer); see [Command-line Interface](Command-line-Interface), [Amplicon Calling](Amplicon-Calling) and [GUI Overview](GUI-Overview).
 
 ## Outputs
 
@@ -121,9 +121,10 @@ Every setting of the window has a command-line equivalent. The command line has 
 | `consolidated_report/report.html` | [HTML report](Reports#html-report): which samples are positive for which assay, then every amplicon |
 | `consolidated_report/report.tsv` | One row per amplicon; the source of the HTML report and of the synthetic gel. Its columns and how it is written: [File format](Reports#file-format) |
 | `consolidated_report/report_samples.tsv` | Since 1.0: every sample of the run, analysed or left out (and why), with its number of products; the samples with no row in `report.tsv` are found here. See [Samples file](Reports#samples-file) |
+| `consolidated_report/report_no_product.tsv` | Since 2.0: each assay without a product in a sample, and why (the oligo without an accepted site, its best site and its Tm, the rule it fails). See [Assays without a product](Reports#assays-without-a-product) |
 | `consolidated_report/report_fastq_diagnostics.tsv` | FASTQ input only: why an assay was not reported although its primers are in the reads |
 | `detailed_report/<sample>/` | The BLAST hits the rules accept per sample (before 0.15.3, every alignment) and, for FASTQ input, the baited reads and mini-assembly |
-| `QAlog.txt` | Version, inputs, the samples analysed, the report written and the settings that decide calls; written when a run finishes |
+| `QAlog.txt` | Version, inputs, the samples analysed, the report written, the settings that decide calls, each oligo's Tm on a perfect match, and how many assays gave no product; written when a run finishes |
 | `primer_tmp.fasta*` | The primers as a BLAST database; the application deletes it no longer, since 0.14.0 |
 | `synthetic_gel_report.png` | With `--gel` only: the synthetic gel, in the output folder itself, named after the report (`synthetic_gel_report(1).png` for `report(1).tsv`) |
 | `log.txt` | Application only: what the window showed of each run, added at the end of the run, also one that failed or was stopped |

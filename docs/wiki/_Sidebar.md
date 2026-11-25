@@ -16,6 +16,7 @@
 - [Primer FASTA Format](Primer-FASTA-Format)
 - [Standard PCR vs qPCR](Standard-PCR-vs-qPCR)
 - [Amplicon Calling](Amplicon-Calling)
+- [Why Tm](Why-Tm)
 - [Reports](Reports)
 - [Limitations](Limitations)
 - [Synthetic Gel Visualizer](Synthetic-Gel-Visualizer)

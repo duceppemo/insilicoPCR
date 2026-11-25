@@ -28,10 +28,11 @@ Each package depends only on those below it in this table, so there are no cycle
 | `insilicopcr` (and `insilicopcr.ui`) | The application window and its dialogs | `pipeline`, `gel`, `report`, `pcr`, `util` |
 | `pipeline` | The run: its steps, the external programs, the runtime layout (`AppPaths`); no JavaFX (`PackageRulesTest`) | `gel`, `report`, `pcr`, `model`, `util` |
 | `gel` | The synthetic gel: its geometry, the viewers, the image files | `report` (to read `report.tsv`), `pcr` |
-| `report` | The files a run writes and reads back: `report.tsv` (its columns in `ReportColumn`, written by `ConsolidatedReport`, read by `ReportTsv`), `report_samples.tsv`, the HTML report, the FASTQ diagnostics | `pcr`, `model`, `util` |
-| `pcr` | The analysis core: primer IDs, hit filtering, amplicon calling, read-level calls; no report file | `model`, `util` |
+| `report` | The files a run writes and reads back: `report.tsv` (its columns in `ReportColumn`, written by `ConsolidatedReport`, read by `ReportTsv`), `report_samples.tsv`, `report_no_product.tsv`, the HTML report, the FASTQ diagnostics | `pcr`, `model`, `util` |
+| `pcr` | The analysis core: primer IDs, hit filtering, amplicon calling, read-level calls; no report file | `model`, `util`, `thermo` |
 | `util` | Input checks, sequence file helpers, the version (`Version`, filled in from `pom.xml` at build time) | `model` |
-| `model` | `Sample` (its name, files and type, and its `Hits`), `Hits` (accepted primer hits on a set of sequences, with their descriptions) and `BlastResult` | nothing |
+| `model` | `Sample` (its name, files and type, and its `Hits`), `Hits` (accepted primer hits on a set of sequences, with their descriptions, each site's Tm, and the best rejected site of each oligo, a `NearMiss`) and `BlastResult` | nothing |
+| `thermo` | Melting temperatures (since 2.0): Primer3's `oligotm` (`OligoTm`) and `thal` (`Thal`, the thermodynamic alignment behind `ntthal`) ported to Java, with Primer3's nearest-neighbour parameters (`ThalParameters`, read from the resources under `thermo/primer3_config`). Under GPL-3.0-or-later, like the Primer3 code it is ported from (GPL-2.0-or-later) | nothing |
 
 The GUI runs the same pipeline: `insilicopcr.PcrPipelineTask` runs `InSilicoPcrPipeline` on a background thread and gives it a `RunMonitor` that sends messages, program output and progress to the window; cancelling the task (the window closing) kills the external programs, and the task appends what the run showed to `log.txt` however it ends. The command line gives it the console (`Dispatcher.consoleMonitor()`: `RunMonitor.CONSOLE` with its external programs tracked, and stopped when the program is). A finished run returns a `RunResult` (its report, HTML report and samples), which the window's buttons use; `QAlog.txt` names the same report and samples, which `PreviousRun` reads back to reopen the run. Every external program (BLAST+, BBTools) is started by one class, `pipeline.ExternalProgram`.
 
@@ -61,16 +62,18 @@ The pipeline delegates the scientific decisions to one JavaFX-free package:
 |---|---|
 | `PrimerId` | The primer naming rule (`<assay>-F`, `-R`, `-P`): reads an ID into its assay and role, and groups a run's primers by assay |
 | `PrimerPanel` | The primers of a run, read once by `PrimerService`: each oligo's sequence (degenerate ones expanded), the assays they form, which have a probe, and the product sizes the file declares; passed to every step that needs the primers |
-| `AmpliconOptions` | Immutable knobs: mismatch budget, 3' window/penalty, 5' truncation allowance, product size limits |
+| `AmpliconOptions` | Immutable knobs: the Tm rule (`TmGate`), 3' window/penalty, product size limits. The mismatch counts of 1.x are still in it, for tests only: the command line and the window always set the Tm rule |
+| `TmGate` | The Tm rule (`--anneal-temp`, `--tm-margin`, the reaction): a site's Tm on the template under it, by `thermo.Thal`, against the annealing temperature less the margin; each oligo's Tm on a perfect match for the log |
+| `NoProduct` | Why an assay made no product in a sample: the oligo without an accepted site, its best site and the rule it fails, or sites that pair into no product; written as `report_no_product.tsv` |
 | `BlastField` | The columns of the BLAST TSV, in order: the `-outfmt` blastn is given, the header and the parser's fields |
 | `BlastHits` | The one loop that judges a BLAST table's hits (contigs, baited reads, extended reads), as `BlastTsv.keepAccepted` filters the table and takes its hits in one pass; with the warning for trimmed hits whose sequence is missing from the searched file |
-| `BlastHitParser` | Parses one BLAST TSV line and applies the hit acceptance rules (mismatch budget, 3'-end coverage, weighted 3' penalty; probes exempt from 3' rules; trimmed probe ends and primer 3' ends compared with the template by `TrimmedEnds`, the template read alongside the report by `QueryTemplates`) |
+| `BlastHitParser` | Parses one BLAST TSV line and applies the hit acceptance rules (the site's Tm by `TmGate`, weighted 3' penalty; probes exempt from 3' rules; trimmed probe ends and primer 3' ends compared with the template by `TrimmedEnds`, the template read alongside the report by `QueryTemplates`) |
 | `AmpliconCaller` | Pairs forward/reverse hits: same contig, opposite strands, convergent orientation, size limits |
 | `TrimmedEnds` | Compares the oligo bases BLAST trimmed off the ends of an alignment with the template: probe ends and primer 3' ends count only where they do not pair |
 | `QueryTemplates` | Reads the contig or read a hit lies on from the FASTA that was searched, one query at a time and at one byte per base (`PackedBases`), for `TrimmedEnds` |
 | `Products` | Finds the products in a set of `Hits` as `ReportRow`s: hits paired into amplicons, an assay with a probe only where its probe binds within; the same rules for a sample's contigs and for the reads and extended reads FASTQ mode searches, which are given as `Hits`, not as samples. `Products.ofRun` makes the run's rows, in report order, once: the report file, the HTML report and the gel show these |
 | `ProductSizes` | When amplicons of different sizes are one product (10 bp apart at most): the rule the read search, the read extension and the declared sizes share |
-| `ReportRow` | One product as the report lists it (amplicon, primers, mismatches, probe); passed between the steps of a run, and turned into TSV columns only when the report is written |
+| `ReportRow` | One product as the report lists it (amplicon, primers, mismatches, probe, each site's Tm); passed between the steps of a run, and turned into TSV columns only when the report is written |
 | `ReadLevelCaller` | FASTQ mode: calls amplicons on baited reads treated as tiny contigs, one call per product size, with the support rules (≥ 2 fragments, `--read-min-fraction` of the informative ones: reads carrying a primer at the product's locus) |
 | `ReadExtensionCaller` | FASTQ mode: for assays in no contig and in no read, picks the primer-carrying reads to extend and finds products on the extended reads (at least 2 reads seeded from one primer, either one), reported when `PairSupport` confirms them |
 | `PairSupport` | FASTQ mode: checks a product found on extended reads against the sample's read pairs (every window inside enough fragments; no repeat longer than the window), so that a wrong turn through a repeat is not reported |
@@ -87,6 +90,7 @@ The files are written and read by `ca.canada.inspection.report`:
 | `ReportTsv` | Reads a `report.tsv` back into `ReportRow`s with their size check, by column name, for the gel (of a run, a past run or a report opened in the application), refusing a file that is not a report; UTF-8, UTF-16 or the Windows encoding, cells a spreadsheet quoted unquoted. A finished run's HTML report is made from its rows, not from the file |
 | `HtmlReport` | Writes the self-contained HTML report from the run's `ReportRow`s (the verdict of each sample and assay from `pcr.AssayVerdict`): sample-by-assay grid, per-assay summary, amplicon table; its style and script are the resources `report.css` and `report.js` |
 | `SamplesReport` | Writes `report_samples.tsv` beside the report: every sample, analysed or left out and why, with its products counted (since 1.0) |
+| `NoProductReport` | Writes `report_no_product.tsv` beside the report from the `pcr.NoProduct` rows: each assay without a product in a sample, and why (since 2.0) |
 | `FastqDiagnosticsReport` | Writes `report_fastq_diagnostics.tsv` from the `FastqDiagnostics` findings |
 
 Three classes outside these packages take part in every run as well:
@@ -118,7 +122,7 @@ The gel viewer (`InteractiveGelViewer`, one gel of up to 100 samples at a time, 
 | `GelPicture` | A gel as a picture to keep, at its own size and without the window's outlines: the `GelScene` of a page and its image on a canvas. The `--gel` files and the window's Save PNG, SVG and PDF all come from it |
 | `SyntheticGelImage` | The `--gel` PNG files: each gel of the run drawn by `GelPicture`, without a window |
 
-`BlastResult` (in `model`) carries full alignment context (strand, subject coordinates, aligned sequences) and computes where the full primer lies (`fivePrimeTerminus`, `fullStart`, `fullEnd`, `toQueryEnd`), the mismatch counts (`primerMismatches`, as `-m` and the report count them; `alignedMismatches`, as a probe's budget does), the 3'-end mismatch counts and weighted penalties. The rules themselves are documented on the [Amplicon Calling](Amplicon-Calling) page, and covered by unit tests under `src/test/java`. `EndToEndTest` runs whole runs on the five-isolate example with the BLAST+ and BBTools of the checkout.
+`BlastResult` (in `model`) carries full alignment context (strand, subject coordinates, aligned sequences) and computes where the full primer lies (`fivePrimeTerminus`, `fullStart`, `fullEnd`, `toQueryEnd`), the mismatch counts the report gives (`primerMismatches`; `alignedMismatches`, for a probe), the 3'-end mismatch counts and weighted penalties. The rules themselves are documented on the [Amplicon Calling](Amplicon-Calling) page, and covered by unit tests under `src/test/java`. `EndToEndTest` runs whole runs on the five-isolate example with the BLAST+ and BBTools of the checkout.
 
 ## How a run flows
 

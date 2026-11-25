@@ -131,8 +131,9 @@ How to read it:
 - The `hlyQ` rows carry the probe columns — the probe was found **inside** the amplicon, which is required for a qPCR assay to be called positive. The conventional `hly702` rows leave the probe columns empty.
 - The *hly* coordinates from the read samples differ from the EGD-e coordinates because they are positions on the Tadpole-assembled contig, not on a reference genome.
 - `Strand` is `-` for the read sample: Tadpole happened to assemble the *hly* region in the opposite orientation, so the assay matched the reverse strand — a reminder that assays are detected on either strand.
-- Neither *L. innocua* sample produces a row: the primers have no acceptable binding sites. **An empty result for the negative control is the expected outcome.** (You may notice a harmless `Warning: [blastn] Query is Empty!` in the console: baiting the *L. innocua* reads with *hly* primers catches nothing, so there is no assembly to search.)
-- Bonus insight: this *L. monocytogenes* strain carries a single SNP at position 4 (from the 5' end) of `hly702-R`. BLAST leaves the first four bases of the primer out of its alignment (visible in `detailed_report/SRR17090570/SRR17090570.tsv`), and `Reverse5PrimeUnpaired` (`Reverse5PrimeUnaligned` before 1.0) counts the one of them that does not pair: `1`. 5'-proximal mismatches barely affect priming, so the hit is accepted (`--5p-truncation`, default 5) and the mismatch columns stay at `0` — exactly what a real PCR would do.
+- Since 2.0, `report.tsv` also gives each oligo's Tm on its site, after `SizeCheck` (the file linked above comes from 1.0.0 and has none). On `lmono_EGDe`, every site is a perfect match: `hly702` 58.4 / 63.4 °C, `hlyQ` 63.0 / 63.5 °C with its probe at 67.2 °C, all above the 55 °C a site needs at the default `--anneal-temp 60`. The run's log lists the same values as each oligo's Tm on a perfect match.
+- Neither *L. innocua* sample produces a row: the primers have no acceptable binding sites. Since 2.0, `report_no_product.tsv` says so for each assay and oligo, with its best site and how far its Tm falls short (see [Assays without a product](Reports#assays-without-a-product)). **An empty result for the negative control is the expected outcome.** (You may notice a harmless `Warning: [blastn] Query is Empty!` in the console: baiting the *L. innocua* reads with *hly* primers catches nothing, so there is no assembly to search.)
+- Bonus insight: this *L. monocytogenes* strain carries a single SNP at position 4 (from the 5' end) of `hly702-R`. BLAST leaves the first four bases of the primer out of its alignment (visible in `detailed_report/SRR17090570/SRR17090570.tsv`), and `Reverse5PrimeUnpaired` (`Reverse5PrimeUnaligned` before 1.0) counts the one of them that does not pair: `1`. 5'-proximal mismatches barely affect priming: the unpaired base lowers the site's Tm only a little, so the hit is accepted (since 2.0 by its Tm; in 1.0.0, which made this table, by `--5p-truncation`), and the mismatch columns stay at `0` — exactly what a real PCR would do.
 
 ## 6. The synthetic gel
 
@@ -144,7 +145,7 @@ Each positive lane shows the two bands you would expect on a real gel — the 70
 
 ## 7. The same run in the GUI
 
-Start the application with `./run-insilicoPCR.sh` (Linux) or `run-insilicoPCR.bat` (Windows). Choose the `tutorial_input` folder as input, `listeria_assays.fasta` as primer file and an output folder, leave **Mismatches** at 0, and click **Run**:
+Start the application with `./run-insilicoPCR.sh` (Linux) or `run-insilicoPCR.bat` (Windows). Choose the `tutorial_input` folder as input, `listeria_assays.fasta` as primer file and an output folder, leave **Anneal (°C)** at 60 (**Mismatches** at 0 in 1.x, as in the picture), and click **Run**:
 
 ![The insilicoPCR window after the tutorial run](https://raw.githubusercontent.com/duceppemo/insilicoPCR/master/docs/assets/tutorial/gui_tutorial.png)
 
@@ -157,9 +158,9 @@ See [GUI Overview](GUI-Overview) for the other buttons and the settings dialogs.
 
 ## 8. Things to try next
 
-- Re-run with `-m 2` and watch the same four products come out, with the same sizes and mismatch counts — the assays match their target perfectly. A fifth comes out too: `hly702` on `lmono_EGDe`, 3226 bp, labelled `unexpected`, made by the same primers at two sites 3 kb apart, the forward one with 2 mismatches and 4 unpaired 5' bases (`ForwardMismatches 2`, `Forward5PrimeUnpaired 4`). A permissive `-m` lets primers pair at other places of a genome; the `SizeCheck` label tells the designed product from such one. Only the contig name and coordinates of the read sample change otherwise: `-m` also loosens read baiting, so the mini-assembly comes out differently.
+- Re-run with `--tm-margin 12` (sites then need 48 °C instead of 55 °C) and watch the same products come out, with the same sizes. A further one comes out on `lmono_EGDe`: `hly702`, 3226 bp, labelled `unexpected`, made by the same primers at two sites 3 kb apart, the forward one with 2 mismatches and 4 unpaired 5' bases (`ForwardMismatches 2`, `Forward5PrimeUnpaired 4`), melting at 48.5 °C (`ForwardTm`). A permissive margin lets primers pair at other places of a genome; the `SizeCheck` label tells the designed product from such one, and `ForwardTm` shows how weak the site is.
 - Re-run with `-l 100`: the 112 bp qPCR product now exceeds the maximum length and disappears; `--min-length 200` would drop it too.
-- Remove the two `size=` words from the primer file and re-run: `report.tsv` loses its `SizeCheck` column and the HTML report shows the same four products in blue, as amplified with no size to compare with.
+- Remove the two `size=` words from the primer file and re-run: `report.tsv` leaves its `SizeCheck` column empty and the HTML report shows the same four products in blue, as amplified with no size to compare with.
 - Declare a wrong size instead (`>hly702-F size=500`) and re-run: the 702 bp products are still reported, now labelled `unexpected`, and the HTML report no longer counts them as positive. Nothing is hidden; the label only tells the reader what the size means.
 - Add your own assay for a different gene to the primer FASTA — mixed files are fine as long as every ID ends in `-F`, `-R`, or `-P`.
 - Open `tutorial_results/detailed_report/<sample>/<sample>.tsv` to audit the BLAST hits behind every call.

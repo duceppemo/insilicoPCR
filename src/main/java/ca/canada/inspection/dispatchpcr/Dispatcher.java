@@ -233,7 +233,7 @@ public final class Dispatcher {
         HelpFormatter formatter = new HelpFormatter();
         PrintWriter writer = new PrintWriter(out);
         formatter.printHelp(writer, formatter.getWidth(),
-                "java -jar insilicoPCR.jar -i <input> -o <output> -p <primers> [-t n] [-m n] [-e value] [-l bp]",
+                "java -jar insilicoPCR.jar -i <input> -o <output> -p <primers> [-t n] [--anneal-temp °C] [-e value] [-l bp]",
                 null, options, formatter.getLeftPadding(), formatter.getDescPadding(), null);
         writer.flush();
     }

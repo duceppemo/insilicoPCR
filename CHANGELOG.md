@@ -2,6 +2,36 @@
 
 ## Unreleased
 
+### Breaking (2.0)
+
+- A primer or probe site is accepted when its Tm on the template reaches
+  `--anneal-temp` (default 60 °C) less `--tm-margin` (default 5 °C), and a
+  primer's 3' end passes the 3' rule (`--3p-window`, `--3p-penalty`, as
+  before). One rule for every oligo of every assay. The Tm is Primer3's
+  thermodynamic alignment (`ntthal`), ported to Java, on the template under
+  the site with the bases BLAST left out. `--na`, `--mg`, `--dntp` and
+  `--oligo-conc` set the reaction (defaults 50 mM, 3 mM, 0.8 mM, 250 nM).
+  See the wiki page Why-Tm for the evidence.
+- `-m`/`--mismatches`, `--probe-mismatches` and `--5p-truncation` are
+  removed: a command line that gives one fails and says what to give instead.
+  Unpaired 5' bases and bases past a contig end lower a site's Tm instead of
+  being free up to a count. FASTQ mode baits reads with 1 mismatch per k-mer.
+- The window has an annealing temperature in place of Mismatches; Amplicon
+  settings has the Tm margin and the reaction, and no longer probe mismatches
+  or 5' unpaired bases.
+- `report.tsv` has three more columns after `SizeCheck`: `ForwardTm`,
+  `ReverseTm` and `ProbeTm`. The columns of 1.x keep their places. The HTML
+  amplicon table shows them.
+- `report_no_product.tsv` (new), the HTML report ("Why no product") and
+  `QAlog.txt` say, for each assay without a product in a sample, which oligo
+  has no accepted site, its best site and the rule that site fails, or that
+  the sites pair into no product. The log lists each oligo's Tm on a perfect
+  match, and flags one that no site can bring to the minimum.
+- Licence: GPL-3.0-or-later (Primer3's code is GPL), from MIT.
+- The five-isolate example's `stxQ` primers melted at 54.0 and 53.3 °C, under
+  the 55 °C a site needs at 60 °C. Two bases of each are now G or C (59.6 and
+  59.4 °C), written into the genomes and reads; the products are the same.
+
 ### Changed
 
 - FASTQ mode at `-m 0` baits with k-mers of at least 13 bases (16 up to

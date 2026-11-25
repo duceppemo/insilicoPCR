@@ -27,7 +27,7 @@ TCGATCGATACGCGTACGTA
 2. Select the input file or directory (**Select ▾** → **File…** or **Folder…**).
 3. Select the primer FASTA file.
 4. Select the output directory.
-5. Choose the number of threads, mismatches, and BLAST e-value if needed; **Amplicon settings…** and **FASTQ settings…** hold the rest.
+5. Choose the number of threads, the annealing temperature (**Anneal (°C)**, default 60), and BLAST e-value if needed; **Amplicon settings…** and **FASTQ settings…** hold the rest.
 6. Click **Run**.
 7. Review logs and reports when the run finishes.
 8. Open the synthetic gel visualizer if desired.
@@ -42,9 +42,10 @@ Linux portable release example:
   -i assemblies_or_reads/ \
   -p primers.fasta \
   -o results/ \
-  -t 8 \
-  -m 1
+  -t 8
 ```
+
+Sites are accepted when their Tm reaches 55 °C (`--anneal-temp 60` less `--tm-margin 5`). If your reaction anneals at another temperature, add `--anneal-temp <°C>`; see [Amplicon Calling](Amplicon-Calling).
 
 ## After the run
 
@@ -54,6 +55,7 @@ size in each cell. Then review, as needed:
 
 - `consolidated_report/report.tsv`: the same results as a table, one row per amplicon
 - `consolidated_report/report_samples.tsv`: every sample, with its number of products (a sample without one has no row in `report.tsv`)
+- `consolidated_report/report_no_product.tsv`: each assay without a product in a sample, and why
 - the synthetic gel view
 - detailed per-sample report files (the BLAST hits the rules accept)
 - console or GUI log output, and `QAlog.txt`

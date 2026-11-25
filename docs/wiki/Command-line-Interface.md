@@ -17,7 +17,7 @@ Expected help output:
 
 ```text
 usage: java -jar insilicoPCR.jar -i <input> -o <output> -p <primers> [-t
-            n] [-m n] [-e value] [-l bp]
+            n] [--anneal-temp °C] [-e value] [-l bp]
     --3p-penalty <score>         Maximum weighted 3'-end penalty
                                  (mismatch: 3 at terminus, 2 at -1/-2, 1
                                  beyond; +1 if a G/C pair is broken near
@@ -25,16 +25,19 @@ usage: java -jar insilicoPCR.jar -i <input> -o <output> -p <primers> [-t
                                  mismatch at its place, +1); default: 0
     --3p-window <n>              Bases at the primer 3' end checked with
                                  the weighted 3' penalty; default: 5
-    --5p-truncation <n>          Bases at a primer's harmless 5' end that
-                                 may differ from the template (or be left
-                                 out of BLAST's alignment) without
-                                 counting as mismatches; default: 5
+    --anneal-temp <°C>           Annealing temperature of the reaction: a
+                                 primer or probe site is accepted when its
+                                 Tm on the template (Primer3's
+                                 thermodynamic alignment) reaches it less
+                                 --tm-margin, and a primer's 3' end passes
+                                 the 3' rule; default: 60
     --bbtools-memory <GB>        Same as --memory (its name before 1.0)
+    --dntp <mM>                  Reaction, for the Tm: dNTP; default: 0.8
  -e,--evalue <value>             blastn e-value; deliberately permissive,
-                                 since primer hits are filtered by the
-                                 mismatch and 3'/5' rules instead, and
-                                 lowering it (e.g. to 1e-5) drops valid
-                                 hits; default: 1e5
+                                 since primer hits are filtered by their
+                                 Tm and the 3' rule instead, and lowering
+                                 it (e.g. to 1e-5) drops valid hits;
+                                 default: 1e5
  -g,--gel                        Also write the synthetic gel image as PNG
                                  (requires a graphical environment)
  -h,--help                       Print help and usage
@@ -52,9 +55,6 @@ usage: java -jar insilicoPCR.jar -i <input> -o <output> -p <primers> [-t
                                  are run; default: full
  -l,--max-length <bp>            Maximum amplicon length in bp, 0 =
                                  unlimited; default: 5000
- -m,--mismatches <n>             Allowed mismatches+indels per primer (3'
-                                 bases that do not pair with the template
-                                 count); default: 0
     --memory <GB>                Memory in GB that the BBTools programs
                                  running at once share in FASTQ mode (each
                                  gets at most 64 GB; fewer samples run at
@@ -66,13 +66,14 @@ usage: java -jar insilicoPCR.jar -i <input> -o <output> -p <primers> [-t
                                  quarters of the memory insilicoPCR leaves
                                  free on the computer (a job's limit on a
                                  cluster), at least half of its own heap
+    --mg <mM>                    Reaction, for the Tm: Mg2+; default: 3
     --min-length <bp>            Minimum amplicon length in bp; default: 0
+    --na <mM>                    Reaction, for the Tm: monovalent cations;
+                                 default: 50
  -o,--output <dir>               Directory for output files
+    --oligo-conc <nM>            Reaction, for the Tm: concentration of
+                                 each primer and probe; default: 250
  -p,--primers <file>             Primer FASTA file
-    --probe-mismatches <n>       Allowed mismatches+indels per hydrolysis
-                                 probe; probes bind hotter than primers
-                                 and tolerate roughly one more mismatch;
-                                 default: same as -m
     --read-extension <mode>      FASTQ mode: which assays the reads
                                  carrying both primers are extended for,
                                  through the reads baited in rounds, to
@@ -99,6 +100,8 @@ usage: java -jar insilicoPCR.jar -i <input> -o <output> -p <primers> [-t
                                  coverage (Tadpole mincov); default: 1
     --tadpole-min-seed <n>       FASTQ mode: minimum k-mer count to seed a
                                  contig (Tadpole mincountseed); default: 2
+    --tm-margin <°C>             How far below --anneal-temp a site's Tm
+                                 may be; default: 5
  -v,--version                    Print version
 ```
 
@@ -115,14 +118,17 @@ usage: java -jar insilicoPCR.jar -i <input> -o <output> -p <primers> [-t
 | Option | Default | Meaning |
 |---|---|---|
 | `-t`, `--threads` | available processors | Number of worker threads |
-| `-m`, `--mismatches` | `0` | Allowed mismatches + indels per primer; 3' bases that do not pair with the template count against the budget (an indel within about 7 bases of a primer's 3' end counts once per base it shifts: see [Amplicon Calling](Amplicon-Calling#weighted-3-end-check---3p-window---3p-penalty)) |
-| `--probe-mismatches` | same as `-m` | Allowed mismatches + indels per hydrolysis probe (probes bind hotter and tolerate more) |
+| `--anneal-temp` | `60` | Annealing temperature of the reaction, °C. A primer or probe site is accepted when its Tm on the template reaches it less `--tm-margin`, and a primer's 3' end passes the 3' rule: see [Amplicon Calling](Amplicon-Calling#tm-on-the-template---anneal-temp---tm-margin) |
+| `--tm-margin` | `5` | How far below `--anneal-temp` a site's Tm may be, °C: sites need 55 °C by default |
 | `-e`, `--evalue` | `1e5` | BLASTN e-value; deliberately permissive, see [BLAST e-value](Amplicon-Calling#blast-e-value) |
 | `-l`, `--max-length` | `5000` | Maximum amplicon length in bp; `0` disables the limit |
 | `--min-length` | `0` | Minimum amplicon length in bp |
 | `--3p-window` | `5` | Number of bases at the primer 3' end checked with the weighted penalty |
 | `--3p-penalty` | `0` | Maximum tolerated weighted 3'-end penalty |
-| `--5p-truncation` | `5` | Bases at a primer's 5' end that may differ from the template (or be left out of BLAST's alignment) without counting as mismatches |
+| `--na` | `50` | Reaction, for the Tm: monovalent cations (Na+, K+), mM |
+| `--mg` | `3` | Reaction, for the Tm: Mg2+, mM |
+| `--dntp` | `0.8` | Reaction, for the Tm: dNTP, mM |
+| `--oligo-conc` | `250` | Reaction, for the Tm: concentration of each primer and probe, nM |
 | `--input-check` | `full` | How the input files are checked before the run: `full` reads every read of every FASTQ file and compares the read counts of the two files of a pair; `quick` reads the first read only. A sample with a faulty file is left out with a warning. See [Input check](Running-Analyses#input-check) |
 | `-g`, `--gel` | off | Also write the synthetic gel image as PNG (needs a graphical environment) |
 | `--tadpole-k` | `31` | FASTQ mode: Tadpole k-mer length |
@@ -147,7 +153,16 @@ The BLAST searches run within the same budget (since 0.15.3), counted at about 2
 
 A sample whose BBTools program runs out of its share of memory is set aside with a warning, and once the other samples are done, it is run again alone, with all the threads and the whole budget, from the step that ran out. Only if it runs out of memory alone too does the run fail, saying to give the BBTools programs more memory with `--memory`; see [Troubleshooting](Troubleshooting#fastq-run-fails-with-ran-out-of-memory-on-sample).
 
-See [Amplicon Calling](Amplicon-Calling) for exactly how the mismatch budget, the 3'-end penalty, and the size limits decide which amplicons are reported.
+See [Amplicon Calling](Amplicon-Calling) for exactly how the Tm rule, the 3'-end penalty, and the size limits decide which amplicons are reported, and [Why Tm](Why-Tm) for why a site is judged by its Tm.
+
+### Options removed in 2.0
+
+`-m`/`--mismatches`, `--probe-mismatches` and `--5p-truncation` were removed in 2.0: a site is accepted by its Tm, whatever its mismatches. A command line that still gives one stops with exit code `2` and says what to do instead:
+
+```text
+Error: -m was removed in 2.0: a primer or probe site is accepted when its Tm reaches --anneal-temp (default 60 °C) less --tm-margin (default 5 °C), whatever its mismatches. Leave -m out; lower --anneal-temp or raise --tm-margin to accept weaker sites
+Run insilicoPCR --help for the options.
+```
 
 ## Example: assembly folder
 
@@ -159,7 +174,7 @@ See [Amplicon Calling](Amplicon-Calling) for exactly how the mismatch budget, th
   -o results/
 ```
 
-## Example: read folder, one tolerated internal mismatch
+## Example: read folder, reaction annealed at 58 °C
 
 ```bash
 ./runtime/linux/jdk/bin/java \
@@ -168,8 +183,10 @@ See [Amplicon Calling](Amplicon-Calling) for exactly how the mismatch budget, th
   -p primers.fasta \
   -o results/ \
   -t 8 \
-  -m 1
+  --anneal-temp 58
 ```
+
+Sites then need a Tm of 53 °C.
 
 ## Example: inclusivity screen that tolerates 3'-end wobble
 
@@ -179,7 +196,7 @@ See [Amplicon Calling](Amplicon-Calling) for exactly how the mismatch budget, th
   -i assemblies/ \
   -p primers.fasta \
   -o results/ \
-  -m 2 \
+  --tm-margin 8 \
   --3p-penalty 3
 ```
 

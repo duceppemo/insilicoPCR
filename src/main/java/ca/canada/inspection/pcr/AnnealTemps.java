@@ -1,5 +1,7 @@
 package ca.canada.inspection.pcr;
 
+import ca.canada.inspection.util.Numbers;
+
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -60,7 +62,7 @@ public final class AnnealTemps {
                 declaredOn.putIfAbsent(assay, primerId);
                 if (previous != null && previous != temp) {
                     throw new IllegalArgumentException("Assay " + assay + " declares " + KEY + "= twice with different"
-                            + " values: " + text(previous) + " on " + declaredOn.get(assay) + ", " + text(temp)
+                            + " values: " + Numbers.plain(previous) + " on " + declaredOn.get(assay) + ", " + Numbers.plain(temp)
                             + " on " + primerId);
                 }
             }
@@ -76,7 +78,7 @@ public final class AnnealTemps {
                 if (setBy != null && declared.get(setBy).doubleValue() != temp) {
                     throw new IllegalArgumentException("Assays " + setBy + " and " + assay + " share the reaction "
                             + group + " (mix=) but declare different annealing temperatures: " + KEY + "="
-                            + text(declared.get(setBy)) + " and " + KEY + "=" + text(temp)
+                            + Numbers.plain(declared.get(setBy)) + " and " + KEY + "=" + Numbers.plain(temp)
                             + " (a reaction anneals at one)");
                 }
                 setBy = assay;
@@ -127,13 +129,8 @@ public final class AnnealTemps {
     /** {@code BMpal 60, NakhlaPal 63}: the assays and their temperatures, in name order. */
     public String summary() {
         List<String> parts = new java.util.ArrayList<>();
-        byAssay.forEach((assay, temp) -> parts.add(assay + " " + text(temp)));
+        byAssay.forEach((assay, temp) -> parts.add(assay + " " + Numbers.plain(temp)));
         return String.join(", ", parts);
-    }
-
-    /** A temperature as written: {@code 60}, {@code 58.5}. */
-    static String text(double temp) {
-        return java.math.BigDecimal.valueOf(temp).stripTrailingZeros().toPlainString();
     }
 
     @Override

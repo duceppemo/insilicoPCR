@@ -1,5 +1,7 @@
 package ca.canada.inspection.dispatchpcr;
 
+import ca.canada.inspection.util.Numbers;
+
 import ca.canada.inspection.pcr.AmpliconOptions;
 import ca.canada.inspection.pcr.ReadExtensionCaller;
 import ca.canada.inspection.pcr.TmGate;
@@ -122,16 +124,12 @@ public final class CliConfig {
             }
             if (REMOVED_IN_2_0.contains(option)) {
                 return java.util.Optional.of(option + " was removed in 2.0: a primer or probe site is accepted when its"
-                        + " Tm reaches --anneal-temp (default " + number(TmGate.DEFAULT_ANNEAL_TEMP) + " °C) less"
-                        + " --tm-margin (default " + number(TmGate.DEFAULT_MARGIN) + " °C), whatever its mismatches."
+                        + " Tm reaches --anneal-temp (default " + Numbers.plain(TmGate.DEFAULT_ANNEAL_TEMP) + " °C) less"
+                        + " --tm-margin (default " + Numbers.plain(TmGate.DEFAULT_MARGIN) + " °C), whatever its mismatches."
                         + " Leave " + option + " out; lower --anneal-temp or raise --tm-margin to accept weaker sites");
             }
         }
         return java.util.Optional.empty();
-    }
-
-    private static String number(double value) {
-        return java.math.BigDecimal.valueOf(value).stripTrailingZeros().toPlainString();
     }
 
     private static double doubleOr(CommandLine cmd, String option, double defaultValue) {

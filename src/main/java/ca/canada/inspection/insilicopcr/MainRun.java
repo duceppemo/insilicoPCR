@@ -207,8 +207,7 @@ public class MainRun extends Application {
         box.setAlignment(Pos.TOP_LEFT);
         pane.add(box, 38, 10, 5, 1);
 
-        var field = new TextField(java.math.BigDecimal.valueOf(ca.canada.inspection.pcr.TmGate.DEFAULT_ANNEAL_TEMP)
-                .stripTrailingZeros().toPlainString());
+        var field = new TextField(ca.canada.inspection.util.Numbers.plain(ca.canada.inspection.pcr.TmGate.DEFAULT_ANNEAL_TEMP));
         var tip = new Tooltip("Annealing temperature of the reaction (--anneal-temp). A primer or probe site is accepted"
                 + " when its Tm on the template reaches it less the Tm margin (Amplicon settings), and a primer's 3'"
                 + " end pairs. An assay whose primer header gives ta=<°C> is judged at that temperature instead. Lower it to"

@@ -37,41 +37,41 @@ public final class Products {
      * diagnostics all ask); the list cannot be changed.
      */
     public static List<ReportRow> of(String sampleName, Hits hits, PrimerPanel primers, AmpliconOptions options) {
+        return found(sampleName, hits, primers, options).rows();
+    }
+
+    /** The products {@code hits} hold and the assays merged into another's, worked out once (see {@link #of}). */
+    private static Found found(String sampleName, Hits hits, PrimerPanel primers, AmpliconOptions options) {
         return hits.derived(new Key(sampleName, primers, options), () -> {
             List<ReportRow> rows = new ArrayList<>();
+            Map<String, String> mergedInto = new HashMap<>();
             // Probe requirement is decided per assay from the primer FILE, so standard PCR and qPCR
             // assays can be mixed in one run: an assay whose probe is defined but never hits stays
             // negative, while a probe-less assay is reported on its primer pair alone.
-            find(rows::add, sampleName, hits, options, primers, new HashMap<>());
-            return List.copyOf(rows);
+            find(rows::add, sampleName, hits, options, primers, mergedInto);
+            rows.stream().filter(row -> row.pairing() == ReportRow.Pairing.DESIGNED)
+                    .forEach(row -> mergedInto.remove(row.assay()));
+            return new Found(List.copyOf(rows), Map.copyOf(mergedInto));
         });
     }
 
     /**
-     * The assays of {@code sample} whose products are all reported under another assay of their reaction
-     * ({@code mix=}, the two making them at the same place; see {@link #oncePerReaction}): by assay, the assay
-     * reported. An assay with a row of its own is not one of them.
+     * The assays of {@code sample} whose designed products (forward with reverse primer) are all reported under
+     * another assay of their reaction ({@code mix=}, the two making them at the same place; see
+     * {@link #oncePerReaction}): by assay, the assay reported. An assay with a designed row of its own is not one
+     * of them; nor is one whose only merged row is of one primer alone.
      */
     public static Map<String, String> reportedUnder(Sample sample, PrimerPanel primers, AmpliconOptions options) {
-        if (primers.mixGroups().isEmpty()) {
-            return Map.of();
-        }
-        return sample.hits().derived(new MergedKey(sample.getName(), primers, options), () -> {
-            List<ReportRow> rows = new ArrayList<>();
-            Map<String, String> mergedInto = new HashMap<>();
-            find(rows::add, sample.getName(), sample.hits(), options, primers, mergedInto);
-            rows.forEach(row -> mergedInto.remove(row.assay()));
-            return Map.copyOf(mergedInto);
-        });
+        return found(sample.getName(), sample.hits(), primers, options).mergedInto();
     }
 
-    private record MergedKey(String sampleName, PrimerPanel primers, AmpliconOptions options)
-            implements Hits.Key<Map<String, String>> {
+    /** A sample's products, and the assays whose designed products are reported under another's. */
+    private record Found(List<ReportRow> rows, Map<String, String> mergedInto) {
     }
 
     /** What a sample's products depend on besides its hits; the panel by identity, one per run. */
     private record Key(String sampleName, PrimerPanel primers, AmpliconOptions options)
-            implements Hits.Key<List<ReportRow>> {
+            implements Hits.Key<Found> {
     }
 
     /**
@@ -187,7 +187,7 @@ public final class Products {
             List<Object> place = place(row, mix);
             if (place == null || kept.get(place) == row) {
                 once.add(row);
-            } else if (!kept.get(place).assay().equals(row.assay())) {
+            } else if (row.pairing() == ReportRow.Pairing.DESIGNED && !kept.get(place).assay().equals(row.assay())) {
                 mergedInto.putIfAbsent(row.assay(), kept.get(place).assay());
             }
         }

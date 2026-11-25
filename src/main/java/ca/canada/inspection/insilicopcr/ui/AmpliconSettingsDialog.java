@@ -1,5 +1,7 @@
 package ca.canada.inspection.insilicopcr.ui;
 
+import ca.canada.inspection.util.Numbers;
+
 import ca.canada.inspection.pcr.AmpliconOptions;
 import ca.canada.inspection.pcr.TmGate;
 import javafx.scene.control.TextField;
@@ -45,20 +47,20 @@ public final class AmpliconSettingsDialog {
     public static Optional<AmpliconSettings> show(Window owner, AmpliconSettings current) {
         var dialog = new SettingsDialog();
         dialog.section("Primer and probe sites");
-        TextField margin = dialog.field("Tm margin (°C)", number(current.tmMargin()),
+        TextField margin = dialog.field("Tm margin (°C)", Numbers.plain(current.tmMargin()),
                 "A primer or probe site is accepted when its Tm on the template reaches the annealing temperature "
                         + "(main window) less this margin (--tm-margin). Raise it, or lower the annealing temperature, "
-                        + "to accept weaker sites. Default " + number(TmGate.DEFAULT_MARGIN) + ".");
-        TextField na = dialog.field("Na+ / K+ (mM)", number(current.monovalentMm()),
+                        + "to accept weaker sites. Default " + Numbers.plain(TmGate.DEFAULT_MARGIN) + ".");
+        TextField na = dialog.field("Na+ / K+ (mM)", Numbers.plain(current.monovalentMm()),
                 "Monovalent cations of the reaction, for the Tm (--na). Default "
-                        + number(TmGate.DEFAULT_MONOVALENT_MM) + ".");
-        TextField mg = dialog.field("Mg2+ (mM)", number(current.divalentMm()),
-                "Mg2+ of the reaction, for the Tm (--mg). Default " + number(TmGate.DEFAULT_DIVALENT_MM) + ".");
-        TextField dntp = dialog.field("dNTP (mM)", number(current.dntpMm()),
-                "dNTP of the reaction, for the Tm (--dntp). Default " + number(TmGate.DEFAULT_DNTP_MM) + ".");
-        TextField oligo = dialog.field("Each oligo (nM)", number(current.oligoNm()),
+                        + Numbers.plain(TmGate.DEFAULT_MONOVALENT_MM) + ".");
+        TextField mg = dialog.field("Mg2+ (mM)", Numbers.plain(current.divalentMm()),
+                "Mg2+ of the reaction, for the Tm (--mg). Default " + Numbers.plain(TmGate.DEFAULT_DIVALENT_MM) + ".");
+        TextField dntp = dialog.field("dNTP (mM)", Numbers.plain(current.dntpMm()),
+                "dNTP of the reaction, for the Tm (--dntp). Default " + Numbers.plain(TmGate.DEFAULT_DNTP_MM) + ".");
+        TextField oligo = dialog.field("Each oligo (nM)", Numbers.plain(current.oligoNm()),
                 "Concentration of each primer and probe, for the Tm (--oligo-conc). Default "
-                        + number(TmGate.DEFAULT_OLIGO_NM) + ".");
+                        + Numbers.plain(TmGate.DEFAULT_OLIGO_NM) + ".");
         dialog.section("Primer 3' end");
         TextField window = dialog.field("3' window (bases)", String.valueOf(current.threePrimeWindow()),
                 "Bases at the primer 3' end checked with the weighted 3' penalty (--3p-window). Default "
@@ -82,11 +84,11 @@ public final class AmpliconSettingsDialog {
                         window.getText(), penalty.getText(), minLength.getText(), maxLength.getText()),
                 () -> {
                     AmpliconSettings defaults = AmpliconSettings.DEFAULTS;
-                    margin.setText(number(defaults.tmMargin()));
-                    na.setText(number(defaults.monovalentMm()));
-                    mg.setText(number(defaults.divalentMm()));
-                    dntp.setText(number(defaults.dntpMm()));
-                    oligo.setText(number(defaults.oligoNm()));
+                    margin.setText(Numbers.plain(defaults.tmMargin()));
+                    na.setText(Numbers.plain(defaults.monovalentMm()));
+                    mg.setText(Numbers.plain(defaults.divalentMm()));
+                    dntp.setText(Numbers.plain(defaults.dntpMm()));
+                    oligo.setText(Numbers.plain(defaults.oligoNm()));
                     window.setText(String.valueOf(defaults.threePrimeWindow()));
                     penalty.setText(String.valueOf(defaults.threePrimePenalty()));
                     minLength.setText(String.valueOf(defaults.minLength()));
@@ -102,9 +104,9 @@ public final class AmpliconSettingsDialog {
     /** Tooltip summarizing the current settings. */
     public static String summary(AmpliconSettings settings) {
         return (settings.isDefault() ? "Defaults" : "Changed from defaults (*)")
-                + "\nTm margin " + number(settings.tmMargin()) + " °C; " + number(settings.monovalentMm())
-                + " mM Na+, " + number(settings.divalentMm()) + " mM Mg2+, " + number(settings.dntpMm())
-                + " mM dNTP, " + number(settings.oligoNm()) + " nM each oligo"
+                + "\nTm margin " + Numbers.plain(settings.tmMargin()) + " °C; " + Numbers.plain(settings.monovalentMm())
+                + " mM Na+, " + Numbers.plain(settings.divalentMm()) + " mM Mg2+, " + Numbers.plain(settings.dntpMm())
+                + " mM dNTP, " + Numbers.plain(settings.oligoNm()) + " nM each oligo"
                 + "\n3' window " + settings.threePrimeWindow() + ", max 3' penalty " + settings.threePrimePenalty()
                 + "\nAmplicon size: " + settings.minLength() + " to "
                 + (settings.maxLength() == 0 ? "unlimited" : settings.maxLength() + " bp");
@@ -139,10 +141,5 @@ public final class AmpliconSettingsDialog {
                 SettingsDialog.parseInt(window, "3' window", 0),
                 SettingsDialog.parseInt(penalty, "Max 3' penalty", 0),
                 min, max);
-    }
-
-    /** A setting as the dialog shows it: {@code 5}, {@code 0.8}. */
-    static String number(double value) {
-        return java.math.BigDecimal.valueOf(value).stripTrailingZeros().toPlainString();
     }
 }

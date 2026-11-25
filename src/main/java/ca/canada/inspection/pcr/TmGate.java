@@ -1,5 +1,7 @@
 package ca.canada.inspection.pcr;
 
+import ca.canada.inspection.util.Numbers;
+
 import ca.canada.inspection.model.BlastResult;
 import ca.canada.inspection.thermo.Thal;
 
@@ -73,8 +75,8 @@ public record TmGate(double annealTemp, double margin, double monovalentMm, doub
             return java.util.Optional.empty();
         }
         return java.util.Optional.of("--na and --mg leave no cations for a Tm: give --na above 0, or --mg above"
-                + " --dntp (the dNTP bind their own amount of Mg2+); got " + number(monovalentMm) + " mM Na+, "
-                + number(divalentMm) + " mM Mg2+, " + number(dntpMm) + " mM dNTP");
+                + " --dntp (the dNTP bind their own amount of Mg2+); got " + Numbers.plain(monovalentMm) + " mM Na+, "
+                + Numbers.plain(divalentMm) + " mM Mg2+, " + Numbers.plain(dntpMm) + " mM dNTP");
     }
 
     /** Every assay at {@code annealTemp}. */
@@ -119,7 +121,15 @@ public record TmGate(double annealTemp, double margin, double monovalentMm, doub
      * {@link #minimumTm(String)}.
      */
     public boolean accepts(BlastResult hit, TrimmedEnds.Template template) {
-        return siteTm(hit, template) >= minimumTm(hit.subjectID());
+        return accepts(hit.subjectID(), siteTm(hit, template));
+    }
+
+    /**
+     * Whether a site of oligo {@code oligoId} that melts at {@code tm} °C is accepted: {@code tm} reaches
+     * {@link #minimumTm(String)}. The one test of a site's Tm, wherever it is computed.
+     */
+    public boolean accepts(String oligoId, double tm) {
+        return tm >= minimumTm(oligoId);
     }
 
     /**
@@ -152,8 +162,8 @@ public record TmGate(double annealTemp, double margin, double monovalentMm, doub
         java.util.List<String> lines = new java.util.ArrayList<>();
         boolean own = !assayTemps.isEmpty();
         lines.add("Oligo Tm on the perfect complement (a site's Tm must reach " + (own
-                ? "its assay's annealing temperature less " + number(margin) + " °C"
-                : number(minimumTm()) + " °C") + "):");
+                ? "its assay's annealing temperature less " + Numbers.plain(margin) + " °C"
+                : Numbers.plain(minimumTm()) + " °C") + "):");
         Map<String, double[]> ranges = new java.util.LinkedHashMap<>();
         Map<String, Integer> counts = new java.util.HashMap<>();
         primers.sequences().forEach((id, sequence) -> {
@@ -169,7 +179,7 @@ public record TmGate(double annealTemp, double margin, double monovalentMm, doub
                     : String.format(java.util.Locale.ROOT, "%.1f to %.1f °C (%d sequences)", range[0], range[1], count);
             String verdict = range[1] < minimum ? ": below the minimum, unlikely to anneal anywhere"
                     : range[0] < minimum ? ": some of its sequences below the minimum" : "";
-            lines.add("  " + oligo + " " + tm + (own ? " (needs " + number(minimum) + ")" : "") + verdict);
+            lines.add("  " + oligo + " " + tm + (own ? " (needs " + Numbers.plain(minimum) + ")" : "") + verdict);
         });
         return lines;
     }
@@ -260,14 +270,10 @@ public record TmGate(double annealTemp, double margin, double monovalentMm, doub
     /** As the run's settings list it. */
     public String describe() {
         return String.format(java.util.Locale.ROOT, "site Tm at least %s °C (%s - %s); %s mM Na+, %s mM Mg2+,"
-                        + " %s mM dNTP, %s nM oligo", number(minimumTm()), number(annealTemp), number(margin),
-                number(monovalentMm), number(divalentMm), number(dntpMm), number(oligoNm))
+                        + " %s mM dNTP, %s nM oligo", Numbers.plain(minimumTm()), Numbers.plain(annealTemp), Numbers.plain(margin),
+                Numbers.plain(monovalentMm), Numbers.plain(divalentMm), Numbers.plain(dntpMm), Numbers.plain(oligoNm))
                 + (assayTemps.isEmpty() ? "" : "; assays at their own annealing temperature (ta=): "
                 + assayTemps.summary() + " °C");
-    }
-
-    private static String number(double value) {
-        return java.math.BigDecimal.valueOf(value).stripTrailingZeros().toPlainString();
     }
 
     private static void requireNonNegative(double value, String label) {

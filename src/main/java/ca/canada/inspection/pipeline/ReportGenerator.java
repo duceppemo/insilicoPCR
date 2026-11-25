@@ -104,9 +104,8 @@ public final class ReportGenerator {
         }
         qaLines.addAll(diagnostics.qaLogLines());
         if (!noProducts.isEmpty()) {
-            qaLines.add(noProducts.stream().map(row -> List.of(row.sample(), row.assay())).distinct().count()
-                    + " assay(s) gave no product in a sample: " + ca.canada.inspection.report.ConsolidatedReport
-                    .baseName(report) + ca.canada.inspection.report.NoProductReport.SUFFIX + " says why");
+            qaLines.add(noProductLine(noProducts, ca.canada.inspection.report.ConsolidatedReport.baseName(report)
+                    + ca.canada.inspection.report.NoProductReport.SUFFIX));
         }
         splits.forEach(split -> qaLines.add("Primers at contig ends: " + split.message()));
         // QAlog.txt marks the run finished and names its report: a run stopped before it does not
@@ -137,6 +136,26 @@ public final class ReportGenerator {
         extension.rows().forEach((sample, list) ->
                 rows.computeIfAbsent(sample, ignored -> new ArrayList<>()).addAll(list));
         return rows;
+    }
+
+    /**
+     * The QA log's line on {@code noProducts}: the assays of a sample without a product, and apart, those whose
+     * product is reported under another assay of their reaction ({@code mix=}), which made one.
+     */
+    static String noProductLine(List<ca.canada.inspection.pcr.NoProduct> noProducts, String file) {
+        java.util.function.Function<Boolean, Long> count = merged -> noProducts.stream()
+                .filter(row -> row.reportedUnderAnother() == merged)
+                .map(row -> List.of(row.sample(), row.assay())).distinct().count();
+        long none = count.apply(false);
+        long merged = count.apply(true);
+        List<String> parts = new ArrayList<>();
+        if (none > 0) {
+            parts.add(none + " assay(s) gave no product in a sample");
+        }
+        if (merged > 0) {
+            parts.add(merged + " assay(s) made a product reported under another assay of their reaction (mix=)");
+        }
+        return String.join("; ", parts) + ": " + file + (none > 0 ? " says why" : " says which");
     }
 
     /** Assays of the assembly samples with no product whose primers point off contig ends. */

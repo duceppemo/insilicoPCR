@@ -7,7 +7,6 @@ import ca.canada.inspection.pcr.ReadLevelCaller;
 import ca.canada.inspection.report.RunDetails;
 import ca.canada.inspection.report.RunDetails.Setting;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -124,7 +123,7 @@ public final class RunSettings {
     static String number(double value) {
         double size = Math.abs(value);
         if (value == 0 || (size >= 1e-6 && size < 1e9)) {
-            return BigDecimal.valueOf(value).stripTrailingZeros().toPlainString();
+            return ca.canada.inspection.util.Numbers.plain(value);
         }
         return String.valueOf(value);
     }

@@ -1,5 +1,7 @@
 package ca.canada.inspection.dispatchpcr;
 
+import ca.canada.inspection.util.Numbers;
+
 import ca.canada.inspection.insilicopcr.MainRun;
 import ca.canada.inspection.pcr.AmpliconOptions;
 import ca.canada.inspection.pcr.ReadExtensionCaller;
@@ -141,10 +143,6 @@ public final class Dispatcher {
         };
     }
 
-    private static String number(double value) {
-        return java.math.BigDecimal.valueOf(value).stripTrailingZeros().toPlainString();
-    }
-
     /** Package-private for unit tests. */
     static Options options() {
         Options options = new Options();
@@ -176,19 +174,19 @@ public final class Dispatcher {
                 .desc("Annealing temperature of the reaction: a primer or probe site is accepted when its Tm on the"
                         + " template (Primer3's thermodynamic alignment) reaches it less --tm-margin, and a primer's"
                         + " 3' end passes the 3' rule. An assay whose primer header gives ta=<°C> is judged at that"
-                        + " temperature instead; default: " + number(TmGate.DEFAULT_ANNEAL_TEMP)).build());
+                        + " temperature instead; default: " + Numbers.plain(TmGate.DEFAULT_ANNEAL_TEMP)).build());
         options.addOption(Option.builder().longOpt("tm-margin").hasArg().argName("°C")
-                .desc("How far below --anneal-temp a site's Tm may be; default: " + number(TmGate.DEFAULT_MARGIN))
+                .desc("How far below --anneal-temp a site's Tm may be; default: " + Numbers.plain(TmGate.DEFAULT_MARGIN))
                 .build());
         options.addOption(Option.builder().longOpt("na").hasArg().argName("mM")
-                .desc("Reaction, for the Tm: monovalent cations; default: " + number(TmGate.DEFAULT_MONOVALENT_MM)).build());
+                .desc("Reaction, for the Tm: monovalent cations; default: " + Numbers.plain(TmGate.DEFAULT_MONOVALENT_MM)).build());
         options.addOption(Option.builder().longOpt("mg").hasArg().argName("mM")
-                .desc("Reaction, for the Tm: Mg2+; default: " + number(TmGate.DEFAULT_DIVALENT_MM)).build());
+                .desc("Reaction, for the Tm: Mg2+; default: " + Numbers.plain(TmGate.DEFAULT_DIVALENT_MM)).build());
         options.addOption(Option.builder().longOpt("dntp").hasArg().argName("mM")
-                .desc("Reaction, for the Tm: dNTP; default: " + number(TmGate.DEFAULT_DNTP_MM)).build());
+                .desc("Reaction, for the Tm: dNTP; default: " + Numbers.plain(TmGate.DEFAULT_DNTP_MM)).build());
         options.addOption(Option.builder().longOpt("oligo-conc").hasArg().argName("nM")
                 .desc("Reaction, for the Tm: concentration of each primer and probe; default: "
-                        + number(TmGate.DEFAULT_OLIGO_NM)).build());
+                        + Numbers.plain(TmGate.DEFAULT_OLIGO_NM)).build());
         options.addOption(Option.builder().longOpt("tadpole-k").hasArg().argName("n")
                 .desc("FASTQ mode: Tadpole k-mer length; default: " + TadpoleOptions.DEFAULT_K).build());
         options.addOption(Option.builder().longOpt("tadpole-min-seed").hasArg().argName("n")

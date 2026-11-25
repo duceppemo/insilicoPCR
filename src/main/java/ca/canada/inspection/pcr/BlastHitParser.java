@@ -56,7 +56,10 @@ public final class BlastHitParser {
     public static Optional<BlastResult> parse(String line, PrimerPanel primers, AmpliconOptions options,
                                               Function<BlastResult, TrimmedEnds.Template> templates) {
         if (options.tmGated()) {
-            return parsePending(line, primers, options, templates).filter(pending -> pending.accepted(options.tmGate()))
+            // One site at a time; BlastHits#read computes the Tms of a search in parallel, with the same test.
+            TmGate gate = options.tmGate();
+            return parseSite(line, primers, options, templates)
+                    .filter(site -> site.primes() && gate.accepts(site.hit().subjectID(), site.tm(gate)))
                     .map(Pending::hit);
         }
         int fivePrimeFree = options.maxFivePrimeTruncation();
@@ -76,17 +79,6 @@ public final class BlastHitParser {
      * @param primes            whether it passes the 3' rule (a probe always does: it does not extend)
      */
     public record Pending(BlastResult hit, String strand, int threePrimePenalty, boolean primes) {
-        /** Whether the site melts at {@code gate}'s minimum or above. */
-        public boolean accepted(TmGate gate) {
-            return !Double.isNaN(acceptedTm(gate));
-        }
-
-        /** The Tm of the site, °C, when {@code gate} accepts it ({@link #accepted}); {@code NaN} otherwise. */
-        public double acceptedTm(TmGate gate) {
-            double tm = tm(gate);
-            return tm >= gate.minimumTm(hit.subjectID()) ? tm : Double.NaN;
-        }
-
         /** The Tm of the site, °C; {@link Double#NEGATIVE_INFINITY} for an oligo without a sequence. */
         public double tm(TmGate gate) {
             String oligo = hit.primerSeq();
@@ -97,17 +89,9 @@ public final class BlastHitParser {
 
     /**
      * With the Tm gate on ({@link AmpliconOptions#tmGated}): the hit of {@code line}, its trimmed bases compared with
-     * the template, when it passes the rules other than its Tm (a primer's 3' rule), with the strand under it; empty
-     * otherwise. The 3' rule is checked first: it costs nothing, and a site must pass both.
-     */
-    public static Optional<Pending> parsePending(String line, PrimerPanel primers, AmpliconOptions options,
-                                                 Function<BlastResult, TrimmedEnds.Template> templates) {
-        return parseSite(line, primers, options, templates).filter(Pending::primes);
-    }
-
-    /**
-     * As {@link #parsePending}, a primer's site that fails the 3' rule too ({@link Pending#primes} false): what the
-     * run says of an oligo without an accepted site is its best site, and why that one fails.
+     * the template, with the strand under it and whether it passes the 3' rule; empty for a line that is not a hit.
+     * The 3' rule costs nothing, so a site that fails it needs no Tm; it is kept, for what the run says of an oligo
+     * without an accepted site (its best site, and why that one fails).
      */
     public static Optional<Pending> parseSite(String line, PrimerPanel primers, AmpliconOptions options,
                                               Function<BlastResult, TrimmedEnds.Template> templates) {

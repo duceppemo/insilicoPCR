@@ -4,7 +4,7 @@ insilicoPCR produces report files that summarize primer hits, predicted amplicon
 
 ## Report types
 
-- runtime and quality logs (`QAlog.txt`): the version, the input files and samples, every setting that decides the results (each with its command-line option: the Tm rule and the reaction it assumes, the 3' rule, product length, BLAST e-value, threads, input check, and the FASTQ settings when there are reads), the versions of the tools used (`Tools:` BLAST+, BBTools, Java; since 0.15.3), the assays sharing a reaction (`mix=`), each oligo's Tm on a perfect match (since 2.0; one below the Tm a site needs is flagged), then what the run found worth a note, and how many assays gave no product in a sample, naming `report_no_product.tsv`. The run's log lists the same settings at its start, and the HTML report under **Run details** (the e-value, threads, input check and Tadpole settings since 0.15.2)
+- runtime and quality logs (`QAlog.txt`): the version, the input files and samples, every setting that decides the results (each with its command-line option: the Tm rule and the reaction it assumes, the 3' rule, product length, BLAST e-value, threads, input check, and the FASTQ settings when there are reads), the versions of the tools used (`Tools:` BLAST+, BBTools, Java; since 0.15.3), the assays sharing a reaction (`mix=`), each oligo's Tm on a perfect match (since 2.0; one below the Tm a site needs is flagged), then what the run found worth a note, and how many assays gave no product in a sample (and, apart, how many made one reported under another assay of their reaction, `mix=`), naming `report_no_product.tsv`. The run's log lists the same settings at its start, and the HTML report under **Run details** (the e-value, threads, input check and Tadpole settings since 0.15.2)
 - detailed per-sample BLAST hit tables (`detailed_report/<sample>/<sample>.tsv`)
 - consolidated TSV report (`consolidated_report/report.tsv`)
 - the samples of the run (`consolidated_report/report_samples.tsv`, since 1.0): every sample, analysed or left out, with its number of products; see [Samples file](#samples-file)
@@ -229,6 +229,9 @@ The reasons:
 - `no site: BLAST found no match`.
 - `no site reaches 55 °C, and its Tm on a perfect match is 53.3 °C: it is unlikely to anneal at this temperature (lower the annealing temperature, --anneal-temp or the assay's ta=, or raise --tm-margin)`: the oligo itself is too short or too A/T-rich for the run's temperature, and its assay is unlikely to give a product in any sample. For a degenerate oligo, this is said only when every one of its sequences is below.
 - with an empty `Oligo`: `every oligo has a site, but no forward and reverse site face each other on one sequence within 5000 bp (--max-length)`, with `with a probe site between them` for a probe assay.
+- with an empty `Oligo`: `its product is reported under a: the two assays share a reaction (mix=) and make it at the same place`: the assay did make its product, and `report.tsv` lists it once, under the other assay of its reaction (see [Primer FASTA Format](Primer-FASTA-Format#assays-in-one-reaction-multiplex)). `QAlog.txt` counts these apart from the assays without a product.
+
+A reason ends with `; the report has a product of one of its primers alone` when `report.tsv` has a product of one of the assay's primers by itself (`Pairing` `one-primer`): a product of the tube, not the one the assay was designed for.
 
 For a FASTQ sample, the reason is about the mini-assembly (`in the mini-assembly (the FASTQ diagnostics say what the reads show)`): see the [diagnostics file](#diagnostics-file) for what the reads show.
 

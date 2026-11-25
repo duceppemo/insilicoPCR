@@ -30,7 +30,9 @@
 - `report_no_product.tsv` (new) and the HTML report ("Why no product") say,
   for each assay without a product in a sample, which oligo has no accepted
   site, its best site and the rule that site fails, or that the sites pair
-  into no product; `QAlog.txt` counts them. The log lists each oligo's Tm on
+  into no product; `QAlog.txt` counts them. An assay of a `mix=` reaction
+  whose product is reported under the other assay is listed with that
+  assay's name, and counted apart. The log lists each oligo's Tm on
   a perfect match (a degenerate oligo's range on one line), and flags one
   below the minimum.
 - Oligos longer than 60 bases are scored on their 3'-most 60, as Primer3's

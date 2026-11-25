@@ -1,5 +1,7 @@
 package ca.canada.inspection.pcr;
 
+import ca.canada.inspection.util.Numbers;
+
 import ca.canada.inspection.model.BlastResult;
 import ca.canada.inspection.model.NearMiss;
 import ca.canada.inspection.model.Sample;
@@ -32,6 +34,17 @@ import java.util.TreeMap;
 public record NoProduct(String sample, String assay, String oligo, String reason, String site, double siteTm,
                         double neededTm) {
 
+    /** How the reason of an assay whose product is reported under another assay of its reaction starts. */
+    private static final String REPORTED_UNDER = "its product is reported under ";
+
+    /**
+     * Whether the assay made its product, reported under another assay of its reaction ({@code mix=}): listed to
+     * say where it is, not for a product missing.
+     */
+    public boolean reportedUnderAnother() {
+        return reason.startsWith(REPORTED_UNDER);
+    }
+
     /**
      * The assays of each sample without a product as designed in {@code rows}, with why: samples by name, assays in
      * the panel's order. A product of one of the assay's primers alone, or of two assays sharing a reaction, is not
@@ -58,7 +71,7 @@ public record NoProduct(String sample, String assay, String oligo, String reason
                 }
                 String under = reportedUnder.get(assay);
                 if (under != null) {
-                    found.add(new NoProduct(sample.getName(), assay, "", "its product is reported under " + under
+                    found.add(new NoProduct(sample.getName(), assay, "", REPORTED_UNDER + under
                             + ": the two assays share a reaction (mix=) and make it at the same place", "", Double.NaN,
                             needed(gate, group.forward().getFirst())));
                     return;
@@ -128,7 +141,7 @@ public record NoProduct(String sample, String assay, String oligo, String reason
                 return new NoProduct(sample, assay, best == null ? highest : closest, String.format(Locale.ROOT,
                         "no site reaches %s °C%s, and its Tm on a perfect match is %.1f °C: it is unlikely to anneal"
                                 + " at this temperature (lower the annealing temperature, --anneal-temp or the assay's"
-                                + " ta=, or raise --tm-margin)%s", number(minimum), where, below(perfect, minimum),
+                                + " ta=, or raise --tm-margin)%s", Numbers.plain(minimum), where, below(perfect, minimum),
                         alone),
                         best == null ? "" : site(best.hit()), best == null ? Double.NaN : below(best.tm(), minimum), minimum);
             }
@@ -143,7 +156,7 @@ public record NoProduct(String sample, String assay, String oligo, String reason
                 ? "every site fails the 3' rule" + where + "; the best has a 3' penalty of " + best.threePrimePenalty()
                 + ", more than " + options.maxThreePrimePenalty() + " (--3p-penalty)" + binding
                 : String.format(Locale.ROOT, "no site reaches %s °C%s; the best melts at %.1f °C%s",
-                number(gate.minimumTm(closest)), where, below(best.tm(), gate.minimumTm(closest)), binding);
+                Numbers.plain(gate.minimumTm(closest)), where, below(best.tm(), gate.minimumTm(closest)), binding);
         return new NoProduct(sample, assay, closest, reason + alone, site(hit), below(best.tm(), needed(gate, closest)),
                 needed(gate, closest));
     }
@@ -184,9 +197,5 @@ public record NoProduct(String sample, String assay, String oligo, String reason
 
     private static double needed(TmGate gate, String oligoId) {
         return gate == null ? Double.NaN : gate.minimumTm(oligoId);
-    }
-
-    private static String number(double value) {
-        return java.math.BigDecimal.valueOf(value).stripTrailingZeros().toPlainString();
     }
 }

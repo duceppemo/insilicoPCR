@@ -165,6 +165,51 @@ class NoProductTest {
         assertEquals("b", found.getFirst().assay());
         assertEquals("its product is reported under a: the two assays share a reaction (mix=) and make it at the same"
                 + " place", found.getFirst().reason());
+        assertTrue(found.getFirst().reportedUnderAnother());
+    }
+
+    /** Assays a and b, every primer {@link #PRIMER}, in one reaction; a makes its product at 101-419. */
+    private static PrimerPanel mixedWithA(Sample sample) {
+        sample.hits().add("a-F", plus("a-F", 101, PRIMER), 60);
+        sample.hits().add("a-R", minus("a-R", 400, PRIMER), 60);
+        Map<String, String> sequences = new LinkedHashMap<>();
+        for (String id : List.of("a-F", "a-R", "b-F", "b-R")) {
+            sequences.put(id, PRIMER);
+        }
+        return PrimerPanel.of(sequences, ExpectedSizes.NONE,
+                MixGroups.fromHeaders(Map.of("a-F", "mix=m", "b-F", "mix=m")));
+    }
+
+    @Test
+    void aProductOfOnePrimerAloneAtAnotherAssaysPlaceIsNotSaidToBeReportedUnderIt() {
+        Sample sample = sample("s", Sample.FileType.FASTA);
+        PrimerPanel primers = mixedWithA(sample);
+        // b-F alone at a's place, an inverted repeat; b-R anneals nowhere.
+        sample.hits().add("b-F", plus("b-F", 101, PRIMER), 60);
+        sample.hits().add("b-F", minus("b-F", 400, PRIMER), 60);
+        List<NoProduct> found = of(primers, sample);
+        assertEquals(1, found.size(), found.toString());
+        assertEquals(List.of("b", "b-R", "no site: BLAST found no match"),
+                List.of(found.getFirst().assay(), found.getFirst().oligo(), found.getFirst().reason()));
+        assertTrue(!found.getFirst().reportedUnderAnother());
+    }
+
+    @Test
+    void anAssayWhoseDesignedProductIsReportedUnderAnotherSaysSoThoughItHasAProductOfOnePrimer() {
+        Sample sample = sample("s", Sample.FileType.FASTA);
+        PrimerPanel primers = mixedWithA(sample);
+        sample.hits().add("b-F", plus("b-F", 101, PRIMER), 60);
+        sample.hits().add("b-R", minus("b-R", 400, PRIMER), 60);
+        // b-F alone elsewhere, reported under b.
+        sample.hits().add("b-F", minus("b-F", 2300, PRIMER), 60);
+        Map<String, Sample> bySample = Map.of("s", sample);
+        List<ReportRow> rows = Products.ofRun(bySample, primers, GATED, Map.of());
+        assertTrue(rows.stream().anyMatch(row -> row.assay().equals("b")
+                && row.pairing() == ReportRow.Pairing.ONE_PRIMER), rows.toString());
+        List<NoProduct> found = NoProduct.of(bySample, primers, GATED, rows);
+        assertEquals(1, found.size(), found.toString());
+        assertTrue(found.getFirst().reason().startsWith("its product is reported under a: "),
+                found.getFirst().reason());
     }
 
     @Test

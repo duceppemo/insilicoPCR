@@ -84,8 +84,9 @@ class PrimerServiceTest {
                 ungated.ampliconOptions().withTmGate(ca.canada.inspection.pcr.TmGate.at(60)));
         ca.canada.inspection.pcr.TmGate gate = PrimerService.withAnnealTemps(gated, panel, warnings::add)
                 .ampliconOptions().tmGate();
-        assertEquals(53.0, gate.minimumTm("a-F"));
-        assertEquals(55.0, gate.minimumTm("b-R"));
+        assertEquals(48.0, gate.minimumSiteTm("a-F"));
+        assertEquals(53.0, gate.minimumCopyTm("a-F"));
+        assertEquals(55.0, gate.minimumCopyTm("b-R"));
         assertEquals(1, warnings.size());
     }
 

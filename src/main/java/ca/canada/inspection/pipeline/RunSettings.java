@@ -39,7 +39,7 @@ public final class RunSettings {
                 String.valueOf(options.maxFivePrimeTruncation())));
         if (options.tmGated()) {
             // Only when on: a run without it lists what 1.x listed.
-            settings.add(new Setting("Primer-site Tm gate (--anneal-temp, --tm-margin, --na, --mg, --dntp, --oligo-conc)",
+            settings.add(new Setting("Primer-site Tm gate (--anneal-temp, --tm-margin, --start-margin, --na, --mg, --dntp, --oligo-conc)",
                     options.tmGate().describe()));
         }
         settings.add(new Setting("Product length (--min-length to --max-length)", options.minAmpliconLength() + " to "

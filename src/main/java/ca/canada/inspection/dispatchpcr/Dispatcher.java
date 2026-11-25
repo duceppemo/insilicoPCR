@@ -183,15 +183,21 @@ public final class Dispatcher {
                         + " out of BLAST's alignment) without counting as mismatches; default: "
                         + AmpliconOptions.DEFAULT_FIVE_PRIME_TRUNCATION).build());
         options.addOption(Option.builder().longOpt("anneal-temp").hasArg().argName("°C")
-                .desc("Annealing temperature of the reaction. Given, it turns the Tm gate on: a primer or probe site is"
-                        + " accepted when its Tm (Primer3's thermodynamic alignment) reaches this temperature less"
-                        + " --tm-margin, and a primer still passes the 3' rule; -m, --probe-mismatches and"
+                .desc("Annealing temperature of the reaction. Given, it turns the Tm gate on (Primer3's thermodynamic"
+                        + " alignment): a primer site is accepted when its Tm reaches this temperature less"
+                        + " --start-margin, to start a product, the primer's Tm on its perfect complement reaches it"
+                        + " less --tm-margin, to copy it, and the 3' rule passes; a probe site when its Tm reaches it"
+                        + " less --tm-margin. -m, --probe-mismatches and"
                         + " --5p-truncation then no longer decide (FASTQ mode: -m still sizes the bait). An assay whose"
                         + " primer header gives ta=<°C> is judged at that temperature instead; default: off")
                 .build());
         options.addOption(Option.builder().longOpt("tm-margin").hasArg().argName("°C")
-                .desc("With --anneal-temp: how far below it a site's Tm may be; default: "
-                        + number(TmGate.DEFAULT_MARGIN)).build());
+                .desc("With --anneal-temp: how far below it a primer's Tm on its perfect complement, and a probe's on"
+                        + " its site, may be; default: " + number(TmGate.DEFAULT_MARGIN)).build());
+        options.addOption(Option.builder().longOpt("start-margin").hasArg().argName("°C")
+                .desc("With --anneal-temp: how far below it a primer's Tm on its site may be, the primer still"
+                        + " starting a product there (its copies carry the whole primer); default: "
+                        + number(TmGate.DEFAULT_START_MARGIN)).build());
         options.addOption(Option.builder().longOpt("na").hasArg().argName("mM")
                 .desc("With --anneal-temp: monovalent cations; default: " + number(TmGate.DEFAULT_MONOVALENT_MM)).build());
         options.addOption(Option.builder().longOpt("mg").hasArg().argName("mM")

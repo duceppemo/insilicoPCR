@@ -18,7 +18,7 @@ import java.util.function.Function;
  * weighted penalty of imperfections inside the 3' window must not exceed
  * {@code maxThreePrimePenalty}. Hydrolysis probes (-P) do not extend, so only
  * the total mismatch budget and overall coverage are enforced for them. With the Tm gate on
- * ({@link TmGate}, since 2.0), a site's Tm decides instead of those counts, and a primer's 3' penalty still
+ * ({@link TmGate}, since 2.0), Tm decides instead of those counts, and a primer's 3' penalty still
  * applies.</p>
  *
  * <p>BLAST trims mismatches near the ends of its local alignments together with
@@ -73,11 +73,11 @@ public final class BlastHitParser {
      * oligo anneals to: the Tm, the costly part (a thermodynamic alignment), can then be computed apart, in parallel.
      */
     public record Pending(BlastResult hit, String strand) {
-        /** Whether the site melts at {@code gate}'s minimum for its assay or above. */
+        /** Whether the oligo anneals well enough to its site for {@code gate} ({@link TmGate#accepts(String, String, String)}). */
         public boolean accepted(TmGate gate) {
             String oligo = hit.primerSeq();
             return oligo != null && !oligo.isEmpty()
-                    && gate.tm(oligo.toUpperCase(java.util.Locale.ROOT), strand) >= gate.minimumTm(hit.subjectID());
+                    && gate.accepts(hit.subjectID(), oligo.toUpperCase(java.util.Locale.ROOT), strand);
         }
     }
 

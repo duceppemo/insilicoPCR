@@ -7,11 +7,17 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Accepts a primer or probe site by its melting temperature (since 2.0): the Tm of the oligo on the template under it,
- * computed as Primer3's {@code ntthal} does ({@link Thal}, any alignment), must reach the annealing temperature less
- * a margin. With the gate on, it decides in place of the counts of {@code -m}, {@code --probe-mismatches} and
- * {@code --5p-truncation}; a primer must still pass the 3' rule ({@code --3p-window}, {@code --3p-penalty}): a
- * stable duplex with a mismatched 3' end extends poorly, and Tm does not model that.
+ * Accepts a primer or probe site by melting temperature (since 2.0), computed as Primer3's {@code ntthal} does
+ * ({@link Thal}, any alignment). With the gate on, it decides in place of the counts of {@code -m},
+ * {@code --probe-mismatches} and {@code --5p-truncation}; a primer must still pass the 3' rule ({@code --3p-window},
+ * {@code --3p-penalty}): a stable duplex with a mismatched 3' end extends poorly, and Tm does not model that.
+ *
+ * <p>A primer's mismatches matter in the first cycles only: from the second on, it anneals to copies of the
+ * product, which carry its whole sequence. So a primer site needs only to start the product, its Tm on the template
+ * under it reaching the annealing temperature less {@code startMargin}; and the primer must then copy it, its Tm on
+ * its perfect complement reaching the annealing temperature less {@code margin}. A probe anneals to copies of the
+ * template under it, mismatches included, in every cycle: its site's Tm must reach the annealing temperature less
+ * {@code margin}.</p>
  *
  * <p>The template under an oligo is the site BLAST aligned, with the bases its alignment left out on either side
  * (as far as the sequence goes): {@code thal} finds its own alignment there, mismatches, bulges and dangling ends
@@ -19,8 +25,10 @@ import java.util.concurrent.ConcurrentHashMap;
  * as free bases.</p>
  *
  * @param annealTemp   annealing temperature of the reaction, °C ({@code --anneal-temp})
- * @param margin       how far below {@code annealTemp} a site's Tm may be and the site still prime, °C
- *                     ({@code --tm-margin})
+ * @param margin       how far below {@code annealTemp} a primer's Tm on its perfect complement, and a probe's on its
+ *                     site, may be, °C ({@code --tm-margin})
+ * @param startMargin  how far below {@code annealTemp} a primer's Tm on its site may be and the primer still start a
+ *                     product there, °C ({@code --start-margin})
  * @param monovalentMm monovalent cations, mM ({@code --na}; Primer3's {@code -mv})
  * @param divalentMm   Mg²⁺, mM ({@code --mg}; {@code -dv})
  * @param dntpMm       dNTP, mM ({@code --dntp}; {@code -n})
@@ -28,10 +36,16 @@ import java.util.concurrent.ConcurrentHashMap;
  * @param assayTemps   the annealing temperatures the primer file declares ({@code ta=}): an assay's sites are
  *                     judged at its own, the others' at {@code annealTemp}
  */
-public record TmGate(double annealTemp, double margin, double monovalentMm, double divalentMm, double dntpMm,
-                     double oligoNm, AnnealTemps assayTemps) {
+public record TmGate(double annealTemp, double margin, double startMargin, double monovalentMm, double divalentMm,
+                     double dntpMm, double oligoNm, AnnealTemps assayTemps) {
 
     public static final double DEFAULT_MARGIN = 5;
+    /**
+     * A primer starts a product where its Tm is this far below the annealing temperature: on G. pallida, the ITS5
+     * primer of the EPPO Bulman and Marshall test (PM 7/40, at 60 °C) anneals at 51.5 to 53 °C, its first 6 bases
+     * mismatched; the sites of 1.x products the gate rejects on that sample were at 48 °C or less.
+     */
+    public static final double DEFAULT_START_MARGIN = 10;
     public static final double DEFAULT_MONOVALENT_MM = 50;
     public static final double DEFAULT_DIVALENT_MM = 3;
     public static final double DEFAULT_DNTP_MM = 0.8;
@@ -47,6 +61,7 @@ public record TmGate(double annealTemp, double margin, double monovalentMm, doub
             throw new IllegalArgumentException("--anneal-temp must be 0 to 100 °C, got: " + annealTemp);
         }
         requireNonNegative(margin, "--tm-margin");
+        requireNonNegative(startMargin, "--start-margin");
         requireNonNegative(monovalentMm, "--na");
         requireNonNegative(divalentMm, "--mg");
         requireNonNegative(dntpMm, "--dntp");
@@ -56,29 +71,32 @@ public record TmGate(double annealTemp, double margin, double monovalentMm, doub
     }
 
     /** Every assay at {@code annealTemp}. */
-    public TmGate(double annealTemp, double margin, double monovalentMm, double divalentMm, double dntpMm,
-                  double oligoNm) {
-        this(annealTemp, margin, monovalentMm, divalentMm, dntpMm, oligoNm, AnnealTemps.NONE);
+    public TmGate(double annealTemp, double margin, double startMargin, double monovalentMm, double divalentMm,
+                  double dntpMm, double oligoNm) {
+        this(annealTemp, margin, startMargin, monovalentMm, divalentMm, dntpMm, oligoNm, AnnealTemps.NONE);
     }
 
     /** This gate, the assays of {@code temps} at their own annealing temperature ({@code ta=}). */
     public TmGate withAssayTemps(AnnealTemps temps) {
-        return new TmGate(annealTemp, margin, monovalentMm, divalentMm, dntpMm, oligoNm, temps);
+        return new TmGate(annealTemp, margin, startMargin, monovalentMm, divalentMm, dntpMm, oligoNm, temps);
     }
 
     /** The gate at {@code annealTemp}, every other setting at its default. */
     public static TmGate at(double annealTemp) {
-        return new TmGate(annealTemp, DEFAULT_MARGIN, DEFAULT_MONOVALENT_MM, DEFAULT_DIVALENT_MM, DEFAULT_DNTP_MM,
+        return new TmGate(annealTemp, DEFAULT_MARGIN, DEFAULT_START_MARGIN, DEFAULT_MONOVALENT_MM, DEFAULT_DIVALENT_MM, DEFAULT_DNTP_MM,
                 DEFAULT_OLIGO_NM);
     }
 
-    /** The lowest Tm a site may have at {@code --anneal-temp}, °C. */
-    public double minimumTm() {
-        return annealTemp - margin;
+    /**
+     * The lowest Tm the site of {@code oligoId} may have, °C: for a primer, to start a product there ({@code
+     * startMargin} below its assay's annealing temperature); for a probe, to bind ({@code margin} below it).
+     */
+    public double minimumSiteTm(String oligoId) {
+        return annealTempOf(oligoId) - (PrimerId.isProbe(oligoId) ? margin : startMargin);
     }
 
-    /** The lowest Tm a site of {@code oligoId} may have, °C: at its assay's {@code ta=}, or {@link #minimumTm()}. */
-    public double minimumTm(String oligoId) {
+    /** The lowest Tm the primer {@code oligoId} may have on its perfect complement, to copy a product, °C. */
+    public double minimumCopyTm(String oligoId) {
         return annealTempOf(oligoId) - margin;
     }
 
@@ -92,9 +110,23 @@ public record TmGate(double annealTemp, double margin, double monovalentMm, doub
         return own == null ? annealTemp : own;
     }
 
-    /** Whether the site of {@code hit} on {@code template} melts at {@link #minimumTm(String)} or above. */
+    /** Whether the oligo of {@code hit} anneals well enough to its site on {@code template}, as {@link #accepts(String, String, String)}. */
     public boolean accepts(BlastResult hit, TrimmedEnds.Template template) {
-        return siteTm(hit, template) >= minimumTm(hit.subjectID());
+        String oligo = hit.primerSeq();
+        return oligo != null && !oligo.isEmpty()
+                && accepts(hit.subjectID(), oligo.toUpperCase(java.util.Locale.ROOT), strandUnder(hit, template));
+    }
+
+    /**
+     * Whether {@code oligo} ({@code oligoId}, upper case) anneals well enough to {@code strand}, the template under its
+     * site: a probe's Tm there reaches {@link #minimumSiteTm}; a primer's reaches it, to start a product, and the
+     * primer's on its perfect complement {@link #minimumCopyTm}, to copy it.
+     */
+    public boolean accepts(String oligoId, String oligo, String strand) {
+        if (tm(oligo, strand) < minimumSiteTm(oligoId)) {
+            return false;
+        }
+        return PrimerId.isProbe(oligoId) || tm(oligo, Dna.reverseComplement(oligo)) >= minimumCopyTm(oligoId);
     }
 
     /**
@@ -172,9 +204,12 @@ public record TmGate(double annealTemp, double margin, double monovalentMm, doub
 
     /** As the run's settings list it. */
     public String describe() {
-        return String.format(java.util.Locale.ROOT, "Tm at least %s °C (%s - %s); %s mM Na+, %s mM Mg2+, %s mM dNTP,"
-                        + " %s nM oligo", number(minimumTm()), number(annealTemp), number(margin), number(monovalentMm),
-                number(divalentMm), number(dntpMm), number(oligoNm))
+        return String.format(java.util.Locale.ROOT, "primer sites Tm at least %s °C to start a product (%s - %s),"
+                        + " primers at least %s °C on their perfect complement to copy it and probe sites at least %s °C"
+                        + " (%s - %s); %s mM Na+, %s mM Mg2+, %s mM dNTP, %s nM oligo", number(annealTemp - startMargin),
+                number(annealTemp), number(startMargin), number(annealTemp - margin), number(annealTemp - margin),
+                number(annealTemp), number(margin), number(monovalentMm), number(divalentMm), number(dntpMm),
+                number(oligoNm))
                 + (assayTemps.isEmpty() ? "" : "; at their own annealing temperature (ta=): " + assayTemps.summary());
     }
 

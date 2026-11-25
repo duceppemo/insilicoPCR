@@ -101,7 +101,7 @@ public final class CliConfig {
     }
 
     /** The options of the Tm gate, which only {@code --anneal-temp} turns on. */
-    static final List<String> TM_GATE_SETTINGS = List.of("tm-margin", "na", "mg", "dntp", "oligo-conc");
+    static final List<String> TM_GATE_SETTINGS = List.of("tm-margin", "start-margin", "na", "mg", "dntp", "oligo-conc");
 
     /** The Tm gate the command line asks for, or {@code null}: off without {@code --anneal-temp}. */
     private static TmGate tmGate(CommandLine cmd) {
@@ -116,6 +116,7 @@ public final class CliConfig {
         }
         return new TmGate(parseDouble(cmd, "anneal-temp"),
                 doubleOr(cmd, "tm-margin", TmGate.DEFAULT_MARGIN),
+                doubleOr(cmd, "start-margin", TmGate.DEFAULT_START_MARGIN),
                 doubleOr(cmd, "na", TmGate.DEFAULT_MONOVALENT_MM),
                 doubleOr(cmd, "mg", TmGate.DEFAULT_DIVALENT_MM),
                 doubleOr(cmd, "dntp", TmGate.DEFAULT_DNTP_MM),

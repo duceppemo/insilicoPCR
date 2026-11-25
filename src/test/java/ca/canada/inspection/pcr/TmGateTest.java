@@ -33,7 +33,7 @@ class TmGateTest {
     }
 
     private static AmpliconOptions gated(double minimumTm) {
-        return STRICT.withTmGate(new TmGate(minimumTm, 0, 50, 3, 0.8, 250));
+        return STRICT.withTmGate(new TmGate(minimumTm, 0, 0, 50, 3, 0.8, 250));
     }
 
     private static double tm(String blastLine, String contig) {
@@ -86,7 +86,7 @@ class TmGateTest {
         double cut = tm(blastLine, contig);
         double whole = tm(line("g-F", 0, 21, 40, PRIMER, 1, 20, PRIMER), FLANK + PRIMER + FLANK);
         assertTrue(cut < whole - 15, cut + " vs " + whole);
-        assertTrue(parse(blastLine, contig, truncation8.withTmGate(new TmGate(cut + 1, 0, 50, 3, 0.8, 250)))
+        assertTrue(parse(blastLine, contig, truncation8.withTmGate(new TmGate(cut + 1, 0, 0, 50, 3, 0.8, 250)))
                 .isEmpty());
     }
 
@@ -108,18 +108,49 @@ class TmGateTest {
     }
 
     @Test
+    void aPrimerSiteNeedsOnlyToStartTheProductWhileAProbeSiteMustBindInEveryCycle() {
+        // The first 5 bases mismatched, as the ITS5 primer's on G. pallida: BLAST aligns the other 15.
+        StringBuilder tail = new StringBuilder();
+        for (char base : PRIMER.substring(0, 5).toCharArray()) {
+            tail.append("ACGT".charAt(("CATG".indexOf(base))));
+        }
+        String contig = FLANK + tail + PRIMER.substring(5) + FLANK;
+        String primerLine = line("g-F", 0, 26, 40, PRIMER.substring(5), 6, 20, PRIMER.substring(5));
+        double site = tm(primerLine, contig);
+        double perfect = tm(line("g-F", 0, 21, 40, PRIMER, 1, 20, PRIMER), FLANK + PRIMER + FLANK);
+        assertTrue(site < perfect - 3, site + " vs " + perfect);
+        // Annealing 7 °C above the site's Tm: within --start-margin 10, not within --tm-margin 5.
+        AmpliconOptions options = STRICT.withTmGate(new TmGate(site + 7, 5, 10, 50, 3, 0.8, 250));
+        assertTrue(parse(primerLine, contig, options).isPresent());
+        assertTrue(parse(primerLine.replace("g-F", "g-P"), contig, options).isEmpty());
+        assertTrue(parse(primerLine, contig, STRICT.withTmGate(new TmGate(site + 7, 5, 6, 50, 3, 0.8, 250)))
+                .isEmpty());
+    }
+
+    @Test
+    void aPrimerMustCopyTheProductAtTheAnnealingTemperature() {
+        // A perfect site starts the product well within --start-margin, but the primer's own Tm is 3 °C short.
+        String contig = FLANK + PRIMER + FLANK;
+        String blastLine = line("g-F", 0, 21, 40, PRIMER, 1, 20, PRIMER);
+        double perfect = tm(blastLine, contig);
+        assertTrue(parse(blastLine, contig, STRICT.withTmGate(new TmGate(perfect + 3, 0, 20, 50, 3, 0.8, 250)))
+                .isEmpty());
+        assertTrue(parse(blastLine, contig, STRICT.withTmGate(new TmGate(perfect + 3, 4, 20, 50, 3, 0.8, 250)))
+                .isPresent());
+    }
+
+    @Test
     void anAssayThatDeclaresItsAnnealingTemperatureIsJudgedAtIt() {
         String contig = FLANK + PRIMER + FLANK;
         String blastLine = line("g-F", 0, 21, 40, PRIMER, 1, 20, PRIMER);
         double perfect = tm(blastLine, contig);
         // --anneal-temp above the site's Tm: rejected; its assay's ta= below it: accepted, the other assays unchanged.
-        TmGate gate = new TmGate(perfect + 3, 0, 50, 3, 0.8, 250);
+        TmGate gate = new TmGate(perfect + 3, 0, 0, 50, 3, 0.8, 250);
         assertTrue(parse(blastLine, contig, STRICT.withTmGate(gate)).isEmpty());
         TmGate own = gate.withAssayTemps(AnnealTemps.of(Map.of("g", perfect - 1)));
         assertTrue(parse(blastLine, contig, STRICT.withTmGate(own)).isPresent());
-        assertEquals(perfect - 1, own.minimumTm("g-F_1"), 1e-9);
-        assertEquals(perfect + 3, own.minimumTm("other-F"), 1e-9);
-        assertEquals(perfect + 3, own.minimumTm(), 1e-9);
+        assertEquals(perfect - 1, own.minimumSiteTm("g-F_1"), 1e-9);
+        assertEquals(perfect + 3, own.minimumSiteTm("other-F"), 1e-9);
         assertTrue(own.describe().endsWith("; at their own annealing temperature (ta=): g "
                 + java.math.BigDecimal.valueOf(perfect - 1).stripTrailingZeros().toPlainString()), own.describe());
     }
@@ -133,13 +164,17 @@ class TmGateTest {
 
     @Test
     void settingsAreChecked() {
-        assertThrows(IllegalArgumentException.class, () -> new TmGate(Double.NaN, 5, 50, 3, 0.8, 250));
-        assertThrows(IllegalArgumentException.class, () -> new TmGate(60, -1, 50, 3, 0.8, 250));
-        assertThrows(IllegalArgumentException.class, () -> new TmGate(60, 5, 50, -3, 0.8, 250));
-        assertThrows(IllegalArgumentException.class, () -> new TmGate(60, 5, 50, 3, 0.8, 0));
-        assertEquals(55.0, TmGate.at(60).minimumTm());
-        assertEquals("Tm at least 55 °C (60 - 5); 50 mM Na+, 3 mM Mg2+, 0.8 mM dNTP, 250 nM oligo",
-                TmGate.at(60).describe());
+        assertThrows(IllegalArgumentException.class, () -> new TmGate(Double.NaN, 5, 10, 50, 3, 0.8, 250));
+        assertThrows(IllegalArgumentException.class, () -> new TmGate(60, -1, 10, 50, 3, 0.8, 250));
+        assertThrows(IllegalArgumentException.class, () -> new TmGate(60, 5, -1, 50, 3, 0.8, 250));
+        assertThrows(IllegalArgumentException.class, () -> new TmGate(60, 5, 10, 50, -3, 0.8, 250));
+        assertThrows(IllegalArgumentException.class, () -> new TmGate(60, 5, 10, 50, 3, 0.8, 0));
+        assertEquals(50.0, TmGate.at(60).minimumSiteTm("a-F"));
+        assertEquals(55.0, TmGate.at(60).minimumCopyTm("a-F"));
+        assertEquals(55.0, TmGate.at(60).minimumSiteTm("a-P"));
+        assertEquals("primer sites Tm at least 50 °C to start a product (60 - 10), primers at least 55 °C on their"
+                + " perfect complement to copy it and probe sites at least 55 °C (60 - 5); 50 mM Na+, 3 mM Mg2+,"
+                + " 0.8 mM dNTP, 250 nM oligo", TmGate.at(60).describe());
     }
 
     @Test

@@ -170,7 +170,7 @@
 <text x="842" y="520" class="input" text-anchor="start">BOTH INPUTS</text>
 <line x1="809" y1="545" x2="819" y2="555" stroke="#E11D48" stroke-width="3.2" stroke-linecap="round" />
 <line x1="809" y1="555" x2="819" y2="545" stroke="#E11D48" stroke-width="3.2" stroke-linecap="round" />
-<text x="830" y="555" class="small" text-anchor="start">melting and annealing temperatures</text>
+<text x="830" y="555" class="small" text-anchor="start">primer-site Tm, unless --anneal-temp</text>
 <line x1="809" y1="569" x2="819" y2="579" stroke="#E11D48" stroke-width="3.2" stroke-linecap="round" />
 <line x1="809" y1="579" x2="819" y2="569" stroke="#E11D48" stroke-width="3.2" stroke-linecap="round" />
 <text x="830" y="579" class="small" text-anchor="start">primer dimers, hairpins</text>
@@ -181,7 +181,7 @@
 <line x1="809" y1="627" x2="819" y2="617" stroke="#E11D48" stroke-width="3.2" stroke-linecap="round" />
 <text x="830" y="627" class="small" text-anchor="start">competition between assays in a multiplex</text>
 <rect x="802" y="652" width="321" height="30" rx="8" fill="#FFF1F2"/>
-<text x="814" y="672" class="verdict" text-anchor="start">Sequence rules only</text>
+<text x="814" y="672" class="verdict" text-anchor="start">Sequence rules, Tm optional</text>
 <text x="806" y="708" class="small" text-anchor="start">Only where the primers bind and how well, which</text>
 <text x="806" y="727" class="small" text-anchor="start">way they face, the product size and the probe.</text>
 <text x="806" y="746" class="small" text-anchor="start">Check the rest with a primer design tool.</text>

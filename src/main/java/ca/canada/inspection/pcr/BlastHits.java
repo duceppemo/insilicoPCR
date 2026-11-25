@@ -68,6 +68,9 @@ public final class BlastHits {
                                    java.util.function.Consumer<String> accepted, boolean keepCutByEnd)
             throws IOException {
         try (QueryTemplates templates = new QueryTemplates(searched, into.circles())) {
+            if (options.tmGated()) {
+                return readGated(lines, templates, into, primers, options, toContig, accepted, keepCutByEnd);
+            }
             String line;
             while ((line = lines.readLine()) != null) {
                 if (line.isBlank() || line.equals(BlastField.HEADER) || (line = toContig.apply(line)) == null) {
@@ -85,6 +88,69 @@ public final class BlastHits {
                 }
             }
             return templates.missing();
+        }
+    }
+
+    /** Hits whose Tm is being computed, held back to be added in the order of the report. */
+    private static final int TM_QUEUE = 8192;
+
+    private record Waiting(ca.canada.inspection.model.BlastResult hit, String line,
+                           java.util.concurrent.Future<Boolean> accepted) {
+    }
+
+    /**
+     * {@link #read} with the Tm gate on: the hits that pass its other rules are scored in parallel (a thermodynamic
+     * alignment each, and an assembly can have millions of BLAST hits), and added in the order of the report.
+     */
+    private static Set<String> readGated(BufferedReader lines, QueryTemplates templates, Hits into,
+                                         PrimerPanel primers, AmpliconOptions options,
+                                         java.util.function.UnaryOperator<String> toContig,
+                                         java.util.function.Consumer<String> accepted, boolean keepCutByEnd)
+            throws IOException {
+        java.util.ArrayDeque<Waiting> waiting = new java.util.ArrayDeque<>();
+        java.util.concurrent.ExecutorService pool = java.util.concurrent.ForkJoinPool.commonPool();
+        String line;
+        while ((line = lines.readLine()) != null) {
+            if (line.isBlank() || line.equals(BlastField.HEADER) || (line = toContig.apply(line)) == null) {
+                continue;
+            }
+            java.util.Optional<BlastHitParser.Pending> pending =
+                    BlastHitParser.parsePending(line, primers, options, templates);
+            if (pending.isPresent()) {
+                BlastHitParser.Pending site = pending.get();
+                waiting.add(new Waiting(site.hit(), line, pool.submit(() -> site.accepted(options.tmGate()))));
+                if (waiting.size() >= TM_QUEUE) {
+                    drain(waiting, TM_QUEUE / 2, into, accepted);
+                }
+            }
+            // Present only for a hit the gate rejects (see cutByQueryEnd), and cheap for the others: decided here,
+            // while the template of its query is at hand.
+            if (keepCutByEnd) {
+                BlastHitParser.cutByQueryEnd(line, primers, options, templates)
+                        .ifPresent(cut -> into.addCutByEnd(cut.subjectID(), cut));
+            }
+        }
+        drain(waiting, waiting.size(), into, accepted);
+        return templates.missing();
+    }
+
+    private static void drain(java.util.ArrayDeque<Waiting> waiting, int count, Hits into,
+                              java.util.function.Consumer<String> accepted) {
+        for (int i = 0; i < count; i++) {
+            Waiting next = waiting.poll();
+            boolean passes;
+            try {
+                passes = next.accepted().get();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new IllegalStateException("Interrupted while computing primer-site Tm", e);
+            } catch (java.util.concurrent.ExecutionException e) {
+                throw new IllegalStateException("Could not compute a primer-site Tm: " + e.getCause(), e.getCause());
+            }
+            if (passes) {
+                into.add(next.hit().subjectID(), next.hit());
+                accepted.accept(next.line());
+            }
         }
     }
 

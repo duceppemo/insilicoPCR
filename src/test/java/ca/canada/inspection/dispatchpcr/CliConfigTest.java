@@ -265,4 +265,16 @@ class CliConfigTest {
         assertEquals("--threads must be an integer, got: 2.5",
                 assertThrows(IllegalArgumentException.class, () -> parse("-t", "2.5")).getMessage());
     }
+
+    @Test
+    void theTmGateIsOffUnlessAnAnnealingTemperatureIsGiven() throws Exception {
+        assertEquals(null, parse().ampliconOptions().tmGate());
+        assertEquals(ca.canada.inspection.pcr.TmGate.at(60), parse("--anneal-temp", "60").ampliconOptions().tmGate());
+        assertEquals(new ca.canada.inspection.pcr.TmGate(58, 3, 40, 1.5, 0.6, 50),
+                parse("--anneal-temp", "58", "--tm-margin", "3", "--na", "40", "--mg", "1.5", "--dntp", "0.6",
+                        "--oligo-conc", "50").ampliconOptions().tmGate());
+        IllegalArgumentException alone = assertThrows(IllegalArgumentException.class, () -> parse("--mg", "2"));
+        assertTrue(alone.getMessage().contains("--anneal-temp"), alone.getMessage());
+        assertThrows(IllegalArgumentException.class, () -> parse("--anneal-temp", "hot"));
+    }
 }

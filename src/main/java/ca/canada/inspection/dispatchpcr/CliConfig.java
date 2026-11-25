@@ -2,6 +2,7 @@ package ca.canada.inspection.dispatchpcr;
 
 import ca.canada.inspection.pcr.AmpliconOptions;
 import ca.canada.inspection.pcr.ReadExtensionCaller;
+import ca.canada.inspection.pcr.TmGate;
 import ca.canada.inspection.pipeline.PipelineConfig;
 import ca.canada.inspection.pipeline.TadpoleOptions;
 import ca.canada.inspection.util.InputCheck;
@@ -53,6 +54,7 @@ public final class CliConfig {
         ifGiven(cmd, "5p-truncation", amplicon::fivePrimeTruncation);
         ifGiven(cmd, "min-length", amplicon::minLength);
         ifGiven(cmd, "max-length", amplicon::maxLength);
+        amplicon.tmGate(tmGate(cmd));
 
         PipelineConfig.Builder config = PipelineConfig.builder(input, output, primers)
                 .ampliconOptions(amplicon.build())
@@ -96,6 +98,32 @@ public final class CliConfig {
             config.readExtension(readExtension(cmd.getOptionValue("read-extension")));
         }
         return config.build();
+    }
+
+    /** The options of the Tm gate, which only {@code --anneal-temp} turns on. */
+    static final List<String> TM_GATE_SETTINGS = List.of("tm-margin", "na", "mg", "dntp", "oligo-conc");
+
+    /** The Tm gate the command line asks for, or {@code null}: off without {@code --anneal-temp}. */
+    private static TmGate tmGate(CommandLine cmd) {
+        if (!cmd.hasOption("anneal-temp")) {
+            for (String option : TM_GATE_SETTINGS) {
+                if (cmd.hasOption(option)) {
+                    throw new IllegalArgumentException("--" + option + " sets the Tm gate, which --anneal-temp turns on:"
+                            + " give --anneal-temp too, or leave --" + option + " out");
+                }
+            }
+            return null;
+        }
+        return new TmGate(parseDouble(cmd, "anneal-temp"),
+                doubleOr(cmd, "tm-margin", TmGate.DEFAULT_MARGIN),
+                doubleOr(cmd, "na", TmGate.DEFAULT_MONOVALENT_MM),
+                doubleOr(cmd, "mg", TmGate.DEFAULT_DIVALENT_MM),
+                doubleOr(cmd, "dntp", TmGate.DEFAULT_DNTP_MM),
+                doubleOr(cmd, "oligo-conc", TmGate.DEFAULT_OLIGO_NM));
+    }
+
+    private static double doubleOr(CommandLine cmd, String option, double defaultValue) {
+        return cmd.hasOption(option) ? parseDouble(cmd, option) : defaultValue;
     }
 
     private static void ifGiven(CommandLine cmd, String option, IntConsumer set) {

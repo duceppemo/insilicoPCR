@@ -136,7 +136,7 @@
       <circle cx="870" cy="670" r="17" fill="#475569"/>
       <text x="870" y="677" class="num">10</text>
       <text x="870" y="708" class="label">Foundations</text>
-      <text x="870" y="730" class="small"><tspan class="pkg">util</tspan>: sample names, input check, version</text>
+      <text x="870" y="730" class="small"><tspan class="pkg">util</tspan>: names, input check · <tspan class="pkg">thermo</tspan>: Primer3 Tm</text>
       <text x="870" y="748" class="small"><tspan class="pkg">model</tspan>: Sample, BlastResult; used by every layer</text>
     </g>
 

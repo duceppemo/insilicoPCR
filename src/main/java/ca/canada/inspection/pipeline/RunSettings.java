@@ -37,6 +37,11 @@ public final class RunSettings {
                 options.threePrimeWindow() + " / " + options.maxThreePrimePenalty()));
         settings.add(new Setting("5' truncation allowed (--5p-truncation)",
                 String.valueOf(options.maxFivePrimeTruncation())));
+        if (options.tmGated()) {
+            // Only when on: a run without it lists what 1.x listed.
+            settings.add(new Setting("Primer-site Tm gate (--anneal-temp, --tm-margin, --na, --mg, --dntp, --oligo-conc)",
+                    options.tmGate().describe()));
+        }
         settings.add(new Setting("Product length (--min-length to --max-length)", options.minAmpliconLength() + " to "
                 + (options.maxAmpliconLength() > 0 ? options.maxAmpliconLength() + " bp" : "no limit")));
         settings.add(new Setting("BLAST e-value (-e)", number(config.evalue())));

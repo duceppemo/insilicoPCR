@@ -60,8 +60,33 @@ class PrimerServiceTest {
         java.util.List<String> warnings = PrimerService.read(keys).warnings();
         assertEquals(2, warnings.size(), warnings.toString());
         assertTrue(warnings.get(0).startsWith("Warning: the header of primer a-F holds Tm=60, which insilicoPCR does not"
-                + " read (it reads size=, other= and mix=)"), warnings.get(0));
+                + " read (it reads size=, other=, mix= and ta=)"), warnings.get(0));
         assertTrue(warnings.get(1).contains("primer a-R holds sise=300"), warnings.get(1));
+    }
+
+    @Test
+    void annealingTemperaturesOfThePrimerFileSetTheTmGateOfTheirAssays(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir)
+            throws java.io.IOException {
+        java.nio.file.Path file = java.nio.file.Files.writeString(dir.resolve("p.fasta"),
+                ">a-F size=265 ta=58\nACGTACGTAC\n>a-R\nTTGGCCAATT\n>b-F\nACGTACGTAC\n>b-R\nTTGGCCAATT\n");
+        PrimerService.PrimerFile read = PrimerService.read(file);
+        assertTrue(read.warnings().isEmpty(), read.warnings().toString());
+        PrimerPanel panel = PrimerPanel.of(read.sequences(), read.expectedSizes(), read.mixGroups(), read.annealTemps());
+        assertEquals(Map.of("a", 58.0), panel.annealTemps().byAssay());
+
+        PipelineConfig ungated = PipelineConfig.builder(dir.resolve("in"), dir.resolve("out"), file).build();
+        java.util.List<String> warnings = new java.util.ArrayList<>();
+        assertEquals(ungated, PrimerService.withAnnealTemps(ungated, panel, warnings::add));
+        assertEquals(java.util.List.of("Warning: the primer file gives annealing temperatures (ta=: a 58 °C), which only"
+                + " the Tm gate reads: give --anneal-temp to judge primer sites by their Tm, or leave ta= out"), warnings);
+
+        PipelineConfig gated = ungated.withAmpliconOptions(
+                ungated.ampliconOptions().withTmGate(ca.canada.inspection.pcr.TmGate.at(60)));
+        ca.canada.inspection.pcr.TmGate gate = PrimerService.withAnnealTemps(gated, panel, warnings::add)
+                .ampliconOptions().tmGate();
+        assertEquals(53.0, gate.minimumTm("a-F"));
+        assertEquals(55.0, gate.minimumTm("b-R"));
+        assertEquals(1, warnings.size());
     }
 
     @Test

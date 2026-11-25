@@ -71,6 +71,12 @@ public record PipelineConfig(
         return text.strip() + " is too small for a number of the program (it reads as 0): give 1e-300 or more";
     }
 
+    /** These settings with {@code options} for the primer sites and products. */
+    public PipelineConfig withAmpliconOptions(AmpliconOptions options) {
+        return new PipelineConfig(input, output, primers, threads, evalue, options, gel, tadpole, readMinFraction,
+                readExtension, inputCheck, bbtoolsMemoryGiB);
+    }
+
     /** Whether blastn takes {@code evalue}: a finite number above 0. */
     public static boolean validEvalue(double evalue) {
         return evalue > 0.0 && Double.isFinite(evalue);

@@ -4,6 +4,7 @@ import ca.canada.inspection.insilicopcr.MainRun;
 import ca.canada.inspection.pcr.AmpliconOptions;
 import ca.canada.inspection.pcr.ReadExtensionCaller;
 import ca.canada.inspection.pcr.ReadLevelCaller;
+import ca.canada.inspection.pcr.TmGate;
 import ca.canada.inspection.pipeline.ChildJavaMemory;
 import ca.canada.inspection.pipeline.ExternalProcessTracker;
 import ca.canada.inspection.pipeline.InSilicoPcrPipeline;
@@ -140,6 +141,10 @@ public final class Dispatcher {
         };
     }
 
+    private static String number(double value) {
+        return java.math.BigDecimal.valueOf(value).stripTrailingZeros().toPlainString();
+    }
+
     /** Package-private for unit tests. */
     static Options options() {
         Options options = new Options();
@@ -177,6 +182,25 @@ public final class Dispatcher {
                 .desc("Bases at a primer's harmless 5' end that may differ from the template (or be left"
                         + " out of BLAST's alignment) without counting as mismatches; default: "
                         + AmpliconOptions.DEFAULT_FIVE_PRIME_TRUNCATION).build());
+        options.addOption(Option.builder().longOpt("anneal-temp").hasArg().argName("°C")
+                .desc("Annealing temperature of the reaction. Given, it turns the Tm gate on: a primer or probe site is"
+                        + " accepted when its Tm (Primer3's thermodynamic alignment) reaches this temperature less"
+                        + " --tm-margin, and a primer still passes the 3' rule; -m, --probe-mismatches and"
+                        + " --5p-truncation then no longer decide (FASTQ mode: -m still sizes the bait). An assay whose"
+                        + " primer header gives ta=<°C> is judged at that temperature instead; default: off")
+                .build());
+        options.addOption(Option.builder().longOpt("tm-margin").hasArg().argName("°C")
+                .desc("With --anneal-temp: how far below it a site's Tm may be; default: "
+                        + number(TmGate.DEFAULT_MARGIN)).build());
+        options.addOption(Option.builder().longOpt("na").hasArg().argName("mM")
+                .desc("With --anneal-temp: monovalent cations; default: " + number(TmGate.DEFAULT_MONOVALENT_MM)).build());
+        options.addOption(Option.builder().longOpt("mg").hasArg().argName("mM")
+                .desc("With --anneal-temp: Mg2+; default: " + number(TmGate.DEFAULT_DIVALENT_MM)).build());
+        options.addOption(Option.builder().longOpt("dntp").hasArg().argName("mM")
+                .desc("With --anneal-temp: dNTP; default: " + number(TmGate.DEFAULT_DNTP_MM)).build());
+        options.addOption(Option.builder().longOpt("oligo-conc").hasArg().argName("nM")
+                .desc("With --anneal-temp: concentration of each primer and probe; default: "
+                        + number(TmGate.DEFAULT_OLIGO_NM)).build());
         options.addOption(Option.builder().longOpt("tadpole-k").hasArg().argName("n")
                 .desc("FASTQ mode: Tadpole k-mer length; default: " + TadpoleOptions.DEFAULT_K).build());
         options.addOption(Option.builder().longOpt("tadpole-min-seed").hasArg().argName("n")

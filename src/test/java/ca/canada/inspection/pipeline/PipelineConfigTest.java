@@ -33,7 +33,10 @@ class PipelineConfigTest {
         assertEquals(Runtime.getRuntime().availableProcessors(), config.threads());
         assertEquals(1e5, config.evalue());
         assertEquals(PipelineConfig.DEFAULT_EVALUE, Double.parseDouble(PipelineConfig.DEFAULT_EVALUE_TEXT));
-        assertEquals(AmpliconOptions.withMismatches(0), config.ampliconOptions());
+        // The Tm rule (2.0): the counts of 1.x only where a test asks for them.
+        assertEquals(AmpliconOptions.builder().tmGate(ca.canada.inspection.pcr.TmGate.DEFAULT).build(),
+                config.ampliconOptions());
+        assertEquals(PipelineConfig.TM_BAIT_MISMATCHES, config.mismatches());
         assertEquals(ca.canada.inspection.pipeline.TadpoleOptions.DEFAULTS, config.tadpole());
         assertEquals(ca.canada.inspection.pcr.ReadLevelCaller.DEFAULT_MIN_SUPPORT_FRACTION, config.readMinFraction());
         assertEquals(ca.canada.inspection.util.InputCheck.Depth.FULL, config.inputCheck());

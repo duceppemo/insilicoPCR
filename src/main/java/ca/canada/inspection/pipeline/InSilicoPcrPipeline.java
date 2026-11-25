@@ -67,8 +67,6 @@ public final class InSilicoPcrPipeline {
 
         // The primer file first: a mistake there is found at once, not after reading every input.
         PrimerPanel primers = PrimerService.loadAndPrepare(config, directories, monitor::warning);
-        // The Tm gate judges the sites of an assay that declares ta= at its own annealing temperature.
-        PipelineConfig settings = PrimerService.withAnnealTemps(config, primers, monitor::warning);
         done(Step.PRIMERS);
 
         monitor.info("Checking the input files (" + (config.inputCheck() == InputCheck.Depth.FULL
@@ -94,11 +92,14 @@ public final class InSilicoPcrPipeline {
             throw new PipelineException("No sample of " + config.input() + " can be analysed: every input file"
                     + " is faulty (each is named in a warning above)");
         }
-        PipelineContext context = new PipelineContext(settings, dependencies, directories, sampleMap, primers,
+        PipelineContext context = new PipelineContext(config, dependencies, directories, sampleMap, primers,
                 // The BLAST step adds an assembly blastn refuses (BlastRunner).
                 ChildJavaMemory.budgetGiB(config.bbtoolsMemoryGiB()), issues, monitor);
         logRuntime(context);
-        RunSettings.lines(settings, context.hasFastqSamples()).forEach(monitor::info);
+        RunSettings.lines(config, context.hasFastqSamples()).forEach(monitor::info);
+        if (config.ampliconOptions().tmGated()) {
+            config.ampliconOptions().tmGate().oligoLines(primers).forEach(monitor::info);
+        }
         monitor.info("  Tools: " + dependencies.versions());
         // Before any program runs: on Windows, a path too long fails them all, with an obscure error.
         WindowsPathLimit.check(directories, sampleMap.values());
@@ -123,7 +124,7 @@ public final class InSilicoPcrPipeline {
         Map<String, ReadEvidence> readEvidence = Map.of();
         if (context.hasFastqSamples()) {
             readEvidence = ReadLevelStage.run(search, directories, sampleMap, context.primers(),
-                    settings.ampliconOptions());
+                    config.ampliconOptions());
             monitor.info("Completed read-level amplicon search");
         }
         done(Step.READ_SEARCH);
@@ -132,7 +133,7 @@ public final class InSilicoPcrPipeline {
         ReadExtensionStage.Result extension = ReadExtensionStage.Result.NONE;
         if (context.hasFastqSamples() && config.readExtension() != ReadExtensionCaller.Mode.OFF) {
             extension = ReadExtensionStage.run(ReadExtensionStage.Settings.of(context, search), directories,
-                    sampleMap, context.primers(), settings.ampliconOptions(), readEvidence);
+                    sampleMap, context.primers(), config.ampliconOptions(), readEvidence);
             monitor.info("Completed read extension");
         }
         done(Step.READ_EXTENSION);

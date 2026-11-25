@@ -21,6 +21,10 @@ public final class Hits {
     private final HashMap<String, ArrayList<BlastResult>> cutByEnd = new HashMap<>();
     /** The circular sequences, each with its length as a circle ({@link ca.canada.inspection.util.Circles}). */
     private final HashMap<String, Integer> circles = new HashMap<>();
+    /** The Tm of each hit's site the Tm gate worked out, °C (since 2.0): none without it. */
+    private final HashMap<BlastResult, Double> siteTm = new HashMap<>();
+    /** The best site each oligo has that the Tm rule rejected, by oligo: why an assay made no product. */
+    private final HashMap<String, NearMiss> nearMisses = new HashMap<>();
     /** Results worked out from the hits and descriptions (the products), until either changes. */
     private final HashMap<Key<?>, Object> derived = new HashMap<>();
 
@@ -28,6 +32,33 @@ public final class Hits {
     public synchronized void add(String oligoId, BlastResult hit) {
         byOligo.computeIfAbsent(oligoId, ignored -> new ArrayList<>()).add(hit);
         derived.clear();
+    }
+
+    /** Adds an accepted hit of oligo {@code oligoId} whose site melts at {@code tm} °C (the Tm gate's). */
+    public synchronized void add(String oligoId, BlastResult hit, double tm) {
+        siteTm.put(hit, tm);
+        add(oligoId, hit);
+    }
+
+    /** The Tm of {@code hit}'s site, °C, or {@code NaN} when the Tm gate did not work it out. */
+    public synchronized double siteTm(BlastResult hit) {
+        Double tm = siteTm.get(hit);
+        return tm == null ? Double.NaN : tm;
+    }
+
+    /** The Tm of each hit's site the Tm gate worked out, by hit; a copy. */
+    public synchronized Map<BlastResult, Double> siteTms() {
+        return Map.copyOf(siteTm);
+    }
+
+    /** Records a site of {@code oligoId} the Tm rule rejected; kept when closer to passing than the one kept so far. */
+    public synchronized void nearMiss(String oligoId, NearMiss miss) {
+        nearMisses.merge(oligoId, miss, (kept, offered) -> offered.closerThan(kept) ? offered : kept);
+    }
+
+    /** The best rejected site of each oligo ({@link #nearMiss}), by oligo ID; a copy. */
+    public synchronized Map<String, NearMiss> nearMisses() {
+        return Map.copyOf(nearMisses);
     }
 
     /** Records the description of sequence {@code id} (the FASTA header after the ID). */
@@ -93,7 +124,14 @@ public final class Hits {
         Hits kept = new Hits();
         kept.descriptions.putAll(descriptions);
         kept.circles.putAll(circles);
-        byOligo.forEach((oligo, hits) -> hits.stream().filter(keep).forEach(hit -> kept.add(oligo, hit)));
+        kept.nearMisses.putAll(nearMisses);
+        byOligo.forEach((oligo, hits) -> hits.stream().filter(keep).forEach(hit -> {
+            Double tm = siteTm.get(hit);
+            if (tm != null) {
+                kept.siteTm.put(hit, tm);
+            }
+            kept.add(oligo, hit);
+        }));
         return kept;
     }
 

@@ -103,7 +103,7 @@ public final class Products {
         // Fetched once: both accessors copy, and a FASTQ sample searched at read level
         // has one "contig" per read.
         Map<String, String> contigs = sample.descriptions();
-        HitIndex hits = new HitIndex(blastResults, sample.circles());
+        HitIndex hits = new HitIndex(blastResults, sample.circles(), sample.siteTms());
         // The panel's assays (by name) and their oligos (in primer-file order, the variants of a
         // degenerate oligo as expanded): the report lists products in this order on every run,
         // whatever order the hits are held in.
@@ -239,10 +239,19 @@ public final class Products {
         private final Map<String, List<BlastResult>> byOligo;
         private final Map<String, Map<String, OnContig>> byOligoAndContig = new HashMap<>();
         private final Map<String, Integer> circles;
+        private final Map<BlastResult, Double> siteTms;
 
-        HitIndex(Map<String, List<BlastResult>> byOligo, Map<String, Integer> circles) {
+        HitIndex(Map<String, List<BlastResult>> byOligo, Map<String, Integer> circles,
+                 Map<BlastResult, Double> siteTms) {
             this.byOligo = byOligo;
             this.circles = circles;
+            this.siteTms = siteTms;
+        }
+
+        /** The Tm of {@code hit}'s site, °C, or {@code NaN} when the Tm gate did not work it out. */
+        double tm(BlastResult hit) {
+            Double tm = siteTms.get(hit);
+            return tm == null ? Double.NaN : tm;
         }
 
         /** The length of {@code contig} as a circle, or 0 for a linear sequence. */
@@ -356,7 +365,7 @@ public final class Products {
                 ReportRow row = new ReportRow(sampleName, assayName,
                         new ReportRow.Site(amplicon.start(), amplicon.end(), amplicon.size(), amplicon.contig(),
                                 contigs.getOrDefault(amplicon.contig(), ""), amplicon.forwardStrand()),
-                        binding(forwardPrimer, forwardHit, options), binding(reversePrimer, reverseHit, options),
+                        binding(forwardPrimer, forwardHit, options, hits), binding(reversePrimer, reverseHit, options, hits),
                         null, ReportRow.Source.ASSEMBLY);
                 if (probeRequired) {
                     probeRows(rows, hits, group, amplicon, row);
@@ -367,9 +376,9 @@ public final class Products {
         }
     }
 
-    private static ReportRow.Binding binding(String primer, BlastResult hit, AmpliconOptions options) {
+    private static ReportRow.Binding binding(String primer, BlastResult hit, AmpliconOptions options, HitIndex hits) {
         return new ReportRow.Binding(primer, hit.primerMismatches(), hit.threePrimeMismatches(options.threePrimeWindow()),
-                hit.fivePrimeUnpairedBases());
+                hit.fivePrimeUnpairedBases(), hits.tm(hit));
     }
 
     /** One row per probe hit within the amplicon; none when the probe does not bind there. */
@@ -389,7 +398,7 @@ public final class Products {
                 int shownStart = ca.canada.inspection.util.Circles.onCircle(probeStart, circle);
                 int shownEnd = ca.canada.inspection.util.Circles.onCircle(probeEnd, circle);
                 rows.accept(pair.withProbe(new ReportRow.Probe(probeId, shownStart, shownEnd,
-                        probeHit.alignedMismatches(), probeEnd - probeStart + 1)));
+                        probeHit.alignedMismatches(), probeEnd - probeStart + 1, hits.tm(probeHit))));
             }
         }
     }

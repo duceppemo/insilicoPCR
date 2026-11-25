@@ -5,6 +5,7 @@ import ca.canada.inspection.pcr.ExpectedSizes;
 import ca.canada.inspection.pcr.FastqDiagnostics.Finding;
 import ca.canada.inspection.pcr.FastqDiagnostics.Status;
 import ca.canada.inspection.pcr.PrimerPanel;
+import ca.canada.inspection.pcr.NoProduct;
 import ca.canada.inspection.pcr.ReportRow;
 import ca.canada.inspection.pcr.SplitAcrossContigs;
 import ca.canada.inspection.util.InputCheck;
@@ -209,18 +210,37 @@ public final class HtmlReport {
      * @param inputIssues  files that could not be analysed; their samples are listed apart, as
      *                     neither positive nor negative
      * @param splits       assays without a product whose product could span a break in the assembly
+     * @param noProducts   the assays without a product in a sample, and why ({@link NoProduct})
      * @param maxListed    the most rows "All amplicons" lists ({@link #MAX_LISTED})
      */
     public record Input(Path reportTsv, List<ReportRow> rows, Collection<String> sampleNames, Set<String> fastqSamples,
                         PrimerPanel primers, List<Finding> findings, RunDetails runDetails,
-                        List<InputCheck.Issue> inputIssues, List<SplitAcrossContigs.Split> splits, int maxListed) {
+                        List<InputCheck.Issue> inputIssues, List<SplitAcrossContigs.Split> splits,
+                        List<NoProduct> noProducts, int maxListed) {
+
+        /** A run's page, listing at most {@code maxListed} amplicons, without the reasons for no product. */
+        public Input(Path reportTsv, List<ReportRow> rows, Collection<String> sampleNames, Set<String> fastqSamples,
+                     PrimerPanel primers, List<Finding> findings, RunDetails runDetails,
+                     List<InputCheck.Issue> inputIssues, List<SplitAcrossContigs.Split> splits, int maxListed) {
+            this(reportTsv, rows, sampleNames, fastqSamples, primers, findings, runDetails, inputIssues, splits,
+                    List.of(), maxListed);
+        }
 
         /** A run's page, listing at most {@link #MAX_LISTED} amplicons. */
         public Input(Path reportTsv, List<ReportRow> rows, Collection<String> sampleNames, Set<String> fastqSamples,
                      PrimerPanel primers, List<Finding> findings, RunDetails runDetails,
+                     List<InputCheck.Issue> inputIssues, List<SplitAcrossContigs.Split> splits,
+                     List<NoProduct> noProducts) {
+            this(reportTsv, rows, sampleNames, fastqSamples, primers, findings, runDetails, inputIssues, splits,
+                    noProducts, MAX_LISTED);
+        }
+
+        /** A run's page, listing at most {@link #MAX_LISTED} amplicons, without the reasons for no product. */
+        public Input(Path reportTsv, List<ReportRow> rows, Collection<String> sampleNames, Set<String> fastqSamples,
+                     PrimerPanel primers, List<Finding> findings, RunDetails runDetails,
                      List<InputCheck.Issue> inputIssues, List<SplitAcrossContigs.Split> splits) {
             this(reportTsv, rows, sampleNames, fastqSamples, primers, findings, runDetails, inputIssues, splits,
-                    MAX_LISTED);
+                    List.of(), MAX_LISTED);
         }
     }
 
@@ -302,6 +322,7 @@ public final class HtmlReport {
         productSection(html, products, sizes, reportName, input.maxListed());
         readSection(html, input.findings());
         splitSection(html, input.splits());
+        noProductSection(html, input.noProducts(), reportName, input.maxListed());
         detailSection(html, input.runDetails(), reportName, grid.anyDeclared());
 
         html.append("</main>\n<script>\n").append(page("report.js")).append("</script>\n</body>\n</html>\n");
@@ -605,6 +626,8 @@ public final class HtmlReport {
                                        int maxListed) {
         boolean probes = products.stream().anyMatch(product -> product.row().probe() != null);
         boolean labels = !sizes.isEmpty();
+        // A run with the Tm gate (--anneal-temp) has each site's Tm; one without, none.
+        boolean tms = products.stream().anyMatch(product -> !Double.isNaN(product.row().forwardTm()));
         html.append("<section id=\"amplicons\">\n<h2>All amplicons</h2>\n");
         if (products.isEmpty()) {
             html.append("<p class=\"hint\">No amplicon was reported.</p>\n</section>\n");
@@ -621,8 +644,13 @@ public final class HtmlReport {
                 .append("<th>Found on</th><th>Location</th><th class=\"num\" title=\"Forward / reverse primer mismatches\">")
                 .append("Mismatches F/R</th><th class=\"num\" title=\"Imperfections in the 3' window, forward / reverse\">")
                 .append("3′ F/R</th><th class=\"num\" title=\"Bases at the 5' end of each primer that do not pair with the template,")
-                .append(" forward / reverse; the mismatch columns do not count them\">5′ unpaired F/R</th><th>Strand</th>")
-                .append(probes ? "<th>Probe</th><th class=\"num\">Probe mismatches</th>" : "").append("</tr></thead>\n<tbody>\n");
+                .append(" forward / reverse; the mismatch columns do not count them\">5′ unpaired F/R</th>")
+                .append(tms ? "<th class=\"num\" title=\"Tm of each primer on its site, forward / reverse, as the Tm gate"
+                        + " (--anneal-temp) worked it out\">Tm F/R (°C)</th>" : "")
+                .append("<th>Strand</th>")
+                .append(probes ? "<th>Probe</th><th class=\"num\">Probe mismatches</th>" : "")
+                .append(probes && tms ? "<th class=\"num\" title=\"Tm of the probe on its site\">Probe Tm (°C)</th>" : "")
+                .append("</tr></thead>\n<tbody>\n");
         for (Product product : products.subList(0, Math.min(products.size(), maxListed))) {
             String contig = product.row().contig();
             int comma = contig.indexOf(',');
@@ -660,11 +688,19 @@ public final class HtmlReport {
                             + product.row().reverseThreePrime()))
                     .append("</td><td class=\"num\" title=\"").append(escape(product.binding())).append("\">")
                     .append(product.partlyBound() ? "<span class=\"part\">" + PARTLY_BOUND + "</span> " : "")
-                    .append(product.unaligned(true)).append(" / ").append(product.unaligned(false))
-                    .append("</td><td>").append(escape(product.strand())).append("</td>");
+                    .append(product.unaligned(true)).append(" / ").append(product.unaligned(false)).append("</td>");
+            if (tms) {
+                html.append("<td class=\"num\">").append(escape(ReportColumn.tm(product.row().forwardTm()) + " / "
+                        + ReportColumn.tm(product.row().reverseTm()))).append("</td>");
+            }
+            html.append("<td>").append(escape(product.strand())).append("</td>");
             if (probes) {
                 html.append("<td>").append(escape(product.row().probeId())).append("</td><td class=\"num\">")
                         .append(escape(product.probeMismatches())).append("</td>");
+                if (tms) {
+                    html.append("<td class=\"num\">").append(escape(ReportColumn.tm(product.row().probeTm())))
+                            .append("</td>");
+                }
             }
             html.append("</tr>\n");
         }
@@ -755,6 +791,36 @@ public final class HtmlReport {
                     .append(escape(split.note())).append("</td></tr>\n");
         }
         html.append("</tbody></table></div>\n</section>\n");
+    }
+
+    /** Why assays gave no product, sample by sample; nothing when every assay gave one everywhere. */
+    private static void noProductSection(Page html, List<NoProduct> noProducts, String reportName, int maxListed) {
+        if (noProducts.isEmpty()) {
+            return;
+        }
+        html.append("<section id=\"no-product\">\n<h2>Why no product</h2>\n<p class=\"hint\">Each assay without a")
+                .append(" product in a sample, and the rule that decided it: an oligo with no site whose Tm reaches the")
+                .append(" annealing temperature less the margin, or whose 3' end pairs; or sites that pair into no")
+                .append(" product. Lower --anneal-temp or raise --tm-margin to accept weaker sites. ")
+                .append(escape(reportName.replaceFirst("\\.tsv$", ""))).append(NoProductReport.SUFFIX)
+                .append(" has every row.</p>\n")
+                .append("<div class=\"scroll\"><table class=\"rows\">\n<thead><tr><th>Sample</th><th>Assay</th>")
+                .append("<th>Oligo</th><th>Reason</th><th>Best site</th><th class=\"num\">Tm (°C)</th></tr></thead>\n")
+                .append("<tbody>\n");
+        for (NoProduct row : noProducts.subList(0, Math.min(noProducts.size(), maxListed))) {
+            html.append("<tr><td>").append(escape(row.sample())).append("</td><td>").append(escape(row.assay()))
+                    .append("</td><td>").append(escape(row.oligo())).append("</td><td class=\"wrap\">")
+                    .append(escape(row.reason())).append("</td><td>").append(escape(row.site()))
+                    .append("</td><td class=\"num\">").append(escape(ReportColumn.tm(row.siteTm())))
+                    .append("</td></tr>\n");
+        }
+        html.append("</tbody></table></div>\n");
+        if (noProducts.size() > maxListed) {
+            html.append("<p class=\"hint\">The first ").append(String.format(java.util.Locale.ROOT, "%,d", maxListed))
+                    .append(" of ").append(String.format(java.util.Locale.ROOT, "%,d", noProducts.size()))
+                    .append(" are listed here.</p>\n");
+        }
+        html.append("</section>\n");
     }
 
     private static void detailSection(Page html, RunDetails runDetails, String reportName,

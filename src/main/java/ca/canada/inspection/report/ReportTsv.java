@@ -22,7 +22,7 @@ import java.util.regex.Pattern;
  * Reads a {@code report.tsv} back into {@link ReportRow}s: for the gel (of a run, a past run, or a
  * report opened in the application). A finished run's HTML report is made from its rows, not from
  * the file. Columns are found by their header ({@link ReportColumn}), so a report of an
- * earlier release (without the probe or the 5' columns) reads too, with those left empty.
+ * earlier release (without the probe, the 5' or the Tm columns) reads too, with those left empty.
  * A line that is not a product (blank, a header again, a size that is not a number) is
  * skipped. A file without an insilicoPCR header (saved from a spreadsheet without it) is read
  * in the report's column order, its first line as a product.
@@ -65,7 +65,7 @@ public final class ReportTsv {
         List<String> header = List.of(cells(headerLine));
         boolean hasHeader = header.contains(ReportColumn.SIZE.header());
         Map<String, Integer> columns = new HashMap<>();
-        List<String> names = hasHeader ? header : ReportColumn.ALL.stream().map(ReportColumn::header).toList();
+        List<String> names = hasHeader ? header : ConsolidatedReport.COLUMNS;
         for (int i = 0; i < names.size(); i++) {
             columns.putIfAbsent(names.get(i), i);
         }
@@ -181,7 +181,7 @@ public final class ReportTsv {
         ReportRow.Probe probe = probeId.isEmpty() ? null : new ReportRow.Probe(probeId,
                 probeLocation[0], probeLocation[1], fields.numberOrZero(ReportColumn.PROBE_MISMATCHES),
                 probeLocation[1] >= probeLocation[0] ? probeLocation[1] - probeLocation[0] + 1
-                        : fields.numberOrZero(ReportColumn.PROBE_SIZE));
+                        : fields.numberOrZero(ReportColumn.PROBE_SIZE), fields.tm(ReportColumn.PROBE_TM));
         String strand = fields.text(ReportColumn.STRAND);
         String description = fields.text(ReportColumn.CONTIG_DESCRIPTION);
         return new ReportRow(fields.text(ReportColumn.SAMPLE), fields.text(ReportColumn.ASSAY),
@@ -190,11 +190,11 @@ public final class ReportTsv {
                 new ReportRow.Binding(fields.text(ReportColumn.FORWARD_PRIMER),
                         fields.numberOrZero(ReportColumn.FORWARD_MISMATCHES),
                         fields.numberOrZero(ReportColumn.FORWARD_THREE_PRIME),
-                        fields.numberOrZero(ReportColumn.FORWARD_UNPAIRED)),
+                        fields.numberOrZero(ReportColumn.FORWARD_UNPAIRED), fields.tm(ReportColumn.FORWARD_TM)),
                 new ReportRow.Binding(fields.text(ReportColumn.REVERSE_PRIMER),
                         fields.numberOrZero(ReportColumn.REVERSE_MISMATCHES),
                         fields.numberOrZero(ReportColumn.REVERSE_THREE_PRIME),
-                        fields.numberOrZero(ReportColumn.REVERSE_UNPAIRED)),
+                        fields.numberOrZero(ReportColumn.REVERSE_UNPAIRED), fields.tm(ReportColumn.REVERSE_TM)),
                 probe, source(description));
     }
 
@@ -237,6 +237,15 @@ public final class ReportTsv {
                 return Integer.parseInt(text(column).strip());
             } catch (NumberFormatException e) {
                 return null;
+            }
+        }
+
+        /** A Tm in °C, or {@code NaN} when the cell holds none (a report without the Tm gate, or before 2.0). */
+        double tm(ReportColumn column) {
+            try {
+                return Double.parseDouble(text(column).strip());
+            } catch (NumberFormatException e) {
+                return Double.NaN;
             }
         }
 

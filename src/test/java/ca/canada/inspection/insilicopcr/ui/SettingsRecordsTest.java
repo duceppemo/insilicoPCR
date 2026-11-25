@@ -17,41 +17,48 @@ class SettingsRecordsTest {
     @Test
     void defaultAmpliconSettingsAreTheLibrarysDefaults() {
         // Compared with the command line itself in CliConfigTest.theWindowsDefaultsAreTheCommandLines.
-        AmpliconOptions gui = AmpliconSettings.DEFAULTS.toOptions(2);
-        AmpliconOptions defaults = AmpliconOptions.withMismatches(2);
-        assertEquals(defaults, gui, "blank probe mismatches follow the primer mismatches");
+        AmpliconOptions gui = AmpliconSettings.DEFAULTS.toOptions(60);
+        assertEquals(AmpliconOptions.builder().tmGate(ca.canada.inspection.pcr.TmGate.DEFAULT).build(), gui);
         assertTrue(AmpliconSettings.DEFAULTS.isDefault());
         assertEquals("Amplicon settings…", AmpliconSettingsDialog.buttonLabel(AmpliconSettings.DEFAULTS));
     }
 
     @Test
     void customAmpliconSettingsAreApplied() {
-        AmpliconSettings custom = new AmpliconSettings(3, 6, 4, 2, 80, 300);
-        AmpliconOptions options = custom.toOptions(1);
-        assertEquals(new AmpliconOptions(1, 3, 6, 4, 2, 80, 300), options);
+        AmpliconSettings custom = new AmpliconSettings(8, 40, 1.5, 0.2, 500, 6, 4, 80, 300);
+        AmpliconOptions options = custom.toOptions(55);
+        assertEquals(AmpliconOptions.builder().threePrimeWindow(6).threePrimePenalty(4).minLength(80).maxLength(300)
+                .tmGate(new ca.canada.inspection.pcr.TmGate(55, 8, 40, 1.5, 0.2, 500)).build(), options);
         assertFalse(custom.isDefault());
         assertEquals("Amplicon settings… *", AmpliconSettingsDialog.buttonLabel(custom));
+        assertTrue(AmpliconSettingsDialog.summary(custom).contains("Tm margin 8 °C; 40 mM Na+, 1.5 mM Mg2+, 0.2 mM dNTP,"
+                + " 500 nM each oligo"), AmpliconSettingsDialog.summary(custom));
     }
 
     @Test
     void noMaximumAcceptsAnyMinimum() {
-        AmpliconOptions options = new AmpliconSettings(null, 5, 0, 5, 6000, 0).toOptions(0);
+        AmpliconOptions options = new AmpliconSettings(5, 50, 3, 0.8, 250, 5, 0, 6000, 0).toOptions(60);
         assertEquals(0, options.maxAmpliconLength());
-        assertThrows(IllegalArgumentException.class, () -> new AmpliconSettings(null, 5, 0, 5, 600, 500).toOptions(0));
+        assertThrows(IllegalArgumentException.class,
+                () -> new AmpliconSettings(5, 50, 3, 0.8, 250, 5, 0, 600, 500).toOptions(60));
     }
 
     @Test
     void ampliconDialogParsesAndRejectsInvalidValues() {
-        AmpliconSettings parsed = AmpliconSettingsDialog.parse(" ", "5", "3", "5", "60", "300");
-        assertEquals(new AmpliconSettings(null, 5, 3, 5, 60, 300), parsed);
-        assertEquals(2, AmpliconSettingsDialog.parse("2", "5", "0", "5", "0", "0").probeMismatches());
-        assertTrue(AmpliconSettingsDialog.parse("", "5", "0", "5", "6000", "0").toOptions(0).maxAmpliconLength() == 0);
+        AmpliconSettings parsed = AmpliconSettingsDialog.parse("5", "50", "3", "0.8", "250", "5", "3", "60", "300");
+        assertEquals(new AmpliconSettings(5, 50, 3, 0.8, 250, 5, 3, 60, 300), parsed);
+        assertTrue(AmpliconSettingsDialog.parse(" 7.5 ", "50", "3", "0.8", "250", "5", "0", "6000", "0").toOptions(60)
+                .maxAmpliconLength() == 0);
 
         IllegalArgumentException minAboveMax = assertThrows(IllegalArgumentException.class,
-                () -> AmpliconSettingsDialog.parse("", "5", "0", "5", "600", "500"));
+                () -> AmpliconSettingsDialog.parse("5", "50", "3", "0.8", "250", "5", "0", "600", "500"));
         assertEquals("Min amplicon (600 bp) is larger than Max amplicon (500 bp).", minAboveMax.getMessage());
-        assertThrows(IllegalArgumentException.class, () -> AmpliconSettingsDialog.parse("-1", "5", "0", "5", "0", "0"));
-        assertThrows(IllegalArgumentException.class, () -> AmpliconSettingsDialog.parse("", "five", "0", "5", "0", "0"));
+        assertEquals("Tm margin must be a number of 0 or more.", assertThrows(IllegalArgumentException.class,
+                () -> AmpliconSettingsDialog.parse("-1", "50", "3", "0.8", "250", "5", "0", "0", "0")).getMessage());
+        assertEquals("Each oligo must be greater than 0 nM.", assertThrows(IllegalArgumentException.class,
+                () -> AmpliconSettingsDialog.parse("5", "50", "3", "0.8", "0", "5", "0", "0", "0")).getMessage());
+        assertThrows(IllegalArgumentException.class,
+                () -> AmpliconSettingsDialog.parse("5", "50", "3", "0.8", "250", "five", "0", "0", "0"));
     }
 
     @Test

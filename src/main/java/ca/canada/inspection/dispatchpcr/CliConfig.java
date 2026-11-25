@@ -47,11 +47,8 @@ public final class CliConfig {
 
         // Only what is given is set: the defaults are the builders' own (TadpoleOptions' for Tadpole), the application's too.
         AmpliconOptions.Builder amplicon = AmpliconOptions.builder();
-        ifGiven(cmd, "mismatches", amplicon::mismatches);
-        ifGiven(cmd, "probe-mismatches", amplicon::probeMismatches);
         ifGiven(cmd, "3p-window", amplicon::threePrimeWindow);
         ifGiven(cmd, "3p-penalty", amplicon::threePrimePenalty);
-        ifGiven(cmd, "5p-truncation", amplicon::fivePrimeTruncation);
         ifGiven(cmd, "min-length", amplicon::minLength);
         ifGiven(cmd, "max-length", amplicon::maxLength);
         amplicon.tmGate(tmGate(cmd));
@@ -100,27 +97,38 @@ public final class CliConfig {
         return config.build();
     }
 
-    /** The options of the Tm gate, which only {@code --anneal-temp} turns on. */
-    static final List<String> TM_GATE_SETTINGS = List.of("tm-margin", "start-margin", "na", "mg", "dntp", "oligo-conc");
-
-    /** The Tm gate the command line asks for, or {@code null}: off without {@code --anneal-temp}. */
+    /** The Tm rule the command line asks for: every setting not given at its default. */
     private static TmGate tmGate(CommandLine cmd) {
-        if (!cmd.hasOption("anneal-temp")) {
-            for (String option : TM_GATE_SETTINGS) {
-                if (cmd.hasOption(option)) {
-                    throw new IllegalArgumentException("--" + option + " sets the Tm gate, which --anneal-temp turns on:"
-                            + " give --anneal-temp too, or leave --" + option + " out");
-                }
-            }
-            return null;
-        }
-        return new TmGate(parseDouble(cmd, "anneal-temp"),
+        return new TmGate(doubleOr(cmd, "anneal-temp", TmGate.DEFAULT_ANNEAL_TEMP),
                 doubleOr(cmd, "tm-margin", TmGate.DEFAULT_MARGIN),
-                doubleOr(cmd, "start-margin", TmGate.DEFAULT_START_MARGIN),
                 doubleOr(cmd, "na", TmGate.DEFAULT_MONOVALENT_MM),
                 doubleOr(cmd, "mg", TmGate.DEFAULT_DIVALENT_MM),
                 doubleOr(cmd, "dntp", TmGate.DEFAULT_DNTP_MM),
                 doubleOr(cmd, "oligo-conc", TmGate.DEFAULT_OLIGO_NM));
+    }
+
+    /** The options of 1.x that 2.0 removed: primer sites are judged by Tm, not counted mismatches. */
+    static final List<String> REMOVED_IN_2_0 = List.of("-m", "--mismatches", "--probe-mismatches", "--5p-truncation");
+
+    /**
+     * What to say of {@code error} when it is an option {@link #REMOVED_IN_2_0}: "Unrecognized option" told a 1.x
+     * command line nothing of what to give instead.
+     */
+    static java.util.Optional<String> removedOption(Exception error) {
+        if (error instanceof org.apache.commons.cli.UnrecognizedOptionException unknown) {
+            String option = unknown.getOption() == null ? "" : unknown.getOption().split("=", 2)[0];
+            if (REMOVED_IN_2_0.contains(option)) {
+                return java.util.Optional.of(option + " was removed in 2.0: a primer or probe site is accepted when its"
+                        + " Tm reaches --anneal-temp (default " + number(TmGate.DEFAULT_ANNEAL_TEMP) + " °C) less"
+                        + " --tm-margin (default " + number(TmGate.DEFAULT_MARGIN) + " °C), whatever its mismatches."
+                        + " Leave " + option + " out; lower --anneal-temp or raise --tm-margin to accept weaker sites");
+            }
+        }
+        return java.util.Optional.empty();
+    }
+
+    private static String number(double value) {
+        return java.math.BigDecimal.valueOf(value).stripTrailingZeros().toPlainString();
     }
 
     private static double doubleOr(CommandLine cmd, String option, double defaultValue) {

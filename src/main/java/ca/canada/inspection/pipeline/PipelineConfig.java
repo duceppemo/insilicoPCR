@@ -71,12 +71,6 @@ public record PipelineConfig(
         return text.strip() + " is too small for a number of the program (it reads as 0): give 1e-300 or more";
     }
 
-    /** These settings with {@code options} for the primer sites and products. */
-    public PipelineConfig withAmpliconOptions(AmpliconOptions options) {
-        return new PipelineConfig(input, output, primers, threads, evalue, options, gel, tadpole, readMinFraction,
-                readExtension, inputCheck, bbtoolsMemoryGiB);
-    }
-
     /** Whether blastn takes {@code evalue}: a finite number above 0. */
     public static boolean validEvalue(double evalue) {
         return evalue > 0.0 && Double.isFinite(evalue);
@@ -121,7 +115,9 @@ public record PipelineConfig(
         private final Path primers;
         private int threads = Runtime.getRuntime().availableProcessors();
         private double evalue = DEFAULT_EVALUE;
-        private AmpliconOptions ampliconOptions = AmpliconOptions.builder().build();
+        // The Tm rule, as on the command line and in the window (since 2.0): mismatch counts are for tests only.
+        private AmpliconOptions ampliconOptions = AmpliconOptions.builder().tmGate(ca.canada.inspection.pcr.TmGate.DEFAULT)
+                .build();
         private boolean gel;
         private TadpoleOptions tadpole = TadpoleOptions.DEFAULTS;
         private double readMinFraction = ReadLevelCaller.DEFAULT_MIN_SUPPORT_FRACTION;
@@ -197,10 +193,17 @@ public record PipelineConfig(
     }
 
     /**
-     * Allowed primer mismatches; also the edits (at most 2) BBDuk's first bait matches primer k-mers within, and, at 3,
-     * the substitutions its substitution bait matches 19-base k-mers within.
+     * The edits BBDuk's first bait matches primer k-mers within (at most 2), and, at 3, the substitutions its
+     * substitution bait matches 19-base k-mers within: {@link #TM_BAIT_MISMATCHES} with the Tm rule, which counts no
+     * mismatch; the allowed primer mismatches without it (tests of the counts of 1.x).
      */
     public int mismatches() {
-        return ampliconOptions.maxTotalMismatches();
+        return ampliconOptions.tmGated() ? TM_BAIT_MISMATCHES : ampliconOptions.maxTotalMismatches();
     }
+
+    /**
+     * The mismatches the FASTQ bait allows with the Tm rule: one in each k-mer of 14 or more bases. A site whose Tm
+     * passes has few mismatches, and its 3' end pairs (the 3' rule); the bait takes reads in, the Tm decides.
+     */
+    public static final int TM_BAIT_MISMATCHES = 1;
 }

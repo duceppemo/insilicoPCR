@@ -77,7 +77,7 @@ public final class Dispatcher {
         } catch (ParseException | IllegalArgumentException e) {
             // The message and where to look, on standard error: the 82 lines of the help on standard output buried
             // it, and went into the output a script reads.
-            err.println("Error: " + e.getMessage());
+            err.println("Error: " + CliConfig.removedOption(e).orElse(e.getMessage()));
             err.println("Run insilicoPCR --help for the options.");
             return 2;
         }
@@ -156,11 +156,8 @@ public final class Dispatcher {
                 .desc("Primer FASTA file").build());
         options.addOption(Option.builder("t").longOpt("threads").hasArg().argName("n")
                 .desc("Number of worker threads; default: available processors").build());
-        options.addOption(Option.builder("m").longOpt("mismatches").hasArg().argName("n")
-                .desc("Allowed mismatches+indels per primer (3' bases that do not pair with the template count); default: "
-                        + AmpliconOptions.DEFAULT_MISMATCHES).build());
         options.addOption(Option.builder("e").longOpt("evalue").hasArg().argName("value")
-                .desc("blastn e-value; deliberately permissive, since primer hits are filtered by the mismatch and 3'/5' rules instead, and lowering it (e.g. to 1e-5) drops valid hits; default: "
+                .desc("blastn e-value; deliberately permissive, since primer hits are filtered by their Tm and the 3' rule instead, and lowering it (e.g. to 1e-5) drops valid hits; default: "
                         + PipelineConfig.DEFAULT_EVALUE_TEXT).build());
         options.addOption(Option.builder("l").longOpt("max-length").hasArg().argName("bp")
                 .desc("Maximum amplicon length in bp, 0 = unlimited; default: "
@@ -175,37 +172,21 @@ public final class Dispatcher {
                 .desc("Maximum weighted 3'-end penalty (mismatch: 3 at terminus, 2 at -1/-2, 1 beyond;"
                         + " +1 if a G/C pair is broken near the terminus; an indel scores as a mismatch at its place, +1); default: "
                         + AmpliconOptions.DEFAULT_THREE_PRIME_PENALTY).build());
-        options.addOption(Option.builder().longOpt("probe-mismatches").hasArg().argName("n")
-                .desc("Allowed mismatches+indels per hydrolysis probe; probes bind hotter than primers"
-                        + " and tolerate roughly one more mismatch; default: same as -m").build());
-        options.addOption(Option.builder().longOpt("5p-truncation").hasArg().argName("n")
-                .desc("Bases at a primer's harmless 5' end that may differ from the template (or be left"
-                        + " out of BLAST's alignment) without counting as mismatches; default: "
-                        + AmpliconOptions.DEFAULT_FIVE_PRIME_TRUNCATION).build());
         options.addOption(Option.builder().longOpt("anneal-temp").hasArg().argName("°C")
-                .desc("Annealing temperature of the reaction. Given, it turns the Tm gate on (Primer3's thermodynamic"
-                        + " alignment): a primer site is accepted when its Tm reaches this temperature less"
-                        + " --start-margin, to start a product, the primer's Tm on its perfect complement reaches it"
-                        + " less --tm-margin, to copy it, and the 3' rule passes; a probe site when its Tm reaches it"
-                        + " less --tm-margin. -m, --probe-mismatches and"
-                        + " --5p-truncation then no longer decide (FASTQ mode: -m still sizes the bait). An assay whose"
-                        + " primer header gives ta=<°C> is judged at that temperature instead; default: off")
-                .build());
+                .desc("Annealing temperature of the reaction: a primer or probe site is accepted when its Tm on the"
+                        + " template (Primer3's thermodynamic alignment) reaches it less --tm-margin, and a primer's"
+                        + " 3' end passes the 3' rule; default: " + number(TmGate.DEFAULT_ANNEAL_TEMP)).build());
         options.addOption(Option.builder().longOpt("tm-margin").hasArg().argName("°C")
-                .desc("With --anneal-temp: how far below it a primer's Tm on its perfect complement, and a probe's on"
-                        + " its site, may be; default: " + number(TmGate.DEFAULT_MARGIN)).build());
-        options.addOption(Option.builder().longOpt("start-margin").hasArg().argName("°C")
-                .desc("With --anneal-temp: how far below it a primer's Tm on its site may be, the primer still"
-                        + " starting a product there (its copies carry the whole primer); default: "
-                        + number(TmGate.DEFAULT_START_MARGIN)).build());
+                .desc("How far below --anneal-temp a site's Tm may be; default: " + number(TmGate.DEFAULT_MARGIN))
+                .build());
         options.addOption(Option.builder().longOpt("na").hasArg().argName("mM")
-                .desc("With --anneal-temp: monovalent cations; default: " + number(TmGate.DEFAULT_MONOVALENT_MM)).build());
+                .desc("Reaction, for the Tm: monovalent cations; default: " + number(TmGate.DEFAULT_MONOVALENT_MM)).build());
         options.addOption(Option.builder().longOpt("mg").hasArg().argName("mM")
-                .desc("With --anneal-temp: Mg2+; default: " + number(TmGate.DEFAULT_DIVALENT_MM)).build());
+                .desc("Reaction, for the Tm: Mg2+; default: " + number(TmGate.DEFAULT_DIVALENT_MM)).build());
         options.addOption(Option.builder().longOpt("dntp").hasArg().argName("mM")
-                .desc("With --anneal-temp: dNTP; default: " + number(TmGate.DEFAULT_DNTP_MM)).build());
+                .desc("Reaction, for the Tm: dNTP; default: " + number(TmGate.DEFAULT_DNTP_MM)).build());
         options.addOption(Option.builder().longOpt("oligo-conc").hasArg().argName("nM")
-                .desc("With --anneal-temp: concentration of each primer and probe; default: "
+                .desc("Reaction, for the Tm: concentration of each primer and probe; default: "
                         + number(TmGate.DEFAULT_OLIGO_NM)).build());
         options.addOption(Option.builder().longOpt("tadpole-k").hasArg().argName("n")
                 .desc("FASTQ mode: Tadpole k-mer length; default: " + TadpoleOptions.DEFAULT_K).build());

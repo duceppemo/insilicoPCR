@@ -33,7 +33,7 @@ class TmGateTest {
     }
 
     private static AmpliconOptions gated(double minimumTm) {
-        return STRICT.withTmGate(new TmGate(minimumTm, 0, 0, 50, 3, 0.8, 250));
+        return STRICT.withTmGate(new TmGate(minimumTm, 0, 50, 3, 0.8, 250));
     }
 
     private static double tm(String blastLine, String contig) {
@@ -86,7 +86,7 @@ class TmGateTest {
         double cut = tm(blastLine, contig);
         double whole = tm(line("g-F", 0, 21, 40, PRIMER, 1, 20, PRIMER), FLANK + PRIMER + FLANK);
         assertTrue(cut < whole - 15, cut + " vs " + whole);
-        assertTrue(parse(blastLine, contig, truncation8.withTmGate(new TmGate(cut + 1, 0, 0, 50, 3, 0.8, 250)))
+        assertTrue(parse(blastLine, contig, truncation8.withTmGate(new TmGate(cut + 1, 0, 50, 3, 0.8, 250)))
                 .isEmpty());
     }
 
@@ -108,8 +108,9 @@ class TmGateTest {
     }
 
     @Test
-    void aPrimerSiteNeedsOnlyToStartTheProductWhileAProbeSiteMustBindInEveryCycle() {
-        // The first 5 bases mismatched, as the ITS5 primer's on G. pallida: BLAST aligns the other 15.
+    void aSiteWithUnpairedFivePrimeBasesIsJudgedByItsTmLikeAnyOther() {
+        // The first 5 bases mismatched, as the ITS5 primer's on G. pallida: BLAST aligns the other 15. No count
+        // decides: the site's Tm does, for a primer and a probe alike.
         StringBuilder tail = new StringBuilder();
         for (char base : PRIMER.substring(0, 5).toCharArray()) {
             tail.append("ACGT".charAt(("CATG".indexOf(base))));
@@ -119,40 +120,54 @@ class TmGateTest {
         double site = tm(primerLine, contig);
         double perfect = tm(line("g-F", 0, 21, 40, PRIMER, 1, 20, PRIMER), FLANK + PRIMER + FLANK);
         assertTrue(site < perfect - 3, site + " vs " + perfect);
-        // Annealing 7 °C above the site's Tm: within --start-margin 10, not within --tm-margin 5.
-        AmpliconOptions options = STRICT.withTmGate(new TmGate(site + 7, 5, 10, 50, 3, 0.8, 250));
-        assertTrue(parse(primerLine, contig, options).isPresent());
-        assertTrue(parse(primerLine.replace("g-F", "g-P"), contig, options).isEmpty());
-        assertTrue(parse(primerLine, contig, STRICT.withTmGate(new TmGate(site + 7, 5, 6, 50, 3, 0.8, 250)))
-                .isEmpty());
+        assertTrue(parse(primerLine, contig, gated(site - 0.1)).isPresent());
+        assertTrue(parse(primerLine, contig, gated(site + 0.1)).isEmpty());
+        assertTrue(parse(primerLine.replace("g-F", "g-P"), contig, gated(site - 0.1)).isPresent());
+        assertTrue(parse(primerLine.replace("g-F", "g-P"), contig, gated(site + 0.1)).isEmpty());
     }
 
     @Test
-    void aPrimerMustCopyTheProductAtTheAnnealingTemperature() {
-        // A perfect site starts the product well within --start-margin, but the primer's own Tm is 3 °C short.
+    void theReadKeepsEachAcceptedSitesTmForTheReport(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir)
+            throws java.io.IOException {
         String contig = FLANK + PRIMER + FLANK;
         String blastLine = line("g-F", 0, 21, 40, PRIMER, 1, 20, PRIMER);
-        double perfect = tm(blastLine, contig);
-        assertTrue(parse(blastLine, contig, STRICT.withTmGate(new TmGate(perfect + 3, 0, 20, 50, 3, 0.8, 250)))
-                .isEmpty());
-        assertTrue(parse(blastLine, contig, STRICT.withTmGate(new TmGate(perfect + 3, 4, 20, 50, 3, 0.8, 250)))
-                .isPresent());
+        java.nio.file.Path searched = java.nio.file.Files.writeString(dir.resolve("c.fasta"), ">contig1\n" + contig + "\n");
+        ca.canada.inspection.model.Hits into = new ca.canada.inspection.model.Hits();
+        BlastHits.read(new java.io.BufferedReader(new java.io.StringReader(blastLine + "\n")), java.util.List.of(searched),
+                into, PRIMERS, gated(40), java.util.function.UnaryOperator.identity(), ignored -> { });
+        BlastResult hit = into.byOligo().get("g-F").getFirst();
+        assertEquals(tm(blastLine, contig), into.siteTm(hit), 1e-9);
+        assertEquals(into.siteTm(hit), into.filtered(kept -> true).siteTm(hit), 1e-9);
+        assertTrue(Double.isNaN(new ca.canada.inspection.model.Hits().siteTm(hit)));
     }
 
     @Test
-    void anAssayThatDeclaresItsAnnealingTemperatureIsJudgedAtIt() {
-        String contig = FLANK + PRIMER + FLANK;
-        String blastLine = line("g-F", 0, 21, 40, PRIMER, 1, 20, PRIMER);
-        double perfect = tm(blastLine, contig);
-        // --anneal-temp above the site's Tm: rejected; its assay's ta= below it: accepted, the other assays unchanged.
-        TmGate gate = new TmGate(perfect + 3, 0, 0, 50, 3, 0.8, 250);
-        assertTrue(parse(blastLine, contig, STRICT.withTmGate(gate)).isEmpty());
-        TmGate own = gate.withAssayTemps(AnnealTemps.of(Map.of("g", perfect - 1)));
-        assertTrue(parse(blastLine, contig, STRICT.withTmGate(own)).isPresent());
-        assertEquals(perfect - 1, own.minimumSiteTm("g-F_1"), 1e-9);
-        assertEquals(perfect + 3, own.minimumSiteTm("other-F"), 1e-9);
-        assertTrue(own.describe().endsWith("; at their own annealing temperature (ta=): g "
-                + java.math.BigDecimal.valueOf(perfect - 1).stripTrailingZeros().toPlainString()), own.describe());
+    void theLogListsEachOligosOwnTmAndThoseThatCannotReachTheMinimum() {
+        PrimerPanel panel = PrimerPanel.of(new java.util.LinkedHashMap<>(Map.of("g-F", PRIMER)));
+        double perfect = TmGate.at(60).perfectTm(PRIMER);
+        java.util.List<String> ok = new TmGate(perfect + 4, 5, 50, 3, 0.8, 250).oligoLines(panel);
+        assertEquals(String.format(java.util.Locale.ROOT, "  g-F %.1f °C", perfect), ok.get(1));
+        java.util.List<String> low = new TmGate(perfect + 6, 5, 50, 3, 0.8, 250).oligoLines(panel);
+        assertTrue(low.get(1).endsWith(": below the minimum, no site can reach it"), low.get(1));
+    }
+
+    @Test
+    void theReadKeepsEachOligosBestRejectedSite(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir)
+            throws java.io.IOException {
+        // Two sites, one central mismatch and three: both under a gate above the better one; the better is kept.
+        String one = PRIMER.substring(0, 9) + "A" + PRIMER.substring(10);
+        String three = PRIMER.substring(0, 6) + "AAA" + PRIMER.substring(9);
+        String fasta = ">c1\n" + FLANK + one + FLANK + "\n>c3\n" + FLANK + three + FLANK + "\n";
+        String table = line("g-F", 3, 21, 40, three, 1, 20, PRIMER).replaceFirst("^contig1", "c3") + "\n"
+                + line("g-F", 1, 21, 40, one, 1, 20, PRIMER).replaceFirst("^contig1", "c1") + "\n";
+        java.nio.file.Path searched = java.nio.file.Files.writeString(dir.resolve("c.fasta"), fasta);
+        ca.canada.inspection.model.Hits into = new ca.canada.inspection.model.Hits();
+        BlastHits.read(new java.io.BufferedReader(new java.io.StringReader(table)), java.util.List.of(searched),
+                into, PRIMERS, gated(80), java.util.function.UnaryOperator.identity(), ignored -> { });
+        assertTrue(into.byOligo().isEmpty());
+        ca.canada.inspection.model.NearMiss best = into.nearMisses().get("g-F");
+        assertEquals("c1", best.hit().queryID());
+        assertTrue(best.tm() < 80 && !best.failsThreePrimeRule(), String.valueOf(best.tm()));
     }
 
     @Test
@@ -164,17 +179,14 @@ class TmGateTest {
 
     @Test
     void settingsAreChecked() {
-        assertThrows(IllegalArgumentException.class, () -> new TmGate(Double.NaN, 5, 10, 50, 3, 0.8, 250));
-        assertThrows(IllegalArgumentException.class, () -> new TmGate(60, -1, 10, 50, 3, 0.8, 250));
-        assertThrows(IllegalArgumentException.class, () -> new TmGate(60, 5, -1, 50, 3, 0.8, 250));
-        assertThrows(IllegalArgumentException.class, () -> new TmGate(60, 5, 10, 50, -3, 0.8, 250));
-        assertThrows(IllegalArgumentException.class, () -> new TmGate(60, 5, 10, 50, 3, 0.8, 0));
-        assertEquals(50.0, TmGate.at(60).minimumSiteTm("a-F"));
-        assertEquals(55.0, TmGate.at(60).minimumCopyTm("a-F"));
-        assertEquals(55.0, TmGate.at(60).minimumSiteTm("a-P"));
-        assertEquals("primer sites Tm at least 50 °C to start a product (60 - 10), primers at least 55 °C on their"
-                + " perfect complement to copy it and probe sites at least 55 °C (60 - 5); 50 mM Na+, 3 mM Mg2+,"
-                + " 0.8 mM dNTP, 250 nM oligo", TmGate.at(60).describe());
+        assertThrows(IllegalArgumentException.class, () -> new TmGate(Double.NaN, 5, 50, 3, 0.8, 250));
+        assertThrows(IllegalArgumentException.class, () -> new TmGate(60, -1, 50, 3, 0.8, 250));
+        assertThrows(IllegalArgumentException.class, () -> new TmGate(60, 5, 50, -3, 0.8, 250));
+        assertThrows(IllegalArgumentException.class, () -> new TmGate(60, 5, 50, 3, 0.8, 0));
+        assertEquals(55.0, TmGate.DEFAULT.minimumTm());
+        assertEquals(TmGate.at(60), TmGate.DEFAULT);
+        assertEquals("site Tm at least 55 °C (60 - 5); 50 mM Na+, 3 mM Mg2+, 0.8 mM dNTP, 250 nM oligo",
+                TmGate.at(60).describe());
     }
 
     @Test

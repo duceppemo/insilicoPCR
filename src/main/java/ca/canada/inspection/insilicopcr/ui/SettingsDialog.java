@@ -113,6 +113,20 @@ final class SettingsDialog {
         return dialog.showAndWait();
     }
 
+    /** A number of 0 or more, as typed in a field labelled {@code label}. */
+    static double parseNumber(String text, String label) {
+        double value;
+        try {
+            value = Double.parseDouble(text.trim());
+        } catch (NumberFormatException e) {
+            value = Double.NaN;
+        }
+        if (!Double.isFinite(value) || value < 0) {
+            throw new IllegalArgumentException(label + " must be a number of 0 or more.");
+        }
+        return value;
+    }
+
     static int parseInt(String text, String label, int minimum) {
         int value;
         try {

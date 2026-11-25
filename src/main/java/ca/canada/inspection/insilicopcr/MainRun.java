@@ -87,11 +87,11 @@ public class MainRun extends Application {
         addPrimerControls(primaryStage, pane, primerField);
         addOutputControls(primaryStage, pane, outputDirField);
         var threadField = addThreadControls(pane);
-        var mismatchField = addMismatchControls(pane);
+        var annealField = addAnnealTempControls(pane);
         var evalueField = addEvalueControls(pane);
         addSettingsButtons(primaryStage, pane);
         addOutputLog(pane);
-        addBottomControls(pane, alertText, threadField, mismatchField, evalueField);
+        addBottomControls(pane, alertText, threadField, annealField, evalueField);
 
         scene = new Scene(pane, 800, 500);
         primaryStage.setScene(scene);
@@ -200,28 +200,22 @@ public class MainRun extends Application {
         return field;
     }
 
-    /** The most mismatches the window offers ({@code -m}). */
-    static final int MAX_MISMATCHES = 10;
-
-    private ComboBox<Integer> addMismatchControls(GridPane pane) {
-        var prompt = promptText("Mismatches");
+    private TextField addAnnealTempControls(GridPane pane) {
+        var prompt = promptText("Anneal (°C)");
         prompt.setTextAlignment(TextAlignment.LEFT);
         var box = new HBox(10, prompt);
         box.setAlignment(Pos.TOP_LEFT);
         pane.add(box, 38, 10, 5, 1);
 
-        var field = new ComboBox<Integer>();
-        field.setTooltip(new Tooltip("Allowed mismatches + indels per primer. Bases at the primer 3' end that do not "
-                + "pair with the template also count. Independently, the primer 3' end is checked separately "
-                + "(see Amplicon settings)."));
+        var field = new TextField(java.math.BigDecimal.valueOf(ca.canada.inspection.pcr.TmGate.DEFAULT_ANNEAL_TEMP)
+                .stripTrailingZeros().toPlainString());
+        var tip = new Tooltip("Annealing temperature of the reaction (--anneal-temp). A primer or probe site is accepted"
+                + " when its Tm on the template reaches it less the Tm margin (Amplicon settings), and a primer's 3'"
+                + " end pairs. Lower it to accept weaker sites; QAlog.txt and the report say why an assay gave no product.");
+        tip.setWrapText(true);
+        tip.setMaxWidth(380);
+        field.setTooltip(tip);
         field.setPrefSize(Double.MAX_VALUE, Double.MAX_VALUE);
-        // Up to 10, not 3: the rules (Amplicon-Calling) name sites that need -m 4 and more, which the window could
-        // not ask for. The command line takes any number.
-        for (int mismatches = 0; mismatches <= MAX_MISMATCHES; mismatches++) {
-            field.getItems().add(mismatches);
-        }
-        field.setVisibleRowCount(6);
-        field.getSelectionModel().selectFirst();
         pane.add(field, 44, 9, 4, 3);
         return field;
     }
@@ -234,8 +228,8 @@ public class MainRun extends Application {
         pane.add(box, 38, 15, 5, 1);
 
         var field = new TextField(PipelineConfig.DEFAULT_EVALUE_TEXT);
-        var tip = new Tooltip("BLAST e-value. Deliberately permissive: primer hits are filtered by the mismatch and "
-                + "3'/5'-end rules instead. A short primer's e-value grows with contig length, so a strict value "
+        var tip = new Tooltip("BLAST e-value. Deliberately permissive: primer hits are filtered by their Tm and the "
+                + "3'-end rule instead. A short primer's e-value grows with contig length, so a strict value "
                 + "such as 1e-5 drops valid hits. Default " + PipelineConfig.DEFAULT_EVALUE_TEXT + " (-e on the command line).");
         tip.setWrapText(true);
         tip.setMaxWidth(380);
@@ -282,7 +276,7 @@ public class MainRun extends Application {
     private void addBottomControls(GridPane pane,
                                    Text alertText,
                                    ComboBox<Integer> threadField,
-                                   ComboBox<Integer> mismatchField,
+                                   TextField annealField,
                                    TextField evalueField) {
         alertText.setStyle("-fx-fill: red;");
 
@@ -317,7 +311,7 @@ public class MainRun extends Application {
             if (currentlyRunning.get()) {
                 confirmStop();
             } else {
-                startRun(alertText, threadField, mismatchField, evalueField);
+                startRun(alertText, threadField, annealField, evalueField);
             }
         });
 
@@ -347,7 +341,7 @@ public class MainRun extends Application {
 
     private void startRun(Text alertText,
                           ComboBox<Integer> threadField,
-                          ComboBox<Integer> mismatchField,
+                          TextField annealField,
                           TextField evalueField) {
         if (currentlyRunning.get()) {
             return; // the button is Stop while running; ignore a stray second trigger
@@ -355,7 +349,7 @@ public class MainRun extends Application {
         // Every typed value is checked BEFORE any UI state changes, so a bad entry cannot leave the
         // window stuck in the "running" state.
         RunForm.Outcome outcome = new RunForm(inputFile, outDir, primerFile,
-                threadField.getSelectionModel().getSelectedItem(), mismatchField.getSelectionModel().getSelectedItem(),
+                threadField.getSelectionModel().getSelectedItem(), annealField.getText(),
                 evalueField.getText(), ampliconSettings, fastqSettings).toConfig();
         if (outcome instanceof RunForm.Outcome.Invalid invalid) {
             alertText.setText(invalid.message());

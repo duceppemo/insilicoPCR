@@ -73,6 +73,9 @@ public final class ReportGenerator {
         monitor.info("Report written to " + report);
         written.add(ca.canada.inspection.report.SamplesReport.write(report, context.samples().values(),
                 context.inputIssues(), rows));
+        List<ca.canada.inspection.pcr.NoProduct> noProducts = ca.canada.inspection.pcr.NoProduct.of(context.samples(),
+                context.primers(), context.config().ampliconOptions(), rows);
+        written.add(ca.canada.inspection.report.NoProductReport.write(report, noProducts));
         if (context.config().gel()) {
             written.addAll(GelImageWriter.write(report, SyntheticGelImage.defaultPng(report), context.samples().keySet(),
                     monitor::info, monitor::warning));
@@ -90,13 +93,21 @@ public final class ReportGenerator {
                 context.primers(), diagnostics.findings(),
                 RunSettings.details(Version.VERSION, context.config(), context.hasFastqSamples(),
                         context.dependencies().versions(), context.primers().mixGroups().groups()),
-                context.inputIssues(), splits));
+                context.inputIssues(), splits, noProducts));
         written.add(html);
         monitor.info("HTML report written to " + html);
         List<String> qaLines = new ArrayList<>(QaLogWriter.inputIssueLines(context.inputIssues()));
         qaLines.addAll(context.primers().expectedSizes().qaLogLines());
         qaLines.addAll(context.primers().mixGroups().qaLogLines());
+        if (context.config().ampliconOptions().tmGated()) {
+            qaLines.addAll(context.config().ampliconOptions().tmGate().oligoLines(context.primers()));
+        }
         qaLines.addAll(diagnostics.qaLogLines());
+        if (!noProducts.isEmpty()) {
+            qaLines.add(noProducts.stream().map(row -> List.of(row.sample(), row.assay())).distinct().count()
+                    + " assay(s) gave no product in a sample: " + ca.canada.inspection.report.ConsolidatedReport
+                    .baseName(report) + ca.canada.inspection.report.NoProductReport.SUFFIX + " says why");
+        }
         splits.forEach(split -> qaLines.add("Primers at contig ends: " + split.message()));
         // QAlog.txt marks the run finished and names its report: a run stopped before it does not
         // write it, and the folder's log still names the last finished run's report.

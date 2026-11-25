@@ -69,15 +69,29 @@ public final class BlastHitParser {
     }
 
     /**
-     * A hit that passes every rule of the Tm gate but its Tm ({@link #parsePending}), with the template strand its
-     * oligo anneals to: the Tm, the costly part (a thermodynamic alignment), can then be computed apart, in parallel.
+     * A hit for the Tm gate ({@link #parseSite}), with the template strand its oligo anneals to: the Tm, the costly
+     * part (a thermodynamic alignment), can then be computed apart, in parallel.
+     *
+     * @param threePrimePenalty the 3' penalty of a primer's site ({@code --3p-penalty}); 0 for a probe
+     * @param primes            whether it passes the 3' rule (a probe always does: it does not extend)
      */
-    public record Pending(BlastResult hit, String strand) {
-        /** Whether the oligo anneals well enough to its site for {@code gate} ({@link TmGate#accepts(String, String, String)}). */
+    public record Pending(BlastResult hit, String strand, int threePrimePenalty, boolean primes) {
+        /** Whether the site melts at {@code gate}'s minimum or above. */
         public boolean accepted(TmGate gate) {
+            return !Double.isNaN(acceptedTm(gate));
+        }
+
+        /** The Tm of the site, °C, when {@code gate} accepts it ({@link #accepted}); {@code NaN} otherwise. */
+        public double acceptedTm(TmGate gate) {
+            double tm = tm(gate);
+            return tm >= gate.minimumTm() ? tm : Double.NaN;
+        }
+
+        /** The Tm of the site, °C; {@link Double#NEGATIVE_INFINITY} for an oligo without a sequence. */
+        public double tm(TmGate gate) {
             String oligo = hit.primerSeq();
-            return oligo != null && !oligo.isEmpty()
-                    && gate.accepts(hit.subjectID(), oligo.toUpperCase(java.util.Locale.ROOT), strand);
+            return oligo == null || oligo.isEmpty() ? Double.NEGATIVE_INFINITY
+                    : gate.tm(oligo.toUpperCase(java.util.Locale.ROOT), strand);
         }
     }
 
@@ -88,18 +102,28 @@ public final class BlastHitParser {
      */
     public static Optional<Pending> parsePending(String line, PrimerPanel primers, AmpliconOptions options,
                                                  Function<BlastResult, TrimmedEnds.Template> templates) {
+        return parseSite(line, primers, options, templates).filter(Pending::primes);
+    }
+
+    /**
+     * As {@link #parsePending}, a primer's site that fails the 3' rule too ({@link Pending#primes} false): what the
+     * run says of an oligo without an accepted site is its best site, and why that one fails.
+     */
+    public static Optional<Pending> parseSite(String line, PrimerPanel primers, AmpliconOptions options,
+                                              Function<BlastResult, TrimmedEnds.Template> templates) {
         int fivePrimeFree = options.maxFivePrimeTruncation();
-        return toHit(line, primers).flatMap(found -> {
+        return toHit(line, primers).map(found -> {
             // The Tm gate reads the template under every site, the bases BLAST left out included.
             TrimmedEnds.Template template = templates.apply(found);
             BlastResult hit = TrimmedEnds.needsTemplate(found, options)
                     ? TrimmedEnds.extend(found, template, fivePrimeFree) : found;
             if (PrimerId.isProbe(hit.subjectID())) {
-                return Optional.of(new Pending(hit, TmGate.strandUnder(hit, template)));
+                return new Pending(hit, TmGate.strandUnder(hit, template), 0, true);
             }
             hit = hit.withFivePrimeFree(fivePrimeFree);
-            return passesThreePrimeRule(hit, options)
-                    ? Optional.of(new Pending(hit, TmGate.strandUnder(hit, template))) : Optional.empty();
+            int penalty = hit.threePrimePenalty(options.threePrimeWindow());
+            return new Pending(hit, TmGate.strandUnder(hit, template), penalty,
+                    penalty <= options.maxThreePrimePenalty());
         });
     }
 

@@ -219,15 +219,15 @@ Since 2.0, every report has beside it `report_no_product.tsv` (`report(1)_no_pro
 | `Oligo` | The primer or probe with no accepted site (of a degenerate oligo, the variant that came closest). One row per such oligo. Empty when every oligo has a site but none pair into a product |
 | `Reason` | Why, in words (below) |
 | `BestSite` | The oligo's best site, as `contig:start-end(strand)`; empty when there is none |
-| `BestSiteTm` | Its Tm, °C; empty for none, or for a site that fails the 3' rule |
-| `NeededTm` | The Tm a site needs: `--anneal-temp` less `--tm-margin` |
+| `BestSiteTm` | Its Tm, °C; empty for none, or for a site that fails the 3' rule. One that would round to `NeededTm` is shown 0.1 °C under it (49.98 °C is `49.9` when 50 °C is needed) |
+| `NeededTm` | The Tm a site of the assay needs: `--anneal-temp`, or the assay's `ta=`, less `--tm-margin` |
 
 The reasons:
 
 - `no site reaches 55 °C; the best melts at 51.5 °C (2 mismatches and indels, 5 unpaired 5' bases)`: the oligo has sites, all too weak.
 - `every site fails the 3' rule; the best has a 3' penalty of 3, more than 0 (--3p-penalty)`: a primer whose sites all have a mismatched 3' end.
 - `no site: BLAST found no match`.
-- `its Tm on a perfect match is 53.3 °C, below the 55 °C a site needs: it anneals nowhere at this temperature (lower --anneal-temp or raise --tm-margin)`: the oligo itself is too short or too A/T-rich for the run's temperature, and its assay gives no product in any sample.
+- `its Tm on a perfect match is 53.3 °C, below the 55 °C a site needs: it anneals nowhere at this temperature (lower the annealing temperature, --anneal-temp or the assay's ta=, or raise --tm-margin)`: the oligo itself is too short or too A/T-rich for the run's temperature, and its assay gives no product in any sample.
 - with an empty `Oligo`: `every oligo has a site, but no forward and reverse site face each other on one sequence within 5000 bp (--max-length)`, with `with a probe site between them` for a probe assay.
 
 For a FASTQ sample, the reason is about the mini-assembly (`in the mini-assembly (the FASTQ diagnostics say what the reads show)`): see the [diagnostics file](#diagnostics-file) for what the reads show.
@@ -241,7 +241,7 @@ isolate_03  stxQ   stxQ-R  no site reaches 55 °C; the best melts at 10.7 °C (5
 isolate_03  stxQ   stxQ-P  no site reaches 55 °C; the best melts at 29.5 °C (12 mismatches and indels)
 ```
 
-The file is written as `report.tsv` is ([File format](#file-format)). To accept weaker sites, lower `--anneal-temp` or raise `--tm-margin`.
+The file is written as `report.tsv` is ([File format](#file-format)). To accept weaker sites, lower `--anneal-temp` (or the assay's `ta=`) or raise `--tm-margin`.
 
 ## Detailed per-sample reports
 
@@ -266,7 +266,8 @@ Since 2.0, baiting allows 1 edit (a substitution, an insertion or a deletion) on
 their own): the bait takes reads in, and the Tm rule decides. Up to 1.x the edits were `-m` (at most 2), with 3
 substitutions on 19-base k-mers at `-m 3`. A primer site with more differences in every k-mer may still bait no read, a
 [known gap](Limitations#known-gaps). The diagnostics then list the assay as `PARTIAL_BAIT` when the other primer
-baits reads, and not at all when neither does.
+baits reads, and not at all when neither does. `PARTIAL_BAIT` also lists an assay whose primer is in the reads at a site
+whose Tm is too low, and says so.
 
 ### Read-level calls
 
@@ -464,7 +465,7 @@ and `_extensionReads.fastq.gz`.
 | `NOT_IN_READS` | Both primers are in the reads, but no read holds a complete amplicon, and the reads were not extended (`--read-extension off`). Conclusive only for amplicons up to `CheckableLength`; a longer amplicon cannot be ruled out |
 | `NOT_CLOSED_BY_EXTENSION` | Both primers are in the reads, no read holds a complete amplicon, and extending the reads did not join the primers (at least 2 extended reads of one primer holding a product). `ReadDetail` gives the number of reads extended and anything seen too few times. A negative, weaker than one on an assembly, especially when few reads carry the primers |
 | `EXTENSION_IN_TANDEM_REPEAT` | As `NOT_CLOSED_BY_EXTENSION`, but most of the extended reads end in a tandem repeat ((AT)n, (CAG)n, a VNTR), which they loop in: the extension follows the better-supported branch, and in a repeat longer than a k-mer the repeat's own k-mers outnumber the way out. **Inconclusive**, since 0.15.3 (before, a plain negative): a product through the repeat is neither shown nor ruled out; confirm it on an assembly of long reads, or by PCR. `ReadDetail` names the repeat's unit |
-| `PARTIAL_BAIT` | Only some of the assay's primers are in the reads: one primer site diverged beyond what the bait matches (1 edit in a k-mer), usually a true negative, or one with more 5' mismatches than the bait's k-mer leaves out, which an assembly could accept (a [known gap](Limitations#known-gaps)) |
+| `PARTIAL_BAIT` | Only some of the assay's primers have a site in the reads that the rules accept. Either the reads carry the primer at a site whose Tm is too low (`ReadDetail` then says the mini-assembly holds a site the rules reject, and `report_no_product.tsv` gives it with its Tm), or one primer site diverged beyond what the bait matches (1 edit in a k-mer): usually a true negative, sometimes a site an assembly would accept (a [known gap](Limitations#known-gaps)) |
 
 | Assembly | Meaning |
 |---|---|

@@ -45,7 +45,7 @@ Linux portable release example:
   -t 8
 ```
 
-Sites are accepted when their Tm reaches 55 °C (`--anneal-temp 60` less `--tm-margin 5`). If your reaction anneals at another temperature, add `--anneal-temp <°C>`; see [Amplicon Calling](Amplicon-Calling).
+Sites are accepted when their Tm reaches 55 °C (`--anneal-temp 60` less `--tm-margin 5`). If your reaction anneals at another temperature, add `--anneal-temp <°C>`, or give an assay its own with `ta=<°C>` on a primer header ([Primer FASTA Format](Primer-FASTA-Format#annealing-temperature-optional)); see [Amplicon Calling](Amplicon-Calling).
 
 ## After the run
 

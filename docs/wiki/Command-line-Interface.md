@@ -30,7 +30,9 @@ usage: java -jar insilicoPCR.jar -i <input> -o <output> -p <primers> [-t
                                  Tm on the template (Primer3's
                                  thermodynamic alignment) reaches it less
                                  --tm-margin, and a primer's 3' end passes
-                                 the 3' rule; default: 60
+                                 the 3' rule. An assay whose primer header
+                                 gives ta=<°C> is judged at that
+                                 temperature instead; default: 60
     --bbtools-memory <GB>        Same as --memory (its name before 1.0)
     --dntp <mM>                  Reaction, for the Tm: dNTP; default: 0.8
  -e,--evalue <value>             blastn e-value; deliberately permissive,
@@ -118,7 +120,7 @@ usage: java -jar insilicoPCR.jar -i <input> -o <output> -p <primers> [-t
 | Option | Default | Meaning |
 |---|---|---|
 | `-t`, `--threads` | available processors | Number of worker threads |
-| `--anneal-temp` | `60` | Annealing temperature of the reaction, °C. A primer or probe site is accepted when its Tm on the template reaches it less `--tm-margin`, and a primer's 3' end passes the 3' rule: see [Amplicon Calling](Amplicon-Calling#tm-on-the-template---anneal-temp---tm-margin) |
+| `--anneal-temp` | `60` | Annealing temperature of the reaction, °C. A primer or probe site is accepted when its Tm on the template reaches it less `--tm-margin`, and a primer's 3' end passes the 3' rule: see [Amplicon Calling](Amplicon-Calling#tm-on-the-template---anneal-temp---tm-margin). An assay whose primer header gives [`ta=`](Primer-FASTA-Format#annealing-temperature-optional) is judged at its own |
 | `--tm-margin` | `5` | How far below `--anneal-temp` a site's Tm may be, °C: sites need 55 °C by default |
 | `-e`, `--evalue` | `1e5` | BLASTN e-value; deliberately permissive, see [BLAST e-value](Amplicon-Calling#blast-e-value) |
 | `-l`, `--max-length` | `5000` | Maximum amplicon length in bp; `0` disables the limit |

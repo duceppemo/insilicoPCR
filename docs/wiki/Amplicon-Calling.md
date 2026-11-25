@@ -21,7 +21,7 @@ For every primer or probe hit, insilicoPCR checks:
 
 ### Tm on the template (`--anneal-temp`, `--tm-margin`)
 
-The oligo's Tm on the template under it must reach `--anneal-temp` (default **60 °C**) less `--tm-margin` (default **5 °C**): 55 °C by default. Since 2.0 this one rule replaces the mismatch counts of 1.x (`-m`, `--probe-mismatches`, `--5p-truncation`, all removed).
+The oligo's Tm on the template under it must reach `--anneal-temp` (default **60 °C**) less `--tm-margin` (default **5 °C**): 55 °C by default. Since 2.0 this one rule replaces the mismatch counts of 1.x (`-m`, `--probe-mismatches`, `--5p-truncation`, all removed). An assay whose primer header gives its own annealing temperature (`ta=55`) is judged at it instead, so that assays published at different temperatures run in one file ([Primer FASTA Format](Primer-FASTA-Format#annealing-temperature-optional)).
 
 The Tm is computed as Primer3's `ntthal` computes it (its thermodynamic alignment, ported to Java): the oligo is aligned to the template strand under it, with its mismatches, bulges, internal loops and dangling ends, and the nearest-neighbour free energies give the Tm. The template is the site BLAST aligned, with the bases BLAST left out of its alignment on either side, as far as the sequence goes. So:
 
@@ -39,7 +39,7 @@ The Tm depends on the reaction. These optional settings describe it; the default
 | `--dntp` | 0.8 mM | dNTP (they bind Mg2+) |
 | `--oligo-conc` | 250 nM | each primer and probe |
 
-The run's log and `QAlog.txt` list each oligo's Tm on a perfect match, the most any of its sites can reach. One below the minimum is flagged: it anneals nowhere at this temperature, and its assay gives no product anywhere. To accept weaker sites, lower `--anneal-temp` or raise `--tm-margin`.
+The run's log and `QAlog.txt` list each oligo's Tm on a perfect match, the most any of its sites can reach. One below the minimum is flagged: it anneals nowhere at this temperature, and its assay gives no product anywhere. To accept weaker sites, lower `--anneal-temp` (or the assay's `ta=`) or raise `--tm-margin`.
 
 ### Weighted 3'-end check (`--3p-window`, `--3p-penalty`)
 
@@ -100,6 +100,7 @@ FASTQ input: products called from the reads themselves ([read-level calls](Repor
 |---|---|
 | Assay validation (default) | none: sites melting at 55 °C or more, perfect 3' window |
 | The reaction anneals at another temperature | `--anneal-temp 58` (sites then need 53 °C) |
+| Assays published at different temperatures | `ta=<°C>` on a primer header of each ([Primer FASTA Format](Primer-FASTA-Format#annealing-temperature-optional)) |
 | Accept weaker sites, perfect 3' end | `--tm-margin 8` (or a lower `--anneal-temp`) |
 | Also tolerate one distal (positions 4–5) 3'-window mismatch | `--3p-penalty 1` |
 | A master mix with other salt or oligo amounts | `--na`, `--mg`, `--dntp`, `--oligo-conc` |

@@ -62,7 +62,7 @@ Here both assays declare their product size. Green cells are products of that si
 ### Desktop app or command line
 
 <p align="center">
-  <img src="docs/assets/gui/main-window.png" alt="The insilicoPCR window after a run: input, primer and output paths, threads, mismatches (the annealing temperature since 2.0) and e-value, the settings buttons, the run log, and the buttons to view the gel image and the HTML report" width="640">
+  <img src="docs/assets/gui/main-window.png" alt="The insilicoPCR window after a run: input, primer and output paths, threads, annealing temperature and e-value, the settings buttons, the run log, and the buttons to view the gel image and the HTML report" width="640">
 </p>
 
 ## Quick Start

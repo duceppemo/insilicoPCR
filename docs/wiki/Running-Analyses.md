@@ -107,7 +107,7 @@ Standard PCR assays and qPCR/probe assays can be mixed in the same primer FASTA 
 | Parameter | Command line | Default | Purpose |
 |---|---|---|---|
 | Threads | `-t` | the processors, less one in the window | Number of worker threads; FASTQ samples processed at once share them, and the memory: see [Threads and memory in FASTQ mode](Command-line-Interface#threads-and-memory-in-fastq-mode) |
-| Anneal (°C) | `--anneal-temp` | 60 | Annealing temperature of the reaction. A primer or probe site is accepted when its Tm on the template reaches it less the Tm margin (55 °C by default), and a primer's 3' end passes the 3' rule. Replaces **Mismatches** of 1.x |
+| Anneal (°C) | `--anneal-temp` | 60 | Annealing temperature of the reaction. A primer or probe site is accepted when its Tm on the template reaches it less the Tm margin (55 °C by default), and a primer's 3' end passes the 3' rule. An assay whose primer header gives [`ta=`](Primer-FASTA-Format#annealing-temperature-optional) is judged at its own. Replaces **Mismatches** of 1.x |
 | E-value | `-e` | 1e5 | BLASTN e-value threshold |
 | Amplicon settings… | `--tm-margin`, `--na`, `--mg`, `--dntp`, `--oligo-conc`, `--3p-window`, `--3p-penalty`, `--min-length`, `-l` | see [Amplicon Calling](Amplicon-Calling) | Tm margin and the reaction the Tm assumes, 3'-end check, min/max amplicon length (default max 5000; 0 disables the limit) |
 | FASTQ settings… | the Tadpole options, `--read-min-fraction`, `--read-extension`, `--memory` (`--bbtools-memory` before 1.0) | see [Command-line Interface](Command-line-Interface) | Tadpole mini-assembly settings, the read-level call threshold, the read extension and the BBTools programs' memory |

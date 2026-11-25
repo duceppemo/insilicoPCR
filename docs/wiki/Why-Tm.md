@@ -2,7 +2,7 @@
 
 insilicoPCR 1.x accepted a primer site when it had few enough mismatches (`-m`), with a few 5' bases free (`--5p-truncation`). Since 2.0 a site is accepted when its **melting temperature on the template** reaches the annealing temperature less a margin (60 − 5 = 55 °C by default), and a primer's 3' end still has to pair ([Amplicon Calling](Amplicon-Calling)). The Tm is Primer3's thermodynamic alignment (`ntthal`), ported to Java. This page shows why the Tm is the better rule, on data, and where the two disagree.
 
-In short: a mismatch count says how many bases differ, not how well the oligo binds. On real data the count lets through sites that cannot bind at the reaction's temperature and turns away sites that can. The Tm puts the sites in the order a reaction does, with one setting for every assay.
+In short: a mismatch count says how many bases differ, not how well the oligo binds. On real data the count lets through sites that cannot bind at the reaction's temperature and turns away sites that can. The Tm puts the sites in the order a reaction does, with one rule for every assay: its sites judged at its annealing temperature, the run's or the one its primer header gives (`ta=`, [Primer FASTA Format](Primer-FASTA-Format#annealing-temperature-optional)).
 
 ## A count does not weigh a mismatch
 
@@ -56,7 +56,7 @@ So 2.0 at its default is as strict as 1.x at `-m 0` where that was right, and gi
 
 ## Where the Tm says no
 
-The Tm rule is the same for every assay, and some published assays fail it in silico. On the *G. pallida* reads, the EPPO PM 7/40 test of Bulman and Marshall (1997), run at 60 °C, gives no product: its universal ITS5 primer differs from *G. pallida* at 5 of its first 6 bases, and its site melts at 51.5 °C. `report_no_product.tsv` says so:
+The Tm rule is the same for every assay, and some published assays fail it in silico, even at their own annealing temperature. On the *G. pallida* reads, the EPPO PM 7/40 test of Bulman and Marshall (1997), run at its published 60 °C, gives no product: its universal ITS5 primer differs from *G. pallida* at 5 of its first 6 bases, and its site melts at 51.5 °C. `report_no_product.tsv` says so:
 
 ```text
 BMpal  BMpal-F  no site reaches 55 °C in the mini-assembly (the FASTQ diagnostics say what the reads

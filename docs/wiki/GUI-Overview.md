@@ -4,7 +4,7 @@ The graphical interface is intended for interactive analysis and result review.
 
 ![The insilicoPCR window after a run](https://raw.githubusercontent.com/duceppemo/insilicoPCR/master/docs/assets/gui/main-window.png)
 
-The window of version 0.15.2 after a run on a folder of five FASTA files (since 2.0, **Anneal (°C)** takes the place of **Mismatches**): the three path fields with their **Select** buttons, the run parameters on the right, the two settings buttons, the log, and the action buttons along the bottom.
+The window of version 2.0.0 after a run on a folder of five FASTA files: the three path fields with their **Select** buttons, the run parameters on the right, the two settings buttons, the log, and the action buttons along the bottom.
 
 ## Main workflow
 
@@ -14,7 +14,7 @@ The GUI lets users select:
 - primer FASTA file
 - output directory
 - number of worker threads (one fewer than the computer's processors at most, so the window stays responsive; the command line's `-t` default is all of them)
-- the annealing temperature, **Anneal (°C)** (default 60; `--anneal-temp`): a primer or probe site is accepted when its Tm on the template reaches it less the Tm margin (since 2.0, in place of the allowed mismatches)
+- the annealing temperature, **Anneal (°C)** (default 60; `--anneal-temp`): a primer or probe site is accepted when its Tm on the template reaches it less the Tm margin (since 2.0, in place of the allowed mismatches); an assay whose primer header gives [`ta=`](Primer-FASTA-Format#annealing-temperature-optional) is judged at its own
 - BLAST e-value
 
 Paths can also be typed or pasted into the input, primer and output fields: a leading `~` is your home folder, and a relative path is made absolute.
@@ -27,8 +27,6 @@ Two buttons above the log open the remaining settings. Each dialog has **Default
 | **FASTQ settings…** | Tadpole k-mer length, min k-mer count to seed, min contig coverage, min contig length; min share of informative reads for read-level calls; which assays reads are extended for, to find products longer than a read (unreported, target or off); the memory for BBTools and BLAST (empty: automatic; it sizes the BLAST searches of assemblies too) | `--tadpole-k`, `--tadpole-min-seed`, `--tadpole-min-cov`, `--tadpole-min-contig`, `--read-min-fraction`, `--read-extension`, `--memory` (`--bbtools-memory` before 1.0) |
 
 ![The Amplicon settings and FASTQ settings dialogs, with their defaults](https://raw.githubusercontent.com/duceppemo/insilicoPCR/master/docs/assets/gui/settings-dialogs.png)
-
-The dialogs as in 1.x; since 2.0 **Amplicon settings…** holds the fields listed above.
 
 See [Amplicon Calling](Amplicon-Calling) and [FASTQ mode and false negatives](Reports#fastq-mode-and-false-negatives) for what they do.
 

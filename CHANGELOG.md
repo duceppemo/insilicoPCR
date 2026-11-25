@@ -12,6 +12,11 @@
   the site with the bases BLAST left out. `--na`, `--mg`, `--dntp` and
   `--oligo-conc` set the reaction (defaults 50 mM, 3 mM, 0.8 mM, 250 nM).
   See the wiki page Why-Tm for the evidence.
+- `ta=<°C>` on a primer header (as `size=`) gives the assay's own annealing
+  temperature: its sites are judged at it, the other assays at
+  `--anneal-temp`, so that assays published at different temperatures run in
+  one file. Assays of one `mix=` reaction share one temperature. The log,
+  `QAlog.txt` and the run details list them.
 - `-m`/`--mismatches`, `--probe-mismatches` and `--5p-truncation` are
   removed: a command line that gives one fails and says what to give instead.
   Unpaired 5' bases and bases past a contig end lower a site's Tm instead of
@@ -31,6 +36,20 @@
 - The five-isolate example's `stxQ` primers melted at 54.0 and 53.3 °C, under
   the 55 °C a site needs at 60 °C. Two bases of each are now G or C (59.6 and
   59.4 °C), written into the genomes and reads; the products are the same.
+- `report_fastq_diagnostics.tsv`: a `PARTIAL_BAIT` row's `ReadDetail` now
+  says "no read carries a site of the reverse primer that the rules accept",
+  and adds when the mini-assembly holds a site the rules reject. It said "no
+  read carries the reverse primer", though it counted accepted sites only,
+  and with the Tm rule a primer is often in the reads at a site that melts
+  too low.
+- The tutorial, its example reports and the GUI and report pictures are from
+  2.0.0. The tutorial's primer file gives each assay's published annealing
+  temperature (`hly702` `ta=55`, `hlyQ` `ta=60`). Without it, at 60 °C,
+  `hly702` gives no product on the read set SRR17090570, whose reverse primer
+  site (a mismatch at the primer's 4th base) melts at 54.5 °C. 1.x accepted
+  that site within `--5p-truncation`.
+- `report_no_product.tsv`: a site's Tm that would round to the Tm it failed
+  is shown 0.1 °C under it (49.98 °C read `50.0` against a needed 50).
 
 ### Changed
 

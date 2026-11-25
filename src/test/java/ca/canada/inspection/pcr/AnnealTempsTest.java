@@ -37,7 +37,7 @@ class AnnealTempsTest {
         IllegalArgumentException twice = assertThrows(IllegalArgumentException.class, () -> AnnealTemps.fromHeaders(
                 headers("a-F", "ta=60", "a-R", "ta=58"), MixGroups.NONE));
         assertEquals("Assay a declares ta= twice with different values: 60 on a-F, 58 on a-R", twice.getMessage());
-        for (String bad : new String[]{"ta=", "ta=sixty", "ta=101", "ta=-1", "ta=NaN"}) {
+        for (String bad : new String[]{"ta=", "ta=sixty", "ta=101", "ta=-1", "ta=NaN", "ta=60d", "ta=60f", "ta=0x3Cp0", "ta=6e1"}) {
             IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
                     () -> AnnealTemps.fromHeaders(headers("a-F", bad), MixGroups.NONE), bad);
             assertTrue(error.getMessage().startsWith("Primer a-F: cannot read the annealing temperature"),

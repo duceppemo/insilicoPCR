@@ -25,7 +25,7 @@ assayName-P
 
 A positive consolidated report row is generated only when the primer pair produces a valid amplicon **and** the probe is detected entirely within that amplicon. If the probe is defined in the primer file but produces no accepted hit inside the amplicon, the assay stays negative — the primer pair alone is not enough.
 
-Because hydrolysis probes do not extend, the 3'-end rule that applies to primers is not applied to probes. A probe site only needs the Tm rule that every oligo passes (its Tm on the template reaches `--anneal-temp` less `--tm-margin`, 55 °C by default) and to lie inside the product (see [Amplicon Calling](Amplicon-Calling#probes-are-different)). A probe designed hotter than its primers keeps sites with a mismatch or two above that minimum. Before 2.0, it had a mismatch budget of its own (`--probe-mismatches`, removed).
+Because hydrolysis probes do not extend, the 3'-end rule that applies to primers is not applied to probes. A probe site only needs the Tm rule that every oligo passes (its Tm on the template reaches the assay's annealing temperature, `--anneal-temp` or its [`ta=`](Primer-FASTA-Format#annealing-temperature-optional), less `--tm-margin`: 55 °C by default) and to lie inside the product (see [Amplicon Calling](Amplicon-Calling#probes-are-different)). A probe designed hotter than its primers keeps sites with a mismatch or two above that minimum. Before 2.0, it had a mismatch budget of its own (`--probe-mismatches`, removed).
 
 ## Mixing both in one run
 

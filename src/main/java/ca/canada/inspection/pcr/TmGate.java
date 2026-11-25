@@ -58,7 +58,23 @@ public record TmGate(double annealTemp, double margin, double monovalentMm, doub
         if (!(oligoNm > 0) || !Double.isFinite(oligoNm)) {
             throw new IllegalArgumentException("--oligo-conc must be greater than 0 nM, got: " + oligoNm);
         }
+        saltError(monovalentMm, divalentMm, dntpMm).ifPresent(error -> {
+            throw new IllegalArgumentException(error);
+        });
         assayTemps = assayTemps == null ? AnnealTemps.NONE : assayTemps;
+    }
+
+    /**
+     * Why a reaction of these salts has no Tm, or empty: the Tm's salt correction takes the log of the monovalent
+     * cations plus the Mg²⁺ the dNTP do not bind, and with neither every oligo would melt at -273 °C.
+     */
+    public static java.util.Optional<String> saltError(double monovalentMm, double divalentMm, double dntpMm) {
+        if (monovalentMm > 0 || divalentMm > dntpMm) {
+            return java.util.Optional.empty();
+        }
+        return java.util.Optional.of("--na and --mg leave no cations for a Tm: give --na above 0, or --mg above"
+                + " --dntp (the dNTP bind their own amount of Mg2+); got " + number(monovalentMm) + " mM Na+, "
+                + number(divalentMm) + " mM Mg2+, " + number(dntpMm) + " mM dNTP");
     }
 
     /** Every assay at {@code annealTemp}. */
@@ -106,14 +122,31 @@ public record TmGate(double annealTemp, double margin, double monovalentMm, doub
         return siteTm(hit, template) >= minimumTm(hit.subjectID());
     }
 
-    /** The Tm of {@code oligo} (upper case) on its perfect complement, °C, under these conditions. */
+    /**
+     * The ID the primer file gives {@code id}: {@code X-F} for {@code X-F_3}, a sequence of degenerate {@code X-F}, when
+     * {@code X-F_0} is one of {@code ids} and {@code X-F} is not.
+     */
+    static String writtenId(String id, java.util.Set<String> ids) {
+        int underscore = id.lastIndexOf('_');
+        if (underscore <= 0 || underscore == id.length() - 1
+                || !id.substring(underscore + 1).chars().allMatch(Character::isDigit)) {
+            return id;
+        }
+        String written = id.substring(0, underscore);
+        return !ids.contains(written) && ids.contains(written + "_0") ? written : id;
+    }
+
+    /**
+     * The Tm of {@code oligo} (upper case) on its perfect complement, °C, under these conditions. Not a ceiling: a
+     * site with a mismatched or unpaired end base can melt a little higher, its dangling end stacking on the duplex.
+     */
     public double perfectTm(String oligo) {
         return tm(oligo, Dna.reverseComplement(oligo));
     }
 
     /**
-     * For the run's log: each oligo's Tm on its perfect complement, the most any of its sites can reach. One below
-     * {@link #minimumTm} anneals nowhere at this temperature: its assay makes no product.
+     * For the run's log: each oligo's Tm on its perfect complement. One below {@link #minimumTm} is unlikely to anneal
+     * anywhere at this temperature. A degenerate oligo is one line, its variants' range: there can be thousands.
      */
     public java.util.List<String> oligoLines(PrimerPanel primers) {
         java.util.List<String> lines = new java.util.ArrayList<>();
@@ -121,12 +154,22 @@ public record TmGate(double annealTemp, double margin, double monovalentMm, doub
         lines.add("Oligo Tm on the perfect complement (a site's Tm must reach " + (own
                 ? "its assay's annealing temperature less " + number(margin) + " °C"
                 : number(minimumTm()) + " °C") + "):");
+        Map<String, double[]> ranges = new java.util.LinkedHashMap<>();
+        Map<String, Integer> counts = new java.util.HashMap<>();
         primers.sequences().forEach((id, sequence) -> {
             double tm = perfectTm(sequence.toUpperCase(java.util.Locale.ROOT));
-            double minimum = minimumTm(id);
-            lines.add(String.format(java.util.Locale.ROOT, "  %s %.1f °C%s%s", id, tm,
-                    own ? " (needs " + number(minimum) + ")" : "",
-                    tm >= minimum ? "" : ": below the minimum, no site can reach it"));
+            String oligo = writtenId(id, primers.sequences().keySet());
+            ranges.merge(oligo, new double[]{tm, tm}, (a, b) -> new double[]{Math.min(a[0], b[0]), Math.max(a[1], b[1])});
+            counts.merge(oligo, 1, Integer::sum);
+        });
+        ranges.forEach((oligo, range) -> {
+            double minimum = minimumTm(oligo);
+            int count = counts.get(oligo);
+            String tm = count == 1 ? String.format(java.util.Locale.ROOT, "%.1f °C", range[0])
+                    : String.format(java.util.Locale.ROOT, "%.1f to %.1f °C (%d sequences)", range[0], range[1], count);
+            String verdict = range[1] < minimum ? ": below the minimum, unlikely to anneal anywhere"
+                    : range[0] < minimum ? ": some of its sequences below the minimum" : "";
+            lines.add("  " + oligo + " " + tm + (own ? " (needs " + number(minimum) + ")" : "") + verdict);
         });
         return lines;
     }
@@ -145,8 +188,18 @@ public record TmGate(double annealTemp, double margin, double monovalentMm, doub
         return tm(oligo.toUpperCase(java.util.Locale.ROOT), strandUnder(hit, template));
     }
 
-    /** The Tm of {@code oligo} on {@code strand}, both 5' to 3', under these conditions. */
+    /**
+     * The Tm of {@code oligo} on {@code strand}, both 5' to 3', under these conditions. Of an oligo longer than
+     * {@link Thal#MAX_ALIGN} (60) bases, its 3'-most 60 on the template under them: {@code thal} aligns no longer pair,
+     * and the 3' end is what primes; 60 bases melt far above any annealing temperature.
+     */
     double tm(String oligo, String strand) {
+        if (oligo.length() > Thal.MAX_ALIGN && strand.length() > Thal.MAX_ALIGN) {
+            int cut = oligo.length() - Thal.MAX_ALIGN;
+            oligo = oligo.substring(cut);
+            // The oligo's 5' end pairs with the strand's 3' end: drop as many bases there, keeping any indel slack.
+            strand = strand.substring(0, Math.max(Thal.MAX_ALIGN, strand.length() - cut));
+        }
         String key = oligo + '\u0001' + strand + '\u0001' + monovalentMm + '\u0001' + divalentMm + '\u0001' + dntpMm
                 + '\u0001' + oligoNm;
         Double cached = CACHE.get(key);

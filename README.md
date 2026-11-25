@@ -36,7 +36,7 @@
 - **Assemblies and reads.** FASTA genomes are searched directly; FASTQ reads (single or paired, gzipped or not) are baited and micro-assembled first, and a product the mini-assembly misses is called from the reads themselves, even one longer than a read.
 - **PCR and qPCR in one primer file.** An assay with a probe is reported only when the probe sits inside the amplicon. Degenerate (IUPAC) primers are expanded automatically.
 - **Realistic amplicon calling.** Each primer and probe site is judged by its Tm on the template (Primer3's thermodynamic alignment, built in), the same rule for every assay. Primers must face each other on one contig, within a size limit, with a weighted 3'-end mismatch check that knows a terminal G/C mismatch is worse than an A/T one. Every product a tube would make is found: of one primer alone at an inverted repeat, of two assays sharing a multiplex reaction (`mix=`), and across the origin of a circular plasmid or chromosome.
-- **Sequence rules and one Tm.** A product is reported when its primer sites melt at `--anneal-temp` (default 60 °C) less `--tm-margin` (default 5 °C) or above, face each other and lie within the size limits. Nothing models primer dimers, hairpins, efficiency or multiplex competition. The cases where it can miss a product are on [Limitations](https://github.com/duceppemo/insilicoPCR/wiki/Limitations).
+- **Sequence rules and one Tm.** A product is reported when its primer sites melt at the annealing temperature (`--anneal-temp`, default 60 °C, or an assay's own `ta=` in the primer file) less `--tm-margin` (default 5 °C) or above, face each other and lie within the size limits. Nothing models primer dimers, hairpins, efficiency or multiplex competition. The cases where it can miss a product are on [Limitations](https://github.com/duceppemo/insilicoPCR/wiki/Limitations).
 - **Every product is reported, whatever its size**, as a real PCR would amplify it. Declare the size an assay is designed to give and each product is labelled `target`, `other` or `unexpected`.
 - **Faulty input is named, not skipped.** Every file is checked before the run: an empty library, a download cut short or a malformed read leaves its sample out with a warning, and the other samples are run.
 - **Reports you can read.** A self-contained HTML report, a TSV table with each site's Tm and mismatches, a table of the assays that gave no product and why, and a synthetic gel.
@@ -84,6 +84,8 @@ ATGCGTACGTTAGCTAGCTA
 >toxA-R
 TCGATCGATACGCGTACGTA
 ```
+
+An assay published at an annealing temperature other than the run's (`--anneal-temp`, default 60 °C) can give it with `ta=` on the same header, such as `>toxA-F size=312 ta=55`.
 
 **3. Run it.** Start the desktop app with `./run-insilicoPCR.sh` on Linux, or by double-clicking `run-insilicoPCR.bat` on Windows. Choose the input (a FASTA/FASTQ file or a folder of them), the primer file and an output folder, then click **Run**.
 

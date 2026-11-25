@@ -127,9 +127,15 @@ public final class AmpliconSettingsDialog {
         if (!(oligoNm > 0)) {
             throw new IllegalArgumentException("Each oligo must be greater than 0 nM.");
         }
+        double monovalent = SettingsDialog.parseNumber(na, "Na+ / K+");
+        double divalent = SettingsDialog.parseNumber(mg, "Mg2+");
+        double dntpMm = SettingsDialog.parseNumber(dntp, "dNTP");
+        if (TmGate.saltError(monovalent, divalent, dntpMm).isPresent()) {
+            throw new IllegalArgumentException("No cations left for a Tm: give Na+ / K+ above 0, or Mg2+ above dNTP"
+                    + " (the dNTP bind their own amount of Mg2+).");
+        }
         return new AmpliconSettings(SettingsDialog.parseNumber(margin, "Tm margin"),
-                SettingsDialog.parseNumber(na, "Na+ / K+"), SettingsDialog.parseNumber(mg, "Mg2+"),
-                SettingsDialog.parseNumber(dntp, "dNTP"), oligoNm,
+                monovalent, divalent, dntpMm, oligoNm,
                 SettingsDialog.parseInt(window, "3' window", 0),
                 SettingsDialog.parseInt(penalty, "Max 3' penalty", 0),
                 min, max);

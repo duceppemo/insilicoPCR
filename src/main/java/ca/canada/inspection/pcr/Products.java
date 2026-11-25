@@ -42,9 +42,31 @@ public final class Products {
             // Probe requirement is decided per assay from the primer FILE, so standard PCR and qPCR
             // assays can be mixed in one run: an assay whose probe is defined but never hits stays
             // negative, while a probe-less assay is reported on its primer pair alone.
-            find(rows::add, sampleName, hits, options, primers);
+            find(rows::add, sampleName, hits, options, primers, new HashMap<>());
             return List.copyOf(rows);
         });
+    }
+
+    /**
+     * The assays of {@code sample} whose products are all reported under another assay of their reaction
+     * ({@code mix=}, the two making them at the same place; see {@link #oncePerReaction}): by assay, the assay
+     * reported. An assay with a row of its own is not one of them.
+     */
+    public static Map<String, String> reportedUnder(Sample sample, PrimerPanel primers, AmpliconOptions options) {
+        if (primers.mixGroups().isEmpty()) {
+            return Map.of();
+        }
+        return sample.hits().derived(new MergedKey(sample.getName(), primers, options), () -> {
+            List<ReportRow> rows = new ArrayList<>();
+            Map<String, String> mergedInto = new HashMap<>();
+            find(rows::add, sample.getName(), sample.hits(), options, primers, mergedInto);
+            rows.forEach(row -> mergedInto.remove(row.assay()));
+            return Map.copyOf(mergedInto);
+        });
+    }
+
+    private record MergedKey(String sampleName, PrimerPanel primers, AmpliconOptions options)
+            implements Hits.Key<Map<String, String>> {
     }
 
     /** What a sample's products depend on besides its hits; the panel by identity, one per run. */
@@ -94,7 +116,7 @@ public final class Products {
     }
 
     private static void find(Consumer<ReportRow> rows, String sampleName, Hits sample,
-                             AmpliconOptions options, PrimerPanel primers) {
+                             AmpliconOptions options, PrimerPanel primers, Map<String, String> mergedInto) {
         Map<String, List<BlastResult>> blastResults = sample.byOligo();
         if (blastResults.isEmpty()) {
             return;
@@ -136,7 +158,7 @@ public final class Products {
             found.addAll(bestPerProduct(assayRows));
         }
         crossAssayProducts(found::add, sampleName, contigs, hits, options, primers);
-        oncePerReaction(found, primers.mixGroups()).forEach(rows);
+        oncePerReaction(found, primers.mixGroups(), mergedInto).forEach(rows);
     }
 
     /**
@@ -146,7 +168,8 @@ public final class Products {
      * the assay's designed product if one is, else a product of one primer, else of two assays; between
      * equals, the first assay by name. Rows of assays run on their own are all kept: each is its own tube.
      */
-    private static List<ReportRow> oncePerReaction(List<ReportRow> rows, MixGroups mix) {
+    private static List<ReportRow> oncePerReaction(List<ReportRow> rows, MixGroups mix,
+                                                   Map<String, String> mergedInto) {
         if (mix.isEmpty()) {
             return rows;
         }
@@ -164,6 +187,8 @@ public final class Products {
             List<Object> place = place(row, mix);
             if (place == null || kept.get(place) == row) {
                 once.add(row);
+            } else if (!kept.get(place).assay().equals(row.assay())) {
+                mergedInto.putIfAbsent(row.assay(), kept.get(place).assay());
             }
         }
         return once;

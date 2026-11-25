@@ -78,10 +78,10 @@ public final class PrimerService {
      */
     static PipelineConfig withAnnealTemps(PipelineConfig config, PrimerPanel primers) {
         AnnealTemps temps = primers.annealTemps();
-        if (temps.isEmpty()) {
+        var options = config.ampliconOptions();
+        if (temps.isEmpty() || !options.tmGated()) {
             return config;
         }
-        var options = config.ampliconOptions();
         return config.withAmpliconOptions(options.withTmGate(options.tmGate().withAssayTemps(temps)));
     }
 
@@ -242,7 +242,17 @@ public final class PrimerService {
     static List<String> unknownKeys(Map<String, String> descriptions) {
         List<String> warnings = new ArrayList<>();
         descriptions.forEach((primerId, description) -> {
-            for (String word : description.trim().split("\\s+")) {
+            String[] words = description.trim().split("\\s+");
+            for (int i = 0; i + 1 < words.length; i++) {
+                // ta = 60: read as three words of free text, the temperature silently not set.
+                if (HEADER_KEYS.contains(words[i].toLowerCase(java.util.Locale.ROOT)) && words[i + 1].startsWith("=")) {
+                    warnings.add("Warning: the header of primer " + primerId + " holds \"" + words[i] + " "
+                            + words[i + 1] + "\", which insilicoPCR does not read: it is ignored. Write it without"
+                            + " spaces, such as " + words[i] + "=" + (words[i + 1].length() > 1
+                            ? words[i + 1].substring(1) : i + 2 < words.length ? words[i + 2] : "") + ".");
+                }
+            }
+            for (String word : words) {
                 java.util.regex.Matcher key = UNKNOWN_KEY.matcher(word);
                 if (key.matches() && !HEADER_KEYS.contains(key.group(1).toLowerCase(java.util.Locale.ROOT))) {
                     warnings.add("Warning: the header of primer " + primerId + " holds " + word + ", which insilicoPCR"

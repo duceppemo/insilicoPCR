@@ -69,6 +69,8 @@ public final class InSilicoPcrPipeline {
         PrimerPanel primers = PrimerService.loadAndPrepare(config, directories, monitor::warning);
         // The Tm rule judges the sites of an assay that declares ta= at its own annealing temperature.
         PipelineConfig settings = PrimerService.withAnnealTemps(config, primers);
+        // Site Tms on the run's threads (-t), not every core.
+        ca.canada.inspection.pcr.BlastHits.tmThreads(config.threads());
         done(Step.PRIMERS);
 
         monitor.info("Checking the input files (" + (config.inputCheck() == InputCheck.Depth.FULL

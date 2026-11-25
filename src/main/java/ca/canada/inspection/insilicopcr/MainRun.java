@@ -212,7 +212,7 @@ public class MainRun extends Application {
         var tip = new Tooltip("Annealing temperature of the reaction (--anneal-temp). A primer or probe site is accepted"
                 + " when its Tm on the template reaches it less the Tm margin (Amplicon settings), and a primer's 3'"
                 + " end pairs. An assay whose primer header gives ta=<°C> is judged at that temperature instead. Lower it to"
-                + " accept weaker sites; QAlog.txt and the report say why an assay gave no product.");
+                + " accept weaker sites; report_no_product.tsv and the HTML report say why an assay gave no product.");
         tip.setWrapText(true);
         tip.setMaxWidth(380);
         field.setTooltip(tip);

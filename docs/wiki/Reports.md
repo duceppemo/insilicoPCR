@@ -141,7 +141,7 @@ bases that do not pair lower the Tm, and a 17-base primer held by its last 9 bas
 rejected, while a 22-mer designed at 60 °C with 2 unpaired 5' bases usually still reaches it.
 
 Compare the number with the primer's length, and see `ForwardTm` / `ReverseTm`. The
-HTML report gives both numbers (`9 of 17 bases`) and marks such products with `◐`.
+HTML report gives both numbers (`20 of 22 bases`) and marks such products with `◐`.
 
 ### Pairing and source columns
 
@@ -164,7 +164,7 @@ The label is information only. Every product is reported whatever its size, with
 
 ### Tm columns
 
-Since 2.0, after `SizeCheck`. Each oligo's Tm on its site, in °C with one decimal, as the [Tm rule](Amplicon-Calling#tm-on-the-template---anneal-temp---tm-margin) worked it out: Primer3's thermodynamic alignment of the oligo with the template under it, in the reaction the run assumes (`--na`, `--mg`, `--dntp`, `--oligo-conc`). Every reported site reaches `--anneal-temp` less `--tm-margin` (55 °C by default).
+Since 2.0, after `SizeCheck`. Each oligo's Tm on its site, in °C with one decimal, as the [Tm rule](Amplicon-Calling#tm-on-the-template---anneal-temp---tm-margin) worked it out: Primer3's thermodynamic alignment of the oligo with the template under it, in the reaction the run assumes (`--na`, `--mg`, `--dntp`, `--oligo-conc`). Every reported site reaches its assay's annealing temperature (`--anneal-temp`, or the assay's [`ta=`](Primer-FASTA-Format#annealing-temperature-optional)) less `--tm-margin`: 55 °C by default.
 
 | Column | Meaning |
 |---|---|
@@ -227,7 +227,7 @@ The reasons:
 - `no site reaches 55 °C; the best melts at 51.5 °C (2 mismatches and indels, 5 unpaired 5' bases)`: the oligo has sites, all too weak.
 - `every site fails the 3' rule; the best has a 3' penalty of 3, more than 0 (--3p-penalty)`: a primer whose sites all have a mismatched 3' end.
 - `no site: BLAST found no match`.
-- `its Tm on a perfect match is 53.3 °C, below the 55 °C a site needs: it anneals nowhere at this temperature (lower the annealing temperature, --anneal-temp or the assay's ta=, or raise --tm-margin)`: the oligo itself is too short or too A/T-rich for the run's temperature, and its assay gives no product in any sample.
+- `no site reaches 55 °C, and its Tm on a perfect match is 53.3 °C: it is unlikely to anneal at this temperature (lower the annealing temperature, --anneal-temp or the assay's ta=, or raise --tm-margin)`: the oligo itself is too short or too A/T-rich for the run's temperature, and its assay is unlikely to give a product in any sample. For a degenerate oligo, this is said only when every one of its sequences is below.
 - with an empty `Oligo`: `every oligo has a site, but no forward and reverse site face each other on one sequence within 5000 bp (--max-length)`, with `with a probe site between them` for a probe assay.
 
 For a FASTQ sample, the reason is about the mini-assembly (`in the mini-assembly (the FASTQ diagnostics say what the reads show)`): see the [diagnostics file](#diagnostics-file) for what the reads show.
@@ -306,7 +306,7 @@ stays at `WEAK_READ_SUPPORT` under the default; its `ReadDetail` gives the count
 (the target, and another place where both primers happen to land), each product is called on its own support
 and gets its own row, like separate bands on a gel. Sizes within 10 bp of each other are one product: length
 variants of a single locus. A product the mini-assembly already reports is not repeated; a product it lacks is
-added even when the assembly reports the same assay at another size. Since 1.0.4, a product the mini-assembly
+added even when the assembly reports the same assay at another size. Since 2.0, a product the mini-assembly
 reports with more primer bases unpaired than the reads show is added too, and its description says so (`in the
 mini-assembly only with primer sites that pair less well`). That happens, for example, when a contig ends inside a
 primer and the bases it has still give the primer a Tm above the minimum (in 1.x, when `--5p-truncation` let the bases past its end through). Before, the contig's product hid the reads'
@@ -465,7 +465,7 @@ and `_extensionReads.fastq.gz`.
 | `NOT_IN_READS` | Both primers are in the reads, but no read holds a complete amplicon, and the reads were not extended (`--read-extension off`). Conclusive only for amplicons up to `CheckableLength`; a longer amplicon cannot be ruled out |
 | `NOT_CLOSED_BY_EXTENSION` | Both primers are in the reads, no read holds a complete amplicon, and extending the reads did not join the primers (at least 2 extended reads of one primer holding a product). `ReadDetail` gives the number of reads extended and anything seen too few times. A negative, weaker than one on an assembly, especially when few reads carry the primers |
 | `EXTENSION_IN_TANDEM_REPEAT` | As `NOT_CLOSED_BY_EXTENSION`, but most of the extended reads end in a tandem repeat ((AT)n, (CAG)n, a VNTR), which they loop in: the extension follows the better-supported branch, and in a repeat longer than a k-mer the repeat's own k-mers outnumber the way out. **Inconclusive**, since 0.15.3 (before, a plain negative): a product through the repeat is neither shown nor ruled out; confirm it on an assembly of long reads, or by PCR. `ReadDetail` names the repeat's unit |
-| `PARTIAL_BAIT` | Only some of the assay's primers have a site in the reads that the rules accept. Either the reads carry the primer at a site whose Tm is too low (`ReadDetail` then says the mini-assembly holds a site the rules reject, and `report_no_product.tsv` gives it with its Tm), or one primer site diverged beyond what the bait matches (1 edit in a k-mer): usually a true negative, sometimes a site an assembly would accept (a [known gap](Limitations#known-gaps)) |
+| `PARTIAL_BAIT` | Only some of the assay's primers have a site in the reads that the rules accept. Either the reads carry the primer at a site whose Tm is too low (`ReadDetail` then says the mini-assembly holds a site the rules reject, and `the no-product report gives it and why), or one primer site diverged beyond what the bait matches (1 edit in a k-mer): usually a true negative, sometimes a site an assembly would accept (a [known gap](Limitations#known-gaps)) |
 
 | Assembly | Meaning |
 |---|---|
@@ -473,7 +473,7 @@ and `_extensionReads.fastq.gz`.
 | `SPLIT_ACROSS_CONTIGS` | Both primers hit contigs, never the same one. `AssemblyDetail` lists up to 3 hits per primer (then `+N more`) and each one's distance to the contig end in the primer's extension direction; short distances on both sides mean the assembly broke inside the amplicon |
 | `NO_VALID_PAIR` | Both primers share a contig but form no reportable amplicon (orientation, `--min-length`/`--max-length`, or missing probe) |
 | `OTHER_PRODUCT_ONLY` | The assembly reports the assay, but only at another size (listed in `AssemblyDetail`); the product in `ReadDetail` was added from reads |
-| `LESS_PAIRED_SITES` | The assembly reports the product, but with more primer bases unpaired than the reads show (mismatches, or 5' bases past a contig end); the product in `ReadDetail` was added from reads too. Since 1.0.4: before, the contig's product hid the reads' |
+| `LESS_PAIRED_SITES` | The assembly reports the product, but with more primer bases unpaired than the reads show (mismatches, or 5' bases past a contig end); the product in `ReadDetail` was added from reads too. Since 2.0: before, the contig's product hid the reads' |
 
 `QAlog.txt` also records the Tadpole settings used. The command-line options `--tadpole-k`,
 `--tadpole-min-seed`, `--tadpole-min-cov` and `--tadpole-min-contig`, or **FASTQ settings…** in the GUI, tune

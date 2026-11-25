@@ -108,7 +108,7 @@ details .names { margin-top: 6px; }
 <main>
 <header>
 <h1>insilicoPCR report</h1>
-<p class="sub">2026-11-25 12:09 · version 2.0.0 · report.tsv</p>
+<p class="sub">2026-11-25 14:56 · version 2.0.0 · report.tsv</p>
 </header>
 <section class="tiles" aria-label="Summary">
 <div class="tile"><span class="n">4</span><span class="l">samples</span></div>
@@ -169,24 +169,24 @@ details .names { margin-top: 6px; }
 <h2>Why no product</h2>
 <p class="hint">Each assay without a product in a sample, and the rule that decided it: an oligo with no site whose Tm reaches the annealing temperature less the margin, or whose 3' end pairs; or sites that pair into no product. Lower the annealing temperature (--anneal-temp, or an assay's ta=) or raise --tm-margin to accept weaker sites. report_no_product.tsv has every row.</p>
 <div class="scroll"><table class="rows">
-<thead><tr><th>Sample</th><th>Assay</th><th>Oligo</th><th>Reason</th><th>Best site</th><th class="num">Tm (°C)</th></tr></thead>
+<thead><tr><th>Sample</th><th>Assay</th><th>Oligo</th><th>Reason</th><th>Best site</th><th class="num">Tm (°C)</th><th class="num">Needed (°C)</th></tr></thead>
 <tbody>
-<tr><td>ERR6501878</td><td>hly702</td><td>hly702-F</td><td class="wrap">no site: BLAST found no match in the mini-assembly (the FASTQ diagnostics say what the reads show)</td><td title=""></td><td class="num"></td></tr>
-<tr><td>ERR6501878</td><td>hly702</td><td>hly702-R</td><td class="wrap">no site: BLAST found no match in the mini-assembly (the FASTQ diagnostics say what the reads show)</td><td title=""></td><td class="num"></td></tr>
-<tr><td>ERR6501878</td><td>hlyQ</td><td>hlyQ-F</td><td class="wrap">no site: BLAST found no match in the mini-assembly (the FASTQ diagnostics say what the reads show)</td><td title=""></td><td class="num"></td></tr>
-<tr><td>ERR6501878</td><td>hlyQ</td><td>hlyQ-R</td><td class="wrap">no site: BLAST found no match in the mini-assembly (the FASTQ diagnostics say what the reads show)</td><td title=""></td><td class="num"></td></tr>
-<tr><td>ERR6501878</td><td>hlyQ</td><td>hlyQ-P</td><td class="wrap">no site: BLAST found no match in the mini-assembly (the FASTQ diagnostics say what the reads show)</td><td title=""></td><td class="num"></td></tr>
-<tr><td>linnocua_CLIP11262</td><td>hly702</td><td>hly702-F</td><td class="wrap">no site reaches 50 °C; the best melts at 49.9 °C (1 mismatch or indel, 3 unpaired 5&#39; bases)</td><td title="NC_003212.1:506723-506735(+)">NC_003212.1:506723-506735(+)</td><td class="num">49.9</td></tr>
-<tr><td>linnocua_CLIP11262</td><td>hly702</td><td>hly702-R</td><td class="wrap">no site reaches 50 °C; the best melts at 43.9 °C (2 mismatches and indels, 2 unpaired 5&#39; bases)</td><td title="NC_003212.1:646146-646158(+)">NC_003212.1:646146-646158(+)</td><td class="num">43.9</td></tr>
-<tr><td>linnocua_CLIP11262</td><td>hlyQ</td><td>hlyQ-F</td><td class="wrap">no site reaches 55 °C; the best melts at 51.6 °C (1 mismatch or indel, 1 unpaired 5&#39; base)</td><td title="NC_003212.1:2907708-2907724(+)">NC_003212.1:2907708-2907724(+)</td><td class="num">51.6</td></tr>
-<tr><td>linnocua_CLIP11262</td><td>hlyQ</td><td>hlyQ-R</td><td class="wrap">no site reaches 55 °C; the best melts at 38.2 °C (5 mismatches and indels, 4 unpaired 5&#39; bases)</td><td title="NC_003212.1:1393668-1393686(+)">NC_003212.1:1393668-1393686(+)</td><td class="num">38.2</td></tr>
-<tr><td>linnocua_CLIP11262</td><td>hlyQ</td><td>hlyQ-P</td><td class="wrap">no site reaches 55 °C; the best melts at 54.9 °C (10 mismatches and indels)</td><td title="NC_003212.1:2678592-2678617(-)">NC_003212.1:2678592-2678617(-)</td><td class="num">54.9</td></tr>
+<tr><td>ERR6501878</td><td>hly702</td><td>hly702-F</td><td class="wrap">no site: BLAST found no match in the mini-assembly (the FASTQ diagnostics say what the reads show)</td><td title=""></td><td class="num"></td><td class="num">50.0</td></tr>
+<tr><td>ERR6501878</td><td>hly702</td><td>hly702-R</td><td class="wrap">no site: BLAST found no match in the mini-assembly (the FASTQ diagnostics say what the reads show)</td><td title=""></td><td class="num"></td><td class="num">50.0</td></tr>
+<tr><td>ERR6501878</td><td>hlyQ</td><td>hlyQ-F</td><td class="wrap">no site: BLAST found no match in the mini-assembly (the FASTQ diagnostics say what the reads show)</td><td title=""></td><td class="num"></td><td class="num">55.0</td></tr>
+<tr><td>ERR6501878</td><td>hlyQ</td><td>hlyQ-R</td><td class="wrap">no site: BLAST found no match in the mini-assembly (the FASTQ diagnostics say what the reads show)</td><td title=""></td><td class="num"></td><td class="num">55.0</td></tr>
+<tr><td>ERR6501878</td><td>hlyQ</td><td>hlyQ-P</td><td class="wrap">no site: BLAST found no match in the mini-assembly (the FASTQ diagnostics say what the reads show)</td><td title=""></td><td class="num"></td><td class="num">55.0</td></tr>
+<tr><td>linnocua_CLIP11262</td><td>hly702</td><td>hly702-F</td><td class="wrap">no site reaches 50 °C; the best melts at 49.9 °C (1 mismatch or indel, 3 unpaired 5&#39; bases)</td><td title="NC_003212.1:506723-506735(+)">NC_003212.1:506723-506735(+)</td><td class="num">49.9</td><td class="num">50.0</td></tr>
+<tr><td>linnocua_CLIP11262</td><td>hly702</td><td>hly702-R</td><td class="wrap">no site reaches 50 °C; the best melts at 43.9 °C (2 mismatches and indels, 2 unpaired 5&#39; bases)</td><td title="NC_003212.1:646146-646158(+)">NC_003212.1:646146-646158(+)</td><td class="num">43.9</td><td class="num">50.0</td></tr>
+<tr><td>linnocua_CLIP11262</td><td>hlyQ</td><td>hlyQ-F</td><td class="wrap">no site reaches 55 °C; the best melts at 51.6 °C (1 mismatch or indel, 1 unpaired 5&#39; base)</td><td title="NC_003212.1:2907708-2907724(+)">NC_003212.1:2907708-2907724(+)</td><td class="num">51.6</td><td class="num">55.0</td></tr>
+<tr><td>linnocua_CLIP11262</td><td>hlyQ</td><td>hlyQ-R</td><td class="wrap">no site reaches 55 °C; the best melts at 38.2 °C (5 mismatches and indels, 4 unpaired 5&#39; bases)</td><td title="NC_003212.1:1393668-1393686(+)">NC_003212.1:1393668-1393686(+)</td><td class="num">38.2</td><td class="num">55.0</td></tr>
+<tr><td>linnocua_CLIP11262</td><td>hlyQ</td><td>hlyQ-P</td><td class="wrap">no site reaches 55 °C; the best melts at 54.9 °C (10 mismatches and indels)</td><td title="NC_003212.1:2678592-2678617(-)">NC_003212.1:2678592-2678617(-)</td><td class="num">54.9</td><td class="num">55.0</td></tr>
 </tbody></table></div>
 </section>
 <section>
 <h2>Run details</h2>
 <dl class="details">
-<dt>Date</dt><dd>2026-11-25 12:09</dd>
+<dt>Date</dt><dd>2026-11-25 14:56</dd>
 <dt>insilicoPCR version</dt><dd>2.0.0</dd>
 <dt>Input</dt><dd>/data/tutorial/tutorial_input</dd>
 <dt>Primer file</dt><dd>/data/tutorial/listeria_assays.fasta</dd>

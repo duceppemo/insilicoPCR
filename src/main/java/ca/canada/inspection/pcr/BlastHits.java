@@ -9,6 +9,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -94,6 +95,30 @@ public final class BlastHits {
     /** Hits whose Tm is being computed, held back to be added in the order of the report. */
     private static final int TM_QUEUE = 8192;
 
+    /** The pools that compute site Tms, by size: one per {@code -t}, shared by the samples read at once. */
+    private static final Map<Integer, java.util.concurrent.ForkJoinPool> TM_POOLS =
+            new java.util.concurrent.ConcurrentHashMap<>();
+
+    /** Threads for site Tms, the run's {@code -t}; 0 for every core. */
+    private static volatile int tmThreads;
+
+    /**
+     * Computes site Tms on {@code threads} threads (the run's {@code -t}) from now on, every sample read at once
+     * sharing them; 0 for every core.
+     */
+    public static void tmThreads(int threads) {
+        if (threads < 0) {
+            throw new IllegalArgumentException("threads must be >= 0: " + threads);
+        }
+        tmThreads = threads;
+    }
+
+    private static java.util.concurrent.ExecutorService tmPool() {
+        int threads = tmThreads;
+        return threads == 0 ? java.util.concurrent.ForkJoinPool.commonPool()
+                : TM_POOLS.computeIfAbsent(threads, java.util.concurrent.ForkJoinPool::new);
+    }
+
     private record Waiting(BlastHitParser.Pending site, String line, java.util.concurrent.Future<Double> tm) {
     }
 
@@ -107,7 +132,7 @@ public final class BlastHits {
                                          java.util.function.Consumer<String> accepted, boolean keepCutByEnd)
             throws IOException {
         java.util.ArrayDeque<Waiting> waiting = new java.util.ArrayDeque<>();
-        java.util.concurrent.ExecutorService pool = java.util.concurrent.ForkJoinPool.commonPool();
+        java.util.concurrent.ExecutorService pool = tmPool();
         String line;
         while ((line = lines.readLine()) != null) {
             if (line.isBlank() || line.equals(BlastField.HEADER) || (line = toContig.apply(line)) == null) {

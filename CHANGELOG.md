@@ -20,18 +20,23 @@
 - `-m`/`--mismatches`, `--probe-mismatches` and `--5p-truncation` are
   removed: a command line that gives one fails and says what to give instead.
   Unpaired 5' bases and bases past a contig end lower a site's Tm instead of
-  being free up to a count. FASTQ mode baits reads with 1 mismatch per k-mer.
+  being free up to a count. FASTQ mode baits reads with 1 edit per k-mer.
 - The window has an annealing temperature in place of Mismatches; Amplicon
   settings has the Tm margin and the reaction, and no longer probe mismatches
   or 5' unpaired bases.
 - `report.tsv` has three more columns after `SizeCheck`: `ForwardTm`,
   `ReverseTm` and `ProbeTm`. The columns of 1.x keep their places. The HTML
   amplicon table shows them.
-- `report_no_product.tsv` (new), the HTML report ("Why no product") and
-  `QAlog.txt` say, for each assay without a product in a sample, which oligo
-  has no accepted site, its best site and the rule that site fails, or that
-  the sites pair into no product. The log lists each oligo's Tm on a perfect
-  match, and flags one that no site can bring to the minimum.
+- `report_no_product.tsv` (new) and the HTML report ("Why no product") say,
+  for each assay without a product in a sample, which oligo has no accepted
+  site, its best site and the rule that site fails, or that the sites pair
+  into no product; `QAlog.txt` counts them. The log lists each oligo's Tm on
+  a perfect match (a degenerate oligo's range on one line), and flags one
+  below the minimum.
+- Oligos longer than 60 bases are scored on their 3'-most 60, as Primer3's
+  thermodynamic alignment takes no longer pair.
+- A reaction with no cations for a Tm (`--na 0` with `--mg` at or below
+  `--dntp`) is refused.
 - Licence: GPL-3.0-or-later (Primer3's code is GPL), from MIT.
 - The five-isolate example's `stxQ` primers melted at 54.0 and 53.3 °C, under
   the 55 °C a site needs at 60 °C. Two bases of each are now G or C (59.6 and
@@ -53,32 +58,17 @@
 
 ### Changed
 
-- FASTQ mode at `-m 0` baits with k-mers of at least 13 bases (16 up to
-  1.0.3). A primer of 18 bases or more now leaves all 5 bases that
-  `--5p-truncation 5` frees out of its k-mers. Before, a 20-base primer with a
-  mismatch at its 5th base was in every 16-mer and baited no read, though an
-  assembly gives the product. 13-mers baited 0.34% of SRR642185's reads
-  (0.03% with 16-mers). Its run took 10 s instead of 7 s and gave the same
-  calls.
-- FASTQ mode: oligos too short for the bait's k floor (13 at `-m 0`, 16 plus
-  `-m` with edits) bait in a BBDuk pass of their own. Before, they brought
+- FASTQ mode: oligos too short for the bait's k floor (17: 16 plus the one
+  edit 2.0 baits with) bait in a BBDuk pass of their own. Before, they brought
   every oligo's k down to theirs. The other oligos keep the k of the shortest
   of them, and the reads of both passes are pooled, each pair once. A
-  23-primer *Globodera* panel with 15-base probes at `-m 1 --5p-truncation 8`
-  baited 59% of a sample's reads with k=14. Now it baits 4.3%: k=14 for oligos
-  of 15 to 17 bases, k=17 for the others. The run took 38 minutes instead of 3
-  hours, and the assays with a product of the expected size were the same.
-  It gave 1,014 products instead of 2,511. The ones it no longer gives had a
-  mismatch or unpaired 5' bases in both primer sites, on contigs that were
-  assembled only because the single pass took most of the genome. See
-  Limitations, "Known gaps".
+  23-primer *Globodera* panel with 15-base probes, baited with 1 edit (1.x at
+  `-m 1`), took 59% of a sample's reads with k=14 for every oligo. Now it
+  takes 4.3%: k=14 for oligos of 15 to 17 bases, k=17 for the others. The run
+  took 38 minutes instead of 3 hours.
 - FASTQ mode: a product the mini-assembly reports with more primer bases
   unpaired than the reads show no longer hides the reads' product, which is
-  reported too (`FastqDiagnostics` `Assembly` = `LESS_PAIRED_SITES`). On the
-  *Globodera* sample above, the more selective bait gave a 61 bp contig holding
-  the 72 bp ReidPal product, with 11 primer bases past its ends that
-  `--5p-truncation 8` let through. That contig's product replaced the read-level
-  call, whose primers pair completely.
+  reported too (`FastqDiagnostics` `Assembly` = `LESS_PAIRED_SITES`).
 
 ## 1.0.3 (2026-11-23)
 

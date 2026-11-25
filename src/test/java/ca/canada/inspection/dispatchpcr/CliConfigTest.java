@@ -267,5 +267,20 @@ class CliConfigTest {
             assertTrue(message.startsWith(removed + " was removed in 2.0: a primer or probe site is accepted when"
                     + " its Tm reaches --anneal-temp"), message);
         }
+        // Its value attached, as 1.x read it.
+        Exception attached = assertThrows(Exception.class, () -> parse("-m2"));
+        assertTrue(CliConfig.removedOption(attached).orElseThrow(() -> new AssertionError(attached))
+                .startsWith("-m was removed in 2.0"));
+    }
+
+    @Test
+    void aReactionWithNoCationsForATmIsRefused() throws Exception {
+        // No Na+, and every Mg2+ bound by the dNTP: every oligo melted at -273 °C, every assay negative.
+        IllegalArgumentException none = assertThrows(IllegalArgumentException.class,
+                () -> parse("--na", "0", "--mg", "0.8", "--dntp", "0.8"));
+        assertTrue(none.getMessage().startsWith("--na and --mg leave no cations for a Tm"), none.getMessage());
+        assertThrows(IllegalArgumentException.class, () -> parse("--na", "0", "--mg", "0"));
+        assertEquals(0.0, parse("--na", "0", "--mg", "3").ampliconOptions().tmGate().monovalentMm());
+        assertEquals(0.0, parse("--mg", "0").ampliconOptions().tmGate().divalentMm());
     }
 }

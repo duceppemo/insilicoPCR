@@ -59,6 +59,9 @@ class SettingsRecordsTest {
                 () -> AmpliconSettingsDialog.parse("5", "50", "3", "0.8", "0", "5", "0", "0", "0")).getMessage());
         assertThrows(IllegalArgumentException.class,
                 () -> AmpliconSettingsDialog.parse("5", "50", "3", "0.8", "250", "five", "0", "0", "0"));
+        assertEquals("No cations left for a Tm: give Na+ / K+ above 0, or Mg2+ above dNTP (the dNTP bind their own"
+                + " amount of Mg2+).", assertThrows(IllegalArgumentException.class,
+                () -> AmpliconSettingsDialog.parse("5", "0", "0.5", "0.8", "250", "5", "0", "0", "0")).getMessage());
     }
 
     @Test

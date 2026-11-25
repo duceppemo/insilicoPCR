@@ -213,7 +213,7 @@ Its sites are then judged at that temperature: `hly702`'s need 50 °C, `hlyQ`'s 
 - Give the temperature the assay was published or validated at, as `size=` gives the product it was designed for. It is not a setting to make an assay pass: an assay that fails at its own temperature is reported in `report_no_product.tsv` with the reason.
 - Assays that share a reaction (`mix=`, below) anneal at one temperature: `ta=` on one of them sets it for all, and two different values in one reaction are refused.
 - A value that is not a temperature of 0 to 100 °C, or two different values for one assay, stops the run with a message naming the primer.
-- The run's log, `QAlog.txt` and the HTML report's run details list the assays and their temperatures, and each oligo's Tm on a perfect match with the Tm its sites need.
+- The run's log, `QAlog.txt` and the HTML report's run details list the assays and their temperatures; the log and `QAlog.txt` also list each oligo's Tm on a perfect match with the Tm its sites need.
 
 ## Assays in one reaction (multiplex)
 

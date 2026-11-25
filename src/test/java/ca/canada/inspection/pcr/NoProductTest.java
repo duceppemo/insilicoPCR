@@ -105,14 +105,80 @@ class NoProductTest {
     }
 
     @Test
-    void anOligoThatCannotReachTheMinimumOnAPerfectMatchIsSaidToAnnealNowhere() {
+    void anOligoThatCannotReachTheMinimumOnAPerfectMatchIsSaidToBeUnlikelyToAnneal() {
         Sample sample = sample("s", Sample.FileType.FASTA);
         sample.hits().add("a-F", plus("a-F", 101, PRIMER), 60);
         NoProduct reverse = of(panel("a-F", PRIMER, "a-R", AT_RICH), sample).getFirst();
-        assertTrue(reverse.reason().startsWith("its Tm on a perfect match is "), reverse.reason());
-        assertTrue(reverse.reason().endsWith(" °C, below the 55 °C a site needs: it anneals nowhere at this"
-                + " temperature (lower the annealing temperature, --anneal-temp or the assay's ta=, or raise"
-                + " --tm-margin)"), reverse.reason());
+        assertTrue(reverse.reason().startsWith("no site reaches 55 °C, and its Tm on a perfect match is "),
+                reverse.reason());
+        assertTrue(reverse.reason().endsWith(" °C: it is unlikely to anneal at this temperature (lower the annealing"
+                + " temperature, --anneal-temp or the assay's ta=, or raise --tm-margin)"), reverse.reason());
+    }
+
+    @Test
+    void aDegenerateOligoIsUnlikelyToAnnealOnlyWhenEveryOneOfItsSequencesIs() {
+        Sample sample = sample("s", Sample.FileType.FASTA);
+        sample.hits().add("a-F", plus("a-F", 101, PRIMER), 60);
+        // a-R_1 melts at 60 °C on a perfect match: it could anneal, BLAST found no site of either.
+        NoProduct one = of(panel("a-F", PRIMER, "a-R_0", AT_RICH, "a-R_1", PRIMER), sample).getFirst();
+        assertEquals("no site: BLAST found no match", one.reason());
+        NoProduct both = of(panel("a-F", PRIMER, "a-R_0", AT_RICH, "a-R_1", AT_RICH.replace('A', 'T')), sample)
+                .getFirst();
+        assertTrue(both.reason().startsWith("no site reaches 55 °C, and its Tm on a perfect match is "),
+                both.reason());
+    }
+
+    @Test
+    void aProductOfOnePrimerAloneIsNotTheAssaysAndIsNoted() {
+        Sample sample = sample("s", Sample.FileType.FASTA);
+        // a-F at an inverted repeat: a product of a-F alone; a-R anneals nowhere.
+        sample.hits().add("a-F", plus("a-F", 101, PRIMER), 60);
+        sample.hits().add("a-F", minus("a-F", 400, PRIMER), 60);
+        PrimerPanel primers = panel("a-F", PRIMER, "a-R", "CCAGCAGATTCTTTTTTACATCA");
+        Map<String, Sample> bySample = Map.of("s", sample);
+        List<ReportRow> rows = Products.ofRun(bySample, primers, GATED, Map.of());
+        assertEquals(List.of(ReportRow.Pairing.ONE_PRIMER), rows.stream().map(ReportRow::pairing).toList());
+        NoProduct reverse = NoProduct.of(bySample, primers, GATED, rows).getFirst();
+        assertEquals("a-R", reverse.oligo());
+        assertEquals("no site: BLAST found no match; the report has a product of one of its primers alone",
+                reverse.reason());
+    }
+
+    @Test
+    void anAssayWhoseProductIsReportedUnderAnotherOfItsReactionSaysSo() {
+        Sample sample = sample("s", Sample.FileType.FASTA);
+        for (String assay : List.of("a", "b")) {
+            sample.hits().add(assay + "-F", plus(assay + "-F", 101, PRIMER), 60);
+            sample.hits().add(assay + "-R", minus(assay + "-R", 400, PRIMER), 60);
+        }
+        Map<String, String> sequences = new LinkedHashMap<>();
+        for (String id : List.of("a-F", "a-R", "b-F", "b-R")) {
+            sequences.put(id, PRIMER);
+        }
+        PrimerPanel primers = PrimerPanel.of(sequences, ExpectedSizes.NONE,
+                MixGroups.fromHeaders(Map.of("a-F", "mix=m", "b-F", "mix=m")));
+        Map<String, Sample> bySample = Map.of("s", sample);
+        List<ReportRow> rows = Products.ofRun(bySample, primers, GATED, Map.of());
+        assertEquals(List.of("a"), rows.stream().map(ReportRow::assay).distinct().toList());
+        List<NoProduct> found = NoProduct.of(bySample, primers, GATED, rows);
+        assertEquals(1, found.size(), found.toString());
+        assertEquals("b", found.getFirst().assay());
+        assertEquals("its product is reported under a: the two assays share a reaction (mix=) and make it at the same"
+                + " place", found.getFirst().reason());
+    }
+
+    @Test
+    void sitesTooCloseForTheMinimumLengthNameIt() {
+        Sample sample = sample("s", Sample.FileType.FASTA);
+        sample.hits().add("a-F", plus("a-F", 101, PRIMER), 60);
+        sample.hits().add("a-R", minus("a-R", 400, PRIMER), 60);
+        Map<String, Sample> bySample = Map.of("s", sample);
+        PrimerPanel primers = panel("a-F", PRIMER, "a-R", PRIMER);
+        AmpliconOptions longOnly = AmpliconOptions.builder().minLength(1000).tmGate(TmGate.DEFAULT).build();
+        NoProduct none = NoProduct.of(bySample, primers, longOnly, Products.ofRun(bySample, primers, longOnly,
+                Map.of())).getFirst();
+        assertEquals("every oligo has a site, but no forward and reverse site face each other on one sequence 1000 to"
+                + " 5000 bp apart (--min-length, --max-length)", none.reason());
     }
 
     @Test

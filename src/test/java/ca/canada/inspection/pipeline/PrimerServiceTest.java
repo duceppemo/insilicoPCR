@@ -62,6 +62,16 @@ class PrimerServiceTest {
         assertTrue(warnings.get(0).startsWith("Warning: the header of primer a-F holds Tm=60, which insilicoPCR does not"
                 + " read (it reads size=, other=, mix= and ta=)"), warnings.get(0));
         assertTrue(warnings.get(1).contains("primer a-R holds sise=300"), warnings.get(1));
+
+        // ta = 60: three words of free text, the temperature not set without a word.
+        java.nio.file.Path spaced = java.nio.file.Files.writeString(dir.resolve("spaced.fasta"),
+                ">a-F size=300 ta = 55\nACGTACGTAC\n>a-R TA =55\nTTGGCCAATT\n");
+        PrimerService.PrimerFile read = PrimerService.read(spaced);
+        assertEquals(java.util.List.of("Warning: the header of primer a-F holds \"ta =\", which insilicoPCR does not"
+                        + " read: it is ignored. Write it without spaces, such as ta=55.",
+                "Warning: the header of primer a-R holds \"TA =55\", which insilicoPCR does not read: it is ignored."
+                        + " Write it without spaces, such as TA=55."), read.warnings());
+        assertTrue(read.annealTemps().isEmpty());
     }
 
     @Test

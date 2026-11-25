@@ -6,19 +6,20 @@ In short: a mismatch count says how many bases differ, not how well the oligo bi
 
 ## A count does not weigh a mismatch
 
-One mismatch, or five unpaired 5' bases, counted the same in 1.x wherever they were and whatever the primer. Their cost in Tm (perfect site against changed site, 60 °C reaction defaults; mismatches outside the 3' window, which the 3' rule judges anyway):
+One mismatch, or five unpaired 5' bases, counted the same in 1.x wherever they were and whatever the primer. Their cost in Tm, as the program computes it (on the template under the primer, at the 60 °C reaction defaults; mismatches outside the 3' window, which the 3' rule judges anyway; an unpaired 5' base faces its own base):
 
 | Primer | Length | Tm, perfect site | Tm, one mismatch | Tm, 2 / 5 / 8 unpaired 5' bases |
 |---|---|---|---|---|
-| `GGAAGTAAAAGTCGTAACAAGG` (ITS5) | 22 | 60.1 °C | 43.6 to 58.9 °C | 57.5 / 51.6 / 48.3 °C |
-| `ACGGACACATGCCCGCTA` | 18 | 66.3 °C | 56.0 to 67.5 °C | 61.3 / 55.5 / 42.1 °C |
-| `GTGTCTCTAATTTGCCATT` | 19 | 55.0 °C | 35.0 to 53.7 °C | 51.1 / 41.7 / 35.1 °C |
-| `TTTCCTCATGCAATTCAAAACC` | 22 | 60.4 °C | 43.2 to 60.5 °C | 59.1 / 52.6 / 48.2 °C |
-| `CCAGCAGATTCTTTTTTACATCA` | 23 | 60.1 °C | 52.1 to 59.4 °C | 55.9 / 48.3 / 43.3 °C |
+| `GGAAGTAAAAGTCGTAACAAGG` (ITS5) | 22 | 58.7 °C | 41.4 to 57.7 °C | 57.0 / 50.7 / 47.3 °C |
+| `ACGGACACATGCCCGCTA` | 18 | 65.5 °C | 54.9 to 66.8 °C | 60.7 / 56.7 / 41.2 °C |
+| `GTGTCTCTAATTTGCCATT` | 19 | 54.6 °C | 34.3 to 53.7 °C | 51.9 / 41.7 / 36.3 °C |
+| `TTTCCTCATGCAATTCAAAACC` | 22 | 59.7 °C | 42.2 to 59.7 °C | 58.8 / 51.8 / 47.1 °C |
+| `CCAGCAGATTCTTTTTTACATCA` | 23 | 59.1 °C | 50.8 to 58.7 °C | 55.7 / 47.9 / 42.4 °C |
 
-- **Where a mismatch sits matters.** In the ITS5 primer, one mismatch costs 1 °C at its 5' end and 17 °C at its 8th base. To 1.x both were "1 mismatch".
-- **The primer matters.** Five unpaired 5' bases leave a GC-rich 18-mer at 55.5 °C, still a site, and an AT-rich 19-mer at 41.7 °C, not one. To 1.x at `--5p-truncation 5` both were perfect.
-- **A perfect site is not always a site.** `GTGTCTCTAATTTGCCATT` melts at 55.0 °C on its own perfect complement: at 60 °C it barely binds anywhere. A count of 0 cannot say so; the run's log lists every oligo's own Tm and flags one below the minimum.
+- **Where a mismatch sits matters.** In the ITS5 primer, one mismatch costs 1 to 2 °C at its 5' end and up to 17 °C at its 8th base. To 1.x both were "1 mismatch".
+- **The primer matters.** Five unpaired 5' bases leave a GC-rich 18-mer at 56.7 °C, still a site, and an AT-rich 19-mer at 41.7 °C, not one. To 1.x at `--5p-truncation 5` both were perfect.
+- **A perfect site is not always a site.** `GTGTCTCTAATTTGCCATT` melts at 54.6 °C on its own perfect complement, below the 55 °C a site needs at 60 °C. A count of 0 cannot say so; the run's log lists every oligo's Tm on a perfect match and flags one below the minimum.
+- **Nor is it a ceiling.** A mismatch at the very 5' end can stack on the duplex: the 18-mer melts at 66.8 °C with its first base mismatched, 1.3 °C above its perfect site. The Tm counts what binds, not what differs.
 
 ## On real data: every primer site in an assembly
 
@@ -49,10 +50,10 @@ The products of the same data, as 1.x calls them at its default and with mismatc
 | *G. pallida* sample, mini-assembly as FASTA | 0 | 241 (`-m 1 --5p-truncation 8`) | 0 |
 | *G. pallida* sample, reads (FASTQ mode) | 3 | 1,021 (`-m 1 --5p-truncation 8`) | 3 |
 
-- ***Brucella*.** 2.0 gives the 21 products of strict 1.x, and one more: BM_10's 147 bp product on GCA_000292205.2, whose primers pair perfectly and whose probe has one mismatch in a site that still melts above 55 °C. `-m 0` rejects it on the probe's count. Allowing mismatches added 37 products, all of BA and Bru_genus, from sites with mismatches and unpaired 5' bases; 2.0 gives none of them.
+- ***Brucella*.** 2.0 gives the 21 products of strict 1.x, and one more: BM_10's 147 bp product on GCA_000292205.2, whose primers pair perfectly and whose probe has one mismatch in a site that still melts above 55 °C. `-m 0` rejects it on the probe's count. Allowing mismatches gave 38 more products: BM_10's, and 37 of BA and Bru_genus, from sites with mismatches and unpaired 5' bases; 2.0 gives none of them.
 - ***G. pallida* reads.** 2.0 and strict 1.x give the same three *G. pallida* products: NakhlaPal, NakhlaPalPCR and ReidPal, each at its target size, called from reads whose primer and probe sites pair perfectly. Allowing one mismatch and 8 free 5' bases in 1.x gave 1,018 more, 980 of them from the *G. rostochiensis* and *G. tabacum* tests NakhlaRosPCR and NakhlaTabPCR (33 at their target size), on a *G. pallida* sample. 2.0 gives none of them.
 
-So 2.0 at its default is as strict as 1.x at `-m 0` where that was right, and gives what `-m 0` missed when the site still binds (BM_10). 1.x users who needed that loosened `-m` and `--5p-truncation`, and got the false products with it: the Tm needs no such choice. For every assay without a product, `report_no_product.tsv` gives the reason. On the *G. pallida* reads it also names GamelRos-R, whose own Tm on a perfect match is 54.6 °C: at 60 °C it anneals nowhere, whatever the sample.
+So 2.0 at its default is as strict as 1.x at `-m 0` where that was right, and gives what `-m 0` missed when the site still binds (BM_10). 1.x users who needed that loosened `-m` and `--5p-truncation`, and got the false products with it: the Tm needs no such choice. For every assay without a product, `report_no_product.tsv` gives the reason. On the *G. pallida* reads it also names GamelRos-R, whose Tm on a perfect match is 54.6 °C: at 60 °C it is unlikely to anneal anywhere, whatever the sample.
 
 ## Where the Tm says no
 

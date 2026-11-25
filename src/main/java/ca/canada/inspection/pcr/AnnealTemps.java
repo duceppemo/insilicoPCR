@@ -90,11 +90,10 @@ public final class AnnealTemps {
     }
 
     private static double parse(String primerId, String value) {
-        double temp;
-        try {
+        double temp = Double.NaN;
+        // Digits only: Java reads 60d, 60f and 0x3Cp0 as numbers too.
+        if (value.matches("[0-9]+(\\.[0-9]*)?|\\.[0-9]+")) {
             temp = Double.parseDouble(value);
-        } catch (NumberFormatException e) {
-            temp = Double.NaN;
         }
         if (!Double.isFinite(temp) || temp < 0 || temp > 100) {
             throw new IllegalArgumentException("Primer " + primerId + ": cannot read the annealing temperature '"

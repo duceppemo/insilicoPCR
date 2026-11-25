@@ -13,7 +13,7 @@ Only pairs that pass both stages appear in the consolidated report.
 
 These are **sequence rules plus one melting temperature**: a site is judged by its Tm on the template, as Primer3 computes it, and by how well a primer's 3' end pairs. Nothing models primer dimers, hairpins, amplification efficiency, or competition between assays in a multiplex. See [Limitations](Limitations) and, for why the Tm decides, [Why Tm](Why-Tm).
 
-The same rules apply to every oligo of every assay: nothing is tuned per assay. An assay that fails them in silico, because it is poorly designed or because its published conditions differ, gives no product, and the report says why ([report_no_product.tsv](Reports#assays-without-a-product)).
+The same rules apply to every oligo of every assay; only the annealing temperature can be the assay's own, the one it was published at (`ta=` in the [primer file](Primer-FASTA-Format#annealing-temperature-optional)). An assay that fails them in silico, because it is poorly designed or because its published conditions differ, gives no product, and the report says why ([report_no_product.tsv](Reports#assays-without-a-product)).
 
 ## Stage 1: hit filtering
 
@@ -39,7 +39,7 @@ The Tm depends on the reaction. These optional settings describe it; the default
 | `--dntp` | 0.8 mM | dNTP (they bind Mg2+) |
 | `--oligo-conc` | 250 nM | each primer and probe |
 
-The run's log and `QAlog.txt` list each oligo's Tm on a perfect match, the most any of its sites can reach. One below the minimum is flagged: it anneals nowhere at this temperature, and its assay gives no product anywhere. To accept weaker sites, lower `--anneal-temp` (or the assay's `ta=`) or raise `--tm-margin`.
+The run's log and `QAlog.txt` list each oligo's Tm on a perfect match (a degenerate oligo's range, on one line). One below the minimum is flagged: it is unlikely to anneal anywhere at this temperature, and its assay to give a product in any sample. A site with a mismatched or unpaired end base can melt a little above the perfect match (its dangling base stacks on the duplex), so the flag is a warning, not a verdict: the report judges each site. To accept weaker sites, lower `--anneal-temp` (or the assay's `ta=`) or raise `--tm-margin`.
 
 ### Weighted 3'-end check (`--3p-window`, `--3p-penalty`)
 

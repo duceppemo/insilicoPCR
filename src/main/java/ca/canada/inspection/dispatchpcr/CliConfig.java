@@ -117,6 +117,9 @@ public final class CliConfig {
     static java.util.Optional<String> removedOption(Exception error) {
         if (error instanceof org.apache.commons.cli.UnrecognizedOptionException unknown) {
             String option = unknown.getOption() == null ? "" : unknown.getOption().split("=", 2)[0];
+            if (option.matches("-m\\d+")) {
+                option = "-m"; // -m2, its value attached
+            }
             if (REMOVED_IN_2_0.contains(option)) {
                 return java.util.Optional.of(option + " was removed in 2.0: a primer or probe site is accepted when its"
                         + " Tm reaches --anneal-temp (default " + number(TmGate.DEFAULT_ANNEAL_TEMP) + " °C) less"

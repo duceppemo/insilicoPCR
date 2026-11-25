@@ -278,8 +278,8 @@ public final class FastqDiagnostics {
         boolean siteRejected = missing.stream().anyMatch(rejected::contains);
         return "no read carries a site of " + which + " that the rules accept"
                 + (noForward && noReverse ? ", only of the probe" : "")
-                + (siteRejected ? "; the mini-assembly holds a site the rules reject (report_no_product.tsv gives it"
-                + " with its Tm)" : "");
+                + (siteRejected ? "; the mini-assembly holds a site the rules reject (the no-product report gives it"
+                + " and why)" : "");
     }
 
     /** What the extended reads add and what read pairs do not confirm, as one text; empty for neither. */

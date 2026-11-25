@@ -793,7 +793,6 @@ public final class HtmlReport {
         html.append("</tbody></table></div>\n</section>\n");
     }
 
-    /** Why assays gave no product, sample by sample; nothing when every assay gave one everywhere. */
     /**
      * {@code contig_0:664-677(+)} for {@code contig_0,len=2492,cov=18.8,...:664-677(+)}: the contig's name without the
      * words an assembler adds to it after a comma, as the amplicon table shows it.
@@ -804,6 +803,7 @@ public final class HtmlReport {
         return comma > 0 && comma < colon ? site.substring(0, comma) + site.substring(colon) : site;
     }
 
+    /** Why assays gave no product, sample by sample; nothing when every assay gave one everywhere. */
     private static void noProductSection(Page html, List<NoProduct> noProducts, String reportName, int maxListed) {
         if (noProducts.isEmpty()) {
             return;
@@ -816,13 +816,14 @@ public final class HtmlReport {
                 .append(escape(reportName.replaceFirst("\\.tsv$", ""))).append(NoProductReport.SUFFIX)
                 .append(" has every row.</p>\n")
                 .append("<div class=\"scroll\"><table class=\"rows\">\n<thead><tr><th>Sample</th><th>Assay</th>")
-                .append("<th>Oligo</th><th>Reason</th><th>Best site</th><th class=\"num\">Tm (°C)</th></tr></thead>\n")
+                .append("<th>Oligo</th><th>Reason</th><th>Best site</th><th class=\"num\">Tm (°C)</th><th class=\"num\">Needed (°C)</th></tr></thead>\n")
                 .append("<tbody>\n");
         for (NoProduct row : noProducts.subList(0, Math.min(noProducts.size(), maxListed))) {
             html.append("<tr><td>").append(escape(row.sample())).append("</td><td>").append(escape(row.assay()))
                     .append("</td><td>").append(escape(row.oligo())).append("</td><td class=\"wrap\">")
                     .append(escape(row.reason())).append("</td><td title=\"").append(escape(row.site())).append("\">")
                     .append(escape(shortSite(row.site()))).append("</td><td class=\"num\">").append(escape(ReportColumn.tm(row.siteTm())))
+                    .append("</td><td class=\"num\">").append(escape(ReportColumn.tm(row.neededTm())))
                     .append("</td></tr>\n");
         }
         html.append("</tbody></table></div>\n");

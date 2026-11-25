@@ -51,6 +51,14 @@ class TmGateTest {
         String minusContig = FLANK + reverse + FLANK;
         BlastResult minus = parse(line("g-F", 0, 21, 40, reverse, 20, 1, reverse), minusContig, STRICT).orElseThrow();
         assertEquals(reverse, TmGate.strandUnder(minus, new TrimmedEnds.Template(minusContig)));
+
+        // On the minus strand, the 5' bases BLAST left out are to the right of the site: taken from there, a mismatch
+        // in them included (the primer's 2nd base, contig position 39).
+        String changed = reverse.substring(0, 18) + (reverse.charAt(18) == 'A' ? 'C' : 'A') + reverse.substring(19);
+        String cutContig = FLANK + changed + FLANK;
+        String aligned = reverse.substring(0, 15);
+        BlastResult cut = parse(line("g-F", 0, 21, 35, aligned, 20, 6, aligned), cutContig, gated(0)).orElseThrow();
+        assertEquals(changed, TmGate.strandUnder(cut, new TrimmedEnds.Template(cutContig)));
     }
 
     @Test
@@ -139,6 +147,19 @@ class TmGateTest {
         assertEquals(tm(blastLine, contig), into.siteTm(hit), 1e-9);
         assertEquals(into.siteTm(hit), into.filtered(kept -> true).siteTm(hit), 1e-9);
         assertTrue(Double.isNaN(new ca.canada.inspection.model.Hits().siteTm(hit)));
+
+        // On the run's threads (-t), not every core: the same Tm.
+        BlastHits.tmThreads(1);
+        try {
+            ca.canada.inspection.model.Hits one = new ca.canada.inspection.model.Hits();
+            BlastHits.read(new java.io.BufferedReader(new java.io.StringReader(blastLine + "\n")),
+                    java.util.List.of(searched), one, PRIMERS, gated(40), java.util.function.UnaryOperator.identity(),
+                    ignored -> { });
+            assertEquals(into.siteTm(hit), one.siteTm(one.byOligo().get("g-F").getFirst()), 1e-9);
+        } finally {
+            BlastHits.tmThreads(0);
+        }
+        assertThrows(IllegalArgumentException.class, () -> BlastHits.tmThreads(-1));
     }
 
     @Test
@@ -167,13 +188,50 @@ class TmGateTest {
     }
 
     @Test
+    void theLogGivesADegenerateOligoOneLine() {
+        java.util.Map<String, String> sequences = new java.util.LinkedHashMap<>();
+        sequences.put("d-F_0", PRIMER);
+        sequences.put("d-F_1", PRIMER.substring(0, PRIMER.length() - 3));
+        sequences.put("d-R", PRIMER);
+        // Written so by the user, not expanded: two lines.
+        sequences.put("e-F_1", PRIMER);
+        sequences.put("e-F_2", PRIMER);
+        java.util.List<String> lines = TmGate.DEFAULT.oligoLines(PrimerPanel.of(sequences));
+        assertEquals(5, lines.size(), lines.toString());
+        assertTrue(lines.get(1).matches("  d-F \\d+\\.\\d to \\d+\\.\\d °C \\(2 sequences\\)"), lines.get(1));
+        assertTrue(lines.get(3).startsWith("  e-F_1 "), lines.get(3));
+    }
+
+    @Test
+    void anOligoLongerThanSixtyBasesIsScoredOnItsThreePrimeSixty() {
+        // Primer3 aligns no pair longer than 60 on both sides: the Tm was -Infinity, and the primer had no site.
+        String tail = "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT";
+        String longOligo = tail.substring(0, 63 - 40) + PRIMER + PRIMER;
+        String last60 = longOligo.substring(3);
+        TmGate gate = TmGate.DEFAULT;
+        assertEquals(gate.perfectTm(last60), gate.perfectTm(longOligo), 1e-9);
+        assertTrue(gate.perfectTm(longOligo) > 60, "" + gate.perfectTm(longOligo));
+        // A site one base longer than the oligo (an insertion near its 5' end) keeps its slack.
+        String strand = Dna.reverseComplement(longOligo.substring(0, 10) + "A" + longOligo.substring(10));
+        assertTrue(gate.tm(longOligo, strand) > 60);
+    }
+
+    @Test
+    void aReactionWithNoCationsForATmIsRefused() {
+        assertTrue(TmGate.saltError(50, 0, 0.8).isEmpty());
+        assertTrue(TmGate.saltError(0, 3, 0.8).isEmpty());
+        assertTrue(TmGate.saltError(0, 0.8, 0.8).isPresent());
+        assertThrows(IllegalArgumentException.class, () -> new TmGate(60, 5, 0, 0, 0.8, 250));
+    }
+
+    @Test
     void theLogListsEachOligosOwnTmAndThoseThatCannotReachTheMinimum() {
         PrimerPanel panel = PrimerPanel.of(new java.util.LinkedHashMap<>(Map.of("g-F", PRIMER)));
         double perfect = TmGate.at(60).perfectTm(PRIMER);
         java.util.List<String> ok = new TmGate(perfect + 4, 5, 50, 3, 0.8, 250).oligoLines(panel);
         assertEquals(String.format(java.util.Locale.ROOT, "  g-F %.1f °C", perfect), ok.get(1));
         java.util.List<String> low = new TmGate(perfect + 6, 5, 50, 3, 0.8, 250).oligoLines(panel);
-        assertTrue(low.get(1).endsWith(": below the minimum, no site can reach it"), low.get(1));
+        assertTrue(low.get(1).endsWith(": below the minimum, unlikely to anneal anywhere"), low.get(1));
     }
 
     @Test

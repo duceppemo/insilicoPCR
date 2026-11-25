@@ -33,24 +33,37 @@ public record NoProduct(String sample, String assay, String oligo, String reason
                         double neededTm) {
 
     /**
-     * The assays of each sample that have no row in {@code rows} (products of the assay as designed or of one of its
-     * primers; a product of two assays sharing a reaction is reported under both names joined, and does not count),
-     * with why: samples by name, assays in the panel's order.
+     * The assays of each sample without a product as designed in {@code rows}, with why: samples by name, assays in
+     * the panel's order. A product of one of the assay's primers alone, or of two assays sharing a reaction, is not
+     * the assay's, and is noted. An assay whose product is reported under another assay of its reaction
+     * ({@code mix=}, both making it at the same place) is listed with that assay's name.
      */
     public static List<NoProduct> of(Map<String, Sample> samples, PrimerPanel primers, AmpliconOptions options,
                                      List<ReportRow> rows) {
         Set<List<String>> made = new HashSet<>();
-        rows.forEach(row -> made.add(List.of(row.sample(), row.assay())));
+        Set<List<String>> onePrimer = new HashSet<>();
+        rows.forEach(row -> (row.pairing() == ReportRow.Pairing.DESIGNED ? made : onePrimer)
+                .add(List.of(row.sample(), row.assay())));
         TmGate gate = options.tmGate();
         List<NoProduct> found = new ArrayList<>();
         for (Sample sample : new TreeMap<>(samples).values()) {
             Map<String, List<BlastResult>> accepted = sample.hits().byOligo();
             Map<String, NearMiss> misses = sample.hits().nearMisses();
             String where = sample.isFastq() ? " in the mini-assembly (the FASTQ diagnostics say what the reads show)" : "";
+            Map<String, String> reportedUnder = Products.reportedUnder(sample, primers, options);
             primers.assays().forEach((assay, group) -> {
-                if (made.contains(List.of(sample.getName(), assay))) {
+                List<String> key = List.of(sample.getName(), assay);
+                if (made.contains(key)) {
                     return;
                 }
+                String under = reportedUnder.get(assay);
+                if (under != null) {
+                    found.add(new NoProduct(sample.getName(), assay, "", "its product is reported under " + under
+                            + ": the two assays share a reaction (mix=) and make it at the same place", "", Double.NaN,
+                            needed(gate, group.forward().getFirst())));
+                    return;
+                }
+                String alone = onePrimer.contains(key) ? "; the report has a product of one of its primers alone" : "";
                 List<List<String>> roles = new ArrayList<>(List.of(group.forward(), group.reverse()));
                 if (group.hasProbe()) {
                     roles.add(group.probe());
@@ -61,13 +74,12 @@ public record NoProduct(String sample, String assay, String oligo, String reason
                         continue;
                     }
                     everyOligoHasASite = false;
-                    found.add(withoutSite(sample.getName(), assay, role, misses, primers, gate, options, where));
+                    found.add(withoutSite(sample.getName(), assay, role, misses, primers, gate, options, where, alone));
                 }
                 if (everyOligoHasASite) {
                     found.add(new NoProduct(sample.getName(), assay, "", "every oligo has a site" + where
-                            + ", but no forward and reverse site face each other on one sequence"
-                            + (options.maxAmpliconLength() > 0 ? " within " + options.maxAmpliconLength() + " bp"
-                            + " (--max-length)" : "") + (group.hasProbe() ? " with a probe site between them" : ""),
+                            + ", but no forward and reverse site face each other on one sequence" + lengths(options)
+                            + (group.hasProbe() ? " with a probe site between them" : "") + alone,
                             "", Double.NaN, needed(gate, group.forward().getFirst())));
                 }
             });
@@ -75,8 +87,22 @@ public record NoProduct(String sample, String assay, String oligo, String reason
         return found;
     }
 
+    /** {@code  within 5000 bp (--max-length)}: the product sizes the run allows; empty for any. */
+    private static String lengths(AmpliconOptions options) {
+        int min = options.minAmpliconLength();
+        int max = options.maxAmpliconLength();
+        if (min > 0 && max > 0) {
+            return " " + min + " to " + max + " bp apart (--min-length, --max-length)";
+        }
+        if (min > 0) {
+            return " at least " + min + " bp apart (--min-length)";
+        }
+        return max > 0 ? " within " + max + " bp (--max-length)" : "";
+    }
+
     private static NoProduct withoutSite(String sample, String assay, List<String> variants, Map<String, NearMiss> misses,
-                                         PrimerPanel primers, TmGate gate, AmpliconOptions options, String where) {
+                                         PrimerPanel primers, TmGate gate, AmpliconOptions options, String where,
+                                         String alone) {
         String closest = variants.getFirst();
         NearMiss best = null;
         for (String id : variants) {
@@ -87,18 +113,28 @@ public record NoProduct(String sample, String assay, String oligo, String reason
             }
         }
         if (gate != null) {
-            double perfect = gate.perfectTm(primers.sequence(closest).toUpperCase(Locale.ROOT));
-            double minimum = gate.minimumTm(closest);
+            // Of a degenerate oligo, the variant that melts highest: "below on a perfect match" only when all are.
+            String highest = variants.getFirst();
+            double perfect = Double.NEGATIVE_INFINITY;
+            for (String id : variants) {
+                double tm = gate.perfectTm(primers.sequence(id).toUpperCase(Locale.ROOT));
+                if (tm > perfect) {
+                    perfect = tm;
+                    highest = id;
+                }
+            }
+            double minimum = gate.minimumTm(highest);
             if (perfect < minimum) {
-                return new NoProduct(sample, assay, closest, String.format(Locale.ROOT, "its Tm on a perfect match is"
-                        + " %.1f °C, below the %s °C a site needs: it anneals nowhere at this temperature (lower the"
-                        + " annealing temperature, --anneal-temp or the assay's ta=, or raise --tm-margin)", below(perfect, minimum),
-                        number(minimum)),
+                return new NoProduct(sample, assay, best == null ? highest : closest, String.format(Locale.ROOT,
+                        "no site reaches %s °C%s, and its Tm on a perfect match is %.1f °C: it is unlikely to anneal"
+                                + " at this temperature (lower the annealing temperature, --anneal-temp or the assay's"
+                                + " ta=, or raise --tm-margin)%s", number(minimum), where, below(perfect, minimum),
+                        alone),
                         best == null ? "" : site(best.hit()), best == null ? Double.NaN : below(best.tm(), minimum), minimum);
             }
         }
         if (best == null) {
-            return new NoProduct(sample, assay, closest, "no site: BLAST found no match" + where, "", Double.NaN,
+            return new NoProduct(sample, assay, closest, "no site: BLAST found no match" + where + alone, "", Double.NaN,
                     needed(gate, closest));
         }
         BlastResult hit = best.hit();
@@ -108,7 +144,7 @@ public record NoProduct(String sample, String assay, String oligo, String reason
                 + ", more than " + options.maxThreePrimePenalty() + " (--3p-penalty)" + binding
                 : String.format(Locale.ROOT, "no site reaches %s °C%s; the best melts at %.1f °C%s",
                 number(gate.minimumTm(closest)), where, below(best.tm(), gate.minimumTm(closest)), binding);
-        return new NoProduct(sample, assay, closest, reason, site(hit), below(best.tm(), needed(gate, closest)),
+        return new NoProduct(sample, assay, closest, reason + alone, site(hit), below(best.tm(), needed(gate, closest)),
                 needed(gate, closest));
     }
 

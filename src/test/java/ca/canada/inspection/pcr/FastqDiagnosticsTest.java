@@ -472,7 +472,7 @@ class FastqDiagnosticsTest {
 
         assertEquals(Status.PARTIAL_BAIT, finding.status());
         assertEquals("no read carries a site of the reverse primer that the rules accept; the mini-assembly holds a"
-                + " site the rules reject (report_no_product.tsv gives it with its Tm)", finding.readDetail());
+                + " site the rules reject (the no-product report gives it and why)", finding.readDetail());
     }
 
     @Test

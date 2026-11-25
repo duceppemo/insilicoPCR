@@ -45,9 +45,18 @@ public record TmGate(double annealTemp, double margin, double monovalentMm, doub
     /** The run's gate when nothing is set: every setting at its default. */
     public static final TmGate DEFAULT = at(DEFAULT_ANNEAL_TEMP);
 
-    /** Sites whose Tm is kept: identical sites recur in every read over a locus. */
-    private static final int CACHE_LIMIT = 200_000;
-    private static final Map<String, Double> CACHE = new ConcurrentHashMap<>();
+    /**
+     * Site Tms kept, in two generations of up to this many each: identical sites recur in every read over a locus.
+     * A full young generation becomes the old one, and the old one is dropped; a site found in the old one moves back
+     * to the young. The sites a search keeps meeting stay, and no more than twice this many are held, between runs
+     * too.
+     */
+    static final int CACHE_GENERATION = 100_000;
+
+    private record Generations(Map<String, Double> young, Map<String, Double> old) {
+    }
+
+    private static volatile Generations cache = new Generations(new ConcurrentHashMap<>(), Map.of());
 
     public TmGate {
         if (!Double.isFinite(annealTemp) || annealTemp < 0 || annealTemp > 100) {
@@ -212,18 +221,47 @@ public record TmGate(double annealTemp, double margin, double monovalentMm, doub
         }
         String key = oligo + '\u0001' + strand + '\u0001' + monovalentMm + '\u0001' + divalentMm + '\u0001' + dntpMm
                 + '\u0001' + oligoNm;
-        Double cached = CACHE.get(key);
+        Double cached = cached(key);
         if (cached != null) {
             return cached;
         }
         Thal.Result result = Thal.thal(oligo, strand, new Thal.Args(Thal.Type.ANY, Thal.MAX_LOOP, monovalentMm,
                 divalentMm, dntpMm, oligoNm, Thal.TEMP_KELVIN));
         double tm = result.found() ? result.tm() : Math.min(0, result.tm());
-        if (CACHE.size() >= CACHE_LIMIT) {
-            CACHE.clear();
-        }
-        CACHE.put(key, tm);
+        remember(key, tm);
         return tm;
+    }
+
+    /** The Tm kept under {@code key}, moved to the young generation when found in the old; {@code null} for none. */
+    static Double cached(String key) {
+        Generations generations = cache;
+        Double tm = generations.young().get(key);
+        if (tm == null) {
+            tm = generations.old().get(key);
+            if (tm != null) {
+                remember(key, tm);
+            }
+        }
+        return tm;
+    }
+
+    /** Keeps {@code tm} under {@code key} in the young generation, which becomes the old one once full. */
+    static void remember(String key, double tm) {
+        Generations generations = cache;
+        generations.young().put(key, tm);
+        if (generations.young().size() >= CACHE_GENERATION) {
+            synchronized (TmGate.class) {
+                if (cache == generations) {
+                    cache = new Generations(new ConcurrentHashMap<>(), generations.young());
+                }
+            }
+        }
+    }
+
+    /** How many site Tms are kept, both generations: for tests. */
+    static int cachedTms() {
+        Generations generations = cache;
+        return generations.young().size() + generations.old().size();
     }
 
     /**

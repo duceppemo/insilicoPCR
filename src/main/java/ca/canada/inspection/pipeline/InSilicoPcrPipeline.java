@@ -101,9 +101,10 @@ public final class InSilicoPcrPipeline {
                 ChildJavaMemory.budgetGiB(config.bbtoolsMemoryGiB()), issues, monitor);
         logRuntime(context);
         RunSettings.lines(settings, context.hasFastqSamples()).forEach(monitor::info);
-        if (settings.ampliconOptions().tmGated()) {
-            settings.ampliconOptions().tmGate().oligoLines(primers).forEach(monitor::info);
-        }
+        // Worked out once, for the log and QAlog.txt: a degenerate panel can have thousands of sequences.
+        List<String> oligoTms = settings.ampliconOptions().tmGated()
+                ? settings.ampliconOptions().tmGate().oligoLines(primers) : List.of();
+        oligoTms.forEach(monitor::info);
         monitor.info("  Tools: " + dependencies.versions());
         // Before any program runs: on Windows, a path too long fails them all, with an obscure error.
         WindowsPathLimit.check(directories, sampleMap.values());
@@ -142,7 +143,7 @@ public final class InSilicoPcrPipeline {
         }
         done(Step.READ_EXTENSION);
 
-        RunResult result = ReportGenerator.write(context, readEvidence, extension);
+        RunResult result = ReportGenerator.write(context, readEvidence, extension, oligoTms);
         // QAlog.txt is written: the run is finished, whatever happens from here.
         monitor.stepDone(Step.REPORTS);
 

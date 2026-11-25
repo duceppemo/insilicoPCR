@@ -312,4 +312,26 @@ class TmGateTest {
         assertEquals(expected, read);
         assertEquals(expected, acceptedLines.stream().map(l -> l.substring(0, l.indexOf('\t'))).toList());
     }
+
+    @Test
+    void theTmCacheKeepsTheSitesItKeepsMeetingAndHoldsAtMostTwoGenerations() {
+        TmGate.remember("hot", 1.5);
+        for (int i = 0; i < 3 * TmGate.CACHE_GENERATION; i++) {
+            TmGate.remember("site " + i, i);
+            if (i % (TmGate.CACHE_GENERATION / 2) == 0) {
+                assertEquals(1.5, TmGate.cached("hot"), "a site met again is kept");
+            }
+            assertTrue(TmGate.cachedTms() <= 2 * TmGate.CACHE_GENERATION + 1, TmGate.cachedTms() + " kept");
+        }
+        assertEquals(1.5, TmGate.cached("hot"));
+        assertEquals(null, TmGate.cached("site 0"), "a site not met again is dropped");
+        assertEquals(3.0 * TmGate.CACHE_GENERATION - 1, TmGate.cached("site " + (3 * TmGate.CACHE_GENERATION - 1)));
+        // Computed Tms are the same whether kept or not.
+        TmGate gate = TmGate.at(60);
+        double first = gate.perfectTm(PRIMER);
+        for (int i = 0; i < 2 * TmGate.CACHE_GENERATION; i++) {
+            TmGate.remember("filler " + i, i);
+        }
+        assertEquals(first, gate.perfectTm(PRIMER), 0);
+    }
 }

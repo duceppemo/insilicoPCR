@@ -34,9 +34,11 @@ public final class ReportGenerator {
     /**
      * @param readEvidence what the read-level search found, per FASTQ sample; empty without one
      * @param extension    what extending reads found; {@link ReadExtensionStage.Result#NONE} when not run
+     * @param oligoTms     each oligo's Tm on a perfect match, as the run's log gave them
+     *                     ({@link ca.canada.inspection.pcr.TmGate#oligoLines}); empty without the Tm rule
      */
     public static RunResult write(PipelineContext context, Map<String, ReadEvidence> readEvidence,
-                                  ReadExtensionStage.Result extension) {
+                                  ReadExtensionStage.Result extension, List<String> oligoTms) {
         RunMonitor monitor = context.monitor();
         // The run's rows, made once: the report file, the HTML report and the gel all show these.
         List<ReportRow> rows = Products.ofRun(context.samples(), context.primers(), context.config().ampliconOptions(),
@@ -45,7 +47,7 @@ public final class ReportGenerator {
         // report, as the window says (a report without its QAlog would be no run's).
         List<Path> written = new ArrayList<>();
         try {
-            return write(context, readEvidence, extension, rows, written);
+            return write(context, readEvidence, extension, oligoTms, rows, written);
         } catch (CancellationException e) {
             for (Path file : written) {
                 try {
@@ -65,7 +67,8 @@ public final class ReportGenerator {
     }
 
     private static RunResult write(PipelineContext context, Map<String, ReadEvidence> readEvidence,
-                                   ReadExtensionStage.Result extension, List<ReportRow> rows, List<Path> written) {
+                                   ReadExtensionStage.Result extension, List<String> oligoTms, List<ReportRow> rows,
+                                   List<Path> written) {
         RunMonitor monitor = context.monitor();
         Path report = ConsolidatedReport.write(context.directories().consolidated(), rows, context.primers());
         written.add(report);
@@ -99,9 +102,7 @@ public final class ReportGenerator {
         List<String> qaLines = new ArrayList<>(QaLogWriter.inputIssueLines(context.inputIssues()));
         qaLines.addAll(context.primers().expectedSizes().qaLogLines());
         qaLines.addAll(context.primers().mixGroups().qaLogLines());
-        if (context.config().ampliconOptions().tmGated()) {
-            qaLines.addAll(context.config().ampliconOptions().tmGate().oligoLines(context.primers()));
-        }
+        qaLines.addAll(oligoTms);
         qaLines.addAll(diagnostics.qaLogLines());
         if (!noProducts.isEmpty()) {
             qaLines.add(noProductLine(noProducts, ca.canada.inspection.report.ConsolidatedReport.baseName(report)

@@ -18,16 +18,20 @@ import java.util.concurrent.ConcurrentHashMap;
  * included. Oligo bases past the end of a contig or read have no template: they lower the Tm, instead of counting
  * as free bases.</p>
  *
- * @param annealTemp   annealing temperature of the reaction, °C ({@code --anneal-temp})
+ * <p>An assay whose primer header gives {@code ta=} has its sites judged at that annealing temperature; the others at
+ * {@code annealTemp}. The margin and the reaction are the run's.</p>
+ *
+ * @param annealTemp   annealing temperature of the reaction, °C ({@code --anneal-temp}), for the assays that give none
  * @param margin       how far below {@code annealTemp} a site's Tm may be and the oligo still anneal there, °C
  *                     ({@code --tm-margin})
  * @param monovalentMm monovalent cations, mM ({@code --na}; Primer3's {@code -mv})
  * @param divalentMm   Mg²⁺, mM ({@code --mg}; {@code -dv})
  * @param dntpMm       dNTP, mM ({@code --dntp}; {@code -n})
  * @param oligoNm      oligo concentration, nM ({@code --oligo-conc}; {@code -d})
+ * @param assayTemps   the annealing temperatures the primer file declares ({@code ta=}), by assay
  */
 public record TmGate(double annealTemp, double margin, double monovalentMm, double divalentMm, double dntpMm,
-                     double oligoNm) {
+                     double oligoNm, AnnealTemps assayTemps) {
 
     public static final double DEFAULT_ANNEAL_TEMP = 60;
     public static final double DEFAULT_MARGIN = 5;
@@ -54,6 +58,33 @@ public record TmGate(double annealTemp, double margin, double monovalentMm, doub
         if (!(oligoNm > 0) || !Double.isFinite(oligoNm)) {
             throw new IllegalArgumentException("--oligo-conc must be greater than 0 nM, got: " + oligoNm);
         }
+        assayTemps = assayTemps == null ? AnnealTemps.NONE : assayTemps;
+    }
+
+    /** Every assay at {@code annealTemp}. */
+    public TmGate(double annealTemp, double margin, double monovalentMm, double divalentMm, double dntpMm,
+                  double oligoNm) {
+        this(annealTemp, margin, monovalentMm, divalentMm, dntpMm, oligoNm, AnnealTemps.NONE);
+    }
+
+    /** This gate, judging the sites of each assay of {@code temps} at its own annealing temperature. */
+    public TmGate withAssayTemps(AnnealTemps temps) {
+        return new TmGate(annealTemp, margin, monovalentMm, divalentMm, dntpMm, oligoNm, temps);
+    }
+
+    /** The annealing temperature the sites of {@code oligoId} are judged at, °C: its assay's {@code ta=}, or the run's. */
+    public double annealTempOf(String oligoId) {
+        if (assayTemps.isEmpty() || oligoId == null) {
+            return annealTemp;
+        }
+        PrimerId parsed = PrimerId.parse(oligoId);
+        Double own = assayTemps.of(parsed == null ? oligoId : parsed.assay());
+        return own == null ? annealTemp : own;
+    }
+
+    /** The lowest Tm a site of {@code oligoId} may have, °C: its annealing temperature less the margin. */
+    public double minimumTm(String oligoId) {
+        return annealTempOf(oligoId) - margin;
     }
 
     /** The gate at {@code annealTemp}, every other setting at its default. */
@@ -62,14 +93,17 @@ public record TmGate(double annealTemp, double margin, double monovalentMm, doub
                 DEFAULT_OLIGO_NM);
     }
 
-    /** The lowest Tm a site may have, °C: the annealing temperature less the margin. */
+    /** The lowest Tm a site may have, °C, for the assays at the run's annealing temperature: it less the margin. */
     public double minimumTm() {
         return annealTemp - margin;
     }
 
-    /** Whether the oligo of {@code hit} anneals to its site on {@code template}: its Tm there reaches {@link #minimumTm}. */
+    /**
+     * Whether the oligo of {@code hit} anneals to its site on {@code template}: its Tm there reaches
+     * {@link #minimumTm(String)}.
+     */
     public boolean accepts(BlastResult hit, TrimmedEnds.Template template) {
-        return siteTm(hit, template) >= minimumTm();
+        return siteTm(hit, template) >= minimumTm(hit.subjectID());
     }
 
     /** The Tm of {@code oligo} (upper case) on its perfect complement, °C, under these conditions. */
@@ -83,11 +117,16 @@ public record TmGate(double annealTemp, double margin, double monovalentMm, doub
      */
     public java.util.List<String> oligoLines(PrimerPanel primers) {
         java.util.List<String> lines = new java.util.ArrayList<>();
-        lines.add("Oligo Tm on the perfect complement (a site's Tm must reach " + number(minimumTm()) + " °C):");
+        boolean own = !assayTemps.isEmpty();
+        lines.add("Oligo Tm on the perfect complement (a site's Tm must reach " + (own
+                ? "its assay's annealing temperature less " + number(margin) + " °C"
+                : number(minimumTm()) + " °C") + "):");
         primers.sequences().forEach((id, sequence) -> {
             double tm = perfectTm(sequence.toUpperCase(java.util.Locale.ROOT));
-            lines.add(String.format(java.util.Locale.ROOT, "  %s %.1f °C%s", id, tm, tm >= minimumTm() ? ""
-                    : ": below the minimum, no site can reach it"));
+            double minimum = minimumTm(id);
+            lines.add(String.format(java.util.Locale.ROOT, "  %s %.1f °C%s%s", id, tm,
+                    own ? " (needs " + number(minimum) + ")" : "",
+                    tm >= minimum ? "" : ": below the minimum, no site can reach it"));
         });
         return lines;
     }
@@ -169,7 +208,9 @@ public record TmGate(double annealTemp, double margin, double monovalentMm, doub
     public String describe() {
         return String.format(java.util.Locale.ROOT, "site Tm at least %s °C (%s - %s); %s mM Na+, %s mM Mg2+,"
                         + " %s mM dNTP, %s nM oligo", number(minimumTm()), number(annealTemp), number(margin),
-                number(monovalentMm), number(divalentMm), number(dntpMm), number(oligoNm));
+                number(monovalentMm), number(divalentMm), number(dntpMm), number(oligoNm))
+                + (assayTemps.isEmpty() ? "" : "; assays at their own annealing temperature (ta=): "
+                + assayTemps.summary() + " °C");
     }
 
     private static String number(double value) {

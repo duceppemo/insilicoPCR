@@ -142,6 +142,31 @@ class TmGateTest {
     }
 
     @Test
+    void anAssayThatDeclaresItsAnnealingTemperatureIsJudgedAtIt() {
+        String contig = FLANK + PRIMER + FLANK;
+        String blastLine = line("g-F", 0, 21, 40, PRIMER, 1, 20, PRIMER);
+        double perfect = tm(blastLine, contig);
+        // --anneal-temp above the site's Tm: rejected; its assay's ta= below it: accepted, the other assays unchanged.
+        TmGate gate = new TmGate(perfect + 3, 0, 50, 3, 0.8, 250);
+        assertTrue(parse(blastLine, contig, STRICT.withTmGate(gate)).isEmpty());
+        TmGate own = gate.withAssayTemps(AnnealTemps.of(new java.util.HashMap<>(Map.of("g", perfect - 1))));
+        assertTrue(parse(blastLine, contig, STRICT.withTmGate(own)).isPresent());
+        assertEquals(perfect - 1, own.minimumTm("g-F_1"), 1e-9);
+        assertEquals(perfect + 3, own.minimumTm("other-F"), 1e-9);
+        assertEquals(perfect + 3, own.minimumTm(), 1e-9);
+        assertTrue(own.describe().endsWith("; assays at their own annealing temperature (ta=): g "
+                + java.math.BigDecimal.valueOf(perfect - 1).stripTrailingZeros().toPlainString() + " °C"),
+                own.describe());
+        // The log gives each oligo the minimum of its assay.
+        PrimerPanel panel = PrimerPanel.of(new java.util.LinkedHashMap<>(Map.of("g-F", PRIMER)));
+        java.util.List<String> lines = own.withAssayTemps(AnnealTemps.of(new java.util.HashMap<>(Map.of("g", 60.0))))
+                .oligoLines(panel);
+        assertEquals("Oligo Tm on the perfect complement (a site's Tm must reach its assay's annealing temperature"
+                + " less 0 °C):", lines.get(0));
+        assertTrue(lines.get(1).endsWith(" °C (needs 60)"), lines.get(1));
+    }
+
+    @Test
     void theLogListsEachOligosOwnTmAndThoseThatCannotReachTheMinimum() {
         PrimerPanel panel = PrimerPanel.of(new java.util.LinkedHashMap<>(Map.of("g-F", PRIMER)));
         double perfect = TmGate.at(60).perfectTm(PRIMER);

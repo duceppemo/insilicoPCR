@@ -153,7 +153,7 @@ public final class BlastHits {
                 throw new IllegalStateException("Could not compute a primer-site Tm: " + e.getCause(), e.getCause());
             }
             BlastHitParser.Pending site = next.site();
-            if (tm >= gate.minimumTm()) {
+            if (tm >= gate.minimumTm(site.hit().subjectID())) {
                 into.add(site.hit().subjectID(), site.hit(), tm);
                 accepted.accept(next.line());
             } else {

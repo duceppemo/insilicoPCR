@@ -175,7 +175,8 @@ public final class Dispatcher {
         options.addOption(Option.builder().longOpt("anneal-temp").hasArg().argName("°C")
                 .desc("Annealing temperature of the reaction: a primer or probe site is accepted when its Tm on the"
                         + " template (Primer3's thermodynamic alignment) reaches it less --tm-margin, and a primer's"
-                        + " 3' end passes the 3' rule; default: " + number(TmGate.DEFAULT_ANNEAL_TEMP)).build());
+                        + " 3' end passes the 3' rule. An assay whose primer header gives ta=<°C> is judged at that"
+                        + " temperature instead; default: " + number(TmGate.DEFAULT_ANNEAL_TEMP)).build());
         options.addOption(Option.builder().longOpt("tm-margin").hasArg().argName("°C")
                 .desc("How far below --anneal-temp a site's Tm may be; default: " + number(TmGate.DEFAULT_MARGIN))
                 .build());

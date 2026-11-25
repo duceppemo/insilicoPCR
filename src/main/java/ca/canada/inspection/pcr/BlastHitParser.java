@@ -84,7 +84,7 @@ public final class BlastHitParser {
         /** The Tm of the site, °C, when {@code gate} accepts it ({@link #accepted}); {@code NaN} otherwise. */
         public double acceptedTm(TmGate gate) {
             double tm = tm(gate);
-            return tm >= gate.minimumTm() ? tm : Double.NaN;
+            return tm >= gate.minimumTm(hit.subjectID()) ? tm : Double.NaN;
         }
 
         /** The Tm of the site, °C; {@link Double#NEGATIVE_INFINITY} for an oligo without a sequence. */

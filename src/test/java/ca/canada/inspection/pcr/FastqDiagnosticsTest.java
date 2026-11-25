@@ -1,5 +1,6 @@
 package ca.canada.inspection.pcr;
 
+import ca.canada.inspection.model.NearMiss;
 import ca.canada.inspection.model.Sample;
 import ca.canada.inspection.pcr.FastqDiagnostics.Assembly;
 import ca.canada.inspection.pcr.FastqDiagnostics.Finding;
@@ -454,10 +455,24 @@ class FastqDiagnosticsTest {
 
         // Only the probe in the reads: both primers are missing, not the forward one only.
         Finding probeOnly = assess(fastqSample(), noReadCall(Map.of("assay-P", 2L)), Map.of()).getFirst();
-        assertEquals("no read carries the forward or the reverse primer, only the probe", probeOnly.readDetail());
+        assertEquals("no read carries a site of the forward or the reverse primer that the rules accept, only of the"
+                + " probe", probeOnly.readDetail());
         Finding forwardOnly = assess(fastqSample(), noReadCall(Map.of("assay-F", 2L, "assay-P", 2L)), Map.of()).getFirst();
         assertEquals(Status.PARTIAL_BAIT, forwardOnly.status());
-        assertEquals("no read carries the reverse primer", forwardOnly.readDetail());
+        assertEquals("no read carries a site of the reverse primer that the rules accept", forwardOnly.readDetail());
+    }
+
+    @Test
+    void partialBaitPointsAtASiteTheRulesReject() {
+        // The reverse primer is in the reads, but its site melts too low: the mini-assembly holds it, rejected.
+        Sample sample = fastqSample();
+        sample.hits().nearMiss("assay-R", new NearMiss(TestHits.plusHit("assay-R", "contig_0,len=900", 400), 54.5, 0));
+
+        Finding finding = assess(sample, noReadCall(Map.of("assay-F", 12L)), Map.of()).getFirst();
+
+        assertEquals(Status.PARTIAL_BAIT, finding.status());
+        assertEquals("no read carries a site of the reverse primer that the rules accept; the mini-assembly holds a"
+                + " site the rules reject (report_no_product.tsv gives it with its Tm)", finding.readDetail());
     }
 
     @Test

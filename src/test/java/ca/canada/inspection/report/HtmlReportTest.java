@@ -466,6 +466,14 @@ class HtmlReportTest {
     }
 
     @Test
+    void aBestSiteShowsTheContigNameWithoutTheAssemblersWords() {
+        assertEquals("contig_0:664-677(+)",
+                HtmlReport.shortSite("contig_0,len=2492,cov=18.8,class=long/medium:664-677(+)"));
+        assertEquals("NC_003212.1:506723-506735(+)", HtmlReport.shortSite("NC_003212.1:506723-506735(+)"));
+        assertEquals("", HtmlReport.shortSite(""));
+    }
+
+    @Test
     void theTmsOfARunAndWhyAssaysGaveNoProductAreShown() throws IOException {
         // A row of the Tm rule, and one sample without a product of an assay.
         ca.canada.inspection.pcr.ReportRow gated = new ca.canada.inspection.pcr.ReportRow("a", "its",
@@ -483,7 +491,8 @@ class HtmlReportTest {
         assertTrue(page.contains("<td class=\"num\">59.6 / 56.0</td>"));
         assertTrue(page.contains("<h2>Why no product</h2>"));
         assertTrue(page.contains("<td>b</td><td>its</td><td>its-R</td><td class=\"wrap\">no site reaches 55 °C; the best"
-                + " melts at 51.5 °C &lt;x&gt;</td><td>c9:1-20(+)</td><td class=\"num\">51.5</td>"), "escaped");
+                + " melts at 51.5 °C &lt;x&gt;</td><td title=\"c9:1-20(+)\">c9:1-20(+)</td><td class=\"num\">51.5</td>"),
+                "escaped");
         assertTrue(page.contains("report" + NoProductReport.SUFFIX + " has every row"));
 
         // A run without Tms (a report of 1.x read back): no Tm column, no section.

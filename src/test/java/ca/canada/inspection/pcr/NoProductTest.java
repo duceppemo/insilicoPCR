@@ -111,7 +111,8 @@ class NoProductTest {
         NoProduct reverse = of(panel("a-F", PRIMER, "a-R", AT_RICH), sample).getFirst();
         assertTrue(reverse.reason().startsWith("its Tm on a perfect match is "), reverse.reason());
         assertTrue(reverse.reason().endsWith(" °C, below the 55 °C a site needs: it anneals nowhere at this"
-                + " temperature (lower --anneal-temp or raise --tm-margin)"), reverse.reason());
+                + " temperature (lower the annealing temperature, --anneal-temp or the assay's ta=, or raise"
+                + " --tm-margin)"), reverse.reason());
     }
 
     @Test
@@ -143,5 +144,13 @@ class NoProductTest {
         assertEquals("report(2)_no_product.tsv", file.getFileName().toString());
         assertEquals(List.of(NoProductReport.HEADER, "s\ta\ta-R\tno site reaches 55 °C\tc1:1-20(+)\t51.5\t55.0"),
                 Files.readAllLines(file));
+    }
+
+    @Test
+    void aRejectedSitesTmNeverReadsAsTheMinimumItFailed() {
+        assertEquals(49.9, NoProduct.below(49.979, 50), 1e-9);
+        assertEquals(51.46, NoProduct.below(51.46, 55), 1e-9, "far below: as computed, rounded when shown");
+        assertEquals(52.4, NoProduct.below(52.47, 52.5), 1e-9);
+        assertTrue(Double.isNaN(NoProduct.below(Double.NaN, 50)));
     }
 }

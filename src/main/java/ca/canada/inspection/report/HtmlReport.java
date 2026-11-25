@@ -794,6 +794,16 @@ public final class HtmlReport {
     }
 
     /** Why assays gave no product, sample by sample; nothing when every assay gave one everywhere. */
+    /**
+     * {@code contig_0:664-677(+)} for {@code contig_0,len=2492,cov=18.8,...:664-677(+)}: the contig's name without the
+     * words an assembler adds to it after a comma, as the amplicon table shows it.
+     */
+    static String shortSite(String site) {
+        int comma = site.indexOf(',');
+        int colon = site.lastIndexOf(':');
+        return comma > 0 && comma < colon ? site.substring(0, comma) + site.substring(colon) : site;
+    }
+
     private static void noProductSection(Page html, List<NoProduct> noProducts, String reportName, int maxListed) {
         if (noProducts.isEmpty()) {
             return;
@@ -801,7 +811,8 @@ public final class HtmlReport {
         html.append("<section id=\"no-product\">\n<h2>Why no product</h2>\n<p class=\"hint\">Each assay without a")
                 .append(" product in a sample, and the rule that decided it: an oligo with no site whose Tm reaches the")
                 .append(" annealing temperature less the margin, or whose 3' end pairs; or sites that pair into no")
-                .append(" product. Lower --anneal-temp or raise --tm-margin to accept weaker sites. ")
+                .append(" product. Lower the annealing temperature (--anneal-temp, or an assay's ta=) or raise")
+                .append(" --tm-margin to accept weaker sites. ")
                 .append(escape(reportName.replaceFirst("\\.tsv$", ""))).append(NoProductReport.SUFFIX)
                 .append(" has every row.</p>\n")
                 .append("<div class=\"scroll\"><table class=\"rows\">\n<thead><tr><th>Sample</th><th>Assay</th>")
@@ -810,8 +821,8 @@ public final class HtmlReport {
         for (NoProduct row : noProducts.subList(0, Math.min(noProducts.size(), maxListed))) {
             html.append("<tr><td>").append(escape(row.sample())).append("</td><td>").append(escape(row.assay()))
                     .append("</td><td>").append(escape(row.oligo())).append("</td><td class=\"wrap\">")
-                    .append(escape(row.reason())).append("</td><td>").append(escape(row.site()))
-                    .append("</td><td class=\"num\">").append(escape(ReportColumn.tm(row.siteTm())))
+                    .append(escape(row.reason())).append("</td><td title=\"").append(escape(row.site())).append("\">")
+                    .append(escape(shortSite(row.site()))).append("</td><td class=\"num\">").append(escape(ReportColumn.tm(row.siteTm())))
                     .append("</td></tr>\n");
         }
         html.append("</tbody></table></div>\n");

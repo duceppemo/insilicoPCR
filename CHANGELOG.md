@@ -9,8 +9,9 @@
   its weakest site, and what it was called on (the assembly, or how many
   reads support it). Co-migrating amplicons each give their weakest site;
   "Band details" adds each one's binding, contig, location, strand and the
-  report's description. The search also finds a band by a primer or probe
-  ID (`GamelRos-R`). A popup near the screen's edge opens on the other side
+  report's description. A saved SVG keeps the same text as each band's
+  title. The search also finds a band by a primer or probe ID
+  (`GamelRos-R`). A popup near the screen's edge opens on the other side
   of the pointer instead of being cut off.
 
 ### Changed

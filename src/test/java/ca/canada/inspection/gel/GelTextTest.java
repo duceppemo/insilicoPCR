@@ -185,9 +185,12 @@ class GelTextTest {
         // A 300-wide popup, the pointer at 500 on a screen from 0 to 1000: after it; at 900, before it.
         assertEquals(514, InteractiveGelViewer.beside(500, 14, 300, 0, 1000));
         assertEquals(586, InteractiveGelViewer.beside(900, 14, 300, 0, 1000));
-        // 700 wide, fitting on neither side: on the side with more room, never over the pointer.
-        assertEquals(314, InteractiveGelViewer.beside(300, 14, 700, 0, 1000));
-        assertEquals(-14, InteractiveGelViewer.beside(700, 14, 700, 0, 1000));
+        // 700 wide, fitting on neither side: as far inside the screen as it goes, not cut off (it was pushed
+        // past the left edge, hiding the assay names); on the other axis it is still beside the pointer.
+        assertEquals(300, InteractiveGelViewer.beside(300, 14, 700, 0, 1000));
+        assertEquals(300, InteractiveGelViewer.beside(700, 14, 700, 0, 1000));
+        // Wider than the screen: from its left edge.
+        assertEquals(0, InteractiveGelViewer.beside(500, 14, 1200, 0, 1000));
     }
 
     @Test

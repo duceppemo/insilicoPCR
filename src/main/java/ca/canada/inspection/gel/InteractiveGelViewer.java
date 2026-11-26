@@ -114,7 +114,7 @@ public final class InteractiveGelViewer {
         Label selectedLabel = new Label("No band selected");
         Label matchLabel = new Label();
         TextField searchField = new TextField();
-        searchField.setPromptText("Search sample, assay, or size");
+        searchField.setPromptText("Search sample, assay, size or primer");
         Button clearSearchButton = new Button("Clear");
 
         HBox toolbar = new HBox(8, savePngButton, saveSvgButton, savePdfButton, new Label("Color:"), colorMode,
@@ -495,16 +495,16 @@ public final class InteractiveGelViewer {
 
     /**
      * Where a popup of {@code size} starts along one axis, {@code gap} from the pointer at {@code pointer}: after it
-     * when it fits before {@code max}, else before it when it fits after {@code min}, else on the side with more
-     * room.
+     * when it fits before {@code max}, else before it when it fits after {@code min}, else as far inside the
+     * screen as it goes (on the other axis it is still beside the pointer, so it does not cover it).
      */
     static double beside(double pointer, double gap, double size, double min, double max) {
         double after = pointer + gap;
         double before = pointer - gap - size;
-        if (after + size <= max || (before < min && max - after >= pointer - min)) {
+        if (after + size <= max) {
             return after;
         }
-        return before;
+        return before >= min ? before : Math.max(min, max - size);
     }
 
     private static void showBandDetails(BandNode bandNode) {

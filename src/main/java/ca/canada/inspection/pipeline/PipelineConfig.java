@@ -215,16 +215,16 @@ public record PipelineConfig(
 
     /**
      * The substitutions the FASTQ substitution bait allows in a k-mer ({@link BbtoolsCommands#substitutionBait}), 0 for
-     * none: {@link #TM_BAIT_SUBSTITUTIONS} with the Tm rule; without it, the allowed primer mismatches above the first
-     * bait's 2 edits, at most 3 (tests of the counts of 1.x).
+     * none: {@link #TM_BAIT_SUBSTITUTIONS} with the Tm rule; without it, {@link BbtoolsCommands#MAX_BAIT_SUBSTITUTIONS}
+     * (3) when the allowed primer mismatches exceed the first bait's 2 edits (tests of the counts of 1.x).
      */
     public int baitSubstitutions() {
         if (ampliconOptions.tmGated()) {
             return TM_BAIT_SUBSTITUTIONS;
         }
         int mismatches = ampliconOptions.maxTotalMismatches();
-        return mismatches > BbtoolsCommands.MAX_BAIT_INDELS
-                ? Math.min(mismatches, BbtoolsCommands.MAX_BAIT_SUBSTITUTIONS) : 0;
+        // Above the 2 edits, the 3 substitutions: no count between them.
+        return mismatches > BbtoolsCommands.MAX_BAIT_INDELS ? BbtoolsCommands.MAX_BAIT_SUBSTITUTIONS : 0;
     }
 
     /**

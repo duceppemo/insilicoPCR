@@ -167,7 +167,7 @@ public final class BlastHits {
     private static void drain(java.util.ArrayDeque<Waiting> waiting, int count, Hits into,
                               java.util.function.Consumer<String> accepted, TmGate gate) {
         for (int i = 0; i < count; i++) {
-            Waiting next = waiting.poll();
+            Waiting next = waiting.remove(); // count is at most its size
             double tm;
             try {
                 tm = next.tm().get();

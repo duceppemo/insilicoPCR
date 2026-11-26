@@ -82,7 +82,12 @@ public final class PrimerService {
         if (temps.isEmpty() || !options.tmGated()) {
             return config;
         }
-        return config.withAmpliconOptions(options.withTmGate(options.tmGate().withAssayTemps(temps)));
+        try {
+            return config.withAmpliconOptions(options.withTmGate(options.tmGate().withAssayTemps(temps)));
+        } catch (IllegalArgumentException e) {
+            // A ta= at or below --tm-margin: its sites would need a Tm of 0 °C or less.
+            throw new PipelineException(e.getMessage() + " (primer file " + config.primers() + ")");
+        }
     }
 
     /** Validates the IDs and sequences and expands degenerate bases. */

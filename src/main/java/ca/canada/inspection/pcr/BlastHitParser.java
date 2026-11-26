@@ -95,20 +95,28 @@ public final class BlastHitParser {
      */
     public static Optional<Pending> parseSite(String line, PrimerPanel primers, AmpliconOptions options,
                                               Function<BlastResult, TrimmedEnds.Template> templates) {
+        return hit(line, primers).map(found -> site(found, options, templates));
+    }
+
+    /** The hit of a line of blastn's table, as BLAST aligned it; empty for a line that is not one. */
+    public static Optional<BlastResult> hit(String line, PrimerPanel primers) {
+        return toHit(line, primers);
+    }
+
+    /** {@link #parseSite} of a hit already read ({@link #hit}). */
+    public static Pending site(BlastResult found, AmpliconOptions options,
+                               Function<BlastResult, TrimmedEnds.Template> templates) {
         int fivePrimeFree = options.maxFivePrimeTruncation();
-        return toHit(line, primers).map(found -> {
-            // The Tm gate reads the template under every site, the bases BLAST left out included.
-            TrimmedEnds.Template template = templates.apply(found);
-            BlastResult hit = TrimmedEnds.needsTemplate(found, options)
-                    ? TrimmedEnds.extend(found, template, fivePrimeFree) : found;
-            if (PrimerId.isProbe(hit.subjectID())) {
-                return new Pending(hit, TmGate.strandUnder(hit, template), 0, true);
-            }
-            hit = hit.withFivePrimeFree(fivePrimeFree);
-            int penalty = hit.threePrimePenalty(options.threePrimeWindow());
-            return new Pending(hit, TmGate.strandUnder(hit, template), penalty,
-                    penalty <= options.maxThreePrimePenalty());
-        });
+        // The Tm gate reads the template under every site, the bases BLAST left out included.
+        TrimmedEnds.Template template = templates.apply(found);
+        BlastResult hit = TrimmedEnds.needsTemplate(found, options)
+                ? TrimmedEnds.extend(found, template, fivePrimeFree) : found;
+        if (PrimerId.isProbe(hit.subjectID())) {
+            return new Pending(hit, TmGate.strandUnder(hit, template), 0, true);
+        }
+        hit = hit.withFivePrimeFree(fivePrimeFree);
+        int penalty = hit.threePrimePenalty(options.threePrimeWindow());
+        return new Pending(hit, TmGate.strandUnder(hit, template), penalty, penalty <= options.maxThreePrimePenalty());
     }
 
     private static boolean passesThreePrimeRule(BlastResult hit, AmpliconOptions options) {
@@ -125,8 +133,14 @@ public final class BlastHitParser {
      */
     public static Optional<BlastResult> cutByQueryEnd(String line, PrimerPanel primers, AmpliconOptions options,
                                                       Function<BlastResult, TrimmedEnds.Template> templates) {
+        return toHit(line, primers).flatMap(hit -> cutByQueryEnd(hit, options, templates));
+    }
+
+    /** {@link #cutByQueryEnd} of a hit already read ({@link #hit}). */
+    public static Optional<BlastResult> cutByQueryEnd(BlastResult found, AmpliconOptions options,
+                                                      Function<BlastResult, TrimmedEnds.Template> templates) {
         int fivePrimeFree = options.maxFivePrimeTruncation();
-        return toHit(line, primers)
+        return Optional.of(found)
                 .filter(hit -> !PrimerId.isProbe(hit.subjectID()) && TrimmedEnds.needsTemplate(hit, options))
                 .flatMap(hit -> {
                     TrimmedEnds.Template template = templates.apply(hit);

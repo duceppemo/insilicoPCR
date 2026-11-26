@@ -20,7 +20,9 @@
 - `-m`/`--mismatches`, `--probe-mismatches` and `--5p-truncation` are
   removed: a command line that gives one fails and says what to give instead.
   Unpaired 5' bases and bases past a contig end lower a site's Tm instead of
-  being free up to a count. FASTQ mode baits reads with 1 edit per k-mer.
+  being free up to a count. FASTQ mode baits reads with 1 edit per k-mer,
+  then, for oligos of 18 to 21 bases, 2 substitutions per 18-base k-mer in a
+  second pass.
 - The window has an annealing temperature in place of Mismatches; Amplicon
   settings has the Tm margin and the reaction, and no longer probe mismatches
   or 5' unpaired bases.
@@ -30,7 +32,7 @@
 - `report_no_product.tsv` (new) and the HTML report ("Why no product") say,
   for each assay without a product in a sample, which oligo has no accepted
   site, its best site and the rule that site fails, or that the sites pair
-  into no product; `QAlog.txt` counts them. An assay of a `mix=` reaction
+  into no product; `QAlog.txt` counts them (assay-sample pairs, and assays). An assay of a `mix=` reaction
   whose product is reported under the other assay is listed with that
   assay's name, and counted apart. The log lists each oligo's Tm on
   a perfect match (a degenerate oligo's range on one line), and flags one
@@ -38,14 +40,27 @@
 - Oligos longer than 60 bases are scored on their 3'-most 60, as Primer3's
   thermodynamic alignment takes no longer pair.
 - A reaction with no cations for a Tm (`--na 0` with `--mg` at or below
-  `--dntp`) is refused.
+  `--dntp`) is refused, and so is a `--tm-margin` at or above
+  `--anneal-temp` or an assay's `ta=`: a site without a duplex melts at
+  0 °C, and a minimum of 0 °C or below accepted every hit.
+- FASTQ mode: a second bait pass keeps the reads within 2 substitutions of an
+  18-base k-mer of an oligo of 18 to 21 bases. One edit per k-mer missed
+  sites the Tm rule accepts, most in short primers: 2 mismatches in the first
+  5 bases of an 18-base primer leave neither of its 17-mers within 1 edit. Of
+  random sites the Tm rule accepts, on 9 panels, the bait missed 7% with 2
+  substitutions and 19% with 3; now 1.3% and 13%. On a *Globodera* sample the
+  run took 357 s instead of 310 s; the pass for every oligo took 588 s, for
+  0.4% and 7%. Sites with more differences may still bait no read (wiki
+  Limitations).
 - Licence: GPL-3.0-or-later (Primer3's code is GPL), from MIT.
 - The five-isolate example's `stxQ` primers melted at 54.0 and 53.3 °C, under
   the 55 °C a site needs at 60 °C. Two bases of each are now G or C (59.6 and
   59.4 °C), written into the genomes and reads; the products are the same.
 - `report_fastq_diagnostics.tsv`: a `PARTIAL_BAIT` row's `ReadDetail` now
   says "no read carries a site of the reverse primer that the rules accept",
-  and adds when the mini-assembly holds a site the rules reject. It said "no
+  and adds when the mini-assembly holds a site the rules reject: one within
+  10 °C of the Tm it needs, or that fails the 3' rule alone and differs from
+  the primer by 3 bases at most, not a chance match of a few bases. It said "no
   read carries the reverse primer", though it counted accepted sites only,
   and with the Tm rule a primer is often in the reads at a site that melts
   too low.

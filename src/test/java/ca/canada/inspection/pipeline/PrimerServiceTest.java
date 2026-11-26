@@ -91,6 +91,13 @@ class PrimerServiceTest {
         // A file without ta=: the settings as given.
         PrimerPanel none = PrimerPanel.of(read.sequences(), read.expectedSizes(), read.mixGroups());
         assertEquals(config, PrimerService.withAnnealTemps(config, none));
+        // A ta= at or below --tm-margin: its sites would need a Tm of 0 °C or less.
+        PipelineConfig wide = config.withAmpliconOptions(config.ampliconOptions().withTmGate(
+                new ca.canada.inspection.pcr.TmGate(60, 55, 50, 3, 0.8, 250)));
+        PipelineException refused = assertThrows(PipelineException.class,
+                () -> PrimerService.withAnnealTemps(wide, panel));
+        assertTrue(refused.getMessage().contains("a has ta=55") && refused.getMessage().contains(file.toString()),
+                refused.getMessage());
     }
 
     @Test

@@ -230,7 +230,7 @@ public final class FastqDiagnostics {
                 }
             } else if (counts.forward() == 0 || counts.reverse() == 0) {
                 status = Status.PARTIAL_BAIT;
-                readDetail = partialBait(counts, group, sample.hits().nearMisses().keySet());
+                readDetail = partialBait(counts, group, likelySites(sample.hits().nearMisses(), options));
             } else if (outcome == null) {
                 status = Status.NOT_IN_READS;
                 readDetail = "no complete amplicon in the reads; reads carrying the primers could hold amplicons up to "
@@ -280,6 +280,33 @@ public final class FastqDiagnostics {
                 + (noForward && noReverse ? ", only of the probe" : "")
                 + (siteRejected ? "; the mini-assembly holds a site the rules reject (the no-product report gives it"
                 + " and why)" : "");
+    }
+
+    /** How far below the Tm a site needs a rejected site may melt and still be named as one the rules reject, °C. */
+    static final double LIKELY_SITE_TM_RANGE = 10;
+
+    /** How many bases a site failing the 3' rule may differ from its oligo by and still be named. */
+    static final int LIKELY_SITE_DIFFERENCES = 3;
+
+    /**
+     * The oligos whose best rejected site ({@code misses}) looks like a site of theirs, not a chance BLAST match of a few
+     * bases: one that melts within {@link #LIKELY_SITE_TM_RANGE} of the Tm it needs, or that fails the 3' rule only,
+     * differing from the oligo by at most {@link #LIKELY_SITE_DIFFERENCES} bases.
+     */
+    static Set<String> likelySites(Map<String, ca.canada.inspection.model.NearMiss> misses, AmpliconOptions options) {
+        Set<String> likely = new java.util.HashSet<>();
+        misses.forEach((oligo, miss) -> {
+            BlastResult hit = miss.hit();
+            boolean close = miss.failsThreePrimeRule()
+                    ? hit.alignedMismatches() + hit.fivePrimeUnpairedBases() + hit.threePrimeUncovered()
+                    <= LIKELY_SITE_DIFFERENCES
+                    : options.tmGate() == null
+                    || miss.tm() >= options.tmGate().minimumTm(oligo) - LIKELY_SITE_TM_RANGE;
+            if (close) {
+                likely.add(oligo);
+            }
+        });
+        return likely;
     }
 
     /** What the extended reads add and what read pairs do not confirm, as one text; empty for neither. */

@@ -273,8 +273,9 @@ class EndToEndTest {
                 "Running the samples that ran out of memory again, one at a time, with 2 threads and -Xmx8g: big"),
                 monitor.messages.toString());
         assertTrue(monitor.messages.contains("Completed sample big"), monitor.messages.toString());
-        // Run again from the assembly on: no baiting twice (two baitings and the anchors' trimming, a sample).
-        assertEquals(6, executed(monitor, "jgi.BBDuk").size());
+        // Run again from the assembly on: no baiting twice (the first bait, its substitution pass, the second bait and
+        // the anchors' trimming, a sample).
+        assertEquals(8, executed(monitor, "jgi.BBDuk").size());
         // The assembly: its k-mers loaded on the sample's threads, its contigs built on one (buildthreads=1).
         assertEquals(List.of("threads=1", "threads=2"), executed(monitor, "assemble.Tadpole"));
         // Only "small" is left to merge at once: it runs alone, with everything, and so does "big" after it.

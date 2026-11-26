@@ -144,19 +144,27 @@ public final class ReportGenerator {
      * product is reported under another assay of their reaction ({@code mix=}), which made one.
      */
     static String noProductLine(List<ca.canada.inspection.pcr.NoProduct> noProducts, String file) {
-        java.util.function.Function<Boolean, Long> count = merged -> noProducts.stream()
-                .filter(row -> row.reportedUnderAnother() == merged)
-                .map(row -> List.of(row.sample(), row.assay())).distinct().count();
-        long none = count.apply(false);
-        long merged = count.apply(true);
         List<String> parts = new ArrayList<>();
-        if (none > 0) {
-            parts.add(none + " assay(s) gave no product in a sample");
+        String none = counted(noProducts, false);
+        String merged = counted(noProducts, true);
+        if (!none.isEmpty()) {
+            parts.add("no product for " + none);
         }
-        if (merged > 0) {
-            parts.add(merged + " assay(s) made a product reported under another assay of their reaction (mix=)");
+        if (!merged.isEmpty()) {
+            parts.add("a product reported under another assay of the reaction (mix=) for " + merged);
         }
-        return String.join("; ", parts) + ": " + file + (none > 0 ? " says why" : " says which");
+        String line = String.join("; ", parts);
+        return Character.toUpperCase(line.charAt(0)) + line.substring(1) + ": " + file
+                + (none.isEmpty() ? " says which" : " says why");
+    }
+
+    /** {@code 51 assay-sample pair(s) (3 assays)}: the rows of {@code noProducts} merged or not; empty for none. */
+    private static String counted(List<ca.canada.inspection.pcr.NoProduct> noProducts, boolean merged) {
+        List<ca.canada.inspection.pcr.NoProduct> rows = noProducts.stream()
+                .filter(row -> row.reportedUnderAnother() == merged).toList();
+        long pairs = rows.stream().map(row -> List.of(row.sample(), row.assay())).distinct().count();
+        long assays = rows.stream().map(ca.canada.inspection.pcr.NoProduct::assay).distinct().count();
+        return pairs == 0 ? "" : pairs + " assay-sample pair(s) (" + assays + " assay(s))";
     }
 
     /** Assays of the assembly samples with no product whose primers point off contig ends. */

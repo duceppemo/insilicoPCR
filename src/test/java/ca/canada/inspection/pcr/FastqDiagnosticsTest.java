@@ -476,6 +476,20 @@ class FastqDiagnosticsTest {
     }
 
     @Test
+    void onlyARejectedSiteThatLooksLikeTheOligosIsNamed() {
+        // A chance BLAST match of a few bases is not a site of the oligo: the hint named one in every PARTIAL_BAIT.
+        AmpliconOptions gated = AmpliconOptions.builder().tmGate(TmGate.DEFAULT).build();
+        String fiveOff = "TTTTT" + PRIMER_20.substring(5);
+        String oneOff = PRIMER_20.substring(0, 18) + (PRIMER_20.charAt(18) == 'A' ? 'C' : 'A') + PRIMER_20.charAt(19);
+        Map<String, NearMiss> misses = Map.of(
+                "a-F", new NearMiss(TestHits.plusHit("a-F", "c", 100), 47.0, 0),       // 8 °C below 55: named
+                "b-F", new NearMiss(TestHits.plusHit("b-F", "c", 100), 30.0, 0),       // far below: a chance match
+                "c-F", new NearMiss(TestHits.plusHit("c-F", "c", 100, oneOff, PRIMER_20), Double.NaN, 4),  // 3' SNP
+                "d-F", new NearMiss(TestHits.plusHit("d-F", "c", 100, fiveOff, PRIMER_20), Double.NaN, 6));
+        assertEquals(java.util.Set.of("a-F", "c-F"), FastqDiagnostics.likelySites(misses, gated));
+    }
+
+    @Test
     void expandedDegenerateOligosCountEachReadOnce() {
         // read_2 matches both expansions of the degenerate forward primer: it is one read.
         PrimerPanel primers = PrimerPanel.of(Map.of("assay-F_0", PRIMER_20, "assay-F_1", PRIMER_20, "assay-R", PRIMER_20));

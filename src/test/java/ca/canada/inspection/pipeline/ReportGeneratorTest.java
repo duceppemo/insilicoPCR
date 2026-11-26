@@ -20,11 +20,11 @@ class ReportGeneratorTest {
                 + " same place";
         List<NoProduct> rows = List.of(row("s1", "b", merged), row("s1", "c", "no site: BLAST found no match"),
                 row("s1", "c", "no site: BLAST found no match"), row("s2", "c", "no site: BLAST found no match"));
-        assertEquals("2 assay(s) gave no product in a sample; 1 assay(s) made a product reported under another assay"
-                + " of their reaction (mix=): r_no_product.tsv says why", ReportGenerator.noProductLine(rows,
-                "r_no_product.tsv"));
-        assertEquals("1 assay(s) made a product reported under another assay of their reaction (mix=):"
-                + " r_no_product.tsv says which", ReportGenerator.noProductLine(List.of(row("s1", "b", merged)),
-                "r_no_product.tsv"));
+        assertEquals("No product for 2 assay-sample pair(s) (1 assay(s)); a product reported under another assay of the"
+                + " reaction (mix=) for 1 assay-sample pair(s) (1 assay(s)): r_no_product.tsv says why",
+                ReportGenerator.noProductLine(rows, "r_no_product.tsv"));
+        assertEquals("A product reported under another assay of the reaction (mix=) for 1 assay-sample pair(s)"
+                + " (1 assay(s)): r_no_product.tsv says which", ReportGenerator.noProductLine(List.of(row("s1", "b",
+                merged)), "r_no_product.tsv"));
     }
 }

@@ -121,6 +121,23 @@ public final class AnnealTemps {
         return byAssay.get(assay);
     }
 
+    /** {@link #ofOligo} by oligo ID, {@code NaN} for none: asked for every site of a search. */
+    private final java.util.concurrent.ConcurrentHashMap<String, Double> byOligo =
+            new java.util.concurrent.ConcurrentHashMap<>();
+
+    /**
+     * The annealing temperature of the assay of oligo {@code oligoId} (an ID that does not parse is taken as its
+     * assay's name), °C, or {@code null} when it declares none. Looked up once per ID.
+     */
+    public Double ofOligo(String oligoId) {
+        double temp = byOligo.computeIfAbsent(oligoId, id -> {
+            PrimerId parsed = PrimerId.parse(id);
+            Double own = byAssay.get(parsed == null ? id : parsed.assay());
+            return own == null ? Double.NaN : own;
+        });
+        return Double.isNaN(temp) ? null : temp;
+    }
+
     /** °C by assay, in name order. */
     public Map<String, Double> byAssay() {
         return byAssay;

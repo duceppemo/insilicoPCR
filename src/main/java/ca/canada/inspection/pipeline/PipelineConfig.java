@@ -212,4 +212,42 @@ public record PipelineConfig(
      * passes has few mismatches, and its 3' end pairs (the 3' rule); the bait takes reads in, the Tm decides.
      */
     public static final int TM_BAIT_MISMATCHES = 1;
+
+    /**
+     * The substitutions the FASTQ substitution bait allows in a k-mer ({@link BbtoolsCommands#substitutionBait}), 0 for
+     * none: {@link #TM_BAIT_SUBSTITUTIONS} with the Tm rule; without it, the allowed primer mismatches above the first
+     * bait's 2 edits, at most 3 (tests of the counts of 1.x).
+     */
+    public int baitSubstitutions() {
+        if (ampliconOptions.tmGated()) {
+            return TM_BAIT_SUBSTITUTIONS;
+        }
+        int mismatches = ampliconOptions.maxTotalMismatches();
+        return mismatches > BbtoolsCommands.MAX_BAIT_INDELS
+                ? Math.min(mismatches, BbtoolsCommands.MAX_BAIT_SUBSTITUTIONS) : 0;
+    }
+
+    /**
+     * The substitutions the FASTQ substitution bait allows with the Tm rule, in 18-base k-mers (since 2.0), for the
+     * oligos up to {@link #TM_BAIT_SUBSTITUTION_MAX_LENGTH} bases. The first bait's single edit misses sites the Tm
+     * rule accepts: 2 mismatches in the first 5 bases of an 18-base primer leave neither of its 17-mers within 1 edit.
+     */
+    public static final int TM_BAIT_SUBSTITUTIONS = 2;
+
+    /**
+     * The longest oligo the substitution bait baits with: {@link #TM_BAIT_SUBSTITUTION_MAX_LENGTH} with the Tm rule,
+     * any without it.
+     */
+    public int baitSubstitutionMaxLength() {
+        return ampliconOptions.tmGated() ? TM_BAIT_SUBSTITUTION_MAX_LENGTH : Integer.MAX_VALUE;
+    }
+
+    /**
+     * With the Tm rule, the substitution bait takes the oligos of 18 to 21 bases only: the fewer a primer's k-mers,
+     * the more often 1 edit misses its sites, and the 18-mers of longer oligos took in most of the reads. On a
+     * potato cyst nematode sample it took the baited pairs from 185,312 to 231,347, where every oligo took them to
+     * 588,550 and the run from 310 to 588 s. Of random sites with 2 substitutions that pass the Tm rule, the bait
+     * then misses 1.3%, with 3, 13% (every oligo: 0.4% and 7%; 1 edit alone: 7% and 19%).
+     */
+    public static final int TM_BAIT_SUBSTITUTION_MAX_LENGTH = 21;
 }

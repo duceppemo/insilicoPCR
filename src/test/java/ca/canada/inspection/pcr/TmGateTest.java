@@ -32,12 +32,16 @@ class TmGateTest {
         return BlastHitParser.parse(blastLine, PRIMERS, options, hit -> new TrimmedEnds.Template(contig));
     }
 
+    /** The Tm rule with a site needing {@code minimumTm}, above 0 °C ({@link #ANY}: any site with a duplex). */
     private static AmpliconOptions gated(double minimumTm) {
-        return STRICT.withTmGate(new TmGate(minimumTm, 0, 50, 3, 0.8, 250));
+        return STRICT.withTmGate(new TmGate(minimumTm + 5, 5, 50, 3, 0.8, 250));
     }
 
+    /** A minimum any site with a duplex reaches. */
+    private static final double ANY = 0.01;
+
     private static double tm(String blastLine, String contig) {
-        BlastResult hit = parse(blastLine, contig, gated(0)).orElseThrow();
+        BlastResult hit = parse(blastLine, contig, gated(ANY)).orElseThrow();
         return TmGate.at(60).siteTm(hit, new TrimmedEnds.Template(contig));
     }
 
@@ -57,7 +61,7 @@ class TmGateTest {
         String changed = reverse.substring(0, 18) + (reverse.charAt(18) == 'A' ? 'C' : 'A') + reverse.substring(19);
         String cutContig = FLANK + changed + FLANK;
         String aligned = reverse.substring(0, 15);
-        BlastResult cut = parse(line("g-F", 0, 21, 35, aligned, 20, 6, aligned), cutContig, gated(0)).orElseThrow();
+        BlastResult cut = parse(line("g-F", 0, 21, 35, aligned, 20, 6, aligned), cutContig, gated(ANY)).orElseThrow();
         assertEquals(changed, TmGate.strandUnder(cut, new TrimmedEnds.Template(cutContig)));
     }
 
@@ -105,7 +109,7 @@ class TmGateTest {
         String contig = FLANK + site + FLANK;
         String primerLine = line("g-F", 0, 21, 39, PRIMER.substring(0, 19), 1, 19, PRIMER.substring(0, 19));
         double siteTm = TmGate.at(60).siteTm(
-                parse(primerLine, contig, AmpliconOptions.builder().threePrimePenalty(9).tmGate(TmGate.at(0)).build())
+                parse(primerLine, contig, AmpliconOptions.builder().threePrimePenalty(9).tmGate(TmGate.at(5.01)).build())
                         .orElseThrow(),
                 new TrimmedEnds.Template(contig));
         assertTrue(siteTm > 40, String.valueOf(siteTm));
@@ -214,6 +218,24 @@ class TmGateTest {
         // A site one base longer than the oligo (an insertion near its 5' end) keeps its slack.
         String strand = Dna.reverseComplement(longOligo.substring(0, 10) + "A" + longOligo.substring(10));
         assertTrue(gate.tm(longOligo, strand) > 60);
+        // A strand short of the oligo's 3' end (past a sequence end), still over 60: the bases under the 10 cut go too.
+        String seventy = tail.substring(0, 30) + PRIMER + PRIMER;
+        assertEquals(gate.tm(seventy.substring(10), Dna.reverseComplement(seventy.substring(10, 62))),
+                gate.tm(seventy, Dna.reverseComplement(seventy.substring(0, 62))), 1e-9);
+    }
+
+    @Test
+    void aSiteMustNeedATmAboveZero() {
+        // A site without a duplex melts at 0 °C here: a minimum of 0 or below would accept every hit.
+        IllegalArgumentException run = assertThrows(IllegalArgumentException.class,
+                () -> new TmGate(40, 45, 50, 3, 0.8, 250));
+        assertEquals("--tm-margin must be below --anneal-temp, so that a site needs a Tm above 0 °C; got 45 and"
+                + " 40 °C", run.getMessage());
+        assertThrows(IllegalArgumentException.class, () -> new TmGate(40, 40, 50, 3, 0.8, 250));
+        IllegalArgumentException assay = assertThrows(IllegalArgumentException.class,
+                () -> TmGate.DEFAULT.withAssayTemps(AnnealTemps.of(java.util.Map.of("a", 5.0))));
+        assertTrue(assay.getMessage().contains("a has ta=5"), assay.getMessage());
+        assertEquals(1, new TmGate(6, 5, 50, 3, 0.8, 250).minimumTm(), 1e-9);
     }
 
     @Test

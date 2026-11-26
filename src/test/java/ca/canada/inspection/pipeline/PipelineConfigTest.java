@@ -23,6 +23,9 @@ class PipelineConfigTest {
         assertTrue(config.output().isAbsolute());
         assertTrue(config.primers().isAbsolute());
         assertEquals(3, config.mismatches());
+        assertEquals(3, config.baitSubstitutions());
+        assertEquals(0, PipelineConfig.builder(IN, OUT, PRIMERS).ampliconOptions(AmpliconOptions.withMismatches(2))
+                .build().baitSubstitutions(), "2 edits: the first bait matches them");
         assertTrue(config.gel());
         assertEquals(ca.canada.inspection.pcr.ReadExtensionCaller.Mode.UNREPORTED, config.readExtension());
     }
@@ -37,6 +40,7 @@ class PipelineConfigTest {
         assertEquals(AmpliconOptions.builder().tmGate(ca.canada.inspection.pcr.TmGate.DEFAULT).build(),
                 config.ampliconOptions());
         assertEquals(PipelineConfig.TM_BAIT_MISMATCHES, config.mismatches());
+        assertEquals(PipelineConfig.TM_BAIT_SUBSTITUTIONS, config.baitSubstitutions());
         assertEquals(ca.canada.inspection.pipeline.TadpoleOptions.DEFAULTS, config.tadpole());
         assertEquals(ca.canada.inspection.pcr.ReadLevelCaller.DEFAULT_MIN_SUPPORT_FRACTION, config.readMinFraction());
         assertEquals(ca.canada.inspection.util.InputCheck.Depth.FULL, config.inputCheck());

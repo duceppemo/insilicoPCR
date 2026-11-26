@@ -138,10 +138,10 @@ public final class BlastHits {
             if (line.isBlank() || line.equals(BlastField.HEADER) || (line = toContig.apply(line)) == null) {
                 continue;
             }
-            java.util.Optional<BlastHitParser.Pending> pending =
-                    BlastHitParser.parseSite(line, primers, options, templates);
-            if (pending.isPresent()) {
-                BlastHitParser.Pending site = pending.get();
+            // Read once, for its site and for the contig-end check below.
+            java.util.Optional<ca.canada.inspection.model.BlastResult> found = BlastHitParser.hit(line, primers);
+            if (found.isPresent()) {
+                BlastHitParser.Pending site = BlastHitParser.site(found.get(), options, templates);
                 if (!site.primes()) {
                     // No Tm: it would not decide, and millions of short hits fail the 3' rule.
                     into.nearMiss(site.hit().subjectID(), new ca.canada.inspection.model.NearMiss(site.hit(),
@@ -155,8 +155,8 @@ public final class BlastHits {
             }
             // Present only for a hit the gate rejects (see cutByQueryEnd), and cheap for the others: decided here,
             // while the template of its query is at hand.
-            if (keepCutByEnd) {
-                BlastHitParser.cutByQueryEnd(line, primers, options, templates)
+            if (keepCutByEnd && found.isPresent()) {
+                BlastHitParser.cutByQueryEnd(found.get(), options, templates)
                         .ifPresent(cut -> into.addCutByEnd(cut.subjectID(), cut));
             }
         }

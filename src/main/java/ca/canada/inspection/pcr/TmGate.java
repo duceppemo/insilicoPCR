@@ -53,7 +53,12 @@ public record TmGate(double annealTemp, double margin, double monovalentMm, doub
      */
     static final int CACHE_GENERATION = 100_000;
 
-    private record Generations(Map<String, Double> young, Map<String, Double> old) {
+    private record Generations(Map<Object, Double> young, Map<Object, Double> old) {
+    }
+
+    /** What a site's Tm depends on: hashed as numbers, not formatted as text, on every lookup. */
+    private record CacheKey(String oligo, String strand, double monovalentMm, double divalentMm, double dntpMm,
+                            double oligoNm) {
     }
 
     private static volatile Generations cache = new Generations(new ConcurrentHashMap<>(), Map.of());
@@ -73,6 +78,18 @@ public record TmGate(double annealTemp, double margin, double monovalentMm, doub
             throw new IllegalArgumentException(error);
         });
         assayTemps = assayTemps == null ? AnnealTemps.NONE : assayTemps;
+        // A site without a duplex melts at 0 °C here (tm()): a minimum of 0 or below would accept every hit.
+        if (!(annealTemp - margin > 0)) {
+            throw new IllegalArgumentException("--tm-margin must be below --anneal-temp, so that a site needs a Tm"
+                    + " above 0 °C; got " + Numbers.plain(margin) + " and " + Numbers.plain(annealTemp) + " °C");
+        }
+        for (Map.Entry<String, Double> own : assayTemps.byAssay().entrySet()) {
+            if (!(own.getValue() - margin > 0)) {
+                throw new IllegalArgumentException("--tm-margin must be below the annealing temperature of every"
+                        + " assay, so that a site needs a Tm above 0 °C; got " + Numbers.plain(margin) + " °C, and "
+                        + own.getKey() + " has ta=" + Numbers.plain(own.getValue()));
+            }
+        }
     }
 
     /**
@@ -104,8 +121,7 @@ public record TmGate(double annealTemp, double margin, double monovalentMm, doub
         if (assayTemps.isEmpty() || oligoId == null) {
             return annealTemp;
         }
-        PrimerId parsed = PrimerId.parse(oligoId);
-        Double own = assayTemps.of(parsed == null ? oligoId : parsed.assay());
+        Double own = assayTemps.ofOligo(oligoId);
         return own == null ? annealTemp : own;
     }
 
@@ -216,11 +232,11 @@ public record TmGate(double annealTemp, double margin, double monovalentMm, doub
         if (oligo.length() > Thal.MAX_ALIGN && strand.length() > Thal.MAX_ALIGN) {
             int cut = oligo.length() - Thal.MAX_ALIGN;
             oligo = oligo.substring(cut);
-            // The oligo's 5' end pairs with the strand's 3' end: drop as many bases there, keeping any indel slack.
-            strand = strand.substring(0, Math.max(Thal.MAX_ALIGN, strand.length() - cut));
+            // The oligo's 5' end pairs with the strand's 3' end: drop as many bases there. Not fewer: a strand short of
+            // the oligo (its 3' end past a sequence end) would keep bases that paired with the bases cut, unpaired.
+            strand = strand.substring(0, Math.max(1, strand.length() - cut));
         }
-        String key = oligo + '\u0001' + strand + '\u0001' + monovalentMm + '\u0001' + divalentMm + '\u0001' + dntpMm
-                + '\u0001' + oligoNm;
+        CacheKey key = new CacheKey(oligo, strand, monovalentMm, divalentMm, dntpMm, oligoNm);
         Double cached = cached(key);
         if (cached != null) {
             return cached;
@@ -233,7 +249,7 @@ public record TmGate(double annealTemp, double margin, double monovalentMm, doub
     }
 
     /** The Tm kept under {@code key}, moved to the young generation when found in the old; {@code null} for none. */
-    static Double cached(String key) {
+    static Double cached(Object key) {
         Generations generations = cache;
         Double tm = generations.young().get(key);
         if (tm == null) {
@@ -246,7 +262,7 @@ public record TmGate(double annealTemp, double margin, double monovalentMm, doub
     }
 
     /** Keeps {@code tm} under {@code key} in the young generation, which becomes the old one once full. */
-    static void remember(String key, double tm) {
+    static void remember(Object key, double tm) {
         Generations generations = cache;
         generations.young().put(key, tm);
         if (generations.young().size() >= CACHE_GENERATION) {

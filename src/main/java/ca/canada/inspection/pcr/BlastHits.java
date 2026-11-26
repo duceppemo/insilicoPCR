@@ -145,7 +145,7 @@ public final class BlastHits {
                 if (!site.primes()) {
                     // No Tm: it would not decide, and millions of short hits fail the 3' rule.
                     into.nearMiss(site.hit().subjectID(), new ca.canada.inspection.model.NearMiss(site.hit(),
-                            Double.NaN, site.threePrimePenalty()));
+                            Double.NaN, site.threePrimePenalty(), options.tmGate().minimumTm(site.hit().subjectID())));
                 } else {
                     waiting.add(new Waiting(site, line, pool.submit(() -> site.tm(options.tmGate()))));
                     if (waiting.size() >= TM_QUEUE) {
@@ -183,7 +183,7 @@ public final class BlastHits {
                 accepted.accept(next.line());
             } else {
                 into.nearMiss(site.hit().subjectID(), new ca.canada.inspection.model.NearMiss(site.hit(), tm,
-                        site.threePrimePenalty()));
+                        site.threePrimePenalty(), gate.minimumTm(site.hit().subjectID())));
             }
         }
     }

@@ -32,13 +32,16 @@
 - `report_no_product.tsv` (new) and the HTML report ("Why no product") say,
   for each assay without a product in a sample, which oligo has no accepted
   site, its best site and the rule that site fails, or that the sites pair
-  into no product; `QAlog.txt` counts them (assay-sample pairs, and assays). An assay of a `mix=` reaction
+  into no product. The best site is one that looks like the oligo's (within
+  10 °C of the Tm it needs, or failing the 3' rule alone and differing by 3
+  bases at most) before a chance match of a few bases; `QAlog.txt` counts them (assay-sample pairs, and assays). An assay of a `mix=` reaction
   whose product is reported under the other assay is listed with that
   assay's name, and counted apart. The log lists each oligo's Tm on
   a perfect match (a degenerate oligo's range on one line), and flags one
   below the minimum.
-- Oligos longer than 60 bases are scored on their 3'-most 60, as Primer3's
-  thermodynamic alignment takes no longer pair.
+- Oligos longer than 60 bases are scored on their 3'-most 60 against the
+  whole template strand under them, as Primer3's thermodynamic alignment
+  takes no longer pair on both sides.
 - A reaction with no cations for a Tm (`--na 0` with `--mg` at or below
   `--dntp`) is refused, and so is a `--tm-margin` at or above
   `--anneal-temp` or an assay's `ta=`: a site without a duplex melts at

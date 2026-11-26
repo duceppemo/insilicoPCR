@@ -153,8 +153,8 @@ public record NoProduct(String sample, String assay, String oligo, String reason
         BlastResult hit = best.hit();
         String binding = binding(hit);
         String reason = best.failsThreePrimeRule()
-                ? "every site fails the 3' rule" + where + "; the best has a 3' penalty of " + best.threePrimePenalty()
-                + ", more than " + options.maxThreePrimePenalty() + " (--3p-penalty)" + binding
+                ? "no site is accepted" + where + "; the best fails the 3' rule, with a 3' penalty of "
+                + best.threePrimePenalty() + ", more than " + options.maxThreePrimePenalty() + " (--3p-penalty)" + binding
                 : String.format(Locale.ROOT, "no site reaches %s °C%s; the best melts at %.1f °C%s",
                 Numbers.plain(gate.minimumTm(closest)), where, below(best.tm(), gate.minimumTm(closest)), binding);
         return new NoProduct(sample, assay, closest, reason + alone, site(hit), below(best.tm(), needed(gate, closest)),

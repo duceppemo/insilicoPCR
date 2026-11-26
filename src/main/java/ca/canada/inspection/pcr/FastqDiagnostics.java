@@ -177,6 +177,7 @@ public final class FastqDiagnostics {
         Map<String, Set<Integer>> assembled = Products.sizes(sample, primers, options);
         Map<String, Set<String>> otherProducts = otherProducts(Products.of(sample, primers, options));
         List<Finding> findings = new ArrayList<>();
+        Set<String> likely = null; // the oligos with a plausible rejected site: once, for the first assay that asks
 
         for (Map.Entry<String, PrimerId.Assay> entry : primers.assays().entrySet()) {
             String assay = entry.getKey();
@@ -230,7 +231,10 @@ public final class FastqDiagnostics {
                 }
             } else if (counts.forward() == 0 || counts.reverse() == 0) {
                 status = Status.PARTIAL_BAIT;
-                readDetail = partialBait(counts, group, likelySites(sample.hits().nearMisses(), options));
+                if (likely == null) {
+                    likely = likelySites(sample.hits().nearMisses());
+                }
+                readDetail = partialBait(counts, group, likely);
             } else if (outcome == null) {
                 status = Status.NOT_IN_READS;
                 readDetail = "no complete amplicon in the reads; reads carrying the primers could hold amplicons up to "
@@ -282,27 +286,14 @@ public final class FastqDiagnostics {
                 + " and why)" : "");
     }
 
-    /** How far below the Tm a site needs a rejected site may melt and still be named as one the rules reject, °C. */
-    static final double LIKELY_SITE_TM_RANGE = 10;
-
-    /** How many bases a site failing the 3' rule may differ from its oligo by and still be named. */
-    static final int LIKELY_SITE_DIFFERENCES = 3;
-
     /**
      * The oligos whose best rejected site ({@code misses}) looks like a site of theirs, not a chance BLAST match of a few
-     * bases: one that melts within {@link #LIKELY_SITE_TM_RANGE} of the Tm it needs, or that fails the 3' rule only,
-     * differing from the oligo by at most {@link #LIKELY_SITE_DIFFERENCES} bases.
+     * bases ({@link ca.canada.inspection.model.NearMiss#plausible}).
      */
-    static Set<String> likelySites(Map<String, ca.canada.inspection.model.NearMiss> misses, AmpliconOptions options) {
+    static Set<String> likelySites(Map<String, ca.canada.inspection.model.NearMiss> misses) {
         Set<String> likely = new java.util.HashSet<>();
         misses.forEach((oligo, miss) -> {
-            BlastResult hit = miss.hit();
-            boolean close = miss.failsThreePrimeRule()
-                    ? hit.alignedMismatches() + hit.fivePrimeUnpairedBases() + hit.threePrimeUncovered()
-                    <= LIKELY_SITE_DIFFERENCES
-                    : options.tmGate() == null
-                    || miss.tm() >= options.tmGate().minimumTm(oligo) - LIKELY_SITE_TM_RANGE;
-            if (close) {
+            if (miss.plausible()) {
                 likely.add(oligo);
             }
         });
@@ -514,8 +505,11 @@ public final class FastqDiagnostics {
         return String.join(" | ", parts);
     }
 
-    /** Tadpole names contigs {@code contig_6,len=1534,cov=26.3,...}; keep the {@code contig_6} part. */
-    static String shortName(String contigId) {
+    /**
+     * Assemblers name contigs {@code contig_6,len=1534,cov=26.3,...}; keep the {@code contig_6} part, as the reports
+     * show it.
+     */
+    public static String shortName(String contigId) {
         int comma = contigId.indexOf(',');
         return comma > 0 ? contigId.substring(0, comma) : contigId;
     }

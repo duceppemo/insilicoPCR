@@ -2,6 +2,7 @@ package ca.canada.inspection.report;
 
 import ca.canada.inspection.pcr.AssayVerdict;
 import ca.canada.inspection.pcr.ExpectedSizes;
+import ca.canada.inspection.pcr.FastqDiagnostics;
 import ca.canada.inspection.pcr.FastqDiagnostics.Finding;
 import ca.canada.inspection.pcr.FastqDiagnostics.Status;
 import ca.canada.inspection.pcr.PrimerPanel;
@@ -653,8 +654,7 @@ public final class HtmlReport {
                 .append("</tr></thead>\n<tbody>\n");
         for (Product product : products.subList(0, Math.min(products.size(), maxListed))) {
             String contig = product.row().contig();
-            int comma = contig.indexOf(',');
-            String source = comma > 0 ? contig.substring(0, comma) : contig;
+            String source = FastqDiagnostics.shortName(contig);
             String description = product.row().contigDescription();
             String sourceTitle = contig + (description.isEmpty() ? "" : " — " + description);
             // A call from reads is tagged "reads", followed by the support that made it.
@@ -798,9 +798,8 @@ public final class HtmlReport {
      * words an assembler adds to it after a comma, as the amplicon table shows it.
      */
     static String shortSite(String site) {
-        int comma = site.indexOf(',');
         int colon = site.lastIndexOf(':');
-        return comma > 0 && comma < colon ? site.substring(0, comma) + site.substring(colon) : site;
+        return colon < 0 ? site : FastqDiagnostics.shortName(site.substring(0, colon)) + site.substring(colon);
     }
 
     /** Why assays gave no product, sample by sample; nothing when every assay gave one everywhere. */

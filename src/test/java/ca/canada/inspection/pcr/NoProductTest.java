@@ -99,9 +99,29 @@ class NoProductTest {
         // Equal penalties: the longer alignment.
         sample.hits().nearMiss("a-R", new NearMiss(minus("a-R", 600, PRIMER.substring(5)), Double.NaN, 3));
         NoProduct reverse = of(panel("a-F", PRIMER, "a-R", PRIMER), sample).getFirst();
-        assertEquals("every site fails the 3' rule; the best has a 3' penalty of 3, more than 0 (--3p-penalty)"
-                + " (1 mismatch or indel)", reverse.reason());
+        assertEquals("no site is accepted; the best fails the 3' rule, with a 3' penalty of 3, more than 0"
+                + " (--3p-penalty) (1 mismatch or indel)", reverse.reason());
         assertTrue(Double.isNaN(reverse.siteTm()));
+    }
+
+    @Test
+    void aRealSiteWithAThreePrimeMismatchOutranksAChanceMatch() {
+        // A few bases matching by chance pass the 3' rule and melt at 10 °C: not the site to send the user to.
+        Sample sample = sample("s", Sample.FileType.FASTA);
+        sample.hits().add("a-F", plus("a-F", 101, PRIMER), 60);
+        String mismatched = PRIMER.substring(0, 19) + "C";
+        sample.hits().nearMiss("a-R", new NearMiss(minus("a-R", 900, PRIMER.substring(11)), 9.8, 0, 55));
+        sample.hits().nearMiss("a-R", new NearMiss(TestHits.minusHit("a-R", "c1", 400, mismatched, PRIMER), Double.NaN,
+                3, 55));
+        NoProduct reverse = of(panel("a-F", PRIMER, "a-R", PRIMER), sample).getFirst();
+        assertTrue(reverse.site().startsWith("c1:400-"), reverse.site());
+        assertTrue(reverse.reason().startsWith("no site is accepted; the best fails the 3' rule"), reverse.reason());
+        // Of two chance matches, or two real sites, the old order holds.
+        assertTrue(new NearMiss(minus("a-R", 1, PRIMER), 50, 0, 55)
+                .closerThan(new NearMiss(TestHits.minusHit("a-R", "c1", 400, mismatched, PRIMER), Double.NaN, 3, 55)));
+        assertTrue(new NearMiss(minus("a-R", 1, PRIMER.substring(11)), 9.8, 0, 55)
+                .closerThan(new NearMiss(TestHits.minusHit("a-R", "c1", 1, "AAAAAAAAAA" + PRIMER.substring(10), PRIMER),
+                        Double.NaN, 9, 55)));
     }
 
     @Test

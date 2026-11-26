@@ -225,16 +225,14 @@ public record TmGate(double annealTemp, double margin, double monovalentMm, doub
 
     /**
      * The Tm of {@code oligo} on {@code strand}, both 5' to 3', under these conditions. Of an oligo longer than
-     * {@link Thal#MAX_ALIGN} (60) bases, its 3'-most 60 on the template under them: {@code thal} aligns no longer pair,
-     * and the 3' end is what primes; 60 bases melt far above any annealing temperature.
+     * {@link Thal#MAX_ALIGN} (60) bases, its 3'-most 60 on the whole strand: {@code thal} aligns no longer pair, and
+     * the 3' end is what primes; 60 bases melt far above any annealing temperature. The strand is kept whole, as
+     * {@code thal} takes 60 bases against a longer one: cutting it by as many bases would cut the wrong ones when the
+     * oligo runs past a sequence end, and leave the bases under its 3' end unpaired.
      */
     double tm(String oligo, String strand) {
         if (oligo.length() > Thal.MAX_ALIGN && strand.length() > Thal.MAX_ALIGN) {
-            int cut = oligo.length() - Thal.MAX_ALIGN;
-            oligo = oligo.substring(cut);
-            // The oligo's 5' end pairs with the strand's 3' end: drop as many bases there. Not fewer: a strand short of
-            // the oligo (its 3' end past a sequence end) would keep bases that paired with the bases cut, unpaired.
-            strand = strand.substring(0, Math.max(1, strand.length() - cut));
+            oligo = oligo.substring(oligo.length() - Thal.MAX_ALIGN);
         }
         CacheKey key = new CacheKey(oligo, strand, monovalentMm, divalentMm, dntpMm, oligoNm);
         Double cached = cached(key);

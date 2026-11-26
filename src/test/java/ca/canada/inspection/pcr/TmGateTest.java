@@ -213,15 +213,28 @@ class TmGateTest {
         String longOligo = tail.substring(0, 63 - 40) + PRIMER + PRIMER;
         String last60 = longOligo.substring(3);
         TmGate gate = TmGate.DEFAULT;
-        assertEquals(gate.perfectTm(last60), gate.perfectTm(longOligo), 1e-9);
+        // The whole strand is kept: the 3 bases under the 5' bases cut dangle, and barely count.
+        assertEquals(gate.perfectTm(last60), gate.perfectTm(longOligo), 0.3);
         assertTrue(gate.perfectTm(longOligo) > 60, "" + gate.perfectTm(longOligo));
         // A site one base longer than the oligo (an insertion near its 5' end) keeps its slack.
         String strand = Dna.reverseComplement(longOligo.substring(0, 10) + "A" + longOligo.substring(10));
         assertTrue(gate.tm(longOligo, strand) > 60);
-        // A strand short of the oligo's 3' end (past a sequence end), still over 60: the bases under the 10 cut go too.
-        String seventy = tail.substring(0, 30) + PRIMER + PRIMER;
-        assertEquals(gate.tm(seventy.substring(10), Dna.reverseComplement(seventy.substring(10, 62))),
-                gate.tm(seventy, Dna.reverseComplement(seventy.substring(0, 62))), 1e-9);
+    }
+
+    @Test
+    void aLongOligoRunningOffEitherEndOfItsSequenceIsScoredOnTheBasesUnderIt() {
+        // A 70-mer on 62 bases of a sequence: as its 3'-most 60 on the bases under them (some of them dangling).
+        TmGate gate = TmGate.DEFAULT;
+        String seventy = "ACGTTGCAAGTCCATGGTAC" + "TTGACCAGTAGCATCAGGTC" + PRIMER + "GATTACAGGC";
+        String last60 = seventy.substring(10);
+        // Its 3' end past the sequence's end: the 8 3'-most bases pair with nothing.
+        double threePrimeOff = gate.tm(seventy, Dna.reverseComplement(seventy.substring(0, 62)));
+        assertEquals(gate.tm(last60, Dna.reverseComplement(seventy.substring(10, 62))), threePrimeOff, 0.3);
+        // Its 5' end past the sequence's start: the 60 kept all pair. Cutting the strand by the 10 bases cut from the
+        // oligo took 8 of them away (the strand had only 2 bases past the 60).
+        double fivePrimeOff = gate.tm(seventy, Dna.reverseComplement(seventy.substring(8)));
+        assertEquals(gate.perfectTm(last60), fivePrimeOff, 0.3);
+        assertTrue(fivePrimeOff > threePrimeOff, fivePrimeOff + " " + threePrimeOff);
     }
 
     @Test

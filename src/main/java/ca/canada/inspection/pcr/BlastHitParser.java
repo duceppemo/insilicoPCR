@@ -75,6 +75,8 @@ public final class BlastHitParser {
      * A hit for the Tm gate ({@link #parseSite}), with the template strand its oligo anneals to: the Tm, the costly
      * part (a thermodynamic alignment), can then be computed apart, in parallel.
      *
+     * @param strand            the template strand under the site; {@code null} for a site that fails the 3' rule,
+     *                          which needs no Tm
      * @param threePrimePenalty the 3' penalty of a primer's site ({@code --3p-penalty}); 0 for a probe
      * @param primes            whether it passes the 3' rule (a probe always does: it does not extend)
      */
@@ -107,8 +109,11 @@ public final class BlastHitParser {
     public static Pending site(BlastResult found, AmpliconOptions options,
                                Function<BlastResult, TrimmedEnds.Template> templates) {
         int fivePrimeFree = options.maxFivePrimeTruncation();
-        // The Tm gate reads the template under every site, the bases BLAST left out included.
-        TrimmedEnds.Template template = templates.apply(found);
+        // The template is read only under a site with bases BLAST left out: to compare them, and for the strand under
+        // them (the Tm gate pairs the oligo with every base of the site). A site BLAST aligned whole has its strand in
+        // the alignment; asking for its template would also count it in a missing sequence's warning.
+        boolean trimmed = found.fivePrimeUncovered() + found.threePrimeUncovered() > 0 || found.qseq() == null;
+        TrimmedEnds.Template template = trimmed ? templates.apply(found) : null;
         BlastResult hit = TrimmedEnds.needsTemplate(found, options)
                 ? TrimmedEnds.extend(found, template, fivePrimeFree) : found;
         if (PrimerId.isProbe(hit.subjectID())) {
@@ -116,7 +121,8 @@ public final class BlastHitParser {
         }
         hit = hit.withFivePrimeFree(fivePrimeFree);
         int penalty = hit.threePrimePenalty(options.threePrimeWindow());
-        return new Pending(hit, TmGate.strandUnder(hit, template), penalty, penalty <= options.maxThreePrimePenalty());
+        boolean primes = penalty <= options.maxThreePrimePenalty();
+        return new Pending(hit, primes ? TmGate.strandUnder(hit, template) : null, penalty, primes);
     }
 
     private static boolean passesThreePrimeRule(BlastResult hit, AmpliconOptions options) {

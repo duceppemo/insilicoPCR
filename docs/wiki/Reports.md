@@ -218,14 +218,14 @@ Since 2.0, every report has beside it `report_no_product.tsv` (`report(1)_no_pro
 | `Assay` | Assay name |
 | `Oligo` | The primer or probe with no accepted site (of a degenerate oligo, the variant that came closest). One row per such oligo. Empty when every oligo has a site but none pair into a product |
 | `Reason` | Why, in words (below) |
-| `BestSite` | The oligo's best site, as `contig:start-end(strand)`; empty when there is none |
+| `BestSite` | The oligo's best site, as `contig:start-end(strand)`; empty when there is none. A site that looks like the oligo's (within 10 °C of `NeededTm`, or failing the 3' rule alone and differing from the oligo by 3 bases at most) comes before a chance match of a few bases; then the site that passes the 3' rule, with the highest Tm |
 | `BestSiteTm` | Its Tm, °C; empty for none, or for a site that fails the 3' rule. One that would round to `NeededTm` is shown 0.1 °C under it (49.98 °C is `49.9` when 50 °C is needed) |
 | `NeededTm` | The Tm a site of the assay needs: `--anneal-temp`, or the assay's `ta=`, less `--tm-margin` |
 
 The reasons:
 
 - `no site reaches 55 °C; the best melts at 51.5 °C (2 mismatches and indels, 5 unpaired 5' bases)`: the oligo has sites, all too weak.
-- `every site fails the 3' rule; the best has a 3' penalty of 3, more than 0 (--3p-penalty)`: a primer whose sites all have a mismatched 3' end.
+- `no site is accepted; the best fails the 3' rule, with a 3' penalty of 3, more than 0 (--3p-penalty) (1 mismatch or indel)`: a primer whose site has a mismatched 3' end. Its other sites, if any, are chance matches.
 - `no site: BLAST found no match`.
 - `no site reaches 55 °C, and its Tm on a perfect match is 53.3 °C: it is unlikely to anneal at this temperature (lower the annealing temperature, --anneal-temp or the assay's ta=, or raise --tm-margin)`: the oligo itself is too short or too A/T-rich for the run's temperature, and its assay is unlikely to give a product in any sample. For a degenerate oligo, this is said only when every one of its sequences is below.
 - with an empty `Oligo`: `every oligo has a site, but no forward and reverse site face each other on one sequence within 5000 bp (--max-length)`, with `with a probe site between them` for a probe assay.

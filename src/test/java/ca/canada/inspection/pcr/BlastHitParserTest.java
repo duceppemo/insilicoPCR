@@ -16,8 +16,7 @@ class BlastHitParserTest {
             "assay-F", PRIMER_20,
             "assay-P", PRIMER_20
     ));
-    private static final AmpliconOptions STRICT = AmpliconOptions.withMismatches(0);
-    private static final AmpliconOptions RELAXED = new AmpliconOptions(2, 2, 5, 0, 2, 0, 5000);
+    private static final AmpliconOptions STRICT = AmpliconOptions.defaults();
 
     // outfmt: qseqid sseqid positive mismatch gaps evalue bitscore slen length qstart qend qseq sstart send sseq
     private static String line(String sseqid, int mismatch, int gaps, int slen, int length,
@@ -51,7 +50,7 @@ class BlastHitParserTest {
                     hit -> new TrimmedEnds.Template(contig));
             assertEquals(onContig >= 12, cut.isPresent(), onContig + " bases on the contig");
         }
-        // Primer bases 2 to 12 aligned on the last 11 bases of the contig, base 1 (within --5p-truncation) left out
+        // Primer bases 2 to 12 aligned on the last 11 bases of the contig, base 1 (one of the 5 free 5' bases) left out
         // though on the contig: 11 aligned, not 12 (8 aligned and 5 left out made a warning on 2,022 genomes).
         String contig = "TTTTTTTTTA" + PRIMER_20.substring(1, 12);
         String aligned = PRIMER_20.substring(1, 12);
@@ -73,70 +72,77 @@ class BlastHitParserTest {
         assertTrue(error.getMessage().contains("Caf##-F"), error.getMessage());
     }
 
+    /** The Tm the site of {@code blastLine} has, on {@code template} ({@code null}: the bases BLAST aligned). */
+    private static double tm(String blastLine, TrimmedEnds.Template template) {
+        return BlastHitParser.parseSite(blastLine, PRIMERS, LENIENT_THREE_PRIME, any -> template).orElseThrow()
+                .tm(TmGate.DEFAULT);
+    }
+
+    /** Options whose Tm rule needs {@code minimum} °C, the margin being 5. */
+    private static AmpliconOptions needing(double minimum) {
+        return AmpliconOptions.builder().tmGate(TmGate.at(minimum + TmGate.DEFAULT_MARGIN)).build();
+    }
+
+    private static final AmpliconOptions LENIENT_THREE_PRIME = AmpliconOptions.builder().threePrimePenalty(99).build();
+
     @Test
-    void threePrimeTruncatedPrimerIsRejectedEvenWithMismatchBudget() {
+    void threePrimeTruncatedPrimerIsRejectedByTheThreePrimeRuleWhateverItsTm() {
         // Alignment covers primer 1..18: BLAST trimmed 2 bases at the 3' end.
         String aligned = PRIMER_20.substring(0, 18);
         String blastLine = line("assay-F", 0, 0, 20, 18, 101, 118, aligned, 1, 18, aligned);
-        assertTrue(BlastHitParser.parse(blastLine, PRIMERS, RELAXED).isEmpty());
+        assertTrue(BlastHitParser.parse(blastLine, PRIMERS, needing(1)).isEmpty());
+        BlastHitParser.Pending site = BlastHitParser.parseSite(blastLine, PRIMERS, STRICT, any -> null).orElseThrow();
+        assertTrue(!site.primes() && site.strand() == null, "no Tm is worked out for it");
     }
 
     @Test
-    void fivePrimeTruncationWithinAllowanceIsAccepted() {
-        // Alignment covers primer 3..20: 2 bases missing at the harmless 5' end.
-        String aligned = PRIMER_20.substring(2);
-        String blastLine = line("assay-F", 0, 0, 20, 18, 103, 120, aligned, 3, 20, aligned);
-        assertTrue(BlastHitParser.parse(blastLine, PRIMERS, STRICT).isPresent());
+    void aSiteMissingFivePrimeBasesIsJudgedByTheTmOfTheBasesItHas() {
+        // No template: only the bases BLAST aligned pair. 2 bases left out at the 5' end melt a little lower than
+        // the whole site, 10 much lower; neither is rejected for the count, as --5p-truncation did in 1.x.
+        String whole = line("assay-F", 0, 0, 20, 20, 101, 120, PRIMER_20, 1, 20, PRIMER_20);
+        String two = line("assay-F", 0, 0, 20, 18, 103, 120, PRIMER_20.substring(2), 3, 20, PRIMER_20.substring(2));
+        String ten = line("assay-F", 0, 0, 20, 10, 111, 120, PRIMER_20.substring(10), 11, 20, PRIMER_20.substring(10));
+        double wholeTm = tm(whole, null);
+        double twoTm = tm(two, null);
+        double tenTm = tm(ten, null);
+        assertTrue(wholeTm > twoTm && twoTm > tenTm, wholeTm + " " + twoTm + " " + tenTm);
+        assertTrue(BlastHitParser.parse(two, PRIMERS, needing(twoTm - 0.1)).isPresent());
+        assertTrue(BlastHitParser.parse(two, PRIMERS, needing(twoTm + 0.1)).isEmpty());
+        assertTrue(BlastHitParser.parse(ten, PRIMERS, needing(tenTm - 0.1)).isPresent(), "not refused by count");
     }
 
     @Test
-    void anUnalignedThreePrimeBaseCountsAsAMismatchAgainstTheBudget() {
-        // Aligned over 1..19, the 3' base left unaligned and no template to compare it with. Its 3' penalty
-        // (3) is allowed here: only -m decides, the base counting as a mismatch.
+    void anUnalignedThreePrimeBaseCountsAsAMismatchAndForTheThreePrimeRule() {
+        // Aligned over 1..19, the 3' base left unaligned and no template to compare it with: it counts as a
+        // mismatch, and its 3' penalty (3) is over the default 0.
         String aligned = PRIMER_20.substring(0, 19);
         String blastLine = line("assay-F", 0, 0, 20, 19, 101, 119, aligned, 1, 19, aligned);
 
-        assertTrue(BlastHitParser.parse(blastLine, PRIMERS, new AmpliconOptions(0, 0, 5, 3, 5, 0, 5000)).isEmpty());
-        Optional<BlastResult> hit = BlastHitParser.parse(blastLine, PRIMERS, new AmpliconOptions(1, 1, 5, 3, 5, 0, 5000));
+        assertTrue(BlastHitParser.parse(blastLine, PRIMERS, STRICT).isEmpty());
+        Optional<BlastResult> hit = BlastHitParser.parse(blastLine, PRIMERS,
+                AmpliconOptions.builder().threePrimePenalty(3).tmGate(TmGate.at(10)).build());
         assertTrue(hit.isPresent());
         assertEquals(1, hit.get().primerMismatches());
     }
 
     @Test
-    void fivePrimeTruncationIsAllowedUpToTheLimitAndNoFurther() {
-        // --5p-truncation 5 (the default): 5 bases left unaligned at the 5' end pass, 6 do not.
-        String five = PRIMER_20.substring(5);
-        String six = PRIMER_20.substring(6);
-        AmpliconOptions defaults = AmpliconOptions.withMismatches(0);
-
-        assertTrue(BlastHitParser.parse(line("assay-F", 0, 0, 20, 15, 106, 120, five, 6, 20, five), PRIMERS, defaults)
-                .isPresent());
-        assertTrue(BlastHitParser.parse(line("assay-F", 0, 0, 20, 14, 107, 120, six, 7, 20, six), PRIMERS, defaults)
-                .isEmpty());
-    }
-
-    @Test
-    void aMismatchWithinTheFivePrimeAllowanceIsAnUnpairedFivePrimeBase() {
-        // One mismatch at base 5, which BLAST keeps aligned: it was counted against -m 0, while two there
-        // (bases 1 and 5), which BLAST trims off, were not. Within --5p-truncation 5 it is a 5' base that does
-        // not pair, and the report says so.
+    void aMismatchWithinTheFivePrimeFreeBasesIsAnUnpairedFivePrimeBase() {
+        // One mismatch at base 5, which BLAST keeps aligned: within the first 5 bases, it is a 5' base that does
+        // not pair, and the report says so, as of two there (bases 1 and 5), which BLAST trims off.
         StringBuilder qseq = new StringBuilder(PRIMER_20);
         qseq.setCharAt(4, 'T' == qseq.charAt(4) ? 'A' : 'T');
         String blastLine = line("assay-F", 1, 0, 20, 20, 101, 120, qseq.toString(), 1, 20, PRIMER_20);
 
-        Optional<BlastResult> hit = BlastHitParser.parse(blastLine, PRIMERS, STRICT);
+        Optional<BlastResult> hit = BlastHitParser.parse(blastLine, PRIMERS, needing(1));
         assertTrue(hit.isPresent());
         assertEquals(0, hit.get().primerMismatches());
         assertEquals(1, hit.get().fivePrimeUnpairedBases());
-        // With --5p-truncation 4, base 5 is past the allowance: a mismatch again.
-        assertTrue(BlastHitParser.parse(blastLine, PRIMERS, new AmpliconOptions(0, 0, 5, 0, 4, 0, 5000)).isEmpty());
     }
 
     @Test
-    void trimmedFivePrimeBasesPastTheAllowanceAreComparedNotRejected() {
-        // Mismatches at bases 4 and 7: BLAST trims the first 7 bases. They were rejected, 7 being over
-        // --5p-truncation 5, while a site with base 7's mismatch alone passed -m 1. Base 4 is within the
-        // allowance; base 7, compared with the template, is one mismatch.
+    void trimmedFivePrimeBasesPastTheFreeOnesAreComparedWithTheTemplate() {
+        // Mismatches at bases 4 and 7: BLAST trims the first 7 bases. Base 4 is within the first 5, an unpaired
+        // base; base 7, compared with the template, is one mismatch. The Tm is the whole site's, both included.
         StringBuilder site = new StringBuilder(PRIMER_20);
         for (int index : new int[]{3, 6}) {
             site.setCharAt(index, site.charAt(index) == 'A' ? 'C' : 'A');
@@ -146,72 +152,74 @@ class BlastHitParserTest {
         String aligned = PRIMER_20.substring(7);
         String blastLine = line("assay-F", 0, 0, 20, 13, 28, 40, aligned, 8, 20, aligned);
 
-        Optional<BlastResult> hit = BlastHitParser.parse(blastLine, PRIMERS, new AmpliconOptions(1, 1, 5, 0, 5, 0, 5000),
-                any -> template);
+        Optional<BlastResult> hit = BlastHitParser.parse(blastLine, PRIMERS, needing(1), any -> template);
         assertTrue(hit.isPresent());
         assertEquals(1, hit.get().primerMismatches());
         assertEquals(1, hit.get().fivePrimeUnpairedBases(), "base 4");
         assertEquals(21, hit.get().fivePrimeTerminus(), "5 bases left unaligned before 26");
-        assertTrue(BlastHitParser.parse(blastLine, PRIMERS, STRICT, any -> template).isEmpty(), "-m 0");
-        // Without the template the bases cannot be compared: 7 unaligned, over the allowance.
-        assertTrue(BlastHitParser.parse(blastLine, PRIMERS, new AmpliconOptions(1, 1, 5, 0, 5, 0, 5000)).isEmpty());
+        String perfect = line("assay-F", 0, 0, 20, 20, 101, 120, PRIMER_20, 1, 20, PRIMER_20);
+        assertTrue(tm(blastLine, template) < tm(perfect, null));
     }
 
     @Test
-    void internalMismatchOutsideWindowUsesTotalBudget() {
-        // Mismatch at primer position 6, past --5p-truncation 5: fine with -m 1, rejected with -m 0.
+    void aMismatchOutsideTheThreePrimeWindowLowersTheTm() {
+        // A mismatch at primer position 6: the site is accepted when its Tm reaches the minimum, whatever the count.
         StringBuilder qseq = new StringBuilder(PRIMER_20);
         qseq.setCharAt(5, 'T' == qseq.charAt(5) ? 'A' : 'T');
         String blastLine = line("assay-F", 1, 0, 20, 20, 101, 120, qseq.toString(), 1, 20, PRIMER_20);
+        double siteTm = tm(blastLine, null);
+        assertTrue(siteTm < tm(line("assay-F", 0, 0, 20, 20, 101, 120, PRIMER_20, 1, 20, PRIMER_20), null));
 
-        assertTrue(BlastHitParser.parse(blastLine, PRIMERS, STRICT).isEmpty());
-        assertTrue(BlastHitParser.parse(blastLine, PRIMERS,
-                new AmpliconOptions(1, 1, 5, 0, 2, 0, 5000)).isPresent());
+        assertTrue(BlastHitParser.parse(blastLine, PRIMERS, needing(siteTm - 0.1)).isPresent());
+        assertTrue(BlastHitParser.parse(blastLine, PRIMERS, needing(siteTm + 0.1)).isEmpty());
     }
 
     @Test
-    void mismatchInsideThreePrimeWindowIsRejectedByDefaultEvenWithBudget() {
-        // Mismatch at primer position 18 (distance 2): total budget would allow it,
-        // but the default 3' penalty of 0 rejects it.
+    void mismatchInsideThreePrimeWindowIsRejectedByDefaultWhateverItsTm() {
+        // Mismatch at primer position 18 (distance 2): the default 3' penalty of 0 rejects it.
         StringBuilder qseq = new StringBuilder(PRIMER_20);
         qseq.setCharAt(17, 'A');
         String blastLine = line("assay-F", 1, 0, 20, 20, 101, 120, qseq.toString(), 1, 20, PRIMER_20);
 
-        assertTrue(BlastHitParser.parse(blastLine, PRIMERS, RELAXED).isEmpty());
+        assertTrue(BlastHitParser.parse(blastLine, PRIMERS, needing(1)).isEmpty());
         // Raising the 3' penalty allowance rescues it (G/C mismatch at distance 2 scores 2+1).
         assertTrue(BlastHitParser.parse(blastLine, PRIMERS,
-                new AmpliconOptions(1, 1, 5, 3, 2, 0, 5000)).isPresent());
+                AmpliconOptions.builder().threePrimePenalty(3).tmGate(TmGate.at(10)).build()).isPresent());
     }
 
     @Test
     void probesAreExemptFromThreePrimeRules() {
-        // Probe truncated by 2 bases at its 3' side: fine, probes do not extend.
+        // Probe truncated by 2 bases at its 3' side: judged by its Tm alone, probes do not extend.
         String aligned = PRIMER_20.substring(0, 18);
         String blastLine = line("assay-P", 0, 0, 20, 18, 101, 118, aligned, 1, 18, aligned);
-        assertTrue(BlastHitParser.parse(blastLine, PRIMERS, STRICT).isPresent());
+        assertTrue(BlastHitParser.parse(blastLine, PRIMERS, needing(1)).isPresent());
     }
 
     @Test
-    void probeCoverageIsIndependentOfPrimerFivePrimeAllowance() {
-        // 3 unaligned probe bases: rejected even though --5p-truncation (5) would
-        // allow it for a primer. Probes must cover nearly their whole length.
-        String aligned = PRIMER_20.substring(0, 17);
-        String blastLine = line("assay-P", 0, 0, 20, 17, 101, 117, aligned, 1, 17, aligned);
-        assertTrue(BlastHitParser.parse(blastLine, PRIMERS, STRICT).isEmpty());
-    }
-
-    @Test
-    void probesUseTheirOwnMismatchBudget() {
-        // One internal mismatch in the probe, probe position 10: no 3' rules apply.
+    void aProbeMismatchLowersItsTm() {
+        // One internal mismatch in the probe, probe position 10: no 3' rules apply, its Tm decides.
         StringBuilder qseq = new StringBuilder(PRIMER_20);
         qseq.setCharAt(9, qseq.charAt(9) == 'A' ? 'G' : 'A');
         String blastLine = line("assay-P", 1, 0, 20, 20, 101, 120, qseq.toString(), 1, 20, PRIMER_20);
+        double siteTm = tm(blastLine, null);
+        assertTrue(siteTm < tm(line("assay-P", 0, 0, 20, 20, 101, 120, PRIMER_20, 1, 20, PRIMER_20), null));
 
-        // Rejected when the probe budget is 0, accepted with --probe-mismatches 1
-        // even though the primer budget (-m) stays 0.
-        assertTrue(BlastHitParser.parse(blastLine, PRIMERS, STRICT).isEmpty());
-        AmpliconOptions probeTolerant = new AmpliconOptions(0, 1, 5, 0, 5, 0, 5000);
-        assertTrue(BlastHitParser.parse(blastLine, PRIMERS, probeTolerant).isPresent());
+        assertTrue(BlastHitParser.parse(blastLine, PRIMERS, needing(siteTm - 0.1)).isPresent());
+        assertTrue(BlastHitParser.parse(blastLine, PRIMERS, needing(siteTm + 0.1)).isEmpty());
+    }
+
+    @Test
+    void theParallelReadAndTheOneLineParseApplyTheSameTest() {
+        // BlastHits reads Tms in parallel and decides with Pending.accepted, as parse does.
+        String blastLine = line("assay-F", 0, 0, 20, 20, 101, 120, PRIMER_20, 1, 20, PRIMER_20);
+        BlastHitParser.Pending site = BlastHitParser.parseSite(blastLine, PRIMERS, STRICT, any -> null).orElseThrow();
+        double siteTm = site.tm(TmGate.DEFAULT);
+        for (double minimum : new double[]{siteTm - 0.1, siteTm + 0.1}) {
+            TmGate gate = TmGate.at(minimum + TmGate.DEFAULT_MARGIN);
+            assertEquals(site.accepted(gate, siteTm),
+                    BlastHitParser.parse(blastLine, PRIMERS, needing(minimum)).isPresent(), "at " + minimum);
+            assertEquals(site.accepted(gate, siteTm), BlastHitParser.accepts(site.hit(), needing(minimum)));
+        }
     }
 
     @Test

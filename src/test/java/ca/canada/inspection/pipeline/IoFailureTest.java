@@ -29,7 +29,7 @@ class IoFailureTest {
         Path notAFolder = Files.writeString(dir.resolve("consolidated_report"), "");
         Sample sample = new Sample("s");
 
-        RuntimeException error = assertThrows(RuntimeException.class, () -> ConsolidatedReport.write(notAFolder, Products.ofRun(Map.of("s", sample), PrimerPanel.of(Map.of("a-F", "ACGT", "a-R", "ACGT")), AmpliconOptions.withMismatches(0), Map.of()), PrimerPanel.of(Map.of("a-F", "ACGT", "a-R", "ACGT"))));
+        RuntimeException error = assertThrows(RuntimeException.class, () -> ConsolidatedReport.write(notAFolder, Products.ofRun(Map.of("s", sample), PrimerPanel.of(Map.of("a-F", "ACGT", "a-R", "ACGT")), AmpliconOptions.defaults(), Map.of()), PrimerPanel.of(Map.of("a-F", "ACGT", "a-R", "ACGT"))));
 
         assertTrue(RunFailure.isForTheUser(error), error.toString());
         assertTrue(RunFailure.lines(error).getFirst().startsWith("Error: Unable to write consolidated report: "),
@@ -42,7 +42,7 @@ class IoFailureTest {
 
         RuntimeException error = assertThrows(RuntimeException.class, () -> ca.canada.inspection.pcr.BlastHits.read(
                 SampleFiles.of(dir, "s").blastReport(), sample.files(), sample.hits(), PrimerPanel.of(Map.of()),
-                AmpliconOptions.withMismatches(0)));
+                AmpliconOptions.defaults()));
 
         assertTrue(RunFailure.isForTheUser(error), error.toString());
         assertEquals("Error: Unable to read BLAST report: " + dir.resolve("s").resolve("s.tsv"),

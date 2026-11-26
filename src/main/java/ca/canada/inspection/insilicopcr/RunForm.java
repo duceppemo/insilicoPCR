@@ -67,8 +67,8 @@ record RunForm(Path input, Path output, Path primers, int threads, String anneal
         } catch (NumberFormatException e) {
             annealTemp = Double.NaN;
         }
-        if (!Double.isFinite(annealTemp) || annealTemp < 0 || annealTemp > 100) {
-            return new Outcome.Invalid("Annealing temperature must be 0 to 100 °C, e.g. "
+        if (!ca.canada.inspection.pcr.TmGate.isAnnealTemp(annealTemp)) {
+            return new Outcome.Invalid("Annealing temperature must be " + ca.canada.inspection.pcr.TmGate.ANNEAL_TEMP_RANGE + ", e.g. "
                     + ca.canada.inspection.util.Numbers.plain(ca.canada.inspection.pcr.TmGate.DEFAULT_ANNEAL_TEMP) + ".");
         }
         // The window checks every read, as the command line does by default; it has its own gel

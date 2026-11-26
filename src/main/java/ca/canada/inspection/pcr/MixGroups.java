@@ -2,7 +2,6 @@ package ca.canada.inspection.pcr;
 
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -39,25 +38,17 @@ public final class MixGroups {
     public static MixGroups fromHeaders(Map<String, String> descriptions) {
         // assay -> the primer that declared its group, and the group
         Map<String, String[]> declared = new TreeMap<>();
-        descriptions.forEach((primerId, description) -> {
-            PrimerId parsed = PrimerId.parse(primerId);
-            String assay = parsed == null ? primerId : parsed.assay();
-            for (String word : description.trim().split("\\s+")) {
-                int equals = word.indexOf('=');
-                if (equals < 0 || !word.substring(0, equals).toLowerCase(Locale.ROOT).equals(KEY)) {
-                    continue;
-                }
-                String group = word.substring(equals + 1);
-                if (group.isEmpty()) {
-                    throw new IllegalArgumentException("Primer " + primerId + ": " + KEY + "= needs the name of the"
-                            + " reaction the assay shares with others, such as " + KEY + "=panel1");
-                }
-                String[] previous = declared.putIfAbsent(assay, new String[]{primerId, group});
-                if (previous != null && !previous[1].equals(group)) {
-                    throw new IllegalArgumentException("Assay " + assay + " declares " + KEY + "= twice with different"
-                            + " values: " + previous[1] + " on " + previous[0] + ", " + group + " on " + primerId
-                            + " (an assay is in one reaction)");
-                }
+        HeaderLabels.forEach(descriptions, Set.of(KEY), label -> {
+            String group = label.value();
+            if (group.isEmpty()) {
+                throw new IllegalArgumentException("Primer " + label.primerId() + ": " + KEY + "= needs the name of the"
+                        + " reaction the assay shares with others, such as " + KEY + "=panel1");
+            }
+            String[] previous = declared.putIfAbsent(label.assay(), new String[]{label.primerId(), group});
+            if (previous != null && !previous[1].equals(group)) {
+                throw new IllegalArgumentException("Assay " + label.assay() + " declares " + KEY + "= twice with"
+                        + " different values: " + previous[1] + " on " + previous[0] + ", " + group + " on "
+                        + label.primerId() + " (an assay is in one reaction)");
             }
         });
         Map<String, String> groupOf = new HashMap<>();

@@ -76,7 +76,7 @@ class ReadExtensionStageTest {
                 new Seed("extended_read_1", "read_6", "long", PrimerId.Role.FORWARD),
                 new Seed("extended_read_2", "read_7", "long", PrimerId.Role.REVERSE),
                 new Seed("extended_read_3", "read_8", "long", PrimerId.Role.REVERSE));
-        AmpliconOptions options = AmpliconOptions.withMismatches(0);
+        AmpliconOptions options = AmpliconOptions.defaults();
 
         Map<String, Integer> lengths = SequenceFileUtils.sequenceLengths(extended);
         var extendedHits = ReadExtensionStage.extendedHits("S", hitsFile, extended, lengths, PRIMERS, options, warning -> {});
@@ -220,7 +220,7 @@ class ReadExtensionStageTest {
                 new BbtoolsCommands("java", Path.of("bbtools.jar"), 4, 1), ReadExtensionCaller.Mode.UNREPORTED);
 
         ReadExtensionStage.Result result = ReadExtensionStage.run(settings, directories, Map.of("S", sample), PRIMERS,
-                AmpliconOptions.withMismatches(0), Map.of("S", evidence));
+                AmpliconOptions.defaults(), Map.of("S", evidence));
 
         assertEquals(List.of("Tadpole"), started);
         assertEquals(List.of("read extension could not be run for sample S ("
@@ -319,7 +319,7 @@ class ReadExtensionStageTest {
                 new BbtoolsCommands("java", Path.of("bbtools.jar"), 4, 1), ReadExtensionCaller.Mode.UNREPORTED);
 
         ReadExtensionStage.Result result = ReadExtensionStage.run(settings, directories, Map.of("S", sample), PRIMERS,
-                AmpliconOptions.withMismatches(0), Map.of("S", evidence));
+                AmpliconOptions.defaults(), Map.of("S", evidence));
 
         assertEquals(List.of("Tadpole", "blastn", "BBDuk", "Tadpole"), started);
         assertEquals(List.of("read extension of sample S stopped at round 2 (Tadpole failed with exit code 1); the"
@@ -377,7 +377,7 @@ class ReadExtensionStageTest {
                 new BbtoolsCommands("java", Path.of("bbtools.jar"), 4, 1), ReadExtensionCaller.Mode.UNREPORTED);
 
         ReadExtensionStage.Result result = ReadExtensionStage.run(settings, directories, Map.of("S", sample), PRIMERS,
-                AmpliconOptions.withMismatches(0), Map.of("S", evidence));
+                AmpliconOptions.defaults(), Map.of("S", evidence));
 
         assertEquals(List.of("Tadpole", "blastn", "BBDuk"), started);
         assertEquals(List.of("read extension of sample S stopped after round 1 (BBDuk failed with exit code 1); the"
@@ -458,7 +458,7 @@ class ReadExtensionStageTest {
                 new BbtoolsCommands("java", Path.of("bbtools.jar"), 4, 1), ReadExtensionCaller.Mode.UNREPORTED);
 
         ReadExtensionStage.Result result = ReadExtensionStage.run(settings, directories, Map.of("S", sample), PRIMERS,
-                AmpliconOptions.withMismatches(0), Map.of("S", evidence));
+                AmpliconOptions.defaults(), Map.of("S", evidence));
 
         assertEquals(List.of("Tadpole", "blastn", "BBDuk", "Tadpole", "blastn", "BBDuk"), started);
         assertEquals(List.of("read extension of sample S stopped at round 2 (BBDuk failed with exit code 1); the"
@@ -544,7 +544,7 @@ class ReadExtensionStageTest {
                 new BbtoolsCommands("java", Path.of("bbtools.jar"), 4, 1), ReadExtensionCaller.Mode.UNREPORTED);
 
         ReadExtensionStage.Result result = ReadExtensionStage.run(settings, directories, Map.of("S", sample), PRIMERS,
-                AmpliconOptions.withMismatches(0), Map.of("S", evidence));
+                AmpliconOptions.defaults(), Map.of("S", evidence));
 
         assertEquals(List.of(
                 "extensionUnionRef.fasta from S.fastq", // round 1: one pass, candidate and ends

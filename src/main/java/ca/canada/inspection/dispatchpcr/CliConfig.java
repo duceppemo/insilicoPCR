@@ -281,6 +281,7 @@ public final class CliConfig {
         }
         int parsed = integer(option, value);
         if (parsed < 0) {
+            // As typed, as the other messages give it (--threads -007).
             throw new IllegalArgumentException("--" + option + " must be >= 0, got: " + value);
         }
         return parsed;

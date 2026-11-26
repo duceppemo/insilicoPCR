@@ -115,21 +115,22 @@ record BbtoolsCommands(String javaCommand, Path bbtoolsClassPath, int childMemor
     static final int MIN_BAIT_K = 16;
 
     /**
-     * The shortest k the first bait uses at {@code -m 0}, exact k-mers. 13-mers of the oligos baited 0.34% of SRR642185's
+     * The shortest k the first bait uses for exact k-mers ({@code mismatches} 0; the run baits with
+     * {@link PipelineConfig#TM_BAIT_MISMATCHES}). 13-mers of the oligos baited 0.34% of SRR642185's
      * reads and 2.2% of a potato cyst nematode sample's (16-mers: 0.03%, 15-mers: 0.26%), 12-mers 4.3% and 27%. Exact
-     * 16-mers left a 20-base primer's 5th base in every k-mer: a mismatch there, which {@code --5p-truncation 5} frees on
-     * an assembly, baited no read.
+     * 16-mers left a 20-base primer's 5th base in every k-mer: a mismatch there, which the first 5 bases' freedom
+     * ({@link ca.canada.inspection.pcr.AmpliconOptions#FIVE_PRIME_FREE}) left to an assembly, baited no read.
      */
     static final int MIN_EXACT_BAIT_K = 13;
 
-    /** The shortest k the first bait uses at {@code -m mismatches}: {@link #MIN_EXACT_BAIT_K}, or 16 plus one a mismatch. */
+    /** The shortest k the first bait uses within {@code mismatches} edits: {@link #MIN_EXACT_BAIT_K}, or 16 plus one an edit. */
     static int baitKFloor(int mismatches) {
         return mismatches == 0 ? MIN_EXACT_BAIT_K : MIN_BAIT_K + mismatches;
     }
 
     /**
      * The first bait's k for oligos of {@code shortestOligo} bases: that length less the 5' bases a hit may leave
-     * unaligned ({@code --5p-truncation}), so that a primer whose 5' bases do not match the reads still shares a
+     * unaligned ({@link ca.canada.inspection.pcr.AmpliconOptions#FIVE_PRIME_FREE}), so that a primer whose 5' bases do not match the reads still shares a
      * k-mer with them, as a hit on an assembly would still be accepted; not below {@link #baitKFloor} (16 plus
      * the substitutions allowed, {@code mismatches}, or 13 for exact k-mers), nor above the oligo. A k as long as the
      * primer could not match across an indel either: the read's k-mer then spans one base more of the
@@ -187,11 +188,11 @@ record BbtoolsCommands(String javaCommand, Path bbtoolsClassPath, int childMemor
     /** The most insertions and deletions BBDuk matches k-mers within ({@code edist}): it refuses more. */
     static final int MAX_BAIT_INDELS = 2;
     /**
-     * The most substitutions BBDuk matches k-mers within ({@code hdist}): it refuses more, and {@code -m 4}
-     * failed every run with reads. In the first bait it adds nothing: BBDuk expands its k-mers by
+     * The most substitutions BBDuk matches k-mers within ({@code hdist}): it refuses more (1.x's {@code -m 4}
+     * failed every run with reads). In the first bait it adds nothing: BBDuk expands its k-mers by
      * {@code edist} alone when that is above 0, as it is whenever {@code hdist} is, so that bait matches
-     * within {@code min(-m, 2)} edits (docs/wiki/Limitations.md, "Known gaps"). The substitution bait
-     * ({@link #substitutionBait}) matches them.
+     * within {@code min(mismatches, 2)} edits (docs/wiki/Limitations.md, "Known gaps"). The substitution bait
+     * ({@link #substitutionBait}) matches substitutions alone.
      */
     static final int MAX_BAIT_SUBSTITUTIONS = 3;
 
@@ -207,14 +208,6 @@ record BbtoolsCommands(String javaCommand, Path bbtoolsClassPath, int childMemor
     }
 
     /**
-     * Whether the first bait is followed by one for {@code substitutions} alone ({@link #substitutionBait}): when there
-     * are any, and an oligo is as long as that bait's k (BBDuk takes no k-mer from a shorter one).
-     */
-    static boolean baitsSubstitutionsApart(int substitutions, int longestOligo) {
-        return substitutions > 0 && longestOligo >= substitutionBaitK(substitutions);
-    }
-
-    /**
      * Keeps reads sharing a k-mer of {@link #substitutionBaitK} bases with any oligo within {@code substitutions}
      * substitutions, at most {@link #MAX_BAIT_SUBSTITUTIONS}, and no indel ({@code hdist} without {@code edist}): sites
      * the first bait misses, whose mismatches leave none of its k-mers within its edits (2 in the first 5 bases of an
@@ -227,10 +220,10 @@ record BbtoolsCommands(String javaCommand, Path bbtoolsClassPath, int childMemor
     /**
      * First pass: keep reads sharing a k-mer with any primer within {@code mismatches} edits, at most
      * {@link #MAX_BAIT_INDELS} ({@code edist}): substitutions, insertions and one deletion, the most BBDuk
-     * matches in a k-mer (it has one base past the k-mer to shift in). {@code -m} counts all three, so that
-     * what a hit on an assembly would accept also baits reads. BBDuk ignores the {@code hdist} also given
-     * when {@code edist} is set: at {@code -m 3} a k-mer still matches within 2 edits, not 3 substitutions,
-     * which {@link #substitutionBait} matches.
+     * matches in a k-mer (it has one base past the k-mer to shift in). The run gives
+     * {@link PipelineConfig#TM_BAIT_MISMATCHES}. BBDuk ignores the {@code hdist} also given when {@code edist} is
+     * set: within 3 mismatches a k-mer would still match within 2 edits, not 3 substitutions, which
+     * {@link #substitutionBait} matches.
      */
     Command firstBait(Path primerDatabase, List<Path> reads, Path output, int kLength, int mismatches) {
         Command command = bbduk(primerDatabase, reads, output, mismatches);

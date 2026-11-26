@@ -102,8 +102,7 @@ public final class InSilicoPcrPipeline {
         logRuntime(context);
         RunSettings.lines(settings, context.hasFastqSamples()).forEach(monitor::info);
         // Worked out once, for the log and QAlog.txt: a degenerate panel can have thousands of sequences.
-        List<String> oligoTms = settings.ampliconOptions().tmGated()
-                ? settings.ampliconOptions().tmGate().oligoLines(primers) : List.of();
+        List<String> oligoTms = settings.ampliconOptions().tmGate().oligoLines(primers);
         oligoTms.forEach(monitor::info);
         monitor.info("  Tools: " + dependencies.versions());
         // Before any program runs: on Windows, a path too long fails them all, with an obscure error.

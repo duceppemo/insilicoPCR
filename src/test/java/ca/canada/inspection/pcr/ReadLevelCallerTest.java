@@ -19,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ReadLevelCallerTest {
 
-    private static final AmpliconOptions DEFAULTS = AmpliconOptions.withMismatches(0);
+    private static final AmpliconOptions DEFAULTS = AmpliconOptions.defaults();
     private static final PrimerPanel PRIMERS = PrimerPanel.of(Map.of(
             "assay-F", PRIMER_20, "assay-R", PRIMER_20, "assay-P", PRIMER_20));
 
@@ -489,7 +489,7 @@ class ReadLevelCallerTest {
             }
         }
         ReadEvidence evidence = TestEvidence.evaluate(reads, Map.of("read_1", 101, "read_2", 101), primers,
-                new AmpliconOptions(0, 1, 5, 0, 5, 0, 5000));
+                AmpliconOptions.builder().build());
         return evidence.products("assay").getFirst().row();
     }
 

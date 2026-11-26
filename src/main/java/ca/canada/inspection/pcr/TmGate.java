@@ -42,6 +42,14 @@ public record TmGate(double annealTemp, double margin, double monovalentMm, doub
     public static final double DEFAULT_DNTP_MM = 0.8;
     public static final double DEFAULT_OLIGO_NM = 250;
 
+    // Before DEFAULT: its constructor reads them.
+    /** The annealing temperatures {@link #isAnnealTemp} takes, °C. */
+    public static final double MIN_ANNEAL_TEMP = 0;
+    public static final double MAX_ANNEAL_TEMP = 100;
+    /** {@link #MIN_ANNEAL_TEMP} to {@link #MAX_ANNEAL_TEMP}, as messages say it. */
+    public static final String ANNEAL_TEMP_RANGE = Numbers.plain(MIN_ANNEAL_TEMP) + " to " + Numbers.plain(MAX_ANNEAL_TEMP)
+            + " °C";
+
     /** The run's gate when nothing is set: every setting at its default. */
     public static final TmGate DEFAULT = at(DEFAULT_ANNEAL_TEMP);
 
@@ -64,15 +72,15 @@ public record TmGate(double annealTemp, double margin, double monovalentMm, doub
     private static volatile Generations cache = new Generations(new ConcurrentHashMap<>(), Map.of());
 
     public TmGate {
-        if (!Double.isFinite(annealTemp) || annealTemp < 0 || annealTemp > 100) {
-            throw new IllegalArgumentException("--anneal-temp must be 0 to 100 °C, got: " + annealTemp);
+        if (!isAnnealTemp(annealTemp)) {
+            throw new IllegalArgumentException("--anneal-temp must be " + ANNEAL_TEMP_RANGE + ", got: " + Numbers.shown(annealTemp));
         }
-        requireNonNegative(margin, "--tm-margin");
-        requireNonNegative(monovalentMm, "--na");
-        requireNonNegative(divalentMm, "--mg");
-        requireNonNegative(dntpMm, "--dntp");
+        Numbers.requireNonNegative(margin, "--tm-margin");
+        Numbers.requireNonNegative(monovalentMm, "--na");
+        Numbers.requireNonNegative(divalentMm, "--mg");
+        Numbers.requireNonNegative(dntpMm, "--dntp");
         if (!(oligoNm > 0) || !Double.isFinite(oligoNm)) {
-            throw new IllegalArgumentException("--oligo-conc must be greater than 0 nM, got: " + oligoNm);
+            throw new IllegalArgumentException("--oligo-conc must be greater than 0 nM, got: " + Numbers.shown(oligoNm));
         }
         saltError(monovalentMm, divalentMm, dntpMm).ifPresent(error -> {
             throw new IllegalArgumentException(error);
@@ -142,14 +150,6 @@ public record TmGate(double annealTemp, double margin, double monovalentMm, doub
     }
 
     /**
-     * Whether the oligo of {@code hit} anneals to its site on {@code template}: its Tm there reaches
-     * {@link #minimumTm(String)}.
-     */
-    public boolean accepts(BlastResult hit, TrimmedEnds.Template template) {
-        return accepts(hit.subjectID(), siteTm(hit, template));
-    }
-
-    /**
      * Whether a site of oligo {@code oligoId} that melts at {@code tm} °C is accepted: {@code tm} reaches
      * {@link #minimumTm(String)}. The one test of a site's Tm, wherever it is computed.
      */
@@ -216,11 +216,19 @@ public record TmGate(double annealTemp, double margin, double monovalentMm, doub
      * @param template the sequence the hit lies on, or {@code null}: then only the bases BLAST aligned are known
      */
     public double siteTm(BlastResult hit, TrimmedEnds.Template template) {
+        return siteTm(hit, strandUnder(hit, template));
+    }
+
+    /**
+     * The Tm of the oligo of {@code hit} on {@code strand} ({@link #strandUnder}), °C: the one place a site's Tm is
+     * worked out. {@link Double#NEGATIVE_INFINITY} when the oligo is unknown, or the strand is ({@code null}).
+     */
+    public double siteTm(BlastResult hit, String strand) {
         String oligo = hit.primerSeq();
-        if (oligo == null || oligo.isEmpty()) {
+        if (oligo == null || oligo.isEmpty() || strand == null) {
             return Double.NEGATIVE_INFINITY;
         }
-        return tm(oligo.toUpperCase(java.util.Locale.ROOT), strandUnder(hit, template));
+        return tm(oligo.toUpperCase(java.util.Locale.ROOT), strand);
     }
 
     /**
@@ -328,9 +336,12 @@ public record TmGate(double annealTemp, double margin, double monovalentMm, doub
                 + assayTemps.summary() + " °C");
     }
 
-    private static void requireNonNegative(double value, String label) {
-        if (!(value >= 0) || !Double.isFinite(value)) {
-            throw new IllegalArgumentException(label + " must be >= 0, got: " + value);
-        }
+    /**
+     * Whether {@code temp} can be an annealing temperature, °C: 0 to 100, as {@code --anneal-temp}, the window and
+     * {@code ta=} take it.
+     */
+    public static boolean isAnnealTemp(double temp) {
+        return Double.isFinite(temp) && temp >= MIN_ANNEAL_TEMP && temp <= MAX_ANNEAL_TEMP;
     }
+
 }

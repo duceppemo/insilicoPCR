@@ -22,7 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ReadExtensionCallerTest {
 
-    private static final AmpliconOptions DEFAULTS = AmpliconOptions.withMismatches(0);
+    private static final AmpliconOptions DEFAULTS = AmpliconOptions.defaults();
     private static final PrimerPanel PRIMERS = PrimerPanel.of(Map.of("long-F", PRIMER_20, "long-R", PRIMER_20));
     private static final int REACH = 5000;
     private static final PairSupport.Verdict SUPPORTED = new PairSupport.Verdict(PairSupport.Kind.SUPPORTED, true,

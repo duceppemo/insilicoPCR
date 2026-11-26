@@ -24,7 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ConsolidatedReportTest {
 
-    private static final AmpliconOptions DEFAULTS = AmpliconOptions.withMismatches(0);
+    private static final AmpliconOptions DEFAULTS = AmpliconOptions.defaults();
 
     @TempDir
     Path tempDir;
@@ -237,14 +237,13 @@ class ConsolidatedReportTest {
     @Test
     void basesLeftUnalignedAtAPrimers5PrimeEndAreReportedPerPrimer() throws IOException {
         // The forward primer is held by its last 12 bases only: BLAST left its first 8 out of the
-        // alignment, which --5p-truncation 8 accepts and the mismatch columns do not count.
+        // alignment, which the mismatch columns do not count.
         Sample sample = new Sample("sampleA");
         sample.setFileType(Sample.FileType.FASTA);
         sample.hits().describe("contig1", "chromosome");
         sample.hits().add("assay-F", TestHits.truncatedPlusHit("assay-F", "contig1", 109, 9, 20, PRIMER_20));
         sample.hits().add("assay-R", TestHits.minusHit("assay-R", "contig1", 581));
-        AmpliconOptions lenient = new AmpliconOptions(0, 0, AmpliconOptions.DEFAULT_THREE_PRIME_WINDOW,
-                AmpliconOptions.DEFAULT_THREE_PRIME_PENALTY, 8, 0, 5000);
+        AmpliconOptions lenient = AmpliconOptions.defaults();
 
         List<String> lines = Files.readAllLines(ConsolidatedReport.write(tempDir, Products.ofRun(new HashMap<>(Map.of("sampleA", sample)), PrimerPanel.of(Map.of("assay-F", PRIMER_20, "assay-R", PRIMER_20)), lenient, Map.of()), PrimerPanel.of(Map.of("assay-F", PRIMER_20, "assay-R", PRIMER_20))));
 

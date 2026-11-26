@@ -2,9 +2,7 @@ package ca.canada.inspection.model;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
@@ -23,11 +21,6 @@ public final class Hits {
     private final HashMap<String, ArrayList<BlastResult>> cutByEnd = new HashMap<>();
     /** The circular sequences, each with its length as a circle ({@link ca.canada.inspection.util.Circles}). */
     private final HashMap<String, Integer> circles = new HashMap<>();
-    /**
-     * The Tm of each hit's site the Tm gate worked out, °C (since 2.0): none without it. By the hit itself, not an
-     * equal one: the hits are those {@link #add} was given, and a record's hash reads all its fields.
-     */
-    private final IdentityHashMap<BlastResult, Double> siteTm = new IdentityHashMap<>();
     /** The best site each oligo has that the Tm rule rejected, by oligo: why an assay made no product. */
     private final HashMap<String, NearMiss> nearMisses = new HashMap<>();
     /** Results worked out from the hits and descriptions (the products), until either changes. */
@@ -39,28 +32,9 @@ public final class Hits {
         derived.clear();
     }
 
-    /** Adds an accepted hit of oligo {@code oligoId} whose site melts at {@code tm} °C (the Tm gate's). */
-    public synchronized void add(String oligoId, BlastResult hit, double tm) {
-        siteTm.put(hit, tm);
-        add(oligoId, hit);
-    }
-
-    /**
-     * The Tm of {@code hit}'s site (the hit added, not an equal one), °C, or {@code NaN} when the Tm gate did not
-     * work it out.
-     */
-    public synchronized double siteTm(BlastResult hit) {
-        Double tm = siteTm.get(hit);
-        return tm == null ? Double.NaN : tm;
-    }
-
-    /**
-     * The Tm of each hit's site the Tm gate worked out, by hit (the hit added, not an equal one): a view, not a copy,
-     * as a read-level search has millions. To be read only while the hits stay as they are, as in a
-     * {@link #derived} result (under this object's lock).
-     */
-    public synchronized Map<BlastResult, Double> siteTms() {
-        return Collections.unmodifiableMap(siteTm);
+    /** Adds an accepted hit of oligo {@code oligoId} whose site melts at {@code tm} °C (the Tm rule's). */
+    public void add(String oligoId, BlastResult hit, double tm) {
+        add(oligoId, hit.withTm(tm));
     }
 
     /** Records a site of {@code oligoId} the Tm rule rejected; kept when closer to passing than the one kept so far. */
@@ -137,13 +111,7 @@ public final class Hits {
         kept.descriptions.putAll(descriptions);
         kept.circles.putAll(circles);
         kept.nearMisses.putAll(nearMisses);
-        byOligo.forEach((oligo, hits) -> hits.stream().filter(keep).forEach(hit -> {
-            Double tm = siteTm.get(hit);
-            if (tm != null) {
-                kept.siteTm.put(hit, tm);
-            }
-            kept.add(oligo, hit);
-        }));
+        byOligo.forEach((oligo, hits) -> hits.stream().filter(keep).forEach(hit -> kept.add(oligo, hit)));
         return kept;
     }
 

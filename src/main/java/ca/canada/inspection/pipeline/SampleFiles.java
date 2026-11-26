@@ -28,7 +28,7 @@ public record SampleFiles(Path directory, String name) {
 
     /**
      * The reads of a further pass of the first bait: the oligos of another length ({@link BbtoolsCommands#baitGroups}),
-     * or the substitution bait at {@code -m 3} and more ({@link BbtoolsCommands#substitutionBait}). Those not in
+     * or the substitution bait of the oligos of 18 to 21 bases ({@link BbtoolsCommands#substitutionBait}). Those not in
      * {@link #targetMatches} yet are added to it, then this file is removed.
      */
     Path moreMatches() {

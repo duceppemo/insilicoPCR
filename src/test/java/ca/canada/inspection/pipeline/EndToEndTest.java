@@ -172,8 +172,11 @@ class EndToEndTest {
                 + randomBases.apply(2_000) + "\n");
         Path output = directory.resolve("cut-results");
 
-        pipeline(PipelineConfig.builder(genomes, output, PRIMERS).threads(2)
-                .ampliconOptions(ca.canada.inspection.pcr.AmpliconOptions.withMismatches(1)).build()).run();
+        // At 50 °C, so that the site with its mismatch is accepted wherever it lies: what is checked is that both
+        // copies get the same verdict.
+        pipeline(PipelineConfig.builder(genomes, output, PRIMERS).threads(2).ampliconOptions(
+                ca.canada.inspection.pcr.AmpliconOptions.builder().tmGate(ca.canada.inspection.pcr.TmGate.at(50))
+                        .build()).build()).run();
 
         // Gene, size, primers, mismatches and 5' unaligned bases: the same for both.
         List<String> rows = lines(report(output));
@@ -541,8 +544,7 @@ class EndToEndTest {
                 + "\n>a-R\n" + reverse + "\n>a-P\n" + probe + "\n");
         Path output = directory.resolve("probe-origin-out");
 
-        pipeline(PipelineConfig.builder(input, output, primers).threads(2).ampliconOptions(
-                ca.canada.inspection.pcr.AmpliconOptions.builder().mismatches(1).build()).build()).run();
+        pipeline(PipelineConfig.builder(input, output, primers).threads(2).build()).run();
 
         assertEquals(List.of("plasmid a 2901-100 200 a-P 2998-23 26"), cells(report(output), "Sample", "Assay",
                 "GenomeLocation", "AmpliconSize", "Probe", "ProbeLocation", "ProbeSize"));

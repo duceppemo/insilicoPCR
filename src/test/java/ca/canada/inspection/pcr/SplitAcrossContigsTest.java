@@ -18,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SplitAcrossContigsTest {
 
-    private static final AmpliconOptions DEFAULTS = AmpliconOptions.withMismatches(0);
+    private static final AmpliconOptions DEFAULTS = AmpliconOptions.defaults();
     private static final PrimerPanel PRIMERS = PrimerPanel.of(Map.of("assay-F", PRIMER_20, "assay-R", PRIMER_20));
     private static final Map<String, Integer> LENGTHS = Map.of("contig_1", 1000, "contig_2", 800, "plasmid", 3000);
 
@@ -146,8 +146,8 @@ class SplitAcrossContigsTest {
         Sample sample = genome(plusHit("assay-F", "contig_1", 481), minusHit("assay-R", "contig_2", 401));
 
         assertEquals(1, find(sample, DEFAULTS).size());
-        assertTrue(find(sample, new AmpliconOptions(0, 0, 5, 0, 5, 0, 900)).isEmpty());
-        assertEquals(1, find(sample, new AmpliconOptions(0, 0, 5, 0, 5, 0, 0)).size(), "-l 0");
+        assertTrue(find(sample, AmpliconOptions.builder().maxLength(900).build()).isEmpty());
+        assertEquals(1, find(sample, AmpliconOptions.builder().maxLength(0).build()).size(), "-l 0");
     }
 
     @Test
@@ -156,7 +156,7 @@ class SplitAcrossContigsTest {
         Map<String, Integer> lengths = Map.of("chr1", 3_000_000, "chr2", 2_000_000);
         Sample far = genome(plusHit("assay-F", "chr1", 1_900_000), minusHit("assay-R", "chr2", 500_000));
         Sample near = genome(plusHit("assay-F", "chr1", 2_998_000), minusHit("assay-R", "chr2", 1_000));
-        AmpliconOptions unlimited = new AmpliconOptions(0, 0, 5, 0, 5, 0, 0);
+        AmpliconOptions unlimited = AmpliconOptions.builder().maxLength(0).build();
 
         assertTrue(SplitAcrossContigs.find(far, PRIMERS, unlimited, () -> lengths).isEmpty());
         assertEquals(1, SplitAcrossContigs.find(near, PRIMERS, unlimited, () -> lengths).size());

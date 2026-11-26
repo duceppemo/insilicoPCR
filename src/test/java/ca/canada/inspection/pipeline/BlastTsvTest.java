@@ -26,10 +26,17 @@ class BlastTsvTest {
                 "20", "20", "101", "120", PRIMER, "1", "20", PRIMER);
     }
 
+    /** A line of blastn's table for a site whose 3' base does not pair: the 3' rule rejects it. */
+    private static String rejected(String contig) {
+        String site = PRIMER.substring(0, 19) + (PRIMER.charAt(19) == 'A' ? 'C' : 'A');
+        return String.join("\t", contig, "a-F", "19", "1", "0", "1e-5", "40.1",
+                "20", "20", "101", "120", site, "1", "20", PRIMER);
+    }
+
     /** Keeps the accepted hits of {@code tsv}, and gives them as taken: one pass for the table and the hits. */
     private static ca.canada.inspection.model.Hits keep(Path tsv) {
         ca.canada.inspection.model.Hits hits = new ca.canada.inspection.model.Hits();
-        BlastTsv.keepAccepted(tsv, List.of(), PRIMERS, ca.canada.inspection.pcr.AmpliconOptions.withMismatches(1), hits);
+        BlastTsv.keepAccepted(tsv, List.of(), PRIMERS, ca.canada.inspection.pcr.AmpliconOptions.defaults(), hits);
         return hits;
     }
 
@@ -37,7 +44,7 @@ class BlastTsvTest {
     void theTableKeepsTheAcceptedHitsUnderItsHeader() throws IOException {
         // blastn lists every alignment (1.5 million on a genome for a 40-assay panel), a few thousand of them
         // primer sites: the table kept them all, then was copied again to add its header.
-        Path tsv = Files.writeString(dir.resolve("sample.tsv"), hit("c1", 0) + "\n" + hit("c2", 5) + "\n\n" + hit("c3", 1) + "\n");
+        Path tsv = Files.writeString(dir.resolve("sample.tsv"), hit("c1", 0) + "\n" + rejected("c2") + "\n\n" + hit("c3", 1) + "\n");
 
         ca.canada.inspection.model.Hits hits = keep(tsv);
 

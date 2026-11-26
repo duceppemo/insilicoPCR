@@ -28,8 +28,7 @@ import java.util.TreeMap;
  * @param site      the oligo's best rejected site, {@code contig:start-end(strand)}; empty for none
  * @param siteTm    its Tm, °C; one that would round to {@code neededTm} or above is cut to 0.1 °C below it (49.98
  *                  is 49.9 when 50 is needed); {@code NaN} for none, or a site that fails the 3' rule
- * @param neededTm  the Tm a site of the assay needs, °C ({@link TmGate#minimumTm(String)}); {@code NaN} without the
- *                  Tm rule
+ * @param neededTm  the Tm a site of the assay needs, °C ({@link TmGate#minimumTm(String)})
  */
 public record NoProduct(String sample, String assay, String oligo, String reason, String site, double siteTm,
                         double neededTm) {
@@ -73,7 +72,7 @@ public record NoProduct(String sample, String assay, String oligo, String reason
                 if (under != null) {
                     found.add(new NoProduct(sample.getName(), assay, "", REPORTED_UNDER + under
                             + ": the two assays share a reaction (mix=) and make it at the same place", "", Double.NaN,
-                            needed(gate, group.forward().getFirst())));
+                            gate.minimumTm(group.forward().getFirst())));
                     return;
                 }
                 String alone = onePrimer.contains(key) ? "; the report has a product of one of its primers alone" : "";
@@ -93,7 +92,7 @@ public record NoProduct(String sample, String assay, String oligo, String reason
                     found.add(new NoProduct(sample.getName(), assay, "", "every oligo has a site" + where
                             + ", but no forward and reverse site face each other on one sequence" + lengths(options)
                             + (group.hasProbe() ? " with a probe site between them" : "") + alone,
-                            "", Double.NaN, needed(gate, group.forward().getFirst())));
+                            "", Double.NaN, gate.minimumTm(group.forward().getFirst())));
                 }
             });
         }
@@ -125,34 +124,32 @@ public record NoProduct(String sample, String assay, String oligo, String reason
                 closest = id;
             }
         }
-        if (gate != null) {
-            // Of a degenerate oligo, the variant that melts highest: "below on a perfect match" only when all are.
-            String highest = variants.getFirst();
-            double perfect = Double.NEGATIVE_INFINITY;
-            for (String id : variants) {
-                double tm = gate.perfectTm(primers.sequence(id).toUpperCase(Locale.ROOT));
-                if (tm > perfect) {
-                    perfect = tm;
-                    highest = id;
-                }
+        // Of a degenerate oligo, the variant that melts highest: "below on a perfect match" only when all are.
+        String highest = variants.getFirst();
+        double perfect = Double.NEGATIVE_INFINITY;
+        for (String id : variants) {
+            double tm = gate.perfectTm(primers.sequence(id).toUpperCase(Locale.ROOT));
+            if (tm > perfect) {
+                perfect = tm;
+                highest = id;
             }
-            double minimum = gate.minimumTm(highest);
-            if (perfect < minimum) {
-                return new NoProduct(sample, assay, best == null ? highest : closest, String.format(Locale.ROOT,
-                        "no site reaches %s °C%s, and its Tm on a perfect match is %.1f °C: it is unlikely to anneal"
-                                + " at this temperature (lower the annealing temperature, --anneal-temp or the assay's"
-                                + " ta=, or raise --tm-margin)%s", Numbers.plain(minimum), where, below(perfect, minimum),
-                        alone),
-                        best == null ? "" : site(best.hit()), best == null ? Double.NaN : below(best.tm(), minimum), minimum);
-            }
+        }
+        double minimum = gate.minimumTm(highest);
+        if (perfect < minimum) {
+            return new NoProduct(sample, assay, best == null ? highest : closest, String.format(Locale.ROOT,
+                    "no site reaches %s °C%s, and its Tm on a perfect match is %.1f °C: it is unlikely to anneal"
+                            + " at this temperature (lower the annealing temperature, --anneal-temp or the assay's"
+                            + " ta=, or raise --tm-margin)%s", Numbers.plain(minimum), where, below(perfect, minimum),
+                    alone),
+                    best == null ? "" : site(best.hit()), best == null ? Double.NaN : below(best.tm(), minimum), minimum);
         }
         if (best == null) {
             return new NoProduct(sample, assay, closest, "no site: BLAST found no match" + where + alone, "", Double.NaN,
-                    needed(gate, closest));
+                    gate.minimumTm(closest));
         }
         BlastResult hit = best.hit();
         String binding = binding(hit);
-        double needed = needed(gate, closest); // a site with a Tm implies the Tm rule: never NaN below
+        double needed = gate.minimumTm(closest);
         String reason = best.failsThreePrimeRule()
                 ? "no site is accepted" + where + "; the best fails the 3' rule, with a 3' penalty of "
                 + best.threePrimePenalty() + ", more than " + options.maxThreePrimePenalty() + " (--3p-penalty)" + binding
@@ -193,9 +190,5 @@ public record NoProduct(String sample, String assay, String oligo, String reason
             return tm;
         }
         return Math.floor(tm * 10) / 10;
-    }
-
-    private static double needed(TmGate gate, String oligoId) {
-        return gate == null ? Double.NaN : gate.minimumTm(oligoId);
     }
 }

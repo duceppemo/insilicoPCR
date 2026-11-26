@@ -3,12 +3,13 @@ package ca.canada.inspection.model;
 /**
  * The best site an oligo has that the Tm rule rejected (since 2.0): what the run says of an assay without a product.
  *
- * @param hit               the site
- * @param tm                its Tm, °C; {@code NaN} when it was not worked out: the site fails the 3' rule
- * @param threePrimePenalty its 3' penalty ({@code --3p-penalty}); 0 for a probe
- * @param neededTm          the Tm a site of the oligo needs, °C; {@code NaN} when unknown
+ * @param hit                 the site, with its Tm ({@link BlastResult#tm}); {@code NaN} for a site that fails the 3'
+ *                            rule, whose Tm is not worked out
+ * @param threePrimePenalty   its 3' penalty ({@code --3p-penalty}); 0 for a probe
+ * @param neededTm            the Tm a site of the oligo needs, °C; {@code NaN} when unknown
+ * @param failsThreePrimeRule whether the site fails the 3' rule
  */
-public record NearMiss(BlastResult hit, double tm, int threePrimePenalty, double neededTm) {
+public record NearMiss(BlastResult hit, int threePrimePenalty, double neededTm, boolean failsThreePrimeRule) {
 
     /** How far below the Tm it needs a site may melt and still look like the oligo's site ({@link #plausible}), °C. */
     public static final double PLAUSIBLE_TM_RANGE = 10;
@@ -19,14 +20,29 @@ public record NearMiss(BlastResult hit, double tm, int threePrimePenalty, double
      */
     public static final int PLAUSIBLE_DIFFERENCES = 3;
 
-    /** A site whose needed Tm is unknown. */
-    public NearMiss(BlastResult hit, double tm, int threePrimePenalty) {
-        this(hit, tm, threePrimePenalty, Double.NaN);
+    /** A site that passes the 3' rule and melts at {@code tm} °C, below the {@code neededTm} it needs. */
+    public static NearMiss of(BlastResult hit, double tm, int threePrimePenalty, double neededTm) {
+        return new NearMiss(hit.withTm(tm), threePrimePenalty, neededTm, false);
     }
 
-    /** Whether the site fails the 3' rule (its Tm was then not worked out). */
-    public boolean failsThreePrimeRule() {
-        return Double.isNaN(tm);
+    /** {@link #of(BlastResult, double, int, double)} of a site whose needed Tm is unknown. */
+    public static NearMiss of(BlastResult hit, double tm, int threePrimePenalty) {
+        return of(hit, tm, threePrimePenalty, Double.NaN);
+    }
+
+    /** A site that fails the 3' rule, with a 3' penalty of {@code threePrimePenalty}: its Tm is not worked out. */
+    public static NearMiss failingThreePrimeRule(BlastResult hit, int threePrimePenalty, double neededTm) {
+        return new NearMiss(hit.withTm(Double.NaN), threePrimePenalty, neededTm, true);
+    }
+
+    /** {@link #failingThreePrimeRule(BlastResult, int, double)} of a site whose needed Tm is unknown. */
+    public static NearMiss failingThreePrimeRule(BlastResult hit, int threePrimePenalty) {
+        return failingThreePrimeRule(hit, threePrimePenalty, Double.NaN);
+    }
+
+    /** The site's Tm, °C; {@code NaN} when it was not worked out (it fails the 3' rule). */
+    public double tm() {
+        return hit.tm();
     }
 
     /**
@@ -39,7 +55,7 @@ public record NearMiss(BlastResult hit, double tm, int threePrimePenalty, double
             return hit.alignedMismatches() + hit.fivePrimeUnpairedBases() + hit.threePrimeUncovered()
                     <= PLAUSIBLE_DIFFERENCES;
         }
-        return Double.isNaN(neededTm) || tm >= neededTm - PLAUSIBLE_TM_RANGE;
+        return Double.isNaN(neededTm) || tm() >= neededTm - PLAUSIBLE_TM_RANGE;
     }
 
     /**
@@ -56,7 +72,7 @@ public record NearMiss(BlastResult hit, double tm, int threePrimePenalty, double
             return !failsThreePrimeRule();
         }
         if (!failsThreePrimeRule()) {
-            return tm > other.tm;
+            return tm() > other.tm();
         }
         if (threePrimePenalty != other.threePrimePenalty) {
             return threePrimePenalty < other.threePrimePenalty;

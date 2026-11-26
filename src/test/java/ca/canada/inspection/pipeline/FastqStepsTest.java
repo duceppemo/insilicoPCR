@@ -108,20 +108,11 @@ class FastqStepsTest {
     }
 
     private PipelineContext context(Programs programs) throws IOException {
-        return context(programs, 0);
-    }
-
-    private PipelineContext context(Programs programs, int mismatches) throws IOException {
-        return context(programs, mismatches, "");
+        return context(programs, "");
     }
 
     /** {@code moreOligos}: FASTA records added to the primer file. */
-    private PipelineContext context(Programs programs, int mismatches, String moreOligos) throws IOException {
-        return context(programs, ca.canada.inspection.pcr.AmpliconOptions.withMismatches(mismatches), moreOligos);
-    }
-
-    private PipelineContext context(Programs programs, ca.canada.inspection.pcr.AmpliconOptions options,
-                                    String moreOligos) throws IOException {
+    private PipelineContext context(Programs programs, String moreOligos) throws IOException {
         Path input = Files.createDirectories(dir.resolve("reads"));
         writeFastq(input.resolve("s_R1.fastq.gz"), 1);
         writeFastq(input.resolve("s_R2.fastq.gz"), 1);
@@ -133,8 +124,7 @@ class FastqStepsTest {
         Path blast = Files.createDirectories(runtime.resolve("blast"));
         AppPaths.RuntimeLayout layout = new AppPaths.RuntimeLayout(runtime, bbmap, blast, Path.of("java"));
         Path output = dir.resolve("out");
-        PipelineConfig config = PipelineConfig.builder(input, output, primerFile).threads(1)
-                .ampliconOptions(options).build();
+        PipelineConfig config = PipelineConfig.builder(input, output, primerFile).threads(1).build();
         PipelineDirectories directories = PipelineDirectories.create(output);
         PrimerPanel primers = PrimerService.loadAndPrepare(config, directories, warning -> { });
         return new PipelineContext(config, new RuntimeDependencies(layout), directories,
@@ -148,11 +138,11 @@ class FastqStepsTest {
 
         FastqProcessor.process(context);
 
-        assertEquals(List.of("BBDuk", "blastn", "BBDuk", "BBDuk", "Tadpole", "BBMerge"), programs.run);
+        assertEquals(List.of("BBDuk", "BBDuk", "blastn", "BBDuk", "BBDuk", "Tadpole", "BBMerge"), programs.run);
         SampleFiles files = context.directories().sample("s");
         // The second baiting baits from the anchors trimmed of adapters, not from the anchors as they were.
-        List<String> trim = programs.commands.get(2);
-        List<String> second = programs.commands.get(3);
+        List<String> trim = programs.commands.get(3);
+        List<String> second = programs.commands.get(4);
         assertTrue(trim.contains("ref=adapters") && trim.contains("tbo") && trim.contains("interleaved=t")
                 && trim.contains("rieb=f") && !trim.contains("tpe"), "each mate trimmed on its own: " + trim);
         assertEquals(files.baitAnchorsTrimmed().getFileName().toString(),
@@ -164,32 +154,24 @@ class FastqStepsTest {
     }
 
     @Test
-    void atThreeMismatchesTheReadsAreBaitedForSubstitutionsTooEachPairOnce() throws IOException {
+    void theSubstitutionBaitAddsItsReadsToTheFirstBaitsEachPairOnce() throws IOException {
         Programs programs = new Programs();
-        PipelineContext context = context(programs, 3);
+        PipelineContext context = context(programs);
 
         FastqProcessor.process(context);
 
-        assertEquals(List.of("BBDuk", "BBDuk", "blastn", "BBDuk", "BBDuk", "Tadpole", "BBMerge"), programs.run);
-        List<String> first = programs.commands.get(0);
-        List<String> substitutions = programs.commands.get(1);
-        assertTrue(first.contains("edist=2"), first.toString());
-        assertTrue(substitutions.contains("hdist=3") && substitutions.contains("k=19")
-                && substitutions.stream().noneMatch(argument -> argument.startsWith("edist=")), substitutions.toString());
         SampleFiles files = context.directories().sample("s");
         // p0 and p1 from the first bait, q0 added; p0 not twice.
         assertEquals(3 * 8, countLines(files.targetMatches()));
         assertTrue(Files.notExists(files.moreMatches()));
-        assertTrue(programs.messages.contains("Sample s: 2 read(s) within 3 substitutions of an oligo added to the"
+        assertTrue(programs.messages.contains("Sample s: 2 read(s) within 2 substitutions of an oligo added to the"
                 + " first bait's"), programs.messages.toString());
     }
 
     @Test
     void withTheTmRuleTheReadsAreBaitedWithinOneEditThenTwoSubstitutionsIn18Mers() throws IOException {
         Programs programs = new Programs();
-        PipelineContext context = context(programs, ca.canada.inspection.pcr.AmpliconOptions.builder()
-                .tmGate(ca.canada.inspection.pcr.TmGate.DEFAULT).build(),
-                ">b-F\nCCTAGGCATTGCAGTACGTACGTAC\n>b-R\nCCTAGGCATTGCAGTAC\n");
+        PipelineContext context = context(programs, ">b-F\nCCTAGGCATTGCAGTACGTACGTAC\n>b-R\nCCTAGGCATTGCAGTAC\n");
 
         FastqProcessor.process(context);
 
@@ -212,12 +194,13 @@ class FastqStepsTest {
     @Test
     void aShortProbeBaitsInAPassOfItsOwnAndThePrimersKeepTheirLongerKmers() throws IOException {
         Programs programs = new Programs();
-        // 20-base primers have k=17 at -m 1; the 15-base probe 14, which would have been every oligo's.
-        PipelineContext context = context(programs, 1, ">a-P\nCCTAGGCATTGCAGT\n");
+        // 20-base primers have k=17; the 15-base probe 14, which would have been every oligo's.
+        PipelineContext context = context(programs, ">a-P\nCCTAGGCATTGCAGT\n");
 
         FastqProcessor.process(context);
 
-        assertEquals(List.of("BBDuk", "BBDuk", "blastn", "BBDuk", "BBDuk", "Tadpole", "BBMerge"), programs.run);
+        // The two first-bait passes, then the substitution bait of the 20-base primers.
+        assertEquals(List.of("BBDuk", "BBDuk", "BBDuk", "blastn", "BBDuk", "BBDuk", "Tadpole", "BBMerge"), programs.run);
         Path database = context.directories().primerDatabase();
         List<String> shortPass = programs.commands.get(0);
         List<String> longPass = programs.commands.get(1);
@@ -229,18 +212,11 @@ class FastqStepsTest {
         assertEquals(List.of(">a-F", ">a-R"), Files.readAllLines(database.resolveSibling("primer_tmp.fasta.k17")).stream()
                 .filter(line -> line.startsWith(">")).toList());
         SampleFiles files = context.directories().sample("s");
-        assertEquals(2 * 8, countLines(files.targetMatches()), "the same two pairs from both passes, once each");
+        assertEquals(3 * 8, countLines(files.targetMatches()),
+                "the same two pairs from both passes, once each, and the substitution bait's own");
         assertTrue(Files.notExists(files.moreMatches()));
         assertTrue(programs.messages.contains("First baiting in 2 passes, so that short oligos do not shorten the k-mers"
                 + " of the others: oligos of 15 bases with k=14; oligos of 20 bases with k=17"), programs.messages.toString());
-    }
-
-    @Test
-    void belowThreeMismatchesThereIsNoSubstitutionBait() throws IOException {
-        Programs programs = new Programs();
-        FastqProcessor.process(context(programs, 2));
-
-        assertEquals(List.of("BBDuk", "blastn", "BBDuk", "BBDuk", "Tadpole", "BBMerge"), programs.run);
     }
 
     private static int countLines(Path gzipped) throws IOException {

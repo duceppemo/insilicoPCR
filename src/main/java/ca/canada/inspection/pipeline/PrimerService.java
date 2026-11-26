@@ -1,6 +1,7 @@
 package ca.canada.inspection.pipeline;
 
 import ca.canada.inspection.util.SequenceFileUtils;
+import ca.canada.inspection.pcr.AnnealTemps;
 import ca.canada.inspection.pcr.ExpectedSizes;
 import ca.canada.inspection.pcr.MixGroups;
 import ca.canada.inspection.pcr.PrimerId;
@@ -43,15 +44,16 @@ public final class PrimerService {
      * @param sequences     primer sequences by primer ID (the header up to the first blank), in file order
      * @param expectedSizes product sizes the headers declare ({@code size=}, {@code other=})
      * @param mixGroups     the assays the headers say share a reaction ({@code mix=})
+     * @param annealTemps   the assays' annealing temperatures the headers declare ({@code ta=})
      * @param warnings      what the run says of the file without refusing it: a {@code key=value} word in a header
      *                      that the program does not read
      */
     public record PrimerFile(Map<String, String> sequences, ExpectedSizes expectedSizes, MixGroups mixGroups,
-                             List<String> warnings) {
+                             AnnealTemps annealTemps, List<String> warnings) {
     }
 
     /** The {@code key=value} words of a primer header the program reads: the rest is free text. */
-    static final List<String> HEADER_KEYS = List.of("size", "other", "mix");
+    static final List<String> HEADER_KEYS = List.of("size", "other", "mix", "ta");
 
     private PrimerService() {
     }
@@ -67,7 +69,25 @@ public final class PrimerService {
         file.warnings().forEach(warning);
         Map<String, String> preparedPrimers = expandPrimers(file.sequences());
         writePrimerDatabase(directories.primerDatabase(), preparedPrimers);
-        return PrimerPanel.of(preparedPrimers, file.expectedSizes(), file.mixGroups());
+        return PrimerPanel.of(preparedPrimers, file.expectedSizes(), file.mixGroups(), file.annealTemps());
+    }
+
+    /**
+     * {@code config} with the Tm rule judging the sites of each assay whose primers declare {@code ta=} at that
+     * temperature; the others stay at {@code --anneal-temp}.
+     */
+    static PipelineConfig withAnnealTemps(PipelineConfig config, PrimerPanel primers) {
+        AnnealTemps temps = primers.annealTemps();
+        var options = config.ampliconOptions();
+        if (temps.isEmpty() || !options.tmGated()) {
+            return config;
+        }
+        try {
+            return config.withAmpliconOptions(options.withTmGate(options.tmGate().withAssayTemps(temps)));
+        } catch (IllegalArgumentException e) {
+            // A ta= at or below --tm-margin: its sites would need a Tm of 0 °C or less.
+            throw new PipelineException(e.getMessage() + " (primer file " + config.primers() + ")");
+        }
     }
 
     /** Validates the IDs and sequences and expands degenerate bases. */
@@ -141,7 +161,8 @@ public final class PrimerService {
         try {
             MixGroups mixGroups = MixGroups.fromHeaders(descriptions);
             mixGroups.checkNames(PrimerId.byAssay(fasta.keySet()).keySet());
-            return new PrimerFile(fasta, ExpectedSizes.fromHeaders(descriptions), mixGroups, unknownKeys(descriptions));
+            return new PrimerFile(fasta, ExpectedSizes.fromHeaders(descriptions), mixGroups,
+                    AnnealTemps.fromHeaders(descriptions, mixGroups), unknownKeys(descriptions));
         } catch (IllegalArgumentException e) {
             // The message says it all; without the cause, which reads as a bug (RunFailure).
             throw new PipelineException(e.getMessage() + " (primer file " + file + ")");
@@ -226,11 +247,21 @@ public final class PrimerService {
     static List<String> unknownKeys(Map<String, String> descriptions) {
         List<String> warnings = new ArrayList<>();
         descriptions.forEach((primerId, description) -> {
-            for (String word : description.trim().split("\\s+")) {
+            String[] words = description.trim().split("\\s+");
+            for (int i = 0; i + 1 < words.length; i++) {
+                // ta = 60: read as three words of free text, the temperature silently not set.
+                if (HEADER_KEYS.contains(words[i].toLowerCase(java.util.Locale.ROOT)) && words[i + 1].startsWith("=")) {
+                    warnings.add("Warning: the header of primer " + primerId + " holds \"" + words[i] + " "
+                            + words[i + 1] + "\", which insilicoPCR does not read: it is ignored. Write it without"
+                            + " spaces, such as " + words[i] + "=" + (words[i + 1].length() > 1
+                            ? words[i + 1].substring(1) : i + 2 < words.length ? words[i + 2] : "") + ".");
+                }
+            }
+            for (String word : words) {
                 java.util.regex.Matcher key = UNKNOWN_KEY.matcher(word);
                 if (key.matches() && !HEADER_KEYS.contains(key.group(1).toLowerCase(java.util.Locale.ROOT))) {
                     warnings.add("Warning: the header of primer " + primerId + " holds " + word + ", which insilicoPCR"
-                            + " does not read (it reads size=, other= and mix=): it is ignored. Write it otherwise"
+                            + " does not read (it reads size=, other=, mix= and ta=): it is ignored. Write it otherwise"
                             + " (such as \"" + key.group(1) + " " + word.substring(key.group(1).length() + 1) + "\")"
                             + " if it is a note.");
                 }

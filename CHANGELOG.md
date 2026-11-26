@@ -2,34 +2,93 @@
 
 ## Unreleased
 
+### Breaking (2.0)
+
+- A primer or probe site is accepted when its Tm on the template reaches
+  `--anneal-temp` (default 60 °C) less `--tm-margin` (default 5 °C), and a
+  primer's 3' end passes the 3' rule (`--3p-window`, `--3p-penalty`, as
+  before). One rule for every oligo of every assay. The Tm is Primer3's
+  thermodynamic alignment (`ntthal`), ported to Java, on the template under
+  the site with the bases BLAST left out. `--na`, `--mg`, `--dntp` and
+  `--oligo-conc` set the reaction (defaults 50 mM, 3 mM, 0.8 mM, 250 nM).
+  See the wiki page Why-Tm for the evidence.
+- `ta=<°C>` on a primer header (as `size=`) gives the assay's own annealing
+  temperature: its sites are judged at it, the other assays at
+  `--anneal-temp`, so that assays published at different temperatures run in
+  one file. Assays of one `mix=` reaction share one temperature. The log,
+  `QAlog.txt` and the run details list them.
+- `-m`/`--mismatches`, `--probe-mismatches` and `--5p-truncation` are
+  removed: a command line that gives one fails and says what to give instead.
+  Unpaired 5' bases and bases past a contig end lower a site's Tm instead of
+  being free up to a count. FASTQ mode baits reads with 1 edit per k-mer,
+  then, for oligos of 18 to 21 bases, 2 substitutions per 18-base k-mer in a
+  second pass.
+- The window has an annealing temperature in place of Mismatches; Amplicon
+  settings has the Tm margin and the reaction, and no longer probe mismatches
+  or 5' unpaired bases.
+- `report.tsv` has three more columns after `SizeCheck`: `ForwardTm`,
+  `ReverseTm` and `ProbeTm`. The columns of 1.x keep their places. The HTML
+  amplicon table shows them.
+- `report_no_product.tsv` (new) and the HTML report ("Why no product") say,
+  for each assay without a product in a sample, which oligo has no accepted
+  site, its best site and the rule that site fails, or that the sites pair
+  into no product. The best site is one that looks like the oligo's (within
+  10 °C of the Tm it needs, or failing the 3' rule alone and differing by 3
+  bases at most) before a chance match of a few bases; `QAlog.txt` counts them (assay-sample pairs, and assays). An assay of a `mix=` reaction
+  whose product is reported under the other assay is listed with that
+  assay's name, and counted apart. The log lists each oligo's Tm on
+  a perfect match (a degenerate oligo's range on one line), and flags one
+  below the minimum.
+- Oligos longer than 60 bases are scored on their 3'-most 60 against the
+  whole template strand under them, as Primer3's thermodynamic alignment
+  takes no longer pair on both sides.
+- A reaction with no cations for a Tm (`--na 0` with `--mg` at or below
+  `--dntp`) is refused, and so is a `--tm-margin` at or above
+  `--anneal-temp` or an assay's `ta=`: a site without a duplex melts at
+  0 °C, and a minimum of 0 °C or below accepted every hit.
+- FASTQ mode: a second bait pass keeps the reads within 2 substitutions of an
+  18-base k-mer of an oligo of 18 to 21 bases. One edit per k-mer missed
+  sites the Tm rule accepts, most in short primers: 2 mismatches in the first
+  5 bases of an 18-base primer leave neither of its 17-mers within 1 edit. Of
+  random sites the Tm rule accepts, on 9 panels, the bait missed 7% with 2
+  substitutions and 19% with 3; now 1.3% and 13%. On a *Globodera* sample the
+  run took 357 s instead of 310 s; the pass for every oligo took 588 s, for
+  0.4% and 7%. Sites with more differences may still bait no read (wiki
+  Limitations).
+- Licence: GPL-3.0-or-later (Primer3's code is GPL), from MIT.
+- The five-isolate example's `stxQ` primers melted at 54.0 and 53.3 °C, under
+  the 55 °C a site needs at 60 °C. Two bases of each are now G or C (59.6 and
+  59.4 °C), written into the genomes and reads; the products are the same.
+- `report_fastq_diagnostics.tsv`: a `PARTIAL_BAIT` row's `ReadDetail` now
+  says "no read carries a site of the reverse primer that the rules accept",
+  and adds when the mini-assembly holds a site the rules reject: one within
+  10 °C of the Tm it needs, or that fails the 3' rule alone and differs from
+  the primer by 3 bases at most, not a chance match of a few bases. It said "no
+  read carries the reverse primer", though it counted accepted sites only,
+  and with the Tm rule a primer is often in the reads at a site that melts
+  too low.
+- The tutorial, its example reports and the GUI and report pictures are from
+  2.0.0. The tutorial's primer file gives each assay's published annealing
+  temperature (`hly702` `ta=55`, `hlyQ` `ta=60`). Without it, at 60 °C,
+  `hly702` gives no product on the read set SRR17090570, whose reverse primer
+  site (a mismatch at the primer's 4th base) melts at 54.5 °C. 1.x accepted
+  that site within `--5p-truncation`.
+- `report_no_product.tsv`: a site's Tm that would round to the Tm it failed
+  is shown 0.1 °C under it (49.98 °C read `50.0` against a needed 50).
+
 ### Changed
 
-- FASTQ mode at `-m 0` baits with k-mers of at least 13 bases (16 up to
-  1.0.3). A primer of 18 bases or more now leaves all 5 bases that
-  `--5p-truncation 5` frees out of its k-mers. Before, a 20-base primer with a
-  mismatch at its 5th base was in every 16-mer and baited no read, though an
-  assembly gives the product. 13-mers baited 0.34% of SRR642185's reads
-  (0.03% with 16-mers). Its run took 10 s instead of 7 s and gave the same
-  calls.
-- FASTQ mode: oligos too short for the bait's k floor (13 at `-m 0`, 16 plus
-  `-m` with edits) bait in a BBDuk pass of their own. Before, they brought
+- FASTQ mode: oligos too short for the bait's k floor (17: 16 plus the one
+  edit 2.0 baits with) bait in a BBDuk pass of their own. Before, they brought
   every oligo's k down to theirs. The other oligos keep the k of the shortest
   of them, and the reads of both passes are pooled, each pair once. A
-  23-primer *Globodera* panel with 15-base probes at `-m 1 --5p-truncation 8`
-  baited 59% of a sample's reads with k=14. Now it baits 4.3%: k=14 for oligos
-  of 15 to 17 bases, k=17 for the others. The run took 38 minutes instead of 3
-  hours, and the assays with a product of the expected size were the same.
-  It gave 1,014 products instead of 2,511. The ones it no longer gives had a
-  mismatch or unpaired 5' bases in both primer sites, on contigs that were
-  assembled only because the single pass took most of the genome. See
-  Limitations, "Known gaps".
+  23-primer *Globodera* panel with 15-base probes, baited with 1 edit (1.x at
+  `-m 1`), took 59% of a sample's reads with k=14 for every oligo. Now it
+  takes 4.3%: k=14 for oligos of 15 to 17 bases, k=17 for the others. The run
+  took 38 minutes instead of 3 hours.
 - FASTQ mode: a product the mini-assembly reports with more primer bases
   unpaired than the reads show no longer hides the reads' product, which is
-  reported too (`FastqDiagnostics` `Assembly` = `LESS_PAIRED_SITES`). On the
-  *Globodera* sample above, the more selective bait gave a 61 bp contig holding
-  the 72 bp ReidPal product, with 11 primer bases past its ends that
-  `--5p-truncation 8` let through. That contig's product replaced the read-level
-  call, whose primers pair completely.
+  reported too (`FastqDiagnostics` `Assembly` = `LESS_PAIRED_SITES`).
 
 ## 1.0.3 (2026-11-23)
 

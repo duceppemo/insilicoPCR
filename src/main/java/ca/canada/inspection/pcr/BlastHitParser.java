@@ -17,7 +17,9 @@ import java.util.function.Function;
  * {@code maxFivePrimeTruncation} bases may be missing at the 5' end, and the
  * weighted penalty of imperfections inside the 3' window must not exceed
  * {@code maxThreePrimePenalty}. Hydrolysis probes (-P) do not extend, so only
- * the total mismatch budget and overall coverage are enforced for them.</p>
+ * the total mismatch budget and overall coverage are enforced for them. With the Tm gate on
+ * ({@link TmGate}, since 2.0), Tm decides instead of those counts, and a primer's 3' penalty still
+ * applies.</p>
  *
  * <p>BLAST trims mismatches near the ends of its local alignments together with
  * the matching bases beyond them. When the caller supplies the template around a
@@ -53,6 +55,13 @@ public final class BlastHitParser {
      */
     public static Optional<BlastResult> parse(String line, PrimerPanel primers, AmpliconOptions options,
                                               Function<BlastResult, TrimmedEnds.Template> templates) {
+        if (options.tmGated()) {
+            // One site at a time; BlastHits#read computes the Tms of a search in parallel, with the same test.
+            TmGate gate = options.tmGate();
+            return parseSite(line, primers, options, templates)
+                    .filter(site -> site.primes() && gate.accepts(site.hit().subjectID(), site.tm(gate)))
+                    .map(Pending::hit);
+        }
         int fivePrimeFree = options.maxFivePrimeTruncation();
         return toHit(line, primers)
                 .map(hit -> TrimmedEnds.needsTemplate(hit, options)
@@ -60,6 +69,64 @@ public final class BlastHitParser {
                         : hit)
                 .map(hit -> PrimerId.isProbe(hit.subjectID()) ? hit : hit.withFivePrimeFree(fivePrimeFree))
                 .filter(hit -> accepts(hit, options));
+    }
+
+    /**
+     * A hit for the Tm gate ({@link #parseSite}), with the template strand its oligo anneals to: the Tm, the costly
+     * part (a thermodynamic alignment), can then be computed apart, in parallel.
+     *
+     * @param strand            the template strand under the site; {@code null} for a site that fails the 3' rule,
+     *                          which needs no Tm
+     * @param threePrimePenalty the 3' penalty of a primer's site ({@code --3p-penalty}); 0 for a probe
+     * @param primes            whether it passes the 3' rule (a probe always does: it does not extend)
+     */
+    public record Pending(BlastResult hit, String strand, int threePrimePenalty, boolean primes) {
+        /** The Tm of the site, °C; {@link Double#NEGATIVE_INFINITY} for an oligo without a sequence. */
+        public double tm(TmGate gate) {
+            String oligo = hit.primerSeq();
+            return oligo == null || oligo.isEmpty() ? Double.NEGATIVE_INFINITY
+                    : gate.tm(oligo.toUpperCase(java.util.Locale.ROOT), strand);
+        }
+    }
+
+    /**
+     * With the Tm gate on ({@link AmpliconOptions#tmGated}): the hit of {@code line}, its trimmed bases compared with
+     * the template, with the strand under it and whether it passes the 3' rule; empty for a line that is not a hit.
+     * The 3' rule costs nothing, so a site that fails it needs no Tm; it is kept, for what the run says of an oligo
+     * without an accepted site (its best site, and why that one fails).
+     */
+    public static Optional<Pending> parseSite(String line, PrimerPanel primers, AmpliconOptions options,
+                                              Function<BlastResult, TrimmedEnds.Template> templates) {
+        return hit(line, primers).map(found -> site(found, options, templates));
+    }
+
+    /** The hit of a line of blastn's table, as BLAST aligned it; empty for a line that is not one. */
+    public static Optional<BlastResult> hit(String line, PrimerPanel primers) {
+        return toHit(line, primers);
+    }
+
+    /** {@link #parseSite} of a hit already read ({@link #hit}). */
+    public static Pending site(BlastResult found, AmpliconOptions options,
+                               Function<BlastResult, TrimmedEnds.Template> templates) {
+        int fivePrimeFree = options.maxFivePrimeTruncation();
+        // The template is read only under a site with bases BLAST left out: to compare them, and for the strand under
+        // them (the Tm gate pairs the oligo with every base of the site). A site BLAST aligned whole has its strand in
+        // the alignment; asking for its template would also count it in a missing sequence's warning.
+        boolean trimmed = found.fivePrimeUncovered() + found.threePrimeUncovered() > 0 || found.qseq() == null;
+        TrimmedEnds.Template template = trimmed ? templates.apply(found) : null;
+        BlastResult hit = TrimmedEnds.needsTemplate(found, options)
+                ? TrimmedEnds.extend(found, template, fivePrimeFree) : found;
+        if (PrimerId.isProbe(hit.subjectID())) {
+            return new Pending(hit, TmGate.strandUnder(hit, template), 0, true);
+        }
+        hit = hit.withFivePrimeFree(fivePrimeFree);
+        int penalty = hit.threePrimePenalty(options.threePrimeWindow());
+        boolean primes = penalty <= options.maxThreePrimePenalty();
+        return new Pending(hit, primes ? TmGate.strandUnder(hit, template) : null, penalty, primes);
+    }
+
+    private static boolean passesThreePrimeRule(BlastResult hit, AmpliconOptions options) {
+        return hit.threePrimePenalty(options.threePrimeWindow()) <= options.maxThreePrimePenalty();
     }
 
     /**
@@ -72,15 +139,21 @@ public final class BlastHitParser {
      */
     public static Optional<BlastResult> cutByQueryEnd(String line, PrimerPanel primers, AmpliconOptions options,
                                                       Function<BlastResult, TrimmedEnds.Template> templates) {
+        return toHit(line, primers).flatMap(hit -> cutByQueryEnd(hit, options, templates));
+    }
+
+    /** {@link #cutByQueryEnd} of a hit already read ({@link #hit}). */
+    public static Optional<BlastResult> cutByQueryEnd(BlastResult found, AmpliconOptions options,
+                                                      Function<BlastResult, TrimmedEnds.Template> templates) {
         int fivePrimeFree = options.maxFivePrimeTruncation();
-        return toHit(line, primers)
+        return Optional.of(found)
                 .filter(hit -> !PrimerId.isProbe(hit.subjectID()) && TrimmedEnds.needsTemplate(hit, options))
                 .flatMap(hit -> {
                     TrimmedEnds.Template template = templates.apply(hit);
                     BlastResult onQuery = TrimmedEnds.extend(hit, template, fivePrimeFree).withFivePrimeFree(fivePrimeFree);
                     BlastResult paired = TrimmedEnds.pairedPastTheEnd(onQuery, template);
                     return paired != null && alignedBases(onQuery) >= minimumOnQuery(onQuery.slen())
-                            && !accepts(onQuery, options) && accepts(paired, options)
+                            && !accepts(onQuery, options, template) && accepts(paired, options, template)
                             ? Optional.of(onQuery) : Optional.empty();
                 });
     }
@@ -140,8 +213,22 @@ public final class BlastHitParser {
         return Integer.parseInt(field.of(fields));
     }
 
-    /** Applies the acceptance rules to an already-parsed hit. */
+    /** Applies the acceptance rules to an already-parsed hit, whose template is not known. */
     public static boolean accepts(BlastResult hit, AmpliconOptions options) {
+        return accepts(hit, options, null);
+    }
+
+    /**
+     * Applies the acceptance rules to an already-parsed hit.
+     *
+     * @param template the sequence the hit lies on, or {@code null}; the Tm gate reads the bases BLAST left out there
+     */
+    public static boolean accepts(BlastResult hit, AmpliconOptions options, TrimmedEnds.Template template) {
+        if (options.tmGated()) {
+            // The site's Tm decides in place of the counts; a primer's 3' end must still pair well enough to extend.
+            return (PrimerId.isProbe(hit.subjectID()) || passesThreePrimeRule(hit, options))
+                    && options.tmGate().accepts(hit, template);
+        }
         if (!passesWhateverTheTrimmedBases(hit, options)) {
             return false;
         }
@@ -166,6 +253,9 @@ public final class BlastHitParser {
      * comparison cannot relax it, after it otherwise.
      */
     static boolean passesWhateverTheTrimmedBases(BlastResult hit, AmpliconOptions options) {
+        if (options.tmGated()) {
+            return true; // the counts do not decide: the trimmed bases are compared for the 3' rule and the report
+        }
         if (PrimerId.isProbe(hit.subjectID())) {
             return hit.alignedMismatches() <= options.maxProbeMismatches();
         }

@@ -45,8 +45,14 @@ public record ReportRow(String sample, String assay, Site site, Binding forward,
      * @param mismatches mismatches and indels, as counted against {@code -m}
      * @param threePrime mismatches in the primer's 3' window
      * @param unpaired   bases at the primer's 5' end that do not pair with the template
+     * @param tm         the Tm of the primer on its site, °C, as the Tm gate worked it out (since 2.0); {@code NaN}
+     *                   without the gate
      */
-    public record Binding(String primer, int mismatches, int threePrime, int unpaired) {
+    public record Binding(String primer, int mismatches, int threePrime, int unpaired, double tm) {
+        /** A binding whose Tm was not worked out. */
+        public Binding(String primer, int mismatches, int threePrime, int unpaired) {
+            this(primer, mismatches, threePrime, unpaired, Double.NaN);
+        }
     }
 
     /**
@@ -59,7 +65,12 @@ public record ReportRow(String sample, String assay, Site site, Binding forward,
      * A probe's site in a product: from {@code start} to {@code end}, {@code size} bases. On a circle a site
      * across the origin ends on the circle's start ({@code end < start}), as a product does.
      */
-    public record Probe(String id, int start, int end, int mismatches, int size) {
+    public record Probe(String id, int start, int end, int mismatches, int size, double tm) {
+        /** A site whose Tm was not worked out. */
+        public Probe(String id, int start, int end, int mismatches, int size) {
+            this(id, start, end, mismatches, size, Double.NaN);
+        }
+
         /** A site of {@code end - start + 1} bases. */
         public Probe(String id, int start, int end, int mismatches) {
             this(id, start, end, mismatches, end - start + 1);
@@ -219,6 +230,21 @@ public record ReportRow(String sample, String assay, Site site, Binding forward,
     /** The probe ID, or the empty string when the row has none. */
     public String probeId() {
         return probe == null ? "" : probe.id();
+    }
+
+    /** The Tm of the forward primer on its site, °C; {@code NaN} without the Tm gate. */
+    public double forwardTm() {
+        return forward.tm();
+    }
+
+    /** The Tm of the reverse primer on its site, °C; {@code NaN} without the Tm gate. */
+    public double reverseTm() {
+        return reverse.tm();
+    }
+
+    /** The Tm of the probe on its site, °C; {@code NaN} without the Tm gate or a probe. */
+    public double probeTm() {
+        return probe == null ? Double.NaN : probe.tm();
     }
 
     /** The probe mismatches; 0 when the row has no probe. */

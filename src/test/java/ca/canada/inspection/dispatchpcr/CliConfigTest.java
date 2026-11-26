@@ -55,12 +55,12 @@ class CliConfigTest {
     @Test
     void theWindowsDefaultsAreTheCommandLines() throws Exception {
         // A run from the window with its settings untouched is the run of the command line given
-        // the same mismatches: a default changed on one side only would no longer pass.
-        PipelineConfig cli = parse("-m", "2");
+        // the same annealing temperature: a default changed on one side only would no longer pass.
+        PipelineConfig cli = parse("--anneal-temp", "58");
         var amplicon = ca.canada.inspection.insilicopcr.ui.AmpliconSettingsDialog.AmpliconSettings.DEFAULTS;
         var fastq = ca.canada.inspection.insilicopcr.ui.FastqSettingsDialog.FastqSettings.DEFAULTS;
 
-        assertEquals(cli.ampliconOptions(), amplicon.toOptions(2));
+        assertEquals(cli.ampliconOptions(), amplicon.toOptions(58));
         assertEquals(cli.tadpole(), fastq.tadpole());
         assertEquals(cli.readMinFraction(), fastq.readMinFraction());
         assertEquals(cli.readExtension(), fastq.readExtension());
@@ -71,11 +71,9 @@ class CliConfigTest {
     void defaultsMatchDocumentedValues() throws Exception {
         PipelineConfig config = parse();
         AmpliconOptions options = config.ampliconOptions();
-        assertEquals(0, options.maxTotalMismatches());
-        assertEquals(0, options.maxProbeMismatches());
+        assertEquals(ca.canada.inspection.pcr.TmGate.DEFAULT, options.tmGate());
         assertEquals(AmpliconOptions.DEFAULT_THREE_PRIME_WINDOW, options.threePrimeWindow());
         assertEquals(AmpliconOptions.DEFAULT_THREE_PRIME_PENALTY, options.maxThreePrimePenalty());
-        assertEquals(AmpliconOptions.DEFAULT_FIVE_PRIME_TRUNCATION, options.maxFivePrimeTruncation());
         assertEquals(AmpliconOptions.DEFAULT_MAX_AMPLICON_LENGTH, options.maxAmpliconLength());
         assertEquals(0, options.minAmpliconLength());
         assertEquals(PipelineConfig.DEFAULT_EVALUE, config.evalue());
@@ -89,9 +87,7 @@ class CliConfigTest {
     }
 
     @Test
-    void probeMismatchesFollowTheMismatchesUnlessGiven() throws Exception {
-        assertEquals(2, parse("-m", "2").ampliconOptions().maxProbeMismatches());
-        assertEquals(3, parse("-m", "2", "--probe-mismatches", "3").ampliconOptions().maxProbeMismatches());
+    void theInputCheckParses() throws Exception {
         assertEquals(InputCheck.Depth.QUICK, parse("--input-check", "quick").inputCheck());
     }
 
@@ -145,31 +141,23 @@ class CliConfigTest {
 
     @Test
     void allFlagsAreParsed() throws Exception {
-        PipelineConfig config = parse("-t", "3", "-m", "2", "--probe-mismatches", "3", "-e", "1e3",
-                "-l", "0", "--min-length", "80", "--3p-window", "6", "--3p-penalty", "4",
-                "--5p-truncation", "1", "-g");
+        PipelineConfig config = parse("-t", "3", "--anneal-temp", "62", "-e", "1e3",
+                "-l", "0", "--min-length", "80", "--3p-window", "6", "--3p-penalty", "4", "-g");
         assertEquals(3, config.threads());
         assertEquals(1e3, config.evalue());
         assertTrue(config.gel());
         AmpliconOptions options = config.ampliconOptions();
-        assertEquals(2, options.maxTotalMismatches());
-        assertEquals(3, options.maxProbeMismatches());
+        assertEquals(62, options.tmGate().annealTemp());
         assertEquals(0, options.maxAmpliconLength());
         assertEquals(80, options.minAmpliconLength());
         assertEquals(6, options.threePrimeWindow());
         assertEquals(4, options.maxThreePrimePenalty());
-        assertEquals(1, options.maxFivePrimeTruncation());
-    }
-
-    @Test
-    void probeMismatchesFollowsMismatchesByDefault() throws Exception {
-        assertEquals(2, parse("-m", "2").ampliconOptions().maxProbeMismatches());
     }
 
     @Test
     void invalidNumbersAreRejectedWithClearMessages() throws Exception {
-        assertThrows(IllegalArgumentException.class, () -> parse("-m", "abc"));
-        assertThrows(IllegalArgumentException.class, () -> parse("-m", "-1"));
+        assertThrows(IllegalArgumentException.class, () -> parse("-t", "abc"));
+        assertThrows(IllegalArgumentException.class, () -> parse("--anneal-temp", "-1"));
         assertThrows(IllegalArgumentException.class, () -> parse("-e", "0"));
         assertThrows(IllegalArgumentException.class, () -> parse("-t", "0"));
         assertThrows(IllegalArgumentException.class, () -> parse("--min-length", "6000")); // > max 5000
@@ -258,11 +246,41 @@ class CliConfigTest {
         assertEquals("--evalue must be a number greater than 0, e.g. 1e5, got: -1",
                 assertThrows(IllegalArgumentException.class, () -> parse("-e", "-1")).getMessage());
         // An integer too large for one is said to be so, not "must be an integer".
-        assertEquals("--mismatches is too large, got: 99999999999 (at most 2147483647)",
-                assertThrows(IllegalArgumentException.class, () -> parse("-m", "99999999999")).getMessage());
-        assertEquals("--mismatches is too small, got: -99999999999 (at least -2147483648)",
-                assertThrows(IllegalArgumentException.class, () -> parse("-m", "-99999999999")).getMessage());
+        assertEquals("--3p-window is too large, got: 99999999999 (at most 2147483647)",
+                assertThrows(IllegalArgumentException.class, () -> parse("--3p-window", "99999999999")).getMessage());
+        assertEquals("--3p-window is too small, got: -99999999999 (at least -2147483648)",
+                assertThrows(IllegalArgumentException.class, () -> parse("--3p-window", "-99999999999")).getMessage());
         assertEquals("--threads must be an integer, got: 2.5",
                 assertThrows(IllegalArgumentException.class, () -> parse("-t", "2.5")).getMessage());
+    }
+
+    @Test
+    void theTmRuleIsAlwaysOnAndTheCountsOf1xAreRemoved() throws Exception {
+        assertEquals(ca.canada.inspection.pcr.TmGate.DEFAULT, parse().ampliconOptions().tmGate());
+        assertEquals(new ca.canada.inspection.pcr.TmGate(58, 3, 40, 1.5, 0.6, 50),
+                parse("--anneal-temp", "58", "--tm-margin", "3", "--na", "40", "--mg", "1.5",
+                        "--dntp", "0.6", "--oligo-conc", "50").ampliconOptions().tmGate());
+        assertThrows(IllegalArgumentException.class, () -> parse("--anneal-temp", "hot"));
+        for (String removed : new String[]{"-m", "--mismatches", "--probe-mismatches", "--5p-truncation"}) {
+            Exception error = assertThrows(Exception.class, () -> parse(removed, "1"));
+            String message = CliConfig.removedOption(error).orElseThrow(() -> new AssertionError(error));
+            assertTrue(message.startsWith(removed + " was removed in 2.0: a primer or probe site is accepted when"
+                    + " its Tm reaches --anneal-temp"), message);
+        }
+        // Its value attached, as 1.x read it.
+        Exception attached = assertThrows(Exception.class, () -> parse("-m2"));
+        assertTrue(CliConfig.removedOption(attached).orElseThrow(() -> new AssertionError(attached))
+                .startsWith("-m was removed in 2.0"));
+    }
+
+    @Test
+    void aReactionWithNoCationsForATmIsRefused() throws Exception {
+        // No Na+, and every Mg2+ bound by the dNTP: every oligo melted at -273 °C, every assay negative.
+        IllegalArgumentException none = assertThrows(IllegalArgumentException.class,
+                () -> parse("--na", "0", "--mg", "0.8", "--dntp", "0.8"));
+        assertTrue(none.getMessage().startsWith("--na and --mg leave no cations for a Tm"), none.getMessage());
+        assertThrows(IllegalArgumentException.class, () -> parse("--na", "0", "--mg", "0"));
+        assertEquals(0.0, parse("--na", "0", "--mg", "3").ampliconOptions().tmGate().monovalentMm());
+        assertEquals(0.0, parse("--mg", "0").ampliconOptions().tmGate().divalentMm());
     }
 }

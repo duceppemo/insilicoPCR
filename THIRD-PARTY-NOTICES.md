@@ -2,7 +2,15 @@
 
 The portable releases of insilicoPCR bundle the programs and libraries below. Each is distributed under
 its own license, whose text is in `third_party/` (or, for the Java runtime, in `runtime/*/jdk/legal/`).
-insilicoPCR itself is under the MIT License (`LICENSE`).
+insilicoPCR itself is under the GNU General Public License, version 3 or later (`LICENSE`); releases up to 1.x
+were under the MIT License.
+
+Its melting-temperature code (`ca.canada.inspection.thermo`) is a Java port of Primer3's `thal.c`
+(Primer3 2.6.1, https://github.com/primer3-org/primer3), copyright (c) 1996-2022 Whitehead Institute
+for Biomedical Research, Steve Rozen, Andreas Untergasser, Helen Skaletsky, Triinu Koressaar, Maido Remm and
+others, under the GNU General Public License version 2 or (at your option) any later version. The ported files
+keep that notice. Primer3's thermodynamic parameter tables (`src/primer3_config/`, same copyright and license)
+are bundled unchanged in `src/main/resources/thermo/primer3_config/`.
 
 | Component | Version | Used for | License | Text | Source |
 |---|---|---|---|---|---|

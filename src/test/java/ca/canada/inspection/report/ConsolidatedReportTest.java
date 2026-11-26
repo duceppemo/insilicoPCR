@@ -52,7 +52,8 @@ class ConsolidatedReportTest {
         assertEquals(2, lines.size(), "header + one amplicon row expected, got: " + lines);
         // Every column, though no assay has a probe or a size (1.0): the header is the format.
         assertEquals(ConsolidatedReport.HEADER, lines.get(0));
-        assertTrue(lines.get(1).endsWith("\t\t\t\t\t0\t0\tdesigned\tassembly\t"), lines.get(1));
+        // The Tm columns after the size check, empty without the Tm gate.
+        assertTrue(lines.get(1).endsWith("\t\t\t\t\t0\t0\tdesigned\tassembly\t\t\t\t"), lines.get(1));
 
         String[] row = lines.get(1).split("\t", -1);
         assertEquals("sampleA", row[0]);
@@ -115,7 +116,7 @@ class ConsolidatedReportTest {
 
         String[] pcrRow = lines.get(1).split("\t", -1);
         assertEquals("assay", pcrRow[1]);
-        assertEquals(22, pcrRow.length, "every column, the probe ones empty for probe-less assays");
+        assertEquals(25, pcrRow.length, "every column, the probe ones empty for probe-less assays");
         assertEquals("", pcrRow[13]);
         assertEquals("0", pcrRow[17], "the 5' columns follow the probe columns");
 
@@ -213,12 +214,12 @@ class ConsolidatedReportTest {
                 ConsolidatedReport.write(tempDir, Products.ofRun(samples, PrimerPanel.of(primers.sequences(), sizes), DEFAULTS, Map.of()), PrimerPanel.of(primers.sequences(), sizes)));
 
         assertEquals(4, lines.size(), "header + three rows expected, got: " + lines);
-        assertTrue(lines.get(0).endsWith("Pairing\tSource\tSizeCheck"), lines.get(0));
+        assertTrue(lines.get(0).endsWith("Pairing\tSource\tSizeCheck\tForwardTm\tReverseTm\tProbeTm"), lines.get(0));
         Map<String, String> labelBySize = new HashMap<>();
         for (String line : lines.subList(1, lines.size())) {
             String[] row = line.split("\t", -1);
-            assertEquals(22, row.length, line);
-            labelBySize.put(row[1] + ":" + row[3], row[row.length - 1]);
+            assertEquals(25, row.length, line);
+            labelBySize.put(row[1] + ":" + row[3], row[ReportColumn.BEFORE_SIZE_CHECK.size()]);
         }
         assertEquals(Map.of("assay:500", "target", "assay:60", "unexpected", "plain:200", ""), labelBySize);
 
@@ -227,7 +228,9 @@ class ConsolidatedReportTest {
         assertEquals(4, plain.size());
         assertEquals(ConsolidatedReport.HEADER, plain.get(0));
         for (int i = 1; i < lines.size(); i++) {
-            assertEquals(plain.get(i), lines.get(i).substring(0, lines.get(i).lastIndexOf('\t') + 1));
+            String[] labelled = lines.get(i).split("\t", -1);
+            labelled[ReportColumn.BEFORE_SIZE_CHECK.size()] = "";
+            assertEquals(plain.get(i), String.join("\t", labelled));
         }
     }
 
@@ -271,8 +274,8 @@ class ConsolidatedReportTest {
 
         assertEquals(ConsolidatedReport.HEADER, lines.get(0));
         assertEquals(3, lines.size());
-        assertTrue(lines.get(1).endsWith("\tassay-P\t300-319\t20\t0\t0\t0\tdesigned\tassembly\tother"), lines.get(1));
-        assertTrue(lines.get(2).endsWith("\tassay-P\t35-54\t20\t0\t0\t0\tdesigned\treads\ttarget"), lines.get(2));
+        assertTrue(lines.get(1).endsWith("\tassay-P\t300-319\t20\t0\t0\t0\tdesigned\tassembly\tother\t\t\t"), lines.get(1));
+        assertTrue(lines.get(2).endsWith("\tassay-P\t35-54\t20\t0\t0\t0\tdesigned\treads\ttarget\t\t\t"), lines.get(2));
     }
 
     @org.junit.jupiter.api.Test

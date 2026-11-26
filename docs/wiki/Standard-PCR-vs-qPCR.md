@@ -25,7 +25,7 @@ assayName-P
 
 A positive consolidated report row is generated only when the primer pair produces a valid amplicon **and** the probe is detected entirely within that amplicon. If the probe is defined in the primer file but produces no accepted hit inside the amplicon, the assay stays negative — the primer pair alone is not enough.
 
-Because hydrolysis probes do not extend, the 3'-end mismatch rules that apply to primers are not applied to probes — a probe hit only needs to fit the probe's own mismatch budget (`--probe-mismatches`, the same as `-m` by default) and lie inside the product, with at most 2 bases off the template's end (see [Amplicon Calling](Amplicon-Calling)).
+Because hydrolysis probes do not extend, the 3'-end rule that applies to primers is not applied to probes. A probe site only needs the Tm rule that every oligo passes (its Tm on the template reaches the assay's annealing temperature, `--anneal-temp` or its [`ta=`](Primer-FASTA-Format#annealing-temperature-optional), less `--tm-margin`: 55 °C by default) and to lie inside the product (see [Amplicon Calling](Amplicon-Calling#probes-are-different)). A probe designed hotter than its primers keeps sites with a mismatch or two above that minimum. Before 2.0, it had a mismatch budget of its own (`--probe-mismatches`, removed).
 
 ## Mixing both in one run
 
@@ -34,6 +34,6 @@ Mixed primer files are fully supported. The probe requirement follows each assay
 - assays **with** a `-P` entry use qPCR reporting (probe required);
 - assays **without** a probe use standard PCR reporting.
 
-The consolidated report has the probe columns (`Probe`, `ProbeLocation`, `ProbeSize`, `ProbeMismatches`) whatever the primer file holds (since 1.0; before, only when at least one assay in the file defined a probe); those columns are left empty on rows of probe-less assays.
+The consolidated report has the probe columns (`Probe`, `ProbeLocation`, `ProbeSize`, `ProbeMismatches`, and since 2.0 `ProbeTm`) whatever the primer file holds (since 1.0; before, only when at least one assay in the file defined a probe); those columns are left empty on rows of probe-less assays.
 
 > Versions before 0.8.0 switched the whole report to qPCR mode as soon as any `-P` primer was present, silently dropping all probe-less assays. If you need that behavior for some reason, run the assay types separately.

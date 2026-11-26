@@ -74,7 +74,7 @@ public final class FastqDiagnostics {
         EXTENSION_THROUGH_UNRESOLVED_REPEAT("extended reads join the primers through a repeat longer than the"
                 + " read pairs can bridge; not reported"),
         /** Only some of the assay's primers are in the reads. */
-        PARTIAL_BAIT("only some of the assay's primers were found in the reads");
+        PARTIAL_BAIT("only some of the assay's primers have a site in the reads that the rules accept");
 
         private final String description;
 
@@ -177,6 +177,7 @@ public final class FastqDiagnostics {
         Map<String, Set<Integer>> assembled = Products.sizes(sample, primers, options);
         Map<String, Set<String>> otherProducts = otherProducts(Products.of(sample, primers, options));
         List<Finding> findings = new ArrayList<>();
+        Set<String> likely = null; // the oligos with a plausible rejected site: once, for the first assay that asks
 
         for (Map.Entry<String, PrimerId.Assay> entry : primers.assays().entrySet()) {
             String assay = entry.getKey();
@@ -230,9 +231,10 @@ public final class FastqDiagnostics {
                 }
             } else if (counts.forward() == 0 || counts.reverse() == 0) {
                 status = Status.PARTIAL_BAIT;
-                readDetail = counts.forward() == 0 && counts.reverse() == 0 ? "no read carries the forward or the"
-                        + " reverse primer, only the probe"
-                        : "no read carries the " + (counts.forward() == 0 ? "forward" : "reverse") + " primer";
+                if (likely == null) {
+                    likely = likelySites(sample.hits().nearMisses());
+                }
+                readDetail = partialBait(counts, group, likely);
             } else if (outcome == null) {
                 status = Status.NOT_IN_READS;
                 readDetail = "no complete amplicon in the reads; reads carrying the primers could hold amplicons up to "
@@ -257,6 +259,45 @@ public final class FastqDiagnostics {
                     readDetail, assemblyDetail));
         }
         return findings;
+    }
+
+    /**
+     * Which primer has no accepted site in the reads. A read is counted only for a site the rules accept, so the
+     * primer may be in the reads with a site whose Tm is too low: when the mini-assembly holds such a site, say so.
+     *
+     * @param rejected the oligos with a site on the mini-assembly that the rules reject
+     */
+    private static String partialBait(ReadsWithOligo counts, PrimerId.Assay group, Set<String> rejected) {
+        boolean noForward = counts.forward() == 0;
+        boolean noReverse = counts.reverse() == 0;
+        String which = noForward && noReverse ? "the forward or the reverse primer"
+                : "the " + (noForward ? "forward" : "reverse") + " primer";
+        List<String> missing = new ArrayList<>();
+        if (noForward) {
+            missing.addAll(group.forward());
+        }
+        if (noReverse) {
+            missing.addAll(group.reverse());
+        }
+        boolean siteRejected = missing.stream().anyMatch(rejected::contains);
+        return "no read carries a site of " + which + " that the rules accept"
+                + (noForward && noReverse ? ", only of the probe" : "")
+                + (siteRejected ? "; the mini-assembly holds a site the rules reject (the no-product report gives it"
+                + " and why)" : "");
+    }
+
+    /**
+     * The oligos whose best rejected site ({@code misses}) looks like a site of theirs, not a chance BLAST match of a few
+     * bases ({@link ca.canada.inspection.model.NearMiss#plausible}).
+     */
+    static Set<String> likelySites(Map<String, ca.canada.inspection.model.NearMiss> misses) {
+        Set<String> likely = new java.util.HashSet<>();
+        misses.forEach((oligo, miss) -> {
+            if (miss.plausible()) {
+                likely.add(oligo);
+            }
+        });
+        return likely;
     }
 
     /** What the extended reads add and what read pairs do not confirm, as one text; empty for neither. */
@@ -464,8 +505,11 @@ public final class FastqDiagnostics {
         return String.join(" | ", parts);
     }
 
-    /** Tadpole names contigs {@code contig_6,len=1534,cov=26.3,...}; keep the {@code contig_6} part. */
-    static String shortName(String contigId) {
+    /**
+     * Assemblers name contigs {@code contig_6,len=1534,cov=26.3,...}; keep the {@code contig_6} part, as the reports
+     * show it.
+     */
+    public static String shortName(String contigId) {
         int comma = contigId.indexOf(',');
         return comma > 0 ? contigId.substring(0, comma) : contigId;
     }

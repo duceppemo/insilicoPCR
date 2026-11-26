@@ -71,6 +71,12 @@ public record PipelineConfig(
         return text.strip() + " is too small for a number of the program (it reads as 0): give 1e-300 or more";
     }
 
+    /** These settings with {@code options} for the primer sites and products. */
+    public PipelineConfig withAmpliconOptions(AmpliconOptions options) {
+        return new PipelineConfig(input, output, primers, threads, evalue, options, gel, tadpole, readMinFraction,
+                readExtension, inputCheck, bbtoolsMemoryGiB);
+    }
+
     /** Whether blastn takes {@code evalue}: a finite number above 0. */
     public static boolean validEvalue(double evalue) {
         return evalue > 0.0 && Double.isFinite(evalue);
@@ -115,7 +121,9 @@ public record PipelineConfig(
         private final Path primers;
         private int threads = Runtime.getRuntime().availableProcessors();
         private double evalue = DEFAULT_EVALUE;
-        private AmpliconOptions ampliconOptions = AmpliconOptions.builder().build();
+        // The Tm rule, as on the command line and in the window (since 2.0): mismatch counts are for tests only.
+        private AmpliconOptions ampliconOptions = AmpliconOptions.builder().tmGate(ca.canada.inspection.pcr.TmGate.DEFAULT)
+                .build();
         private boolean gel;
         private TadpoleOptions tadpole = TadpoleOptions.DEFAULTS;
         private double readMinFraction = ReadLevelCaller.DEFAULT_MIN_SUPPORT_FRACTION;
@@ -191,10 +199,55 @@ public record PipelineConfig(
     }
 
     /**
-     * Allowed primer mismatches; also the edits (at most 2) BBDuk's first bait matches primer k-mers within, and, at 3,
-     * the substitutions its substitution bait matches 19-base k-mers within.
+     * The edits BBDuk's first bait matches primer k-mers within (at most 2), and, at 3, the substitutions its
+     * substitution bait matches 19-base k-mers within: {@link #TM_BAIT_MISMATCHES} with the Tm rule, which counts no
+     * mismatch; the allowed primer mismatches without it (tests of the counts of 1.x).
      */
     public int mismatches() {
-        return ampliconOptions.maxTotalMismatches();
+        return ampliconOptions.tmGated() ? TM_BAIT_MISMATCHES : ampliconOptions.maxTotalMismatches();
     }
+
+    /**
+     * The mismatches the FASTQ bait allows with the Tm rule: one in each k-mer of 14 or more bases. A site whose Tm
+     * passes has few mismatches, and its 3' end pairs (the 3' rule); the bait takes reads in, the Tm decides.
+     */
+    public static final int TM_BAIT_MISMATCHES = 1;
+
+    /**
+     * The substitutions the FASTQ substitution bait allows in a k-mer ({@link BbtoolsCommands#substitutionBait}), 0 for
+     * none: {@link #TM_BAIT_SUBSTITUTIONS} with the Tm rule; without it, {@link BbtoolsCommands#MAX_BAIT_SUBSTITUTIONS}
+     * (3) when the allowed primer mismatches exceed the first bait's 2 edits (tests of the counts of 1.x).
+     */
+    public int baitSubstitutions() {
+        if (ampliconOptions.tmGated()) {
+            return TM_BAIT_SUBSTITUTIONS;
+        }
+        int mismatches = ampliconOptions.maxTotalMismatches();
+        // Above the 2 edits, the 3 substitutions: no count between them.
+        return mismatches > BbtoolsCommands.MAX_BAIT_INDELS ? BbtoolsCommands.MAX_BAIT_SUBSTITUTIONS : 0;
+    }
+
+    /**
+     * The substitutions the FASTQ substitution bait allows with the Tm rule, in 18-base k-mers (since 2.0), for the
+     * oligos up to {@link #TM_BAIT_SUBSTITUTION_MAX_LENGTH} bases. The first bait's single edit misses sites the Tm
+     * rule accepts: 2 mismatches in the first 5 bases of an 18-base primer leave neither of its 17-mers within 1 edit.
+     */
+    public static final int TM_BAIT_SUBSTITUTIONS = 2;
+
+    /**
+     * The longest oligo the substitution bait baits with: {@link #TM_BAIT_SUBSTITUTION_MAX_LENGTH} with the Tm rule,
+     * any without it.
+     */
+    public int baitSubstitutionMaxLength() {
+        return ampliconOptions.tmGated() ? TM_BAIT_SUBSTITUTION_MAX_LENGTH : Integer.MAX_VALUE;
+    }
+
+    /**
+     * With the Tm rule, the substitution bait takes the oligos of 18 to 21 bases only: the fewer a primer's k-mers,
+     * the more often 1 edit misses its sites, and the 18-mers of longer oligos took in most of the reads. On a
+     * potato cyst nematode sample it took the baited pairs from 185,312 to 231,347, where every oligo took them to
+     * 588,550 and the run from 310 to 588 s. Of random sites with 2 substitutions that pass the Tm rule, the bait
+     * then misses 1.3%, with 3, 13% (every oligo: 0.4% and 7%; 1 edit alone: 7% and 19%).
+     */
+    public static final int TM_BAIT_SUBSTITUTION_MAX_LENGTH = 21;
 }

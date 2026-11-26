@@ -464,4 +464,42 @@ class HtmlReportTest {
             assertEquals(List.of("report.tsv"), files.map(file -> file.getFileName().toString()).toList());
         }
     }
+
+    @Test
+    void aBestSiteShowsTheContigNameWithoutTheAssemblersWords() {
+        assertEquals("contig_0:664-677(+)",
+                HtmlReport.shortSite("contig_0,len=2492,cov=18.8,class=long/medium:664-677(+)"));
+        assertEquals("NC_003212.1:506723-506735(+)", HtmlReport.shortSite("NC_003212.1:506723-506735(+)"));
+        assertEquals("", HtmlReport.shortSite(""));
+    }
+
+    @Test
+    void theTmsOfARunAndWhyAssaysGaveNoProductAreShown() throws IOException {
+        // A row of the Tm rule, and one sample without a product of an assay.
+        ca.canada.inspection.pcr.ReportRow gated = new ca.canada.inspection.pcr.ReportRow("a", "its",
+                new ca.canada.inspection.pcr.ReportRow.Site(11, 444, 434, "c1", "", '+'),
+                new ca.canada.inspection.pcr.ReportRow.Binding("its-F", 0, 0, 0, 59.64),
+                new ca.canada.inspection.pcr.ReportRow.Binding("its-R", 1, 0, 0, 56.0), null,
+                ca.canada.inspection.pcr.ReportRow.Source.ASSEMBLY);
+        Path tsv = ConsolidatedReport.write(dir, List.of(gated), panel(List.of("its-F", "its-R"), SIZES));
+        List<ca.canada.inspection.pcr.NoProduct> none = List.of(new ca.canada.inspection.pcr.NoProduct("b", "its",
+                "its-R", "no site reaches 55 °C; the best melts at 51.5 °C <x>", "c9:1-20(+)", 51.46, 55));
+        String page = Files.readString(HtmlReport.write(new HtmlReport.Input(tsv, ReportTsv.read(tsv), List.of("a", "b"),
+                Set.of(), panel(List.of("its-F", "its-R"), SIZES), List.of(), DETAILS, List.of(), List.of(), none)));
+
+        assertTrue(page.contains(">Tm F/R (°C)</th>"), "the column, the run having Tms");
+        assertTrue(page.contains("<td class=\"num\">59.6 / 56.0</td>"));
+        assertTrue(page.contains("<h2>Why no product</h2>"));
+        assertTrue(page.contains("<td>b</td><td>its</td><td>its-R</td><td class=\"wrap\">no site reaches 55 °C; the best"
+                + " melts at 51.5 °C &lt;x&gt;</td><td title=\"c9:1-20(+)\">c9:1-20(+)</td><td class=\"num\">51.5</td>"),
+                "escaped");
+        assertTrue(page.contains("report" + NoProductReport.SUFFIX + " has every row"));
+
+        // A run without Tms (a report of 1.x read back): no Tm column, no section.
+        Path old = Files.write(dir.resolve("old.tsv"), List.of(HEADER, row("a", "its", 434, "c1", "")));
+        String oldPage = Files.readString(write(old, List.of("a"), Set.of(), panel(List.of("its-F", "its-R"), SIZES),
+                List.of(), DETAILS));
+        assertFalse(oldPage.contains("Tm F/R"));
+        assertFalse(oldPage.contains("Why no product"));
+    }
 }

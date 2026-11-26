@@ -8,7 +8,7 @@ authors:
     affiliation: "Canadian Food Inspection Agency"
 repository-code: "https://github.com/duceppemo/insilicoPCR"
 url: "https://github.com/duceppemo/insilicoPCR"
-license: MIT
+license: GPL-3.0-or-later
 keywords:
   - in silico PCR
   - qPCR

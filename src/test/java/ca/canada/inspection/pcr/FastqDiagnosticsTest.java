@@ -1,5 +1,6 @@
 package ca.canada.inspection.pcr;
 
+import ca.canada.inspection.model.NearMiss;
 import ca.canada.inspection.model.Sample;
 import ca.canada.inspection.pcr.FastqDiagnostics.Assembly;
 import ca.canada.inspection.pcr.FastqDiagnostics.Finding;
@@ -454,10 +455,37 @@ class FastqDiagnosticsTest {
 
         // Only the probe in the reads: both primers are missing, not the forward one only.
         Finding probeOnly = assess(fastqSample(), noReadCall(Map.of("assay-P", 2L)), Map.of()).getFirst();
-        assertEquals("no read carries the forward or the reverse primer, only the probe", probeOnly.readDetail());
+        assertEquals("no read carries a site of the forward or the reverse primer that the rules accept, only of the"
+                + " probe", probeOnly.readDetail());
         Finding forwardOnly = assess(fastqSample(), noReadCall(Map.of("assay-F", 2L, "assay-P", 2L)), Map.of()).getFirst();
         assertEquals(Status.PARTIAL_BAIT, forwardOnly.status());
-        assertEquals("no read carries the reverse primer", forwardOnly.readDetail());
+        assertEquals("no read carries a site of the reverse primer that the rules accept", forwardOnly.readDetail());
+    }
+
+    @Test
+    void partialBaitPointsAtASiteTheRulesReject() {
+        // The reverse primer is in the reads, but its site melts too low: the mini-assembly holds it, rejected.
+        Sample sample = fastqSample();
+        sample.hits().nearMiss("assay-R", new NearMiss(TestHits.plusHit("assay-R", "contig_0,len=900", 400), 54.5, 0));
+
+        Finding finding = assess(sample, noReadCall(Map.of("assay-F", 12L)), Map.of()).getFirst();
+
+        assertEquals(Status.PARTIAL_BAIT, finding.status());
+        assertEquals("no read carries a site of the reverse primer that the rules accept; the mini-assembly holds a"
+                + " site the rules reject (the no-product report gives it and why)", finding.readDetail());
+    }
+
+    @Test
+    void onlyARejectedSiteThatLooksLikeTheOligosIsNamed() {
+        // A chance BLAST match of a few bases is not a site of the oligo: the hint named one in every PARTIAL_BAIT.
+        String fiveOff = "TTTTT" + PRIMER_20.substring(5);
+        String oneOff = PRIMER_20.substring(0, 18) + (PRIMER_20.charAt(18) == 'A' ? 'C' : 'A') + PRIMER_20.charAt(19);
+        Map<String, NearMiss> misses = Map.of(
+                "a-F", new NearMiss(TestHits.plusHit("a-F", "c", 100), 47.0, 0, 55),   // 8 °C below 55: named
+                "b-F", new NearMiss(TestHits.plusHit("b-F", "c", 100), 30.0, 0, 55),   // far below: a chance match
+                "c-F", new NearMiss(TestHits.plusHit("c-F", "c", 100, oneOff, PRIMER_20), Double.NaN, 4, 55), // 3' SNP
+                "d-F", new NearMiss(TestHits.plusHit("d-F", "c", 100, fiveOff, PRIMER_20), Double.NaN, 6, 55));
+        assertEquals(java.util.Set.of("a-F", "c-F"), FastqDiagnostics.likelySites(misses));
     }
 
     @Test

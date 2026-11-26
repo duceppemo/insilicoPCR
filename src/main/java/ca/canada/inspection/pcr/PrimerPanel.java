@@ -11,7 +11,7 @@ import java.util.TreeSet;
 /**
  * The primers of a run, read once: each oligo's sequence by its ID (degenerate primers
  * expanded, {@code assay-F_0}, {@code assay-F_1}), the assays they form, which of them have
- * a probe, and the product sizes the primer file declares.
+ * a probe, and the product sizes, reactions and annealing temperatures the primer file declares.
  */
 public final class PrimerPanel {
 
@@ -20,8 +20,10 @@ public final class PrimerPanel {
     private final Set<String> assaysWithProbe;
     private final ExpectedSizes expectedSizes;
     private final MixGroups mixGroups;
+    private final AnnealTemps annealTemps;
 
-    private PrimerPanel(Map<String, String> sequences, ExpectedSizes expectedSizes, MixGroups mixGroups) {
+    private PrimerPanel(Map<String, String> sequences, ExpectedSizes expectedSizes, MixGroups mixGroups,
+                        AnnealTemps annealTemps) {
         this.sequences = Collections.unmodifiableMap(new LinkedHashMap<>(sequences));
         // Read-only all the way down: every step shares these groups.
         Map<String, PrimerId.Assay> grouped = new LinkedHashMap<>();
@@ -41,6 +43,7 @@ public final class PrimerPanel {
         this.assaysWithProbe = Collections.unmodifiableSet(withProbe);
         this.expectedSizes = Objects.requireNonNull(expectedSizes, "expectedSizes");
         this.mixGroups = Objects.requireNonNull(mixGroups, "mixGroups");
+        this.annealTemps = Objects.requireNonNull(annealTemps, "annealTemps");
     }
 
     /** A panel declaring no product sizes. */
@@ -54,7 +57,12 @@ public final class PrimerPanel {
     }
 
     public static PrimerPanel of(Map<String, String> sequences, ExpectedSizes expectedSizes, MixGroups mixGroups) {
-        return new PrimerPanel(sequences, expectedSizes, mixGroups);
+        return of(sequences, expectedSizes, mixGroups, AnnealTemps.NONE);
+    }
+
+    public static PrimerPanel of(Map<String, String> sequences, ExpectedSizes expectedSizes, MixGroups mixGroups,
+                                 AnnealTemps annealTemps) {
+        return new PrimerPanel(sequences, expectedSizes, mixGroups, annealTemps);
     }
 
     /** Sequences by oligo ID, in the order of the primer file. */
@@ -103,5 +111,10 @@ public final class PrimerPanel {
     /** Which assays share a reaction ({@code mix=}), and so pair across assays. */
     public MixGroups mixGroups() {
         return mixGroups;
+    }
+
+    /** The annealing temperatures the primer file declares ({@code ta=}), by assay. */
+    public AnnealTemps annealTemps() {
+        return annealTemps;
     }
 }

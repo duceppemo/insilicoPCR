@@ -11,6 +11,7 @@ import java.nio.file.Path;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** The columns of report.tsv are written and read from one list, so a row reads back as written. */
 class ReportColumnTest {
@@ -31,9 +32,33 @@ class ReportColumnTest {
                 "ForwardPrimer", "ReversePrimer", "ForwardMismatches", "ReverseMismatches",
                 "Forward3PrimeMismatches", "Reverse3PrimeMismatches", "Strand", "Probe", "ProbeLocation",
                 "ProbeSize", "ProbeMismatches", "Forward5PrimeUnpaired", "Reverse5PrimeUnpaired", "Pairing", "Source"),
-                ReportColumn.ALL.stream().map(ReportColumn::header).toList());
-        assertEquals(String.join("\t", ReportColumn.ALL.stream().map(ReportColumn::header).toList()) + "\tSizeCheck",
-                ConsolidatedReport.HEADER);
+                ReportColumn.BEFORE_SIZE_CHECK.stream().map(ReportColumn::header).toList());
+        // The Tm columns of 2.0 after the size check: the columns of 1.x keep their places.
+        assertEquals(String.join("\t", ReportColumn.BEFORE_SIZE_CHECK.stream().map(ReportColumn::header).toList())
+                + "\tSizeCheck\tForwardTm\tReverseTm\tProbeTm", ConsolidatedReport.HEADER);
+        assertEquals(ReportColumn.ALL.size() + 1, ConsolidatedReport.COLUMNS.size());
+    }
+
+    @Test
+    void theTmColumnsHoldTheGatesTmsToADecimalAndAreEmptyWithoutIt(@org.junit.jupiter.api.io.TempDir Path tmp)
+            throws IOException {
+        ReportRow gated = new ReportRow("s", "a", new ReportRow.Site(1, 100, 100, "c", "", '+'),
+                new ReportRow.Binding("a-F", 0, 0, 5, 51.4567), new ReportRow.Binding("a-R", 0, 0, 0, 59.36),
+                new ReportRow.Probe("a-P", 40, 59, 1, 20, 61.04), ReportRow.Source.ASSEMBLY);
+        assertEquals("51.5", ReportColumn.FORWARD_TM.value(gated));
+        assertEquals("59.4", ReportColumn.REVERSE_TM.value(gated));
+        assertEquals("61.0", ReportColumn.PROBE_TM.value(gated));
+        assertEquals("", ReportColumn.FORWARD_TM.value(WITH_PROBE));
+        assertEquals("", ReportColumn.PROBE_TM.value(WITHOUT));
+
+        Path report = ConsolidatedReport.write(tmp, List.of(gated), ca.canada.inspection.pcr.PrimerPanel.of(
+                java.util.Map.of("a-F", "ACGT", "a-R", "ACGT", "a-P", "ACGT")));
+        String line = Files.readAllLines(report).get(1);
+        assertTrue(line.endsWith("\tdesigned\tassembly\t\t51.5\t59.4\t61.0"), line);
+        ReportRow back = ReportTsv.read(report).getFirst();
+        assertEquals(51.5, back.forwardTm());
+        assertEquals(59.4, back.reverseTm());
+        assertEquals(61.0, back.probeTm());
     }
 
     @Test

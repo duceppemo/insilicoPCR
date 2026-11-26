@@ -34,9 +34,11 @@ public final class ReportGenerator {
     /**
      * @param readEvidence what the read-level search found, per FASTQ sample; empty without one
      * @param extension    what extending reads found; {@link ReadExtensionStage.Result#NONE} when not run
+     * @param oligoTms     each oligo's Tm on a perfect match, as the run's log gave them
+     *                     ({@link ca.canada.inspection.pcr.TmGate#oligoLines}); empty without the Tm rule
      */
     public static RunResult write(PipelineContext context, Map<String, ReadEvidence> readEvidence,
-                                  ReadExtensionStage.Result extension) {
+                                  ReadExtensionStage.Result extension, List<String> oligoTms) {
         RunMonitor monitor = context.monitor();
         // The run's rows, made once: the report file, the HTML report and the gel all show these.
         List<ReportRow> rows = Products.ofRun(context.samples(), context.primers(), context.config().ampliconOptions(),
@@ -45,7 +47,7 @@ public final class ReportGenerator {
         // report, as the window says (a report without its QAlog would be no run's).
         List<Path> written = new ArrayList<>();
         try {
-            return write(context, readEvidence, extension, rows, written);
+            return write(context, readEvidence, extension, oligoTms, rows, written);
         } catch (CancellationException e) {
             for (Path file : written) {
                 try {
@@ -65,7 +67,8 @@ public final class ReportGenerator {
     }
 
     private static RunResult write(PipelineContext context, Map<String, ReadEvidence> readEvidence,
-                                   ReadExtensionStage.Result extension, List<ReportRow> rows, List<Path> written) {
+                                   ReadExtensionStage.Result extension, List<String> oligoTms, List<ReportRow> rows,
+                                   List<Path> written) {
         RunMonitor monitor = context.monitor();
         Path report = ConsolidatedReport.write(context.directories().consolidated(), rows, context.primers());
         written.add(report);
@@ -73,6 +76,9 @@ public final class ReportGenerator {
         monitor.info("Report written to " + report);
         written.add(ca.canada.inspection.report.SamplesReport.write(report, context.samples().values(),
                 context.inputIssues(), rows));
+        List<ca.canada.inspection.pcr.NoProduct> noProducts = ca.canada.inspection.pcr.NoProduct.of(context.samples(),
+                context.primers(), context.config().ampliconOptions(), rows);
+        written.add(ca.canada.inspection.report.NoProductReport.write(report, noProducts));
         if (context.config().gel()) {
             written.addAll(GelImageWriter.write(report, SyntheticGelImage.defaultPng(report), context.samples().keySet(),
                     monitor::info, monitor::warning));
@@ -90,13 +96,18 @@ public final class ReportGenerator {
                 context.primers(), diagnostics.findings(),
                 RunSettings.details(Version.VERSION, context.config(), context.hasFastqSamples(),
                         context.dependencies().versions(), context.primers().mixGroups().groups()),
-                context.inputIssues(), splits));
+                context.inputIssues(), splits, noProducts));
         written.add(html);
         monitor.info("HTML report written to " + html);
         List<String> qaLines = new ArrayList<>(QaLogWriter.inputIssueLines(context.inputIssues()));
         qaLines.addAll(context.primers().expectedSizes().qaLogLines());
         qaLines.addAll(context.primers().mixGroups().qaLogLines());
+        qaLines.addAll(oligoTms);
         qaLines.addAll(diagnostics.qaLogLines());
+        if (!noProducts.isEmpty()) {
+            qaLines.add(noProductLine(noProducts, ca.canada.inspection.report.ConsolidatedReport.baseName(report)
+                    + ca.canada.inspection.report.NoProductReport.SUFFIX));
+        }
         splits.forEach(split -> qaLines.add("Primers at contig ends: " + split.message()));
         // QAlog.txt marks the run finished and names its report: a run stopped before it does not
         // write it, and the folder's log still names the last finished run's report.
@@ -126,6 +137,34 @@ public final class ReportGenerator {
         extension.rows().forEach((sample, list) ->
                 rows.computeIfAbsent(sample, ignored -> new ArrayList<>()).addAll(list));
         return rows;
+    }
+
+    /**
+     * The QA log's line on {@code noProducts}: the assays of a sample without a product, and apart, those whose
+     * product is reported under another assay of their reaction ({@code mix=}), which made one.
+     */
+    static String noProductLine(List<ca.canada.inspection.pcr.NoProduct> noProducts, String file) {
+        List<String> parts = new ArrayList<>();
+        String none = counted(noProducts, false);
+        String merged = counted(noProducts, true);
+        if (!none.isEmpty()) {
+            parts.add("no product for " + none);
+        }
+        if (!merged.isEmpty()) {
+            parts.add("a product reported under another assay of the reaction (mix=) for " + merged);
+        }
+        String line = String.join("; ", parts);
+        return Character.toUpperCase(line.charAt(0)) + line.substring(1) + ": " + file
+                + (none.isEmpty() ? " says which" : " says why");
+    }
+
+    /** {@code 51 assay-sample pair(s) (3 assays)}: the rows of {@code noProducts} merged or not; empty for none. */
+    private static String counted(List<ca.canada.inspection.pcr.NoProduct> noProducts, boolean merged) {
+        List<ca.canada.inspection.pcr.NoProduct> rows = noProducts.stream()
+                .filter(row -> row.reportedUnderAnother() == merged).toList();
+        long pairs = rows.stream().map(row -> List.of(row.sample(), row.assay())).distinct().count();
+        long assays = rows.stream().map(ca.canada.inspection.pcr.NoProduct::assay).distinct().count();
+        return pairs == 0 ? "" : pairs + " assay-sample pair(s) (" + assays + " assay(s))";
     }
 
     /** Assays of the assembly samples with no product whose primers point off contig ends. */

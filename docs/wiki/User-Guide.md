@@ -80,6 +80,7 @@ A typical run creates output files such as:
 - `consolidated_report/report.html`: a page to read, with a sample-by-assay grid showing which samples are positive for which assay
 - `consolidated_report/report.tsv`: the same results as a table, one row per amplicon
 - `consolidated_report/report_samples.tsv`: every sample, analysed or left out, with its number of products
+- `consolidated_report/report_no_product.tsv`: each assay without a product in a sample, and why
 - `consolidated_report/report_fastq_diagnostics.tsv`, for FASTQ input
 - detailed per-sample results under `detailed_report/`
 - `QAlog.txt`, the quality/runtime log

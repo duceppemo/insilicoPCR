@@ -1,0 +1,11 @@
+Sample	Assay	Oligo	Reason	BestSite	BestSiteTm	NeededTm
+ERR6501878	hly702	hly702-F	no site: BLAST found no match in the mini-assembly (the FASTQ diagnostics say what the reads show)			50.0
+ERR6501878	hly702	hly702-R	no site: BLAST found no match in the mini-assembly (the FASTQ diagnostics say what the reads show)			50.0
+ERR6501878	hlyQ	hlyQ-F	no site: BLAST found no match in the mini-assembly (the FASTQ diagnostics say what the reads show)			55.0
+ERR6501878	hlyQ	hlyQ-R	no site: BLAST found no match in the mini-assembly (the FASTQ diagnostics say what the reads show)			55.0
+ERR6501878	hlyQ	hlyQ-P	no site: BLAST found no match in the mini-assembly (the FASTQ diagnostics say what the reads show)			55.0
+linnocua_CLIP11262	hly702	hly702-F	no site reaches 50 °C; the best melts at 49.9 °C (1 mismatch or indel, 3 unpaired 5' bases)	NC_003212.1:506723-506735(+)	49.9	50.0
+linnocua_CLIP11262	hly702	hly702-R	no site reaches 50 °C; the best melts at 43.9 °C (2 mismatches and indels, 2 unpaired 5' bases)	NC_003212.1:646146-646158(+)	43.9	50.0
+linnocua_CLIP11262	hlyQ	hlyQ-F	no site reaches 55 °C; the best melts at 51.6 °C (1 mismatch or indel, 1 unpaired 5' base)	NC_003212.1:2907708-2907724(+)	51.6	55.0
+linnocua_CLIP11262	hlyQ	hlyQ-R	no site reaches 55 °C; the best melts at 38.2 °C (5 mismatches and indels, 4 unpaired 5' bases)	NC_003212.1:1393668-1393686(+)	38.2	55.0
+linnocua_CLIP11262	hlyQ	hlyQ-P	no site reaches 55 °C; the best melts at 54.9 °C (10 mismatches and indels)	NC_003212.1:2678592-2678617(-)	54.9	55.0

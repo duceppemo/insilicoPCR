@@ -14,6 +14,8 @@ package ca.canada.inspection.pcr;
  * @param maxFivePrimeTruncation maximum unaligned bases tolerated at the primer 5' end
  * @param minAmpliconLength     minimum reported amplicon length in bp (0 = no limit)
  * @param maxAmpliconLength     maximum reported amplicon length in bp (0 = no limit)
+ * @param tmGate                the primer-site Tm gate ({@code --anneal-temp}), or {@code null} when it is off: then
+ *                              the counts above decide, as in 1.x
  */
 public record AmpliconOptions(
         int maxTotalMismatches,
@@ -22,7 +24,8 @@ public record AmpliconOptions(
         int maxThreePrimePenalty,
         int maxFivePrimeTruncation,
         int minAmpliconLength,
-        int maxAmpliconLength
+        int maxAmpliconLength,
+        TmGate tmGate
 ) {
     public static final int DEFAULT_MISMATCHES = 0;
     public static final int DEFAULT_THREE_PRIME_WINDOW = 5;
@@ -52,6 +55,25 @@ public record AmpliconOptions(
         }
     }
 
+    /** Options without the Tm gate, as in 1.x. */
+    public AmpliconOptions(int maxTotalMismatches, int maxProbeMismatches, int threePrimeWindow,
+                           int maxThreePrimePenalty, int maxFivePrimeTruncation, int minAmpliconLength,
+                           int maxAmpliconLength) {
+        this(maxTotalMismatches, maxProbeMismatches, threePrimeWindow, maxThreePrimePenalty, maxFivePrimeTruncation,
+                minAmpliconLength, maxAmpliconLength, null);
+    }
+
+    /** These options with the Tm gate {@code gate} ({@code null}: off). */
+    public AmpliconOptions withTmGate(TmGate gate) {
+        return new AmpliconOptions(maxTotalMismatches, maxProbeMismatches, threePrimeWindow, maxThreePrimePenalty,
+                maxFivePrimeTruncation, minAmpliconLength, maxAmpliconLength, gate);
+    }
+
+    /** Whether primer and probe sites are accepted by their Tm. */
+    public boolean tmGated() {
+        return tmGate != null;
+    }
+
     /** Whether a product length range is one: the minimum at most the maximum, 0 being no maximum. */
     public static boolean lengthsInOrder(int minLength, int maxLength) {
         return maxLength <= 0 || minLength <= maxLength;
@@ -76,6 +98,7 @@ public record AmpliconOptions(
         private int fivePrimeTruncation = DEFAULT_FIVE_PRIME_TRUNCATION;
         private int minLength = DEFAULT_MIN_AMPLICON_LENGTH;
         private int maxLength = DEFAULT_MAX_AMPLICON_LENGTH;
+        private TmGate tmGate;
 
         private Builder() {
         }
@@ -117,10 +140,16 @@ public record AmpliconOptions(
             return this;
         }
 
+        /** Default: {@code null}, no Tm gate. */
+        public Builder tmGate(TmGate tmGate) {
+            this.tmGate = tmGate;
+            return this;
+        }
+
         /** @throws IllegalArgumentException for a negative value, or a minimum above the maximum */
         public AmpliconOptions build() {
             return new AmpliconOptions(mismatches, probeMismatches == null ? mismatches : probeMismatches,
-                    threePrimeWindow, threePrimePenalty, fivePrimeTruncation, minLength, maxLength);
+                    threePrimeWindow, threePrimePenalty, fivePrimeTruncation, minLength, maxLength, tmGate);
         }
     }
 

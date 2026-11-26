@@ -1,7 +1,10 @@
 package ca.canada.inspection.dispatchpcr;
 
+import ca.canada.inspection.util.Numbers;
+
 import ca.canada.inspection.pcr.AmpliconOptions;
 import ca.canada.inspection.pcr.ReadExtensionCaller;
+import ca.canada.inspection.pcr.TmGate;
 import ca.canada.inspection.pipeline.PipelineConfig;
 import ca.canada.inspection.pipeline.TadpoleOptions;
 import ca.canada.inspection.util.InputCheck;
@@ -46,13 +49,11 @@ public final class CliConfig {
 
         // Only what is given is set: the defaults are the builders' own (TadpoleOptions' for Tadpole), the application's too.
         AmpliconOptions.Builder amplicon = AmpliconOptions.builder();
-        ifGiven(cmd, "mismatches", amplicon::mismatches);
-        ifGiven(cmd, "probe-mismatches", amplicon::probeMismatches);
         ifGiven(cmd, "3p-window", amplicon::threePrimeWindow);
         ifGiven(cmd, "3p-penalty", amplicon::threePrimePenalty);
-        ifGiven(cmd, "5p-truncation", amplicon::fivePrimeTruncation);
         ifGiven(cmd, "min-length", amplicon::minLength);
         ifGiven(cmd, "max-length", amplicon::maxLength);
+        amplicon.tmGate(tmGate(cmd));
 
         PipelineConfig.Builder config = PipelineConfig.builder(input, output, primers)
                 .ampliconOptions(amplicon.build())
@@ -96,6 +97,43 @@ public final class CliConfig {
             config.readExtension(readExtension(cmd.getOptionValue("read-extension")));
         }
         return config.build();
+    }
+
+    /** The Tm rule the command line asks for: every setting not given at its default. */
+    private static TmGate tmGate(CommandLine cmd) {
+        return new TmGate(doubleOr(cmd, "anneal-temp", TmGate.DEFAULT_ANNEAL_TEMP),
+                doubleOr(cmd, "tm-margin", TmGate.DEFAULT_MARGIN),
+                doubleOr(cmd, "na", TmGate.DEFAULT_MONOVALENT_MM),
+                doubleOr(cmd, "mg", TmGate.DEFAULT_DIVALENT_MM),
+                doubleOr(cmd, "dntp", TmGate.DEFAULT_DNTP_MM),
+                doubleOr(cmd, "oligo-conc", TmGate.DEFAULT_OLIGO_NM));
+    }
+
+    /** The options of 1.x that 2.0 removed: primer sites are judged by Tm, not counted mismatches. */
+    static final List<String> REMOVED_IN_2_0 = List.of("-m", "--mismatches", "--probe-mismatches", "--5p-truncation");
+
+    /**
+     * What to say of {@code error} when it is an option {@link #REMOVED_IN_2_0}: "Unrecognized option" told a 1.x
+     * command line nothing of what to give instead.
+     */
+    static java.util.Optional<String> removedOption(Exception error) {
+        if (error instanceof org.apache.commons.cli.UnrecognizedOptionException unknown) {
+            String option = unknown.getOption() == null ? "" : unknown.getOption().split("=", 2)[0];
+            if (option.matches("-m\\d+")) {
+                option = "-m"; // -m2, its value attached
+            }
+            if (REMOVED_IN_2_0.contains(option)) {
+                return java.util.Optional.of(option + " was removed in 2.0: a primer or probe site is accepted when its"
+                        + " Tm reaches --anneal-temp (default " + Numbers.plain(TmGate.DEFAULT_ANNEAL_TEMP) + " °C) less"
+                        + " --tm-margin (default " + Numbers.plain(TmGate.DEFAULT_MARGIN) + " °C), whatever its mismatches."
+                        + " Leave " + option + " out; lower --anneal-temp or raise --tm-margin to accept weaker sites");
+            }
+        }
+        return java.util.Optional.empty();
+    }
+
+    private static double doubleOr(CommandLine cmd, String option, double defaultValue) {
+        return cmd.hasOption(option) ? parseDouble(cmd, option) : defaultValue;
     }
 
     private static void ifGiven(CommandLine cmd, String option, IntConsumer set) {

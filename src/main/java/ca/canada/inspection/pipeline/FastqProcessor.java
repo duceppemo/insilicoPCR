@@ -220,9 +220,47 @@ public final class FastqProcessor {
 
     /**
      * How the first bait baits: its passes, each a reference of oligos and a k ({@link BbtoolsCommands#baitGroups}), and
-     * whether it baits again for substitutions alone ({@link BbtoolsCommands#substitutionBait}).
+     * the oligos it baits with again for substitutions alone ({@link BbtoolsCommands#substitutionBait}), or
+     * {@code null} for no such pass.
      */
-    private record FirstBait(List<Pass> passes, boolean substitutionsApart) {
+    private record FirstBait(List<Pass> passes, Path substitutionReference) {
+    }
+
+    /**
+     * The oligos the substitution bait baits with ({@link BbtoolsCommands#substitutionBait}), or {@code null} for no such
+     * pass: those at least as long as its k and at most {@link PipelineConfig#baitSubstitutionMaxLength}; the primer
+     * database when that is every oligo, else written beside it ({@code primer_tmp.fasta.s<substitutions>}).
+     */
+    private static Path substitutionReference(PipelineContext context, Map<String, String> oligos, Path database) {
+        int substitutions = context.config().baitSubstitutions();
+        int longest = oligos.values().stream().mapToInt(String::length).max().orElseThrow();
+        if (!BbtoolsCommands.baitsSubstitutionsApart(substitutions, longest)) {
+            return null;
+        }
+        int k = BbtoolsCommands.substitutionBaitK(substitutions);
+        int maxLength = context.config().baitSubstitutionMaxLength();
+        StringBuilder fasta = new StringBuilder();
+        int taken = 0;
+        for (Map.Entry<String, String> oligo : oligos.entrySet()) {
+            int length = oligo.getValue().length();
+            if (length >= k && length <= maxLength) {
+                fasta.append('>').append(oligo.getKey()).append('\n').append(oligo.getValue()).append('\n');
+                taken++;
+            }
+        }
+        if (taken == 0) {
+            return null;
+        }
+        if (maxLength == Integer.MAX_VALUE) {
+            return database;
+        }
+        Path reference = database.resolveSibling(database.getFileName() + ".s" + substitutions);
+        try {
+            Files.writeString(reference, fasta.toString());
+        } catch (IOException e) {
+            throw new PipelineException("Could not write the oligos of the substitution bait: " + reference, e);
+        }
+        return reference;
     }
 
     /** A pass of the first bait: the oligos' FASTA file, and the k. */
@@ -239,11 +277,10 @@ public final class FastqProcessor {
             throw new PipelineException("Primer dictionary is empty");
         }
         int mismatches = context.config().mismatches();
-        int longest = oligos.values().stream().mapToInt(String::length).max().orElseThrow();
-        boolean substitutions = BbtoolsCommands.baitsSubstitutionsApart(mismatches, longest);
         List<BbtoolsCommands.BaitGroup> groups = BbtoolsCommands.baitGroups(oligos,
                 context.config().ampliconOptions().maxFivePrimeTruncation(), mismatches);
         Path database = context.directories().primerDatabase();
+        Path substitutions = substitutionReference(context, oligos, database);
         if (groups.size() == 1) {
             return new FirstBait(List.of(new Pass(database, groups.getFirst().k())), substitutions);
         }
@@ -303,8 +340,8 @@ public final class FastqProcessor {
                     context.config().mismatches()));
             addMore(files);
         }
-        if (bait.substitutionsApart()) {
-            baitSubstitutions(context, commands, sample, files);
+        if (bait.substitutionReference() != null) {
+            baitSubstitutions(context, commands, sample, files, bait.substitutionReference());
         }
     }
 
@@ -320,21 +357,22 @@ public final class FastqProcessor {
     }
 
     /**
-     * At {@code -m 3}: the reads within 3 substitutions of an oligo that the first bait's 2 edits missed, added to
-     * its reads, each pair once. A pass over the reads like the first, that kept 0.4% of SRR642185's reads, where
-     * the first bait kept 18.6% at {@code -m 3}: the run took the same time.
+     * The reads within {@link PipelineConfig#baitSubstitutions} substitutions of an oligo that the first bait missed,
+     * added to its reads, each pair once: with the Tm rule, 2 in 18-base k-mers of the oligos of 18 to 21 bases, beside
+     * the first bait's 1 edit (since 2.0); in the tests of 1.x at {@code -m 3}, 3 in 19-base k-mers beside 2 edits, which kept 0.4% of SRR642185's
+     * reads where the first bait kept 18.6%: the run took the same time.
      */
     private static void baitSubstitutions(PipelineContext context, BbtoolsCommands commands, Sample sample,
-                                          SampleFiles files) {
+                                          SampleFiles files, Path reference) {
         run(context, commands.substitutionBait(
-                context.directories().primerDatabase(),
+                reference,
                 sample.files(),
                 files.moreMatches(),
-                context.config().mismatches()
+                context.config().baitSubstitutions()
         ));
         int added = addMore(files);
         context.monitor().info("Sample " + sample.getName() + ": " + added + " read(s) within "
-                + Math.min(context.config().mismatches(), BbtoolsCommands.MAX_BAIT_SUBSTITUTIONS)
+                + Math.min(context.config().baitSubstitutions(), BbtoolsCommands.MAX_BAIT_SUBSTITUTIONS)
                 + " substitutions of an oligo added to the first bait's");
     }
 

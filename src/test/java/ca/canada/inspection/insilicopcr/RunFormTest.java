@@ -23,8 +23,23 @@ class RunFormTest {
     private RunForm form(String evalue) throws IOException {
         Path input = Files.writeString(dir.resolve("genome.fasta"), ">c1\nACGT\n");
         Path primers = Files.writeString(dir.resolve("primers.fasta"), ">a-F\nACGTACGT\n>a-R\nACGTACGT\n");
-        return new RunForm(input, dir.resolve("out"), primers, 3, 2, evalue, AmpliconSettings.DEFAULTS,
+        return new RunForm(input, dir.resolve("out"), primers, 3, "60", evalue, AmpliconSettings.DEFAULTS,
                 FastqSettings.DEFAULTS);
+    }
+
+    @Test
+    void theAnnealingTemperatureMustBeATemperature() throws IOException {
+        Path input = Files.writeString(dir.resolve("genome.fasta"), ">c1\nACGT\n");
+        Path primers = Files.writeString(dir.resolve("primers.fasta"), ">a-F\nACGTACGT\n>a-R\nACGTACGT\n");
+        for (String bad : new String[]{"hot", "", "101", "-1"}) {
+            RunForm.Outcome.Invalid invalid = assertInstanceOf(RunForm.Outcome.Invalid.class, new RunForm(input,
+                    dir.resolve("out"), primers, 1, bad, "1e5", AmpliconSettings.DEFAULTS, FastqSettings.DEFAULTS)
+                    .toConfig());
+            assertEquals("Annealing temperature must be 0 to 100 °C, e.g. 60.", invalid.message());
+        }
+        assertEquals(57.5, assertInstanceOf(RunForm.Outcome.Run.class, new RunForm(input, dir.resolve("out"), primers,
+                1, " 57.5 ", "1e5", AmpliconSettings.DEFAULTS, FastqSettings.DEFAULTS).toConfig()).config()
+                .ampliconOptions().tmGate().annealTemp());
     }
 
     @Test
@@ -33,7 +48,8 @@ class RunFormTest {
 
         assertEquals(3, config.threads());
         assertEquals(1e3, config.evalue());
-        assertEquals(2, config.mismatches());
+        assertEquals(ca.canada.inspection.pcr.TmGate.DEFAULT, config.ampliconOptions().tmGate());
+        assertEquals(PipelineConfig.TM_BAIT_MISMATCHES, config.mismatches());
         assertEquals(InputCheck.Depth.FULL, config.inputCheck());
         assertEquals(false, config.gel());
         assertEquals(FastqSettings.DEFAULTS.tadpole(), config.tadpole());
@@ -59,7 +75,7 @@ class RunFormTest {
     @Test
     void aMissingPathIsAMessage() {
         RunForm.Outcome.Invalid invalid = assertInstanceOf(RunForm.Outcome.Invalid.class,
-                new RunForm(null, dir, dir, 1, 0, "1e5", AmpliconSettings.DEFAULTS, FastqSettings.DEFAULTS).toConfig());
+                new RunForm(null, dir, dir, 1, "60", "1e5", AmpliconSettings.DEFAULTS, FastqSettings.DEFAULTS).toConfig());
         assertEquals("Please choose an input file or folder, a primer file and an output folder", invalid.message());
     }
 
@@ -73,7 +89,7 @@ class RunFormTest {
         try {
             org.junit.jupiter.api.Assumptions.assumeFalse(Files.isReadable(input), "run as root: every folder is readable");
             RunForm.Outcome.Invalid invalid = assertInstanceOf(RunForm.Outcome.Invalid.class,
-                    new RunForm(input, dir.resolve("out"), primers, 1, 0, "1e5", AmpliconSettings.DEFAULTS,
+                    new RunForm(input, dir.resolve("out"), primers, 1, "60", "1e5", AmpliconSettings.DEFAULTS,
                             FastqSettings.DEFAULTS).toConfig());
             assertEquals("Unable to list input directory: " + input + " (" + input + ": permission denied)",
                     invalid.message());
@@ -89,7 +105,7 @@ class RunFormTest {
         Path primers = Files.writeString(dir.resolve("primers.fasta"), ">a-F\nACGTACGT\n>a-R\nACGTACGT\n");
 
         RunForm.Outcome.Invalid invalid = assertInstanceOf(RunForm.Outcome.Invalid.class, new RunForm(input.getParent(),
-                dir.resolve("out"), primers, 1, 0, "1e5", AmpliconSettings.DEFAULTS, FastqSettings.DEFAULTS).toConfig());
+                dir.resolve("out"), primers, 1, "60", "1e5", AmpliconSettings.DEFAULTS, FastqSettings.DEFAULTS).toConfig());
         // The run's words: the window had its own.
         assertEquals(ca.canada.inspection.util.InputCheck.noInputFiles(input.getParent()), invalid.message());
         org.junit.jupiter.api.Assertions.assertTrue(invalid.message().contains("its subfolders S1 hold some, but subfolders are not read"), invalid.message());
@@ -99,7 +115,7 @@ class RunFormTest {
     void theInputFolderAsTheOutputFolderIsAMessage() throws IOException {
         Path primers = Files.writeString(dir.resolve("primers.fasta"), ">a-F\nACGTACGT\n>a-R\nACGTACGT\n");
         RunForm.Outcome.Invalid invalid = assertInstanceOf(RunForm.Outcome.Invalid.class,
-                new RunForm(dir, dir, primers, 1, 0, "1e5", AmpliconSettings.DEFAULTS, FastqSettings.DEFAULTS).toConfig());
+                new RunForm(dir, dir, primers, 1, "60", "1e5", AmpliconSettings.DEFAULTS, FastqSettings.DEFAULTS).toConfig());
         assertEquals("The output folder must not be the input folder: " + dir, invalid.message());
     }
 
@@ -110,7 +126,7 @@ class RunFormTest {
         FastqSettings fastq = new FastqSettings(FastqSettings.DEFAULTS.tadpole(), 0.3,
                 FastqSettings.DEFAULTS.readExtension(), 16);
         PipelineConfig config = assertInstanceOf(RunForm.Outcome.Run.class, new RunForm(input, dir.resolve("out"),
-                primers, 2, 0, "1e5", AmpliconSettings.DEFAULTS, fastq).toConfig()).config();
+                primers, 2, "60", "1e5", AmpliconSettings.DEFAULTS, fastq).toConfig()).config();
         assertEquals(16, config.bbtoolsMemoryGiB());
     }
 }

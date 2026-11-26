@@ -4,15 +4,16 @@ insilicoPCR produces report files that summarize primer hits, predicted amplicon
 
 ## Report types
 
-- runtime and quality logs (`QAlog.txt`): the version, the input files and samples, every setting that decides the results (each with its command-line option: mismatches, 3'/5' rules, product length, BLAST e-value, threads, input check, and the FASTQ settings when there are reads), the versions of the tools used (`Tools:` BLAST+, BBTools, Java; since 0.15.3), the assays sharing a reaction (`mix=`), then what the run found worth a note. The run's log lists the same settings at its start, and the HTML report under **Run details** (the e-value, threads, input check and Tadpole settings since 0.15.2)
+- runtime and quality logs (`QAlog.txt`): the version, the input files and samples, every setting that decides the results (each with its command-line option: the Tm rule and the reaction it assumes, the 3' rule, product length, BLAST e-value, threads, input check, and the FASTQ settings when there are reads), the versions of the tools used (`Tools:` BLAST+, BBTools, Java; since 0.15.3), the assays sharing a reaction (`mix=`), each oligo's Tm on a perfect match (since 2.0; one below the Tm a site needs is flagged), then what the run found worth a note, and for how many assay-sample pairs (and assays) there was no product (and, apart, a product reported under another assay of the reaction, `mix=`), naming `report_no_product.tsv`. The run's log lists the same settings at its start, and the HTML report under **Run details** (the e-value, threads, input check and Tadpole settings since 0.15.2)
 - detailed per-sample BLAST hit tables (`detailed_report/<sample>/<sample>.tsv`)
 - consolidated TSV report (`consolidated_report/report.tsv`)
 - the samples of the run (`consolidated_report/report_samples.tsv`, since 1.0): every sample, analysed or left out, with its number of products; see [Samples file](#samples-file)
+- the assays without a product (`consolidated_report/report_no_product.tsv`, since 2.0): for each sample, each assay that gave no product, and why; see [Assays without a product](#assays-without-a-product)
 - HTML report (`consolidated_report/report.html`): the same results as a page to read; see [HTML report](#html-report)
 - FASTQ-mode diagnostics (`consolidated_report/report_fastq_diagnostics.tsv`), when any input is FASTQ
 - with `--gel`, the synthetic gel as `synthetic_gel_report.png` in the output folder (`synthetic_gel_report(1).png` for `report(1).tsv`); in the application, from its gel viewer
 
-If a `report.tsv` already exists in the output folder, a new run writes `report(1).tsv`, `report(2).tsv`, and so on instead of overwriting it, each with its own log (`QAlog(1).txt`, `QAlog(2).txt`) since 0.15.2. The files of a report are named after it: `report(1).html`, `report(1)_samples.tsv`, `report(1)_fastq_diagnostics.tsv`. `detailed_report/` holds the latest run's files.
+If a `report.tsv` already exists in the output folder, a new run writes `report(1).tsv`, `report(2).tsv`, and so on instead of overwriting it, each with its own log (`QAlog(1).txt`, `QAlog(2).txt`) since 0.15.2. The files of a report are named after it: `report(1).html`, `report(1)_samples.tsv`, `report(1)_no_product.tsv`, `report(1)_fastq_diagnostics.tsv`. `detailed_report/` holds the latest run's files.
 
 ## HTML report
 
@@ -38,8 +39,9 @@ for that assay. The genomes, the primer file and the report of this run are in t
 | Input not analysed | Only when a file given for a sample is faulty (since 0.13.0): the sample, the file and what is wrong with it. Such a sample is in no other section, as nothing was run on it. See [Input check](Running-Analyses#input-check) |
 | Samples by assay | One row per sample, one column per assay, and in each cell the outcome with the product size in bp. Samples without any product are listed too. Each column head gives the number of positive samples. Click a cell to list its amplicons |
 | By assay | Per assay: the sizes it declares, how many samples are positive, and their names |
-| All amplicons | Every row of the TSV, with a filter box |
+| All amplicons | Every row of the TSV, with a filter box. Since 2.0 it shows each primer's Tm on its site (`Tm F/R (°C)`) and the probe's (`Probe Tm (°C)`) |
 | Read-level evidence | FASTQ input only: products called from reads (whole or extended) and products seen in too few reads to be reported |
+| Why no product | Since 2.0, only when an assay gave no product in a sample: the oligo without an accepted site, its best site, its Tm, and the rule it fails, as in [`report_no_product.tsv`](#assays-without-a-product) |
 | Primers at contig ends | FASTA input only (since 0.15.0): assays with no product whose primers point off the ends of two contigs, or both ends of one, with the smallest product joining them would give. See [Limitations](Limitations#assemblies-fasta) |
 | Run details | Version, date, input, primer file, the assays sharing a reaction (`mix=`), every setting that decides the results, and the versions of the tools used (`Tools`), as in `QAlog.txt` |
 
@@ -74,7 +76,7 @@ The consolidated report is the primary summary table: one row per predicted ampl
 Since 1.0, every report has every column, in one order, whatever the primer file holds; a column that does not apply to a row is empty. The header line is the format:
 
 ```text
-Sample	Assay	GenomeLocation	AmpliconSize	Contig	ContigDescription	ForwardPrimer	ReversePrimer	ForwardMismatches	ReverseMismatches	Forward3PrimeMismatches	Reverse3PrimeMismatches	Strand	Probe	ProbeLocation	ProbeSize	ProbeMismatches	Forward5PrimeUnpaired	Reverse5PrimeUnpaired	Pairing	Source	SizeCheck
+Sample	Assay	GenomeLocation	AmpliconSize	Contig	ContigDescription	ForwardPrimer	ReversePrimer	ForwardMismatches	ReverseMismatches	Forward3PrimeMismatches	Reverse3PrimeMismatches	Strand	Probe	ProbeLocation	ProbeSize	ProbeMismatches	Forward5PrimeUnpaired	Reverse5PrimeUnpaired	Pairing	Source	SizeCheck	ForwardTm	ReverseTm	ProbeTm
 ```
 
 Before 1.0, the probe columns were there only when an assay of the primer file had a probe, and `SizeCheck` only when an assay declared a size, so the columns after them moved from one primer file to the next. Columns renamed in 1.0:
@@ -86,7 +88,7 @@ Before 1.0, the probe columns were there only when an assay of the primer file h
 | `ForwardPrimers` / `ReversePrimers` | `ForwardPrimer` / `ReversePrimer` |
 | `Forward5PrimeUnaligned` / `Reverse5PrimeUnaligned` | `Forward5PrimeUnpaired` / `Reverse5PrimeUnpaired` |
 
-`Pairing` and `Source` are new in 1.0. The application still reads reports written before 1.0, under their old column names (**Open Previous Run**, the gel).
+`Pairing` and `Source` are new in 1.0. `ForwardTm`, `ReverseTm` and `ProbeTm` are new in 2.0, after `SizeCheck`: the columns of 1.x keep their places. The application still reads reports written before 1.0, under their old column names (**Open Previous Run**, the gel).
 
 What a script can rely on:
 
@@ -107,7 +109,7 @@ What a script can rely on:
 | `Contig` | Contig/sequence ID the product sits on |
 | `ContigDescription` | Free text from the contig FASTA header; for a product called from reads, how the reads support it (below) |
 | `ForwardPrimer` / `ReversePrimer` | Primer IDs that formed the pair (degenerate variants keep their `_n` suffix). Since 0.15.3 they can name one role twice (`toxA-F` and `toxA-F`: a product of one primer alone, at an inverted repeat) or two assays (a product of two assays in one reaction); the first is then the primer on the plus strand, and `Pairing` says which it is. The HTML report tags such a product **one primer** or **two assays**, and says why in the cell's hover text. See [Amplicon Calling](Amplicon-Calling#stage-2-amplicon-calling) |
-| `ForwardMismatches` / `ReverseMismatches` | Mismatches + indels for each primer, as counted against `-m`. The 3' bases BLAST trimmed off its alignment are compared with the template and counted when they do not pair; a 3' base beyond the end of a contig or read counts too. Unpaired 5' bases are not included (see [Primer binding columns](#primer-binding-columns)) |
+| `ForwardMismatches` / `ReverseMismatches` | Mismatches + indels for each primer, for information: since 2.0 the site's Tm decides, not this count (see [Tm columns](#tm-columns)). The 3' bases BLAST trimmed off its alignment are compared with the template and counted when they do not pair; a 3' base beyond the end of a contig or read counts too. Unpaired 5' bases are not included (see [Primer binding columns](#primer-binding-columns)) |
 | `Forward3PrimeMismatches` / `Reverse3PrimeMismatches` | Number of imperfections within the 3'-end window (default last 5 bases) |
 | `Strand` | `+` when the forward primer matched the plus strand; `-` when the assay matched the reverse strand |
 
@@ -130,20 +132,16 @@ After the probe columns:
 
 | Column | Meaning |
 |---|---|
-| `Forward5PrimeUnpaired` / `Reverse5PrimeUnpaired` | Bases within `--5p-truncation` of the primer's 5' end that do not pair with the template: the bases BLAST left out of its alignment that differ from the template (bases beyond the end of a contig or read count too), and, since 0.15.3, the mismatches and indels it kept aligned there. Named `Forward5PrimeUnaligned` / `Reverse5PrimeUnaligned` before 1.0 |
+| `Forward5PrimeUnpaired` / `Reverse5PrimeUnpaired` | Bases among the first 5 of the primer's 5' end that do not pair with the template: the bases BLAST left out of its alignment that differ from the template (bases beyond the end of a contig or read count too), and, since 0.15.3, the mismatches and indels it kept aligned there. Named `Forward5PrimeUnaligned` / `Reverse5PrimeUnaligned` before 1.0 |
 
-The first `--5p-truncation` bases (default 5) may differ from the template, whether BLAST left them out or aligned them, and are **not** counted in the mismatch columns.
-A row can therefore show `0` mismatches for a primer that is held by its 3' end only. With
-`--5p-truncation 8`, a 17-base primer is accepted on a 9-base match:
+These bases are **not** counted in the mismatch columns; differences past them are. A row can therefore show
+`0` mismatches for a primer whose first bases do not pair. Whether such a site is accepted is for its Tm to say
+(since 2.0; in 1.x, `--5p-truncation` let up to 5 such bases through, whatever the primer's length): 5'
+bases that do not pair lower the Tm, and a 17-base primer held by its last 9 bases melts far below 55 °C and is
+rejected, while a 22-mer designed at 60 °C with 2 unpaired 5' bases usually still reaches it.
 
-```text
-ForwardPrimer  ForwardMismatches  Forward3PrimeMismatches  Forward5PrimeUnpaired
-assay-F        0                  0                        8
-```
-
-Compare the number with the primer's length. Six unaligned bases of a 22-mer leave 16 bound, which a
-reaction tolerates; eight of a 17-mer leave 9, which will not anneal at a normal annealing temperature. The
-HTML report gives both numbers (`9 of 17 bases`) and marks such products with `◐`.
+Compare the number with the primer's length, and see `ForwardTm` / `ReverseTm`. The
+HTML report gives both numbers (`20 of 22 bases`) and marks such products with `◐`.
 
 ### Pairing and source columns
 
@@ -156,13 +154,30 @@ Since 1.0, after the primer binding columns (before, only the primer IDs and the
 
 ### Size label column
 
-The last column. It is filled for the assays that [declare product sizes](Primer-FASTA-Format#declaring-product-sizes-optional) in the primer file (before 1.0 the column was there only when at least one assay declared a size):
+After `Source` (the last column before 2.0, which added the [Tm columns](#tm-columns) after it). It is filled for the assays that [declare product sizes](Primer-FASTA-Format#declaring-product-sizes-optional) in the primer file (before 1.0 the column was there only when at least one assay declared a size):
 
 | Column | Meaning |
 |---|---|
 | `SizeCheck` | `target`: the product the assay is designed to give (`size=`). `other`: another product it is known to give (`other=`). `unexpected`: a size the primer file does not declare. Empty for an assay that declares nothing, and for a product of two assays |
 
 The label is information only. Every product is reported whatever its size, with or without a declaration; an `unexpected` row is a product a real PCR would amplify too.
+
+### Tm columns
+
+Since 2.0, after `SizeCheck`. Each oligo's Tm on its site, in °C with one decimal, as the [Tm rule](Amplicon-Calling#tm-on-the-template---anneal-temp---tm-margin) worked it out: Primer3's thermodynamic alignment of the oligo with the template under it, in the reaction the run assumes (`--na`, `--mg`, `--dntp`, `--oligo-conc`). Every reported site reaches its assay's annealing temperature (`--anneal-temp`, or the assay's [`ta=`](Primer-FASTA-Format#annealing-temperature-optional)) less `--tm-margin`: 55 °C by default.
+
+| Column | Meaning |
+|---|---|
+| `ForwardTm` / `ReverseTm` | Tm of the forward and reverse primer on their sites |
+| `ProbeTm` | Tm of the probe on its site; empty for a row without a probe |
+
+A site's Tm is at most the oligo's Tm on a perfect match, which the run's log and `QAlog.txt` list. In the five-isolate example, every site is a perfect match:
+
+```text
+Sample      Assay  AmpliconSize  SizeCheck   ForwardTm  ReverseTm  ProbeTm
+isolate_01  stxQ   118           target      59.6       59.4       65.0
+isolate_01  toxA   312           target      59.7       61.3
+```
 
 
 ### Circular sequences
@@ -193,9 +208,47 @@ Since 1.0, every report has beside it `report_samples.tsv` (`report(1)_samples.t
 
 The lines are sorted by sample name, in the order of `report.tsv`. The file is written as `report.tsv` is: UTF-8 without a byte-order mark, LF line ends, tabs between cells, and its cells written the same way ([File format](#file-format)).
 
+## Assays without a product
+
+Since 2.0, every report has beside it `report_no_product.tsv` (`report(1)_no_product.tsv` beside `report(1).tsv`): for each sample, each assay that gave no product, and why. `report.tsv` lists what the reactions make; this file, what they do not, and the rule that decided it. The rules are the same for every assay, and an assay may give no product in silico because it is poorly designed, or because its published conditions differ from the run's: this file says which oligo fails, and by how much.
+
+| Column | Meaning |
+|---|---|
+| `Sample` | Sample name |
+| `Assay` | Assay name |
+| `Oligo` | The primer or probe with no accepted site (of a degenerate oligo, the variant that came closest). One row per such oligo. Empty when every oligo has a site but none pair into a product |
+| `Reason` | Why, in words (below) |
+| `BestSite` | The oligo's best site, as `contig:start-end(strand)`; empty when there is none. A site that looks like the oligo's (within 10 °C of `NeededTm`, or failing the 3' rule alone and differing from the oligo by 3 bases at most) comes before a chance match of a few bases; then the site that passes the 3' rule, with the highest Tm |
+| `BestSiteTm` | Its Tm, °C; empty for none, or for a site that fails the 3' rule. One that would round to `NeededTm` is shown 0.1 °C under it (49.98 °C is `49.9` when 50 °C is needed) |
+| `NeededTm` | The Tm a site of the assay needs: `--anneal-temp`, or the assay's `ta=`, less `--tm-margin` |
+
+The reasons:
+
+- `no site reaches 55 °C; the best melts at 51.5 °C (2 mismatches and indels, 5 unpaired 5' bases)`: the oligo has sites, all too weak.
+- `no site is accepted; the best fails the 3' rule, with a 3' penalty of 3, more than 0 (--3p-penalty) (1 mismatch or indel)`: a primer whose site has a mismatched 3' end. Its other sites, if any, are chance matches.
+- `no site: BLAST found no match`.
+- `no site reaches 55 °C, and its Tm on a perfect match is 53.3 °C: it is unlikely to anneal at this temperature (lower the annealing temperature, --anneal-temp or the assay's ta=, or raise --tm-margin)`: the oligo itself is too short or too A/T-rich for the run's temperature, and its assay is unlikely to give a product in any sample. For a degenerate oligo, this is said only when every one of its sequences is below.
+- with an empty `Oligo`: `every oligo has a site, but no forward and reverse site face each other on one sequence within 5000 bp (--max-length)`, with `with a probe site between them` for a probe assay.
+- with an empty `Oligo`: `its product is reported under a: the two assays share a reaction (mix=) and make it at the same place`: the assay did make its product, and `report.tsv` lists it once, under the other assay of its reaction (see [Primer FASTA Format](Primer-FASTA-Format#assays-in-one-reaction-multiplex)). `QAlog.txt` counts these apart from the assays without a product.
+
+A reason ends with `; the report has a product of one of its primers alone` when `report.tsv` has a product of one of the assay's primers by itself (`Pairing` `one-primer`): a product of the tube, not the one the assay was designed for.
+
+For a FASTQ sample, the reason is about the mini-assembly (`in the mini-assembly (the FASTQ diagnostics say what the reads show)`): see the [diagnostics file](#diagnostics-file) for what the reads show.
+
+From the five-isolate example (`isolate_03` lacks the `stxQ` target; columns `BestSite`, `BestSiteTm`, `NeededTm` left out):
+
+```text
+Sample      Assay  Oligo   Reason
+isolate_03  stxQ   stxQ-F  no site reaches 55 °C; the best melts at 18.3 °C (5 mismatches and indels, 3 unpaired 5' bases)
+isolate_03  stxQ   stxQ-R  no site reaches 55 °C; the best melts at 10.7 °C (5 mismatches and indels, 4 unpaired 5' bases)
+isolate_03  stxQ   stxQ-P  no site reaches 55 °C; the best melts at 29.5 °C (12 mismatches and indels)
+```
+
+The file is written as `report.tsv` is ([File format](#file-format)). To accept weaker sites, lower `--anneal-temp` (or the assay's `ta=`) or raise `--tm-margin`.
+
 ## Detailed per-sample reports
 
-The `detailed_report` folder keeps each sample's BLAST hits that the rules accept (with a header line), the ones its products are made from: useful for auditing a call. Columns follow BLAST `-outfmt "6 qseqid sseqid positive mismatch gaps evalue bitscore slen length qstart qend qseq sstart send sseq"`. Before 0.15.3 it kept every alignment blastn wrote, rejected ones included: 1.5 million lines (140 MB) for one bacterial genome and a 40-assay panel, of which a few thousand were primer sites. A sequence longer than 1 Mb (a chromosome) is searched in overlapping pieces of 1 Mb, since 0.15.3: BLAST's e-value grows with the length of the sequence searched, and on a whole chromosome a primer site within `-m 2` or `-m 3` could get one above the cut-off and be dropped, though a draft of the same genome kept it. The hits are put back on the sequence, at its own positions, so the table and the report show it whole; each hit comes from the one piece that holds it whole (the pieces share 1,000 bases, each half of the share belonging to one of them).
+The `detailed_report` folder keeps each sample's BLAST hits that the rules accept (with a header line), the ones its products are made from: useful for auditing a call. Columns follow BLAST `-outfmt "6 qseqid sseqid positive mismatch gaps evalue bitscore slen length qstart qend qseq sstart send sseq"`. Before 0.15.3 it kept every alignment blastn wrote, rejected ones included: 1.5 million lines (140 MB) for one bacterial genome and a 40-assay panel, of which a few thousand were primer sites. A sequence longer than 1 Mb (a chromosome) is searched in overlapping pieces of 1 Mb, since 0.15.3: BLAST's e-value grows with the length of the sequence searched, and on a whole chromosome a primer site with 2 or 3 mismatches could get one above the cut-off and be dropped, though a draft of the same genome kept it. The hits are put back on the sequence, at its own positions, so the table and the report show it whole; each hit comes from the one piece that holds it whole (the pieces share 1,000 bases, each half of the share belonging to one of them).
 
 ## FASTQ mode and false negatives
 
@@ -211,13 +264,14 @@ each primer: the reads holding a primer site come with their mates (about one fr
 baiting adds the pairs that share a k-mer with one of them, mates included (about one more). A product longer than
 the baited reads cover from its two primers cannot be assembled whole, and the longer the product, the more often
 the assembly breaks inside it; [read extension](#read-extension-products-longer-than-a-read) baits further, in rounds.
-Baiting allows `-m` edits (at most 2, of which one deletion at most: none at `-m 0`) on k-mers shorter than the primers by `--5p-truncation` (at least
-13 bases at `-m 0` and 16 plus `-m` with edits, and shorter than the shortest primer; since 0.15.3, before which they
-were as long as the shortest primer, substitutions only; oligos too short for that floor bait in a pass of their own
-since 1.0.4), and, at `-m 3` (since 1.0.3), 3 substitutions on 19-base k-mers of the oligos of 19 bases or
-more: a primer site with more differences may still bait no read, a
-[known gap](Limitations#known-gaps). The diagnostics then list the assay as `PARTIAL_BAIT` when the other primer
-baits reads, and not at all when neither does.
+Since 2.0, baiting allows 1 edit (a substitution, an insertion or a deletion) on k-mers shorter than the primers by
+5 bases (at least 17 bases, and shorter than the shortest primer; oligos too short for that floor bait in a pass of
+their own), then 2 substitutions on 18-base k-mers of the oligos of 18 to 21 bases in a second pass: the bait takes
+reads in, and the Tm rule decides.
+Up to 1.x the edits were `-m` (at most 2), with 3 substitutions on 19-base k-mers at `-m 3`. A primer site with more
+differences in every k-mer may still bait no read, a [known gap](Limitations#known-gaps). The diagnostics then list the assay as `PARTIAL_BAIT` when the other primer
+baits reads, and not at all when neither does. `PARTIAL_BAIT` also lists an assay whose primer is in the reads at a site
+whose Tm is too low, and says so.
 
 ### Read-level calls
 
@@ -229,16 +283,16 @@ and the same hit filters, amplicon rules and probe requirement apply. A read onl
 A product the assembly did not report is reported from reads when at least **2 reads** (the two reads of one pair count once) hold a complete amplicon
 **and** they make up at least **30% of the informative reads**: reads that carry the assay's forward or reverse
 primer **at the product's locus** and reach far enough from it to have shown the amplicon. A real target shows in most informative reads
-(not all: a sequencing error in a primer or probe disqualifies a read under a strict `-m`), while a few
+(not all: a sequencing error in a primer or probe can lower a site's Tm below the minimum), while a few
 contaminating or index-hopped reads from another library show in few of them. The 30% default comes from the
 two read sets in [#7](https://github.com/duceppemo/insilicoPCR/issues/7) (real targets at 68% and 83%, a
 contaminant signal at 18%); change it with `--read-min-fraction` (0–1), or in the GUI under **FASTQ settings…**. Raise it for
-exclusivity work on runs that may carry contamination, lower it for noisy reads under a strict `-m`. The value
+exclusivity work on runs that may carry contamination, lower it for noisy reads. The value
 used is recorded in `QAlog.txt`.
 
 **Which reads are informative.** A primer can match other places in the genome, all the more under permissive
-settings (`-m 1 --5p-truncation 8` accepts a 12-base match of a 20-mer, which a 100 Mb genome holds hundreds of
-times by chance). A read carrying the primer at such a place would never have shown the product, so it says
+settings (a large `--tm-margin` accepts short partial matches, which a 100 Mb genome holds hundreds of times by
+chance). A read carrying the primer at such a place would never have shown the product, so it says
 nothing about it. A read is therefore informative only when the bases that follow the primer (up to 30, inside
 the product) resemble those of a read holding the product: at most 20% of them may differ. That threshold is
 deliberately loose: the reads of a related organism at the same locus still count, and they are what
@@ -249,17 +303,17 @@ than 10 (a product less than 10 bases longer than the primer), every read carryi
 informative.
 
 A low share can also be real biology rather than contamination: in a pooled or outbred sample, or for a
-multi-copy gene, only some copies of the locus may match the primers and probe within the mismatch budget. Such an assay
+multi-copy gene, only some copies of the locus may match the primers and probe well enough. Such an assay
 stays at `WEAK_READ_SUPPORT` under the default; its `ReadDetail` gives the counts to judge by.
 
 **One assay, several products.** When the primers of an assay give amplicons of different sizes in the reads
 (the target, and another place where both primers happen to land), each product is called on its own support
 and gets its own row, like separate bands on a gel. Sizes within 10 bp of each other are one product: length
 variants of a single locus. A product the mini-assembly already reports is not repeated; a product it lacks is
-added even when the assembly reports the same assay at another size. Since 1.0.4, a product the mini-assembly
+added even when the assembly reports the same assay at another size. Since 2.0, a product the mini-assembly
 reports with more primer bases unpaired than the reads show is added too, and its description says so (`in the
 mini-assembly only with primer sites that pair less well`). That happens, for example, when a contig ends inside a
-primer and `--5p-truncation` lets the bases past its end through. Before, the contig's product hid the reads'
+primer and the bases it has still give the primer a Tm above the minimum (in 1.x, when `--5p-truncation` let the bases past its end through). Before, the contig's product hid the reads'
 product, whose primers pair completely. As everywhere in insilicoPCR, every
 product a real PCR would amplify is reported, whatever its size: check `AmpliconSize` against the size the
 assay is designed for before calling a test positive (the [`SizeCheck` column](#size-label-column)
@@ -415,7 +469,7 @@ and `_extensionReads.fastq.gz`.
 | `NOT_IN_READS` | Both primers are in the reads, but no read holds a complete amplicon, and the reads were not extended (`--read-extension off`). Conclusive only for amplicons up to `CheckableLength`; a longer amplicon cannot be ruled out |
 | `NOT_CLOSED_BY_EXTENSION` | Both primers are in the reads, no read holds a complete amplicon, and extending the reads did not join the primers (at least 2 extended reads of one primer holding a product). `ReadDetail` gives the number of reads extended and anything seen too few times. A negative, weaker than one on an assembly, especially when few reads carry the primers |
 | `EXTENSION_IN_TANDEM_REPEAT` | As `NOT_CLOSED_BY_EXTENSION`, but most of the extended reads end in a tandem repeat ((AT)n, (CAG)n, a VNTR), which they loop in: the extension follows the better-supported branch, and in a repeat longer than a k-mer the repeat's own k-mers outnumber the way out. **Inconclusive**, since 0.15.3 (before, a plain negative): a product through the repeat is neither shown nor ruled out; confirm it on an assembly of long reads, or by PCR. `ReadDetail` names the repeat's unit |
-| `PARTIAL_BAIT` | Only some of the assay's primers are in the reads: one primer site diverged beyond `-m`, a true negative, or one with more 5' mismatches than the bait's k-mer leaves out, which an assembly would accept (a [known gap](Limitations#known-gaps)) |
+| `PARTIAL_BAIT` | Only some of the assay's primers have a site in the reads that the rules accept. Either the reads carry the primer at a site whose Tm is too low (`ReadDetail` then says the mini-assembly holds a site the rules reject, and `the no-product report gives it and why`, for a site within 10 °C of the Tm it needs or failing the 3' rule alone), or one primer site diverged beyond what the bait matches (1 edit in a k-mer, or 2 substitutions in an 18-mer of an oligo of 18 to 21 bases): usually a true negative, sometimes a site an assembly would accept (a [known gap](Limitations#known-gaps)) |
 
 | Assembly | Meaning |
 |---|---|
@@ -423,7 +477,7 @@ and `_extensionReads.fastq.gz`.
 | `SPLIT_ACROSS_CONTIGS` | Both primers hit contigs, never the same one. `AssemblyDetail` lists up to 3 hits per primer (then `+N more`) and each one's distance to the contig end in the primer's extension direction; short distances on both sides mean the assembly broke inside the amplicon |
 | `NO_VALID_PAIR` | Both primers share a contig but form no reportable amplicon (orientation, `--min-length`/`--max-length`, or missing probe) |
 | `OTHER_PRODUCT_ONLY` | The assembly reports the assay, but only at another size (listed in `AssemblyDetail`); the product in `ReadDetail` was added from reads |
-| `LESS_PAIRED_SITES` | The assembly reports the product, but with more primer bases unpaired than the reads show (mismatches, or 5' bases past a contig end that `--5p-truncation` lets through); the product in `ReadDetail` was added from reads too. Since 1.0.4: before, the contig's product hid the reads' |
+| `LESS_PAIRED_SITES` | The assembly reports the product, but with more primer bases unpaired than the reads show (mismatches, or 5' bases past a contig end); the product in `ReadDetail` was added from reads too. Since 2.0: before, the contig's product hid the reads' |
 
 `QAlog.txt` also records the Tadpole settings used. The command-line options `--tadpole-k`,
 `--tadpole-min-seed`, `--tadpole-min-cov` and `--tadpole-min-contig`, or **FASTQ settings…** in the GUI, tune

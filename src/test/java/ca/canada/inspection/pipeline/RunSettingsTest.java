@@ -21,16 +21,15 @@ class RunSettingsTest {
 
     @Test
     void everySettingThatDecidesTheResultsIsListed() {
-        PipelineConfig config = config().threads(3).evalue(1e-5)
-                .ampliconOptions(AmpliconOptions.builder().mismatches(1).maxLength(0).build()).build();
+        PipelineConfig config = config().threads(3).evalue(1e-5).ampliconOptions(AmpliconOptions.builder().maxLength(0)
+                .tmGate(ca.canada.inspection.pcr.TmGate.at(58)).build()).build();
 
         List<String> lines = RunSettings.lines(config, false);
 
         assertEquals(List.of("Settings:",
-                "  Primer mismatches (-m): 1",
-                "  Probe mismatches (--probe-mismatches): 1",
+                "  Primer and probe sites (--anneal-temp, --tm-margin, --na, --mg, --dntp, --oligo-conc): site Tm at"
+                        + " least 53 °C (58 - 5); 50 mM Na+, 3 mM Mg2+, 0.8 mM dNTP, 250 nM oligo",
                 "  3' window / max penalty (--3p-window / --3p-penalty): 5 / 0",
-                "  5' truncation allowed (--5p-truncation): 5",
                 "  Product length (--min-length to --max-length): 0 to no limit",
                 "  BLAST e-value (-e): 0.00001",
                 "  Threads (-t): 3",
@@ -66,7 +65,8 @@ class RunSettingsTest {
         RunDetails details = RunSettings.details("9.9.9", config().build(), false, "BLAST+ 2.17.0, BBTools 40.04");
 
         assertEquals("9.9.9", details.version());
-        assertEquals(List.of("Input", "Primer file", "Output folder", "Primer mismatches (-m)"),
+        assertEquals(List.of("Input", "Primer file", "Output folder",
+                        "Primer and probe sites (--anneal-temp, --tm-margin, --na, --mg, --dntp, --oligo-conc)"),
                 details.settings().subList(0, 4).stream().map(RunDetails.Setting::label).toList());
         // The programs' versions last: a result is audited with them.
         assertEquals("Tools: BLAST+ 2.17.0, BBTools 40.04", details.settings().getLast().label() + ": "

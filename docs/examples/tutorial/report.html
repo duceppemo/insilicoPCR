@@ -108,7 +108,7 @@ details .names { margin-top: 6px; }
 <main>
 <header>
 <h1>insilicoPCR report</h1>
-<p class="sub">2026-11-17 13:17 · version 1.0.0 · report.tsv</p>
+<p class="sub">2026-11-25 14:56 · version 2.0.0 · report.tsv</p>
 </header>
 <section class="tiles" aria-label="Summary">
 <div class="tile"><span class="n">4</span><span class="l">samples</span></div>
@@ -157,26 +157,42 @@ details .names { margin-top: 6px; }
 <h2>All amplicons</h2>
 <div class="tools"><input type="search" id="rowFilter" placeholder="Filter by sample, assay, size…" aria-label="Filter amplicons"><button type="button" id="showAll" hidden>Show all</button><span id="rowCount" class="hint" aria-live="polite"></span></div>
 <div class="scroll"><table class="rows" id="rows">
-<thead><tr><th>Sample</th><th>Assay</th><th class="num">Size (bp)</th><th>Size check</th><th>Found on</th><th>Location</th><th class="num" title="Forward / reverse primer mismatches">Mismatches F/R</th><th class="num" title="Imperfections in the 3' window, forward / reverse">3′ F/R</th><th class="num" title="Bases at the 5' end of each primer that do not pair with the template, forward / reverse; the mismatch columns do not count them">5′ unpaired F/R</th><th>Strand</th><th>Probe</th><th class="num">Probe mismatches</th></tr></thead>
+<thead><tr><th>Sample</th><th>Assay</th><th class="num">Size (bp)</th><th>Size check</th><th>Found on</th><th>Location</th><th class="num" title="Forward / reverse primer mismatches">Mismatches F/R</th><th class="num" title="Imperfections in the 3' window, forward / reverse">3′ F/R</th><th class="num" title="Bases at the 5' end of each primer that do not pair with the template, forward / reverse; the mismatch columns do not count them">5′ unpaired F/R</th><th class="num" title="Tm of each primer on its site, forward / reverse, as the Tm gate (--anneal-temp) worked it out">Tm F/R (°C)</th><th>Strand</th><th>Probe</th><th class="num">Probe mismatches</th><th class="num" title="Tm of the probe on its site">Probe Tm (°C)</th></tr></thead>
 <tbody>
-<tr data-s="SRR17090570" data-a="hly702"><td>SRR17090570</td><td>hly702</td><td class="num">702</td><td><span class="chip target">✓ target</span></td><td title="contig_0,len=2492,cov=18.8,gc=0.360,class=long/medium/unanchored,min=2,max=51,hh=0.552,caga=0.523">contig_0</td><td>660-1361</td><td class="num">0 / 0</td><td class="num">0 / 0</td><td class="num" title="forward primer 18 of 18 bases, reverse primer 17 of 18 bases"><span class="part">◐</span> 0 / 1</td><td>-</td><td></td><td class="num"></td></tr>
-<tr data-s="SRR17090570" data-a="hlyQ"><td>SRR17090570</td><td>hlyQ</td><td class="num">112</td><td><span class="chip target">✓ target</span></td><td title="contig_0,len=2492,cov=18.8,gc=0.360,class=long/medium/unanchored,min=2,max=51,hh=0.552,caga=0.523">contig_0</td><td>1257-1368</td><td class="num">0 / 0</td><td class="num">0 / 0</td><td class="num" title="forward primer 19 of 19 bases, reverse primer 24 of 24 bases">0 / 0</td><td>-</td><td>hlyQ-P</td><td class="num">0</td></tr>
-<tr data-s="lmono_EGDe" data-a="hly702"><td>lmono_EGDe</td><td>hly702</td><td class="num">702</td><td><span class="chip target">✓ target</span></td><td title="NC_003210.1 — Listeria monocytogenes EGD-e chromosome, complete genome">NC_003210.1</td><td>205963-206664</td><td class="num">0 / 0</td><td class="num">0 / 0</td><td class="num" title="forward primer 18 of 18 bases, reverse primer 18 of 18 bases">0 / 0</td><td>+</td><td></td><td class="num"></td></tr>
-<tr data-s="lmono_EGDe" data-a="hlyQ"><td>lmono_EGDe</td><td>hlyQ</td><td class="num">112</td><td><span class="chip target">✓ target</span></td><td title="NC_003210.1 — Listeria monocytogenes EGD-e chromosome, complete genome">NC_003210.1</td><td>205956-206067</td><td class="num">0 / 0</td><td class="num">0 / 0</td><td class="num" title="forward primer 19 of 19 bases, reverse primer 24 of 24 bases">0 / 0</td><td>+</td><td>hlyQ-P</td><td class="num">0</td></tr>
+<tr data-s="SRR17090570" data-a="hly702"><td>SRR17090570</td><td>hly702</td><td class="num">702</td><td><span class="chip target">✓ target</span></td><td title="contig_0,len=2819,cov=19.9,gc=0.350,class=long/medium/unanchored,min=2,max=51,hh=0.552,caga=0.522">contig_0</td><td>987-1688</td><td class="num">0 / 0</td><td class="num">0 / 0</td><td class="num" title="forward primer 18 of 18 bases, reverse primer 17 of 18 bases"><span class="part">◐</span> 0 / 1</td><td class="num">58.4 / 54.5</td><td>-</td><td></td><td class="num"></td><td class="num"></td></tr>
+<tr data-s="SRR17090570" data-a="hlyQ"><td>SRR17090570</td><td>hlyQ</td><td class="num">112</td><td><span class="chip target">✓ target</span></td><td title="contig_0,len=2819,cov=19.9,gc=0.350,class=long/medium/unanchored,min=2,max=51,hh=0.552,caga=0.522">contig_0</td><td>1584-1695</td><td class="num">0 / 0</td><td class="num">0 / 0</td><td class="num" title="forward primer 19 of 19 bases, reverse primer 24 of 24 bases">0 / 0</td><td class="num">63.0 / 63.5</td><td>-</td><td>hlyQ-P</td><td class="num">0</td><td class="num">67.2</td></tr>
+<tr data-s="lmono_EGDe" data-a="hly702"><td>lmono_EGDe</td><td>hly702</td><td class="num">702</td><td><span class="chip target">✓ target</span></td><td title="NC_003210.1 — Listeria monocytogenes EGD-e chromosome, complete genome">NC_003210.1</td><td>205963-206664</td><td class="num">0 / 0</td><td class="num">0 / 0</td><td class="num" title="forward primer 18 of 18 bases, reverse primer 18 of 18 bases">0 / 0</td><td class="num">58.4 / 63.4</td><td>+</td><td></td><td class="num"></td><td class="num"></td></tr>
+<tr data-s="lmono_EGDe" data-a="hlyQ"><td>lmono_EGDe</td><td>hlyQ</td><td class="num">112</td><td><span class="chip target">✓ target</span></td><td title="NC_003210.1 — Listeria monocytogenes EGD-e chromosome, complete genome">NC_003210.1</td><td>205956-206067</td><td class="num">0 / 0</td><td class="num">0 / 0</td><td class="num" title="forward primer 19 of 19 bases, reverse primer 24 of 24 bases">0 / 0</td><td class="num">63.0 / 63.5</td><td>+</td><td>hlyQ-P</td><td class="num">0</td><td class="num">67.2</td></tr>
+</tbody></table></div>
+</section>
+<section id="no-product">
+<h2>Why no product</h2>
+<p class="hint">Each assay without a product in a sample, and the rule that decided it: an oligo with no site whose Tm reaches the annealing temperature less the margin, or whose 3' end pairs; or sites that pair into no product. Lower the annealing temperature (--anneal-temp, or an assay's ta=) or raise --tm-margin to accept weaker sites. report_no_product.tsv has every row.</p>
+<div class="scroll"><table class="rows">
+<thead><tr><th>Sample</th><th>Assay</th><th>Oligo</th><th>Reason</th><th>Best site</th><th class="num">Tm (°C)</th><th class="num">Needed (°C)</th></tr></thead>
+<tbody>
+<tr><td>ERR6501878</td><td>hly702</td><td>hly702-F</td><td class="wrap">no site: BLAST found no match in the mini-assembly (the FASTQ diagnostics say what the reads show)</td><td title=""></td><td class="num"></td><td class="num">50.0</td></tr>
+<tr><td>ERR6501878</td><td>hly702</td><td>hly702-R</td><td class="wrap">no site: BLAST found no match in the mini-assembly (the FASTQ diagnostics say what the reads show)</td><td title=""></td><td class="num"></td><td class="num">50.0</td></tr>
+<tr><td>ERR6501878</td><td>hlyQ</td><td>hlyQ-F</td><td class="wrap">no site: BLAST found no match in the mini-assembly (the FASTQ diagnostics say what the reads show)</td><td title=""></td><td class="num"></td><td class="num">55.0</td></tr>
+<tr><td>ERR6501878</td><td>hlyQ</td><td>hlyQ-R</td><td class="wrap">no site: BLAST found no match in the mini-assembly (the FASTQ diagnostics say what the reads show)</td><td title=""></td><td class="num"></td><td class="num">55.0</td></tr>
+<tr><td>ERR6501878</td><td>hlyQ</td><td>hlyQ-P</td><td class="wrap">no site: BLAST found no match in the mini-assembly (the FASTQ diagnostics say what the reads show)</td><td title=""></td><td class="num"></td><td class="num">55.0</td></tr>
+<tr><td>linnocua_CLIP11262</td><td>hly702</td><td>hly702-F</td><td class="wrap">no site reaches 50 °C; the best melts at 49.9 °C (1 mismatch or indel, 3 unpaired 5&#39; bases)</td><td title="NC_003212.1:506723-506735(+)">NC_003212.1:506723-506735(+)</td><td class="num">49.9</td><td class="num">50.0</td></tr>
+<tr><td>linnocua_CLIP11262</td><td>hly702</td><td>hly702-R</td><td class="wrap">no site reaches 50 °C; the best melts at 43.9 °C (2 mismatches and indels, 2 unpaired 5&#39; bases)</td><td title="NC_003212.1:646146-646158(+)">NC_003212.1:646146-646158(+)</td><td class="num">43.9</td><td class="num">50.0</td></tr>
+<tr><td>linnocua_CLIP11262</td><td>hlyQ</td><td>hlyQ-F</td><td class="wrap">no site reaches 55 °C; the best melts at 51.6 °C (1 mismatch or indel, 1 unpaired 5&#39; base)</td><td title="NC_003212.1:2907708-2907724(+)">NC_003212.1:2907708-2907724(+)</td><td class="num">51.6</td><td class="num">55.0</td></tr>
+<tr><td>linnocua_CLIP11262</td><td>hlyQ</td><td>hlyQ-R</td><td class="wrap">no site reaches 55 °C; the best melts at 38.2 °C (5 mismatches and indels, 4 unpaired 5&#39; bases)</td><td title="NC_003212.1:1393668-1393686(+)">NC_003212.1:1393668-1393686(+)</td><td class="num">38.2</td><td class="num">55.0</td></tr>
+<tr><td>linnocua_CLIP11262</td><td>hlyQ</td><td>hlyQ-P</td><td class="wrap">no site reaches 55 °C; the best melts at 54.9 °C (10 mismatches and indels)</td><td title="NC_003212.1:2678592-2678617(-)">NC_003212.1:2678592-2678617(-)</td><td class="num">54.9</td><td class="num">55.0</td></tr>
 </tbody></table></div>
 </section>
 <section>
 <h2>Run details</h2>
 <dl class="details">
-<dt>Date</dt><dd>2026-11-17 13:17</dd>
-<dt>insilicoPCR version</dt><dd>1.0.0</dd>
+<dt>Date</dt><dd>2026-11-25 14:56</dd>
+<dt>insilicoPCR version</dt><dd>2.0.0</dd>
 <dt>Input</dt><dd>/data/tutorial/tutorial_input</dd>
 <dt>Primer file</dt><dd>/data/tutorial/listeria_assays.fasta</dd>
 <dt>Output folder</dt><dd>/data/tutorial/tutorial_results</dd>
-<dt>Primer mismatches (-m)</dt><dd>0</dd>
-<dt>Probe mismatches (--probe-mismatches)</dt><dd>0</dd>
+<dt>Primer and probe sites (--anneal-temp, --tm-margin, --na, --mg, --dntp, --oligo-conc)</dt><dd>site Tm at least 55 °C (60 - 5); 50 mM Na+, 3 mM Mg2+, 0.8 mM dNTP, 250 nM oligo; assays at their own annealing temperature (ta=): hly702 55, hlyQ 60 °C</dd>
 <dt>3&#39; window / max penalty (--3p-window / --3p-penalty)</dt><dd>5 / 0</dd>
-<dt>5&#39; truncation allowed (--5p-truncation)</dt><dd>5</dd>
 <dt>Product length (--min-length to --max-length)</dt><dd>0 to 5000 bp</dd>
 <dt>BLAST e-value (-e)</dt><dd>100000</dd>
 <dt>Threads (-t)</dt><dd>8</dd>

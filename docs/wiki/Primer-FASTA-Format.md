@@ -178,7 +178,7 @@ Values are in bp:
 Rules:
 
 - Put the words on the header of any one primer of the assay (`-F`, `-R` or `-P`), after the ID. The keys
-  `size`, `other` and `mix` are read in any letter case (`Size=434` is `size=434`). Other words on the header
+  `size`, `other`, `mix` and `ta` are read in any letter case (`Size=434` is `size=434`). Other words on the header
   are free text and are ignored; since 1.0, a word of the form `key=value` with another key (`Tm=60`, a mistyped
   `sise=420`) is named in a warning (`Warning: the header of primer ... holds Tm=60, which insilicoPCR does not
   read ...`) and ignored: a later release might read it, and a mistyped key was ignored without a word. Write
@@ -193,6 +193,27 @@ Rules:
 - The declaration does not change `--min-length`/`--max-length`: a product outside those limits is still not
   reported, declared or not.
 
+
+## Annealing temperature (optional)
+
+Since 2.0 a primer or probe site is accepted when its Tm on the template reaches the annealing temperature less `--tm-margin` ([Amplicon Calling](Amplicon-Calling#tm-on-the-template---anneal-temp---tm-margin)). The run's temperature is `--anneal-temp` (default 60 °C). An assay published at another temperature can say so with `ta=<°C>` after a primer's ID, on any one of its primers:
+
+```text
+>hly702-F size=702 ta=55
+CCTAAGACGCCAATCGAA
+>hly702-R
+AAGCGCTTGCAACTGCTC
+>hlyQ-F size=112 ta=60
+TGCAAGTCCTAAGACGCCA
+...
+```
+
+Its sites are then judged at that temperature: `hly702`'s need 50 °C, `hlyQ`'s 55 °C, in one run. Assays without `ta=` are at `--anneal-temp`. The margin and the reaction (`--tm-margin`, `--na`, `--mg`, `--dntp`, `--oligo-conc`) are the run's, for every assay.
+
+- Give the temperature the assay was published or validated at, as `size=` gives the product it was designed for. It is not a setting to make an assay pass: an assay that fails at its own temperature is reported in `report_no_product.tsv` with the reason.
+- Assays that share a reaction (`mix=`, below) anneal at one temperature: `ta=` on one of them sets it for all, and two different values in one reaction are refused.
+- A value that is not a temperature of 0 to 100 °C, or two different values for one assay, stops the run with a message naming the primer.
+- The run's log, `QAlog.txt` and the HTML report's run details list the assays and their temperatures; the log and `QAlog.txt` also list each oligo's Tm on a perfect match with the Tm its sites need.
 
 ## Assays in one reaction (multiplex)
 

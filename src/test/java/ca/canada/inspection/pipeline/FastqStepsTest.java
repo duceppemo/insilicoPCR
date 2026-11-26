@@ -48,7 +48,8 @@ class FastqStepsTest {
                         if (command.contains("ref=adapters")) {
                             Files.copy(path(directory, command, "in="), path(directory, command, "out="));
                         } else if (command.stream().noneMatch(argument -> argument.startsWith("edist="))
-                                && command.contains("k=19")) {
+                                && command.stream().anyMatch(argument -> argument.startsWith("hdist=")
+                                && !argument.equals("hdist=0"))) {
                             // The substitution bait: one pair of the first bait's, and one of its own.
                             writeFastq(path(directory, command, "outm="), "p", 1, "q", 1);
                         } else {
@@ -116,6 +117,11 @@ class FastqStepsTest {
 
     /** {@code moreOligos}: FASTA records added to the primer file. */
     private PipelineContext context(Programs programs, int mismatches, String moreOligos) throws IOException {
+        return context(programs, ca.canada.inspection.pcr.AmpliconOptions.withMismatches(mismatches), moreOligos);
+    }
+
+    private PipelineContext context(Programs programs, ca.canada.inspection.pcr.AmpliconOptions options,
+                                    String moreOligos) throws IOException {
         Path input = Files.createDirectories(dir.resolve("reads"));
         writeFastq(input.resolve("s_R1.fastq.gz"), 1);
         writeFastq(input.resolve("s_R2.fastq.gz"), 1);
@@ -128,7 +134,7 @@ class FastqStepsTest {
         AppPaths.RuntimeLayout layout = new AppPaths.RuntimeLayout(runtime, bbmap, blast, Path.of("java"));
         Path output = dir.resolve("out");
         PipelineConfig config = PipelineConfig.builder(input, output, primerFile).threads(1)
-                .ampliconOptions(ca.canada.inspection.pcr.AmpliconOptions.withMismatches(mismatches)).build();
+                .ampliconOptions(options).build();
         PipelineDirectories directories = PipelineDirectories.create(output);
         PrimerPanel primers = PrimerService.loadAndPrepare(config, directories, warning -> { });
         return new PipelineContext(config, new RuntimeDependencies(layout), directories,
@@ -176,6 +182,31 @@ class FastqStepsTest {
         assertTrue(Files.notExists(files.moreMatches()));
         assertTrue(programs.messages.contains("Sample s: 2 read(s) within 3 substitutions of an oligo added to the"
                 + " first bait's"), programs.messages.toString());
+    }
+
+    @Test
+    void withTheTmRuleTheReadsAreBaitedWithinOneEditThenTwoSubstitutionsIn18Mers() throws IOException {
+        Programs programs = new Programs();
+        PipelineContext context = context(programs, ca.canada.inspection.pcr.AmpliconOptions.builder()
+                .tmGate(ca.canada.inspection.pcr.TmGate.DEFAULT).build(),
+                ">b-F\nCCTAGGCATTGCAGTACGTACGTAC\n>b-R\nCCTAGGCATTGCAGTAC\n");
+
+        FastqProcessor.process(context);
+
+        assertEquals(List.of("BBDuk", "BBDuk", "BBDuk", "blastn", "BBDuk", "BBDuk", "Tadpole", "BBMerge"), programs.run);
+        // The 17-base oligo baits in a pass of its own (k=16), the others with k=17, then the substitutions.
+        List<String> first = programs.commands.get(1);
+        List<String> substitutions = programs.commands.get(2);
+        assertTrue(first.contains("edist=1") && first.contains("k=17"), first.toString());
+        assertTrue(substitutions.contains("hdist=2") && substitutions.contains("k=18")
+                && substitutions.stream().noneMatch(argument -> argument.startsWith("edist=")), substitutions.toString());
+        assertTrue(programs.messages.contains("Sample s: 2 read(s) within 2 substitutions of an oligo added to the"
+                + " first bait's"), programs.messages.toString());
+        // The oligos of 18 to 21 bases only: not the 25-base primer, nor the 17-base one (no 18-mer).
+        Path reference = path(null, substitutions, "ref=");
+        assertTrue(reference.endsWith("primer_tmp.fasta.s2"), reference.toString());
+        assertEquals(List.of(">a-F", ">a-R"), Files.readAllLines(reference).stream()
+                .filter(line -> line.startsWith(">")).toList());
     }
 
     @Test

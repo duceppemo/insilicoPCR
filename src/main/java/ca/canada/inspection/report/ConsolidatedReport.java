@@ -29,13 +29,12 @@ public final class ConsolidatedReport {
      * into {@code consolidatedDir} and returns the file written. The rows are the run's, in
      * order ({@link Products#ofRun}); this only writes them. When the
      * primer file declares product sizes, each row is labelled with what its size is for the
-     * assay (last column, {@link ExpectedSizes#COLUMN}); the label never removes a row.
+     * assay ({@link ExpectedSizes#COLUMN}, after the columns of 1.x); the label never removes a row.
      */
     public static Path write(Path consolidatedDir, List<ReportRow> rows, PrimerPanel primers) {
         ExpectedSizes expectedSizes = primers.expectedSizes();
         // Every column, every report (since 1.0): the probe columns and the size check were left out when no assay
         // had a probe or a size, which moved the columns after them.
-        List<ReportColumn> columns = ReportColumn.ALL;
         Path report = nextAvailableReportFile(consolidatedDir);
 
         // A new file: never over another run's report. Its lines end in LF on every system, as the other files a
@@ -45,8 +44,12 @@ public final class ConsolidatedReport {
             writer.write(HEADER);
             writer.write('\n');
             for (ReportRow row : rows) {
-                writer.write(String.join("\t", columns.stream().map(column -> column.value(row)).toList()));
+                writer.write(String.join("\t", ReportColumn.BEFORE_SIZE_CHECK.stream().map(column -> column.value(row))
+                        .toList()));
                 writer.write("\t" + expectedSizes.labelText(row.assay(), row.size()));
+                for (ReportColumn column : ReportColumn.AFTER_SIZE_CHECK) {
+                    writer.write("\t" + column.value(row));
+                }
                 writer.write('\n');
             }
         } catch (IOException e) {
@@ -132,7 +135,12 @@ public final class ConsolidatedReport {
         return digits.length() > 7 || Integer.parseInt(digits) >= MAX_NUMBER ? -1 : Integer.parseInt(digits);
     }
 
-    /** The header line of every report: its columns ({@link ReportColumn}), then the size check. */
-    public static final String HEADER = String.join("\t", java.util.stream.Stream.concat(
-            ReportColumn.ALL.stream().map(ReportColumn::header), java.util.stream.Stream.of(ExpectedSizes.COLUMN)).toList());
+    /** The names of every report's columns, in order: those of {@link ReportColumn}, the size check among them. */
+    public static final List<String> COLUMNS = java.util.stream.Stream.of(
+            ReportColumn.BEFORE_SIZE_CHECK.stream().map(ReportColumn::header),
+            java.util.stream.Stream.of(ExpectedSizes.COLUMN),
+            ReportColumn.AFTER_SIZE_CHECK.stream().map(ReportColumn::header)).flatMap(names -> names).toList();
+
+    /** The header line of every report ({@link #COLUMNS}). */
+    public static final String HEADER = String.join("\t", COLUMNS);
 }

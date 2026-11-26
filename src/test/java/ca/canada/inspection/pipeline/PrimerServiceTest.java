@@ -60,8 +60,44 @@ class PrimerServiceTest {
         java.util.List<String> warnings = PrimerService.read(keys).warnings();
         assertEquals(2, warnings.size(), warnings.toString());
         assertTrue(warnings.get(0).startsWith("Warning: the header of primer a-F holds Tm=60, which insilicoPCR does not"
-                + " read (it reads size=, other= and mix=)"), warnings.get(0));
+                + " read (it reads size=, other=, mix= and ta=)"), warnings.get(0));
         assertTrue(warnings.get(1).contains("primer a-R holds sise=300"), warnings.get(1));
+
+        // ta = 60: three words of free text, the temperature not set without a word.
+        java.nio.file.Path spaced = java.nio.file.Files.writeString(dir.resolve("spaced.fasta"),
+                ">a-F size=300 ta = 55\nACGTACGTAC\n>a-R TA =55\nTTGGCCAATT\n");
+        PrimerService.PrimerFile read = PrimerService.read(spaced);
+        assertEquals(java.util.List.of("Warning: the header of primer a-F holds \"ta =\", which insilicoPCR does not"
+                        + " read: it is ignored. Write it without spaces, such as ta=55.",
+                "Warning: the header of primer a-R holds \"TA =55\", which insilicoPCR does not read: it is ignored."
+                        + " Write it without spaces, such as TA=55."), read.warnings());
+        assertTrue(read.annealTemps().isEmpty());
+    }
+
+    @Test
+    void annealingTemperaturesOfThePrimerFileSetTheTmRuleOfTheirAssays(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir)
+            throws java.io.IOException {
+        java.nio.file.Path file = java.nio.file.Files.writeString(dir.resolve("p.fasta"),
+                ">a-F size=265 ta=55\nACGTACGTAC\n>a-R\nTTGGCCAATT\n>b-F\nACGTACGTAC\n>b-R\nTTGGCCAATT\n");
+        PrimerService.PrimerFile read = PrimerService.read(file);
+        assertTrue(read.warnings().isEmpty(), read.warnings().toString());
+        PrimerPanel panel = PrimerPanel.of(read.sequences(), read.expectedSizes(), read.mixGroups(), read.annealTemps());
+        assertEquals(Map.of("a", 55.0), panel.annealTemps().byAssay());
+
+        PipelineConfig config = PipelineConfig.builder(dir.resolve("in"), dir.resolve("out"), file).build();
+        ca.canada.inspection.pcr.TmGate gate = PrimerService.withAnnealTemps(config, panel).ampliconOptions().tmGate();
+        assertEquals(50.0, gate.minimumTm("a-F"));
+        assertEquals(55.0, gate.minimumTm("b-R"));
+        // A file without ta=: the settings as given.
+        PrimerPanel none = PrimerPanel.of(read.sequences(), read.expectedSizes(), read.mixGroups());
+        assertEquals(config, PrimerService.withAnnealTemps(config, none));
+        // A ta= at or below --tm-margin: its sites would need a Tm of 0 °C or less.
+        PipelineConfig wide = config.withAmpliconOptions(config.ampliconOptions().withTmGate(
+                new ca.canada.inspection.pcr.TmGate(60, 55, 50, 3, 0.8, 250)));
+        PipelineException refused = assertThrows(PipelineException.class,
+                () -> PrimerService.withAnnealTemps(wide, panel));
+        assertTrue(refused.getMessage().contains("a has ta=55") && refused.getMessage().contains(file.toString()),
+                refused.getMessage());
     }
 
     @Test

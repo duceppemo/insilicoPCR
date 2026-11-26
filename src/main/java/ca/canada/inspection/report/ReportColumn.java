@@ -49,10 +49,29 @@ public enum ReportColumn {
     /** How the primers came together: {@code designed}, {@code one-primer} or {@code two-assays}. */
     PAIRING("Pairing", row -> pairing(row.pairing())),
     /** What the call was made on: {@code assembly}, {@code reads} (read-level) or {@code extension}. */
-    SOURCE("Source", row -> source(row.source()));
+    SOURCE("Source", row -> source(row.source())),
+    /**
+     * The Tm columns (since 2.0), after the size check: each oligo's Tm on its site, °C, as the Tm gate
+     * ({@code --anneal-temp}) worked it out; empty without the gate, and the probe's for a row without a probe.
+     */
+    FORWARD_TM("ForwardTm", row -> tm(row.forwardTm())),
+    REVERSE_TM("ReverseTm", row -> tm(row.reverseTm())),
+    PROBE_TM("ProbeTm", row -> tm(row.probeTm()));
 
-    /** Every column, in report order: what a file without a header (saved from a spreadsheet so) is read as. */
+    /** The columns before the size check ({@code ExpectedSizes.COLUMN}), in report order: the columns of 1.x. */
+    public static final List<ReportColumn> BEFORE_SIZE_CHECK = List.of(values()).subList(0, SOURCE.ordinal() + 1);
+
+    /** The columns after the size check, in report order. */
+    public static final List<ReportColumn> AFTER_SIZE_CHECK = List.of(values()).subList(SOURCE.ordinal() + 1,
+            values().length);
+
+    /** Every column, in report order (the size check between {@link #BEFORE_SIZE_CHECK} and the others). */
     public static final List<ReportColumn> ALL = List.of(values());
+
+    /** A Tm as the report writes it: {@code 58.7}; empty for none ({@code NaN}). */
+    public static String tm(double tm) {
+        return Double.isNaN(tm) ? "" : String.format(java.util.Locale.ROOT, "%.1f", tm);
+    }
 
     private final String header;
     private final Function<ReportRow, String> value;

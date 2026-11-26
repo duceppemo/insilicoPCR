@@ -1,9 +1,12 @@
 package ca.canada.inspection.dispatchpcr;
 
+import ca.canada.inspection.util.Numbers;
+
 import ca.canada.inspection.insilicopcr.MainRun;
 import ca.canada.inspection.pcr.AmpliconOptions;
 import ca.canada.inspection.pcr.ReadExtensionCaller;
 import ca.canada.inspection.pcr.ReadLevelCaller;
+import ca.canada.inspection.pcr.TmGate;
 import ca.canada.inspection.pipeline.ChildJavaMemory;
 import ca.canada.inspection.pipeline.ExternalProcessTracker;
 import ca.canada.inspection.pipeline.InSilicoPcrPipeline;
@@ -76,7 +79,7 @@ public final class Dispatcher {
         } catch (ParseException | IllegalArgumentException e) {
             // The message and where to look, on standard error: the 82 lines of the help on standard output buried
             // it, and went into the output a script reads.
-            err.println("Error: " + e.getMessage());
+            err.println("Error: " + CliConfig.removedOption(e).orElse(e.getMessage()));
             err.println("Run insilicoPCR --help for the options.");
             return 2;
         }
@@ -151,11 +154,8 @@ public final class Dispatcher {
                 .desc("Primer FASTA file").build());
         options.addOption(Option.builder("t").longOpt("threads").hasArg().argName("n")
                 .desc("Number of worker threads; default: available processors").build());
-        options.addOption(Option.builder("m").longOpt("mismatches").hasArg().argName("n")
-                .desc("Allowed mismatches+indels per primer (3' bases that do not pair with the template count); default: "
-                        + AmpliconOptions.DEFAULT_MISMATCHES).build());
         options.addOption(Option.builder("e").longOpt("evalue").hasArg().argName("value")
-                .desc("blastn e-value; deliberately permissive, since primer hits are filtered by the mismatch and 3'/5' rules instead, and lowering it (e.g. to 1e-5) drops valid hits; default: "
+                .desc("blastn e-value; deliberately permissive, since primer hits are filtered by their Tm and the 3' rule instead, and lowering it (e.g. to 1e-5) drops valid hits; default: "
                         + PipelineConfig.DEFAULT_EVALUE_TEXT).build());
         options.addOption(Option.builder("l").longOpt("max-length").hasArg().argName("bp")
                 .desc("Maximum amplicon length in bp, 0 = unlimited; default: "
@@ -170,13 +170,23 @@ public final class Dispatcher {
                 .desc("Maximum weighted 3'-end penalty (mismatch: 3 at terminus, 2 at -1/-2, 1 beyond;"
                         + " +1 if a G/C pair is broken near the terminus; an indel scores as a mismatch at its place, +1); default: "
                         + AmpliconOptions.DEFAULT_THREE_PRIME_PENALTY).build());
-        options.addOption(Option.builder().longOpt("probe-mismatches").hasArg().argName("n")
-                .desc("Allowed mismatches+indels per hydrolysis probe; probes bind hotter than primers"
-                        + " and tolerate roughly one more mismatch; default: same as -m").build());
-        options.addOption(Option.builder().longOpt("5p-truncation").hasArg().argName("n")
-                .desc("Bases at a primer's harmless 5' end that may differ from the template (or be left"
-                        + " out of BLAST's alignment) without counting as mismatches; default: "
-                        + AmpliconOptions.DEFAULT_FIVE_PRIME_TRUNCATION).build());
+        options.addOption(Option.builder().longOpt("anneal-temp").hasArg().argName("°C")
+                .desc("Annealing temperature of the reaction: a primer or probe site is accepted when its Tm on the"
+                        + " template (Primer3's thermodynamic alignment) reaches it less --tm-margin, and a primer's"
+                        + " 3' end passes the 3' rule. An assay whose primer header gives ta=<°C> is judged at that"
+                        + " temperature instead; default: " + Numbers.plain(TmGate.DEFAULT_ANNEAL_TEMP)).build());
+        options.addOption(Option.builder().longOpt("tm-margin").hasArg().argName("°C")
+                .desc("How far below --anneal-temp a site's Tm may be; default: " + Numbers.plain(TmGate.DEFAULT_MARGIN))
+                .build());
+        options.addOption(Option.builder().longOpt("na").hasArg().argName("mM")
+                .desc("Reaction, for the Tm: monovalent cations; default: " + Numbers.plain(TmGate.DEFAULT_MONOVALENT_MM)).build());
+        options.addOption(Option.builder().longOpt("mg").hasArg().argName("mM")
+                .desc("Reaction, for the Tm: Mg2+; default: " + Numbers.plain(TmGate.DEFAULT_DIVALENT_MM)).build());
+        options.addOption(Option.builder().longOpt("dntp").hasArg().argName("mM")
+                .desc("Reaction, for the Tm: dNTP; default: " + Numbers.plain(TmGate.DEFAULT_DNTP_MM)).build());
+        options.addOption(Option.builder().longOpt("oligo-conc").hasArg().argName("nM")
+                .desc("Reaction, for the Tm: concentration of each primer and probe; default: "
+                        + Numbers.plain(TmGate.DEFAULT_OLIGO_NM)).build());
         options.addOption(Option.builder().longOpt("tadpole-k").hasArg().argName("n")
                 .desc("FASTQ mode: Tadpole k-mer length; default: " + TadpoleOptions.DEFAULT_K).build());
         options.addOption(Option.builder().longOpt("tadpole-min-seed").hasArg().argName("n")
@@ -222,7 +232,7 @@ public final class Dispatcher {
         HelpFormatter formatter = new HelpFormatter();
         PrintWriter writer = new PrintWriter(out);
         formatter.printHelp(writer, formatter.getWidth(),
-                "java -jar insilicoPCR.jar -i <input> -o <output> -p <primers> [-t n] [-m n] [-e value] [-l bp]",
+                "java -jar insilicoPCR.jar -i <input> -o <output> -p <primers> [-t n] [--anneal-temp °C] [-e value] [-l bp]",
                 null, options, formatter.getLeftPadding(), formatter.getDescPadding(), null);
         writer.flush();
     }

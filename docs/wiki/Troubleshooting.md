@@ -77,14 +77,14 @@ Upgrade to 0.9.0 or newer, which bundles BBTools 40.04. The files are then read 
 
 ## FASTQ run aborts with `OutOfMemoryError`
 
-Releases before 0.9.0 ran the second baiting pass with the `-m` mismatch budget as BBDuk's `hdist`, and on large samples with `-m 2` or more its k-mer table outgrew any heap. Since 0.9.0 that pass runs with `hdist=0`, and `-m` still applies to primer baiting and amplicon calling. Upgrade.
+Releases before 0.9.0 ran the second baiting pass with the `-m` mismatch budget as BBDuk's `hdist`, and on large samples with `-m 2` or more its k-mer table outgrew any heap. Since 0.9.0 that pass runs with `hdist=0`. Upgrade.
 
 ## FASTQ run fails with `ran out of memory on sample`
 
 The message is `Tadpole ran out of memory on sample <name> with -Xmx<n>g` (or `BBDuk`, `BBMerge`). The sample had all the memory insilicoPCR gives a BBTools program: `--memory` (`--bbtools-memory` before 1.0) when given, otherwise three quarters of the memory it leaves free on the computer, at least half of its own heap; up to 64 GB. (Samples that run out of only their share, when several run at once, are run again alone automatically; see [Threads and memory in FASTQ mode](Command-line-Interface#threads-and-memory-in-fastq-mode).)
 
 - Below 64 GB (`all it had`): give the BBTools programs more with `--memory <GB>` (in the application, **FASTQ settings…**), as much as the computer can spare, or run on a computer with more memory.
-- At 64 GB (`the most insilicoPCR gives a BBTools program`): more memory does not help. The sample holds too many reads that match the primers; check the primers and the `-m` and `--5p-truncation` settings.
+- At 64 GB (`the most insilicoPCR gives a BBTools program`): more memory does not help. The sample holds too many reads that match the primers; check the primers, and a large `--tm-margin` or low `--anneal-temp`, which accept short partial matches.
 - If the program's output above the message says `unable to create native thread`, it is the computer's limit on threads, not memory: use fewer threads with `-t` (in the application, **Threads**).
 
 When the read extension runs out of memory, the run goes on: the sample's assays stay as the read-level search left them, and a `Warning:` line in the log, and in `QAlog.txt`, says `read extension could not be run for sample <name> (Tadpole ran out of memory ...)`.
@@ -107,15 +107,31 @@ A `--tadpole-k` longer than a sample's reads leaves its mini-assembly empty: Tad
 
 ## FASTQ run seems to hang after BLAST
 
-Releases before 0.11.0 could spend hours in the read-level search after `blastn` had finished, on samples with hundreds of thousands of baited reads (large primer panels, permissive `-m` and `--5p-truncation`). One CPU stays busy and nothing is logged. The results are correct but late. Upgrade to 0.11.0, where the same step takes seconds.
+Releases before 0.11.0 could spend hours in the read-level search after `blastn` had finished, on samples with hundreds of thousands of baited reads (large primer panels, permissive mismatch settings). One CPU stays busy and nothing is logged. The results are correct but late. Upgrade to 0.11.0, where the same step takes seconds.
 
 ## An assay is never reported although its primers match
 
 Check the primer FASTA headers. In releases before 0.11.0, any text after the primer ID (`>assay-F forward primer`) became part of the ID, no BLAST hit matched it, and the assay was silently negative in every sample. Since 0.11.0 the ID ends at the first blank and the rest is a description. Before 0.15.3, a probe named for its dye, `stxQ-FAM`, was read as a second forward primer: its assay lost its probe requirement, and a product of `stxQ-FAM` with `stxQ-R` could be reported; such an ID is refused now.
 
+## A 1.x command line fails with `was removed in 2.0`
+
+`-m`/`--mismatches`, `--probe-mismatches` and `--5p-truncation` were removed in 2.0: a primer or probe site is accepted when its Tm on the template reaches `--anneal-temp` (default 60 °C) less `--tm-margin` (default 5 °C), whatever its mismatches. A command line that gives one stops with exit code `2`:
+
+```text
+Error: -m was removed in 2.0: a primer or probe site is accepted when its Tm reaches --anneal-temp (default 60 °C) less --tm-margin (default 5 °C), whatever its mismatches. Leave -m out; lower --anneal-temp or raise --tm-margin to accept weaker sites
+```
+
+Leave the option out. To accept weaker sites, as a larger `-m` did, lower `--anneal-temp` or raise `--tm-margin`. See [Amplicon Calling](Amplicon-Calling).
+
+## An assay gives no product, or fewer than with 1.x
+
+Since 2.0 a site is judged by its Tm, the same rule for every assay. An assay can then give no product in silico: an oligo too short or too A/T-rich for the run's annealing temperature, or an assay published for other conditions. `consolidated_report/report_no_product.tsv` (and **Why no product** in the HTML report) gives, for each sample, the oligo without an accepted site, its best site and its Tm, and the rule it fails; see [Assays without a product](Reports#assays-without-a-product). The run's log and `QAlog.txt` list each oligo's Tm on a perfect match, and flag one below the minimum: that oligo is unlikely to anneal anywhere, and its assay to give a product in any sample.
+
+If the assay is run at another temperature, give it: `--anneal-temp 55`, or `ta=55` on its primer header when the other assays of the file are not ([Primer FASTA Format](Primer-FASTA-Format#annealing-temperature-optional)). To accept weaker sites, raise `--tm-margin`. The reaction (`--na`, `--mg`, `--dntp`, `--oligo-conc`) changes the Tm too. Why the Tm decides is on [Why Tm](Why-Tm).
+
 ## A product has an unexpected size
 
-That is a result, not an error: every product a PCR would amplify is reported. Permissive settings (`-m 1` or more with a large `--5p-truncation`) let primers pair at other places in the genome. See [the FAQ](FAQ#why-is-a-product-of-the-wrong-size-reported).
+That is a result, not an error: every product a PCR would amplify is reported. Permissive settings (a large `--tm-margin` or a low `--anneal-temp`) let primers pair at other places in the genome; `ForwardTm` and `ReverseTm` show how well each site melts. See [the FAQ](FAQ#why-is-a-product-of-the-wrong-size-reported).
 
 ## Primer file errors
 
@@ -161,7 +177,7 @@ Releases before 0.12.1 accept a gzipped FASTA file (`.fasta.gz`, `.fna.gz` and s
 
 ## Results differ between 0.11.0 and 0.12.0
 
-Releases before 0.12.0 miscounted mismatches near the ends of probes and near the 3' end of primers, because BLAST leaves such a mismatch out of its alignment together with the matching bases beyond it. Since 0.12.0 those bases are compared with the sample sequence. Three kinds of calls can change:
+The options named here are those of 1.x, removed in 2.0. Releases before 0.12.0 miscounted mismatches near the ends of probes and near the 3' end of primers, because BLAST leaves such a mismatch out of its alignment together with the matching bases beyond it. Since 0.12.0 those bases are compared with the sample sequence. Three kinds of calls can change:
 
 - **A probe mismatch on the first or last two bases** used to go uncounted: the assay was reported with `0` probe mismatches, even at the default `--probe-mismatches 0`. It is now counted, so the assay is negative unless `--probe-mismatches` is 1 or more.
 - **A probe mismatch on the third or fourth base from either end** used to remove the assay whatever `--probe-mismatches` allowed. It now counts as one mismatch, and the assay is reported when the budget allows it.

@@ -17,7 +17,7 @@ class PackageRulesTest {
     void onlyTheGelAndTheWindowUseJavaFx() throws IOException {
         Path sources = Path.of("src", "main", "java", "ca", "canada", "inspection");
         List<String> offenders;
-        try (Stream<Path> files = Stream.of("model", "util", "pcr", "report", "pipeline", "dispatchpcr")
+        try (Stream<Path> files = Stream.of("thermo", "model", "util", "pcr", "report", "pipeline", "dispatchpcr")
                 .map(sources::resolve).flatMap(PackageRulesTest::javaFiles)) {
             offenders = files.filter(PackageRulesTest::importsJavaFx).map(Path::toString).sorted().toList();
         }
@@ -27,10 +27,10 @@ class PackageRulesTest {
     /**
      * The layers of Architecture.md, lowest first: a package imports only from itself and the
      * layers below it. The two front ends, the dispatcher and the window, sit on top; the
-     * dispatcher starts the window.
+     * dispatcher starts the window. The melting temperatures ({@code thermo}, since 2.0) depend on nothing.
      */
     private static final List<List<String>> LAYERS = List.of(
-            List.of("model"), List.of("util"), List.of("pcr"), List.of("report"), List.of("gel"),
+            List.of("thermo"), List.of("model"), List.of("util"), List.of("pcr"), List.of("report"), List.of("gel"),
             List.of("pipeline"), List.of("insilicopcr"), List.of("dispatchpcr"));
 
     @Test

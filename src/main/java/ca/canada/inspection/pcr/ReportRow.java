@@ -42,7 +42,7 @@ public record ReportRow(String sample, String assay, Site site, Binding forward,
     /**
      * How one primer binds.
      *
-     * @param mismatches mismatches and indels, as counted against {@code -m}
+     * @param mismatches mismatches and indels, as the report gives them ({@link ca.canada.inspection.model.BlastResult#primerMismatches})
      * @param threePrime mismatches in the primer's 3' window
      * @param unpaired   bases at the primer's 5' end that do not pair with the template
      * @param tm         the Tm of the primer on its site, °C, as the Tm gate worked it out (since 2.0); {@code NaN}
@@ -111,7 +111,7 @@ public record ReportRow(String sample, String assay, Site site, Binding forward,
      * Which of several rows of one product best shows how the oligos bind: fewest primer
      * mismatches, then fewest probe mismatches, then fewest primer bases unpaired at the 5' end.
      * A degenerate oligo is searched as several variants, and more than one can hit the same
-     * place within the mismatch budget; the variant that matches best is the one to show. A
+     * place with a site the rules accept; the variant that matches best is the one to show. A
      * mismatch at a primer's first bases is left out of BLAST's alignment, so it counts as an
      * unpaired base, not a mismatch: without the last rule, such a variant tied with one that
      * pairs over its whole length. Rows that compare equal still differ (another read, another

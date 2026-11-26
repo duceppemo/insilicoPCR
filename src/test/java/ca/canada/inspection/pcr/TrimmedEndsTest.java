@@ -26,8 +26,8 @@ class TrimmedEndsTest {
     private static final String FLANK_R = "GAGAGAGAGAGAGAGAGAGA";     // 20 bases
     private static final int PROBE_START = FLANK_L.length() + 1;      // query position of probe base 1
     private static final PrimerPanel PRIMERS = PrimerPanel.of(Map.of("assay-P", PROBE, "assay-F", PROBE));
-    private static final AmpliconOptions PROBE_BUDGET_0 = new AmpliconOptions(0, 0, 5, 0, 5, 0, 5000);
-    private static final AmpliconOptions PROBE_BUDGET_1 = new AmpliconOptions(0, 1, 5, 0, 5, 0, 5000);
+    /** The rules with a Tm minimum of 1 °C: what is compared here, not what is accepted. */
+    private static final AmpliconOptions ANY = AmpliconOptions.builder().tmGate(TmGate.at(6)).build();
 
     /** Probe with the base at 1-based position {@code pos} changed. */
     private static String mutate(String seq, int pos) {
@@ -103,7 +103,7 @@ class TrimmedEndsTest {
         // BLAST keeps probe positions position+1 .. 15.
         String blastLine = plusLine(template, position + 1, PROBE.length());
 
-        BlastResult hit = parse(blastLine, template, PROBE_BUDGET_1).orElseThrow();
+        BlastResult hit = parse(blastLine, template, ANY).orElseThrow();
         assertEquals(1, hit.mismatch());
         assertEquals(0, hit.fivePrimeUncovered() + hit.threePrimeUncovered());
         assertEquals(PROBE_START, hit.qstart());
@@ -111,7 +111,6 @@ class TrimmedEndsTest {
         assertEquals(template.substring(PROBE_START - 1, PROBE_START - 1 + PROBE.length()), hit.qseq());
         assertEquals(PROBE, hit.sseq());
 
-        assertTrue(parse(blastLine, template, PROBE_BUDGET_0).isEmpty(), "one real mismatch exceeds budget 0");
     }
 
     @ParameterizedTest
@@ -120,11 +119,10 @@ class TrimmedEndsTest {
         String template = FLANK_L + mutate(PROBE, position) + FLANK_R;
         String blastLine = plusLine(template, 1, position - 1);
 
-        BlastResult hit = parse(blastLine, template, PROBE_BUDGET_1).orElseThrow();
+        BlastResult hit = parse(blastLine, template, ANY).orElseThrow();
         assertEquals(1, hit.mismatch());
         assertEquals(1, hit.sstart());
         assertEquals(PROBE.length(), hit.send());
-        assertTrue(parse(blastLine, template, PROBE_BUDGET_0).isEmpty());
     }
 
     @ParameterizedTest
@@ -135,14 +133,13 @@ class TrimmedEndsTest {
                 ? minusLine(template, PROBE.length(), position + 1)   // 5' side trimmed
                 : minusLine(template, position - 1, 1);              // 3' side trimmed
 
-        BlastResult hit = parse(blastLine, template, PROBE_BUDGET_1).orElseThrow();
+        BlastResult hit = parse(blastLine, template, ANY).orElseThrow();
         assertFalse(hit.isPlusStrand());
         assertEquals(1, hit.mismatch());
         assertEquals(PROBE.length(), hit.sstart());
         assertEquals(1, hit.send());
         assertEquals(PROBE_START, hit.qstart());
         assertEquals(revcomp(PROBE), hit.sseq());
-        assertTrue(parse(blastLine, template, PROBE_BUDGET_0).isEmpty());
     }
 
     @Test
@@ -150,7 +147,7 @@ class TrimmedEndsTest {
         // BLAST may stop short for other reasons (e.g. an X-drop); bases that pair are free.
         String template = FLANK_L + PROBE + FLANK_R;
         String blastLine = plusLine(template, 3, 15);
-        BlastResult hit = parse(blastLine, template, PROBE_BUDGET_0).orElseThrow();
+        BlastResult hit = parse(blastLine, template, ANY).orElseThrow();
         assertEquals(0, hit.mismatch());
         assertEquals(1, hit.sstart());
     }
@@ -159,20 +156,19 @@ class TrimmedEndsTest {
     void ambiguousTemplateBasesCountAsMismatches() {
         String template = FLANK_L + "NN" + PROBE.substring(2) + FLANK_R;
         String blastLine = plusLine(template, 3, 15);
-        assertEquals(2, parse(blastLine, template, new AmpliconOptions(0, 2, 5, 0, 5, 0, 5000)).orElseThrow().mismatch());
-        assertTrue(parse(blastLine, template, PROBE_BUDGET_1).isEmpty());
+        assertEquals(2, parse(blastLine, template, ANY).orElseThrow().mismatch());
     }
 
     @Test
     void basesBeyondTheTemplateEndStayUnaligned() {
         // Probe overhangs the start of a read by 2 bases: nothing to compare them with,
-        // so they stay unaligned and the old 2-base coverage allowance applies.
+        // so they stay unaligned.
         String template = PROBE.substring(2) + FLANK_R;
         String qseq = PROBE.substring(2);
         String blastLine = String.join("\t", "contig1", "assay-P", "13", "0", "0", "0.01", "24.3",
                 "15", "13", "1", "13", qseq, "3", "15", qseq);
 
-        BlastResult hit = parse(blastLine, template, PROBE_BUDGET_0).orElseThrow();
+        BlastResult hit = parse(blastLine, template, ANY).orElseThrow();
         assertEquals(2, hit.fivePrimeUncovered());
         assertEquals(0, hit.mismatch());
     }
@@ -181,7 +177,7 @@ class TrimmedEndsTest {
     void withoutATemplateTheHitIsUnchanged() {
         String template = FLANK_L + mutate(PROBE, 1) + FLANK_R;
         String blastLine = plusLine(template, 2, 15);
-        BlastResult hit = BlastHitParser.parse(blastLine, PRIMERS, PROBE_BUDGET_0).orElseThrow();
+        BlastResult hit = BlastHitParser.parse(blastLine, PRIMERS, ANY).orElseThrow();
         assertEquals(1, hit.fivePrimeUncovered());
         assertEquals(0, hit.mismatch());
     }
@@ -199,21 +195,22 @@ class TrimmedEndsTest {
     @Test
     void templatesAreRequestedOnlyWhenTheComparisonCanMatter() {
         String template = FLANK_L + PROBE + FLANK_R;
-        AmpliconOptions options = new AmpliconOptions(0, 1, 5, 0, 5, 0, 5000);
+        AmpliconOptions options = ANY;
         assertTrue(asksForTemplate(plusLine(template, 3, 15), options), "trimmed probe");
         assertFalse(asksForTemplate(plusLine(template, 1, 15), options), "nothing trimmed");
         assertTrue(asksForTemplate(asPrimer(plusLine(template, 1, 13)), options), "trimmed primer 3' end");
         assertTrue(asksForTemplate(asPrimer(plusLine(template, 7, 15)), options),
-                "6 trimmed 5' bases: the one past --5p-truncation 5 is compared");
-        String overBudget = FLANK_L + mutate(PROBE, 8) + FLANK_R;
-        assertFalse(asksForTemplate(asPrimer(plusLine(overBudget, 1, 13)), options),
-                "an aligned mismatch already exceeds -m 0");
+                "6 trimmed 5' bases: the one past the 5 free ones is compared");
+        String mismatched = FLANK_L + mutate(PROBE, 8) + FLANK_R;
+        assertTrue(asksForTemplate(asPrimer(plusLine(mismatched, 1, 13)), options),
+                "an aligned mismatch does not settle it (1.x's -m 0 did): the Tm needs the whole site");
     }
 
     // ---- primers ---------------------------------------------------------------
 
-    /** -m 3, --3p-penalty 2, --5p-truncation 8: an inclusivity screen. */
-    private static final AmpliconOptions RELAXED = new AmpliconOptions(3, 3, 5, 2, 8, 0, 5000);
+    /** --3p-penalty 2, any Tm. */
+    private static final AmpliconOptions RELAXED = AmpliconOptions.builder().threePrimePenalty(2)
+            .tmGate(TmGate.at(6)).build();
 
     @Test
     void primerThreePrimeMismatchCountsOnceNotOncePerTrimmedBase() {
@@ -247,8 +244,7 @@ class TrimmedEndsTest {
     @Test
     void primerThreePrimeMismatchIsStillRejectedByAStrictPenalty() {
         String template = FLANK_L + mutate(PROBE, 14) + FLANK_R;
-        AmpliconOptions strict = new AmpliconOptions(1, 2, 5, 0, 8, 0, 5000);
-        assertTrue(parse(asPrimer(plusLine(template, 1, 13)), template, strict).isEmpty());
+        assertTrue(parse(asPrimer(plusLine(template, 1, 13)), template, ANY).isEmpty());
     }
 
     @Test
@@ -256,11 +252,11 @@ class TrimmedEndsTest {
         // Mismatch at primer position 3: BLAST aligns 4..15. Positions 1-2 pair.
         String template = FLANK_L + mutate(PROBE, 3) + FLANK_R;
         String blastLine = asPrimer(plusLine(template, 4, 15));
-        AmpliconOptions strict = new AmpliconOptions(0, 0, 5, 0, 5, 0, 5000);
+        AmpliconOptions strict = ANY;
 
         BlastResult hit = parse(blastLine, template, strict).orElseThrow();
-        assertEquals(3, hit.fivePrimeUncovered(), "--5p-truncation still sees the trimmed bases");
-        assertEquals(0, hit.mismatch(), "5' bases do not count against -m");
+        assertEquals(3, hit.fivePrimeUncovered(), "the trimmed bases stay out of the alignment");
+        assertEquals(0, hit.mismatch(), "5' bases do not count as mismatches");
         assertEquals(1, hit.fivePrimeUnpairedBases());
         assertEquals(PROBE_START + 3, hit.qstart(), "the 5' end is not added to the alignment");
 
@@ -275,7 +271,7 @@ class TrimmedEndsTest {
         String template = FLANK_L + revcomp(tailless) + FLANK_R;
         String blastLine = asPrimer(minusLine(template, 15, 4));
 
-        BlastResult hit = parse(blastLine, template, AmpliconOptions.withMismatches(0)).orElseThrow();
+        BlastResult hit = parse(blastLine, template, ANY).orElseThrow();
         assertEquals(3, hit.fivePrimeUncovered());
         assertEquals(3, hit.fivePrimeUnpairedBases());
     }
@@ -288,7 +284,7 @@ class TrimmedEndsTest {
         String blastLine = String.join("\t", "contig1", "assay-F", "12", "0", "0", "0.01", "24.3",
                 "15", "12", "2", "13", qseq, "4", "15", qseq);
 
-        BlastResult hit = parse(blastLine, template, AmpliconOptions.withMismatches(0)).orElseThrow();
+        BlastResult hit = parse(blastLine, template, ANY).orElseThrow();
         assertEquals(3, hit.fivePrimeUncovered());
         assertEquals(2, hit.fivePrimeUnpairedBases());
     }

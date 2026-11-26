@@ -36,7 +36,7 @@ class ProductsTest {
         }
         sample.hits().add("toxA-R", minusHit("toxA-R", "c1", 581));
 
-        List<String> forward = Products.of(sample, degenerate(), AmpliconOptions.withMismatches(0)).stream()
+        List<String> forward = Products.of(sample, degenerate(), AmpliconOptions.defaults()).stream()
                 .map(ReportRow::forwardPrimer).toList();
 
         assertEquals(List.of("toxA-F_1"), forward);
@@ -55,7 +55,7 @@ class ProductsTest {
         sample.hits().add("toxA-R", minusHit("toxA-R", "c1", 1581));
 
         List<ReportRow> rows = Products.of(sample, degenerate(),
-                AmpliconOptions.builder().mismatches(1).maxLength(1000).build());
+                AmpliconOptions.builder().maxLength(1000).build());
 
         assertEquals(List.of("toxA-F_2 0 500", "toxA-F_2 0 500"), rows.stream()
                 .map(row -> row.forwardPrimer() + " " + row.forwardMismatches() + " " + row.size()).toList());
@@ -72,7 +72,7 @@ class ProductsTest {
         sample.hits().add("toxA-F_2", plusHit("toxA-F_2", "c1", 101));
         sample.hits().add("toxA-R", minusHit("toxA-R", "c1", 581));
 
-        List<ReportRow> rows = Products.of(sample, degenerate(), AmpliconOptions.withMismatches(0));
+        List<ReportRow> rows = Products.of(sample, degenerate(), AmpliconOptions.defaults());
 
         assertEquals(List.of("toxA-F_2 0 500"), rows.stream()
                 .map(row -> row.forwardPrimer() + " " + row.forwardUnpaired() + " " + row.size()).toList());
@@ -85,7 +85,7 @@ class ProductsTest {
         sample.hits().add("toxA-F_1", plusHit("toxA-F_1", "c1", 101));
         sample.hits().add("toxA-F_1", minusHit("toxA-F_1", "c1", 581));
 
-        List<ReportRow> rows = Products.of(sample, degenerate(), AmpliconOptions.withMismatches(0));
+        List<ReportRow> rows = Products.of(sample, degenerate(), AmpliconOptions.defaults());
 
         // Found once, from its plus-strand site, not again with the two hits swapped.
         assertEquals(List.of("toxA toxA-F_1 toxA-F_1 500 + ONE_PRIMER"), rows.stream().map(row -> row.assay() + " "
@@ -99,7 +99,7 @@ class ProductsTest {
         sample.hits().add("toxA-R", plusHit("toxA-R", "c1", 101));
         sample.hits().add("toxA-R", minusHit("toxA-R", "c1", 581));
 
-        List<ReportRow> rows = Products.of(sample, degenerate(), AmpliconOptions.withMismatches(0));
+        List<ReportRow> rows = Products.of(sample, degenerate(), AmpliconOptions.defaults());
 
         assertEquals(List.of("toxA toxA-R toxA-R 500 ONE_PRIMER"), rows.stream().map(row -> row.assay() + " "
                 + row.forwardPrimer() + " " + row.reversePrimer() + " " + row.size() + " " + row.pairing()).toList());
@@ -109,7 +109,7 @@ class ProductsTest {
     void aOnePrimerProductOfAnAssayWithAProbeNeedsTheProbeInsideIt() {
         // As for its designed product: in a qPCR tube, a product the probe does not bind gives no signal.
         Map<String, String> sequences = Map.of("q-F", PRIMER_20, "q-R", PRIMER_20, "q-P", PRIMER_20);
-        AmpliconOptions options = AmpliconOptions.withMismatches(0);
+        AmpliconOptions options = AmpliconOptions.defaults();
         java.util.function.IntFunction<List<String>> withProbeAt = at -> {
             Sample sample = new Sample("S");
             sample.hits().add("q-F", plusHit("q-F", "c1", 101));
@@ -133,7 +133,7 @@ class ProductsTest {
         sample.hits().add("q-P", plusHit("q-P", "c1", 450));
         sample.hits().add("q-P", plusHit("q-P", "c1", 301));
 
-        List<ReportRow> rows = Products.of(sample, PrimerPanel.of(sequences), AmpliconOptions.withMismatches(0));
+        List<ReportRow> rows = Products.of(sample, PrimerPanel.of(sequences), AmpliconOptions.defaults());
 
         assertEquals(List.of("101-600 probe 301-320"), rows.stream().map(row -> row.start() + "-" + row.end()
                 + " probe " + row.probe().start() + "-" + row.probe().end()).toList());
@@ -166,7 +166,7 @@ class ProductsTest {
         MixGroups mix = MixGroups.fromHeaders(Map.of("a-F", "mix=panel1", "b-F", "mix=panel1"));
 
         List<ReportRow> rows = Products.of(sample, PrimerPanel.of(sequences, ExpectedSizes.NONE, mix),
-                AmpliconOptions.withMismatches(0));
+                AmpliconOptions.defaults());
 
         assertEquals(List.of("a+b a-F b-F 500 TWO_ASSAYS"), rows.stream().map(row -> row.assay() + " "
                 + row.forwardPrimer() + " " + row.reversePrimer() + " " + row.size() + " " + row.pairing()).toList());
@@ -181,7 +181,7 @@ class ProductsTest {
         for (String id : List.of("a-F", "a-R", "b-F", "b-R")) {
             sequences.put(id, PRIMER_20);
         }
-        AmpliconOptions options = AmpliconOptions.withMismatches(0);
+        AmpliconOptions options = AmpliconOptions.defaults();
 
         // Run on their own (no mix=): no product of a-F with b-R.
         assertEquals(List.of(), Products.of(sample, PrimerPanel.of(sequences), options));
@@ -208,7 +208,7 @@ class ProductsTest {
         }
         java.util.function.Function<List<ReportRow>, List<String>> shown = rows -> rows.stream()
                 .map(row -> row.assay() + " " + row.start() + "-" + row.end() + " " + row.pairing()).toList();
-        AmpliconOptions options = AmpliconOptions.withMismatches(0);
+        AmpliconOptions options = AmpliconOptions.defaults();
 
         // One reaction: the 819 bp molecule once (one primer, the first assay by name), the 500 bp once
         // (meli's designed product, not again as abortus+meli).
@@ -241,7 +241,7 @@ class ProductsTest {
         }
         forward.forEach(hit -> sample.hits().add("a-F", hit));
         reverse.forEach(hit -> sample.hits().add("a-R", hit));
-        AmpliconOptions options = AmpliconOptions.builder().mismatches(0).maxLength(2_000).build();
+        AmpliconOptions options = AmpliconOptions.builder().maxLength(2_000).build();
         List<String> everyPair = new java.util.ArrayList<>();
         for (BlastResult f : forward) {
             for (BlastResult r : reverse) {
@@ -289,8 +289,7 @@ class ProductsTest {
         sample.hits().add("B-F_2", TestHits.truncatedPlusHit("B-F_2", "c1", 1, 9, 24, PRIMER_20 + "ACGT"));
         sample.hits().add("B-R", minusHit("B-R", "c1", 180));
 
-        List<ReportRow> rows = Products.of(sample, PrimerPanel.of(sequences),
-                AmpliconOptions.builder().fivePrimeTruncation(8).build());
+        List<ReportRow> rows = Products.of(sample, PrimerPanel.of(sequences), AmpliconOptions.defaults());
 
         assertEquals(List.of(203, 207), rows.stream().map(ReportRow::size).sorted().toList(), rows.toString());
     }

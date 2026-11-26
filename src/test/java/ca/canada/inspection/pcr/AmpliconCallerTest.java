@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AmpliconCallerTest {
 
-    private static final AmpliconOptions DEFAULTS = AmpliconOptions.withMismatches(0);
+    private static final AmpliconOptions DEFAULTS = AmpliconOptions.defaults();
 
     @Test
     void convergentPairOnOppositeStrandsAmplifies() {
@@ -91,7 +91,7 @@ class AmpliconCallerTest {
 
     @Test
     void maxLengthZeroDisablesTheLimit() {
-        AmpliconOptions unlimited = new AmpliconOptions(0, 0, 5, 0, 2, 0, 0);
+        AmpliconOptions unlimited = AmpliconOptions.builder().maxLength(0).build();
         BlastResult forward = TestHits.plusHit("assay-F", "contig1", 1);
         BlastResult reverse = TestHits.minusHit("assay-R", "contig1", 1_999_981);
         assertEquals(2_000_000, AmpliconCaller.call(forward, reverse, unlimited).orElseThrow().size());
@@ -99,7 +99,7 @@ class AmpliconCallerTest {
 
     @Test
     void productsShorterThanMinLengthAreRejected() {
-        AmpliconOptions options = new AmpliconOptions(0, 0, 5, 0, 2, 100, 5000);
+        AmpliconOptions options = AmpliconOptions.builder().minLength(100).build();
         BlastResult forward = TestHits.plusHit("assay-F", "contig1", 101);
         BlastResult reverse = TestHits.minusHit("assay-R", "contig1", 131); // 50 bp product
         assertTrue(AmpliconCaller.call(forward, reverse, options).isEmpty());
@@ -148,8 +148,8 @@ class AmpliconCallerTest {
         assertEquals("1-494", amplicon.start() + "-" + amplicon.end());
 
         // Both size limits see the full product, not the part on the contig.
-        assertTrue(AmpliconCaller.call(forward, reverse, new AmpliconOptions(0, 0, 5, 0, 8, 0, 499)).isEmpty());
-        assertTrue(AmpliconCaller.call(forward, reverse, new AmpliconOptions(0, 0, 5, 0, 8, 500, 500)).isPresent());
+        assertTrue(AmpliconCaller.call(forward, reverse, AmpliconOptions.builder().maxLength(499).build()).isEmpty());
+        assertTrue(AmpliconCaller.call(forward, reverse, AmpliconOptions.builder().minLength(500).maxLength(500).build()).isPresent());
     }
 
     @Test
@@ -210,9 +210,9 @@ class AmpliconCallerTest {
 
     @Test
     void anyBaseOfAPrimerThatDoesNotPairStopsTheOtherPrimersThreePrimeEnd() {
-        // A mismatch at the forward's 10th base, past --5p-truncation, counted against -m 1: a reverse ending on it was
-        // reported (0.15.4), its 3' end on a base the strand the forward made does not pair with.
-        AmpliconOptions oneMismatch = AmpliconOptions.withMismatches(1);
+        // A mismatch at the forward's 10th base, past its 5 free 5' bases: a reverse ending on it was reported
+        // (0.15.4), its 3' end on a base the strand the forward made does not pair with.
+        AmpliconOptions oneMismatch = DEFAULTS;
         String template = "ACGTACGTAAGTACGTACGT"; // base 10 (310) differs
         BlastResult forward = TestHits.plusHit("a-F", "c1", 301, template, TestHits.PRIMER_20).withFivePrimeFree(5);
         assertEquals(0, forward.fivePrimeFree());
@@ -226,7 +226,7 @@ class AmpliconCallerTest {
         // A 3' base left out (unpaired): no primer may overlap it at all; one just past its end still faces it.
         BlastResult cut = TestHits.truncatedPlusHit("a-F", "c1", 301, 1, 19, TestHits.PRIMER_20);
         assertEquals(1, cut.threePrimeUncovered());
-        AmpliconOptions lenient = new AmpliconOptions(1, 1, 5, 3, 5, 0, 5000);
+        AmpliconOptions lenient = AmpliconOptions.builder().threePrimePenalty(3).build();
         assertTrue(AmpliconCaller.call(cut, TestHits.minusHit("a-R", "c1", 315), lenient).isEmpty());
         assertTrue(AmpliconCaller.call(cut, TestHits.minusHit("a-R", "c1", 321), lenient).isPresent());
     }
@@ -279,7 +279,7 @@ class AmpliconCallerTest {
         assertTrue(amplicon.contains(1790, 1810));
         assertTrue(!amplicon.contains(500, 520));
         // The size limits see the whole product.
-        assertTrue(AmpliconCaller.call(forward, reverse, AmpliconOptions.builder().mismatches(0).maxLength(199)
+        assertTrue(AmpliconCaller.call(forward, reverse, AmpliconOptions.builder().maxLength(199)
                 .build(), 1800).isEmpty());
     }
 
@@ -299,11 +299,11 @@ class AmpliconCallerTest {
         BlastResult forward = TestHits.plusHit("assay-F", "c", 101);
         BlastResult reverse = TestHits.minusHit("assay-R", "c", 581);
         assertEquals(500, AmpliconCaller.call(forward, reverse,
-                new AmpliconOptions(0, 0, 5, 0, 5, 500, 500)).orElseThrow().size());
+                AmpliconOptions.builder().minLength(500).maxLength(500).build()).orElseThrow().size());
         assertTrue(AmpliconCaller.call(forward, reverse,
-                new AmpliconOptions(0, 0, 5, 0, 5, 501, 5000)).isEmpty());
+                AmpliconOptions.builder().minLength(501).build()).isEmpty());
         assertTrue(AmpliconCaller.call(forward, reverse,
-                new AmpliconOptions(0, 0, 5, 0, 5, 0, 499)).isEmpty());
+                AmpliconOptions.builder().maxLength(499).build()).isEmpty());
     }
 
     @Test

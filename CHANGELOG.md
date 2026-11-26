@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- Internal: the 1.x mismatch-count code, which only tests still ran, is
+  removed; each site's Tm is kept with its hit; primer header labels and the
+  range checks of the settings are read in one place. The reports are the
+  same. A rejected `--tm-margin`, `--na`, `--mg` or `--dntp` is now shown as
+  written (`-1`, not `-1.0`).
+
 ## 2.0.0 (2026-11-26)
 
 ### Breaking (2.0)

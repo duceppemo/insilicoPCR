@@ -30,15 +30,8 @@ public final class RunSettings {
     static List<Setting> of(PipelineConfig config, boolean withFastq) {
         AmpliconOptions options = config.ampliconOptions();
         List<Setting> settings = new ArrayList<>();
-        if (options.tmGated()) {
-            settings.add(new Setting("Primer and probe sites (--anneal-temp, --tm-margin, --na, --mg, --dntp,"
-                    + " --oligo-conc)", options.tmGate().describe()));
-        } else {
-            // The counts of 1.x, which only tests still run.
-            settings.add(new Setting("Primer mismatches", String.valueOf(options.maxTotalMismatches())));
-            settings.add(new Setting("Probe mismatches", String.valueOf(options.maxProbeMismatches())));
-            settings.add(new Setting("5' truncation allowed", String.valueOf(options.maxFivePrimeTruncation())));
-        }
+        settings.add(new Setting("Primer and probe sites (--anneal-temp, --tm-margin, --na, --mg, --dntp,"
+                + " --oligo-conc)", options.tmGate().describe()));
         settings.add(new Setting("3' window / max penalty (--3p-window / --3p-penalty)",
                 options.threePrimeWindow() + " / " + options.maxThreePrimePenalty()));
         settings.add(new Setting("Product length (--min-length to --max-length)", options.minAmpliconLength() + " to "

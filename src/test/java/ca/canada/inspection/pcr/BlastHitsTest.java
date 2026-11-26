@@ -18,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class BlastHitsTest {
 
     private static final PrimerPanel PRIMERS = PrimerPanel.of(Map.of("assay-F", PRIMER_20));
-    private static final AmpliconOptions OPTIONS = AmpliconOptions.withMismatches(0);
+    private static final AmpliconOptions OPTIONS = AmpliconOptions.defaults();
 
     @TempDir
     Path detailedDir;
@@ -29,9 +29,13 @@ class BlastHitsTest {
     }
 
     private static String hitLine(int mismatches) {
+        return hitLine(PRIMER_20, mismatches);
+    }
+
+    private static String hitLine(String site, int mismatches) {
         return String.join("\t",
                 "contig1", "assay-F", "20", String.valueOf(mismatches), "0", "1e-5", "40.1",
-                "20", "20", "101", "120", PRIMER_20, "1", "20", PRIMER_20);
+                "20", "20", "101", "120", site, "1", "20", PRIMER_20);
     }
 
     /** Each sample's table read for its hits, the missing sequences told to {@code warning}. */
@@ -58,7 +62,7 @@ class BlastHitsTest {
         Files.writeString(sampleDir.resolve("sampleA.tsv"),
                 "qseqid\tsseqid\tpositive\tmismatch\tgaps\tevalue\tbitscore\tslen\tlength\tqstart\tqend\tqseq\tsstart\tsend\tsseq\n"
                         + hitLine(0) + "\n"
-                        + hitLine(3) + "\n" // over budget: rejected
+                        + hitLine(PRIMER_20.substring(0, 19) + "A", 1) + "\n" // its 3' end mismatched: rejected
                         + "\n");
 
         Map<String, Sample> samples = new HashMap<>();
@@ -110,8 +114,9 @@ class BlastHitsTest {
         samples.put("sampleB", sample);
         PrimerPanel primers = PrimerPanel.of(Map.of("assay-P", probe));
 
-        // Before the fix this hit was rejected at any probe budget (3 unaligned bases).
-        attach(samples, primers, new AmpliconOptions(0, 1, 5, 0, 5, 0, 5000), warning -> {});
+        // Before the fix this hit was rejected at any probe budget (3 unaligned bases). Any Tm here: this checks
+        // what is compared.
+        attach(samples, primers, AmpliconOptions.builder().tmGate(TmGate.at(6)).build(), warning -> {});
         var hit = samples.get("sampleB").hits().byOligo().get("assay-P").getFirst();
         assertEquals(1, hit.mismatch());
         assertEquals(21, hit.qstart());
@@ -121,7 +126,8 @@ class BlastHitsTest {
         Sample again = sample("sampleB");
         again.addFile(fasta);
         strict.put("sampleB", again);
-        attach(strict, primers, new AmpliconOptions(0, 0, 5, 0, 5, 0, 5000), warning -> {});
+        // At 65 °C (a 60 °C minimum), the mismatched 15-mer does not anneal.
+        attach(strict, primers, AmpliconOptions.builder().tmGate(TmGate.at(65)).build(), warning -> {});
         assertTrue(strict.get("sampleB").hits().byOligo().isEmpty());
     }
 
@@ -141,7 +147,7 @@ class BlastHitsTest {
         java.util.List<String> warnings = new java.util.ArrayList<>();
 
         attach(Map.of("sampleC", sample), PrimerPanel.of(Map.of("assay-P", probe)),
-                new AmpliconOptions(0, 1, 5, 0, 5, 0, 5000), warnings::add);
+                AmpliconOptions.builder().build(), warnings::add);
 
         assertEquals(1, warnings.size(), warnings.toString());
         assertTrue(warnings.getFirst().startsWith("Warning: 1 sequences with a trimmed primer or probe hit were not"

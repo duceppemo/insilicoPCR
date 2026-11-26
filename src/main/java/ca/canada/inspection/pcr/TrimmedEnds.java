@@ -15,15 +15,16 @@ import ca.canada.inspection.model.BlastResult;
  *   <li>probes: both ends are added back as ungapped alignment columns, and the
  *       bases that differ count as probe mismatches;</li>
  *   <li>primers, 3' end: the same, so one 3' mismatch counts once instead of once
- *       per trimmed base (in the total budget and the 3' penalty alike);</li>
- *   <li>primers, 5' end: the first {@code --5p-truncation} bases are left unaligned,
- *       and the mismatch budget does not count them (5'-tailed primers do not pair
- *       there on purpose); only the number of those bases that do not pair is
+ *       per trimmed base (in the mismatch count and the 3' penalty alike);</li>
+ *   <li>primers, 5' end: the first {@link AmpliconOptions#FIVE_PRIME_FREE} bases are left
+ *       unaligned, and the mismatch count does not count them (5'-tailed primers do not
+ *       pair there on purpose); only the number of those bases that do not pair is
  *       recorded, for the report. Trimmed bases past them are added back like the
  *       3' end's, their mismatches counted: BLAST trims through a mismatch near
- *       the 5' end with another before it, and a site of two mismatches there was
- *       rejected where a site of one, past them, was not.</li>
+ *       the 5' end with another before it.</li>
  * </ul>
+ * <p>A hit made here is another site than the one given: it has no Tm ({@link BlastResult#tm} {@code NaN}), as
+ * the Tm of the site given is not its own.</p>
  * <p>Ambiguous template bases (N, IUPAC codes) do not pair. Bases beyond the end of
  * the template cannot be compared: they stay unaligned and are treated as before.</p>
  */
@@ -62,16 +63,13 @@ public final class TrimmedEnds {
     }
 
     /**
-     * True when comparing the hit's trimmed bases with the template can change
-     * whether it is accepted or what the report says about it: the hit has trimmed
-     * bases and would pass every rule the comparison cannot relax.
+     * True when comparing the hit's trimmed bases with the template can change whether it is accepted (its 3'
+     * penalty, the strand its Tm is worked out on) or what the report says about it: the hit has trimmed bases,
+     * and its oligo is known whole.
      */
-    public static boolean needsTemplate(BlastResult hit, AmpliconOptions options) {
-        if (hit.fivePrimeUncovered() + hit.threePrimeUncovered() == 0 || hit.primerSeq() == null
-                || hit.primerSeq().length() != hit.slen()) {
-            return false;
-        }
-        return BlastHitParser.passesWhateverTheTrimmedBases(hit, options);
+    public static boolean needsTemplate(BlastResult hit) {
+        return hit.fivePrimeUncovered() + hit.threePrimeUncovered() > 0 && hit.primerSeq() != null
+                && hit.primerSeq().length() == hit.slen();
     }
 
     /**
@@ -86,7 +84,7 @@ public final class TrimmedEnds {
 
     /**
      * As {@link #extend(BlastResult, Template)}, a primer's trimmed 5' bases past its first
-     * {@code fivePrimeFree} ({@code --5p-truncation}) added back as alignment columns.
+     * {@code fivePrimeFree} ({@link AmpliconOptions#FIVE_PRIME_FREE}) added back as alignment columns.
      */
     public static BlastResult extend(BlastResult hit, Template template, int fivePrimeFree) {
         if (template == null || hit.primerSeq() == null || hit.primerSeq().length() != hit.slen()

@@ -35,7 +35,7 @@ public final class ReportGenerator {
      * @param readEvidence what the read-level search found, per FASTQ sample; empty without one
      * @param extension    what extending reads found; {@link ReadExtensionStage.Result#NONE} when not run
      * @param oligoTms     each oligo's Tm on a perfect match, as the run's log gave them
-     *                     ({@link ca.canada.inspection.pcr.TmGate#oligoLines}); empty without the Tm rule
+     *                     ({@link ca.canada.inspection.pcr.TmGate#oligoLines})
      */
     public static RunResult write(PipelineContext context, Map<String, ReadEvidence> readEvidence,
                                   ReadExtensionStage.Result extension, List<String> oligoTms) {

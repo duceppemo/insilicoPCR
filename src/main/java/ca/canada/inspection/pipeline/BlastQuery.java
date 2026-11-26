@@ -29,8 +29,8 @@ import java.util.zip.GZIPInputStream;
  *
  * <p>An assembly with a sequence longer than {@link #PIECE_LENGTH} is searched in overlapping pieces
  * ({@link #toContig} puts the hits back on the sequence). BLAST's e-value grows with the length of the
- * sequence searched: on a chromosome, a primer site within {@code -m 2} or {@code -m 3} (16 bases
- * aligned with 2 mismatches, say) got an e-value above the cut-off and was dropped, which a draft of
+ * sequence searched: on a chromosome, a primer site with mismatches (16 bases aligned with 2
+ * mismatches, say, which 1.x accepted at {@code -m 2}) got an e-value above the cut-off and was dropped, which a draft of
  * the same genome, in contigs of a megabase or less, kept. On a 48 Mb chromosome: none of 5,689 such
  * sites whole, all of them in pieces, for 3 times the search time (as for the draft).</p>
  *

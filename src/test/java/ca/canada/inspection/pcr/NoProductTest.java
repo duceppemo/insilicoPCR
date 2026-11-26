@@ -69,9 +69,9 @@ class NoProductTest {
         Sample sample = sample("s", Sample.FileType.FASTA);
         sample.hits().add("a-F", plus("a-F", 101, PRIMER), 60);
         BlastResult weak = minus("a-R", 400, PRIMER);
-        sample.hits().nearMiss("a-R", new NearMiss(minus("a-R", 900, PRIMER), 41.2, 0));
-        sample.hits().nearMiss("a-R", new NearMiss(weak, 51.46, 0));
-        sample.hits().nearMiss("a-R", new NearMiss(minus("a-R", 700, PRIMER), Double.NaN, 3));
+        sample.hits().nearMiss("a-R", NearMiss.of(minus("a-R", 900, PRIMER), 41.2, 0));
+        sample.hits().nearMiss("a-R", NearMiss.of(weak, 51.46, 0));
+        sample.hits().nearMiss("a-R", NearMiss.failingThreePrimeRule(minus("a-R", 700, PRIMER), 3));
         // A probe BLAST did not find at all.
         List<NoProduct> found = of(panel("a-F", PRIMER, "a-R", PRIMER, "a-P", PRIMER), sample);
 
@@ -93,11 +93,10 @@ class NoProductTest {
         Sample sample = sample("s", Sample.FileType.FASTA);
         sample.hits().add("a-F", plus("a-F", 101, PRIMER), 60);
         String mismatched = PRIMER.substring(0, 19) + "C";
-        sample.hits().nearMiss("a-R", new NearMiss(minus("a-R", 800, PRIMER), Double.NaN, 6));
-        sample.hits().nearMiss("a-R", new NearMiss(TestHits.minusHit("a-R", "c1", 400, mismatched, PRIMER), Double.NaN,
-                3));
+        sample.hits().nearMiss("a-R", NearMiss.failingThreePrimeRule(minus("a-R", 800, PRIMER), 6));
+        sample.hits().nearMiss("a-R", NearMiss.failingThreePrimeRule(TestHits.minusHit("a-R", "c1", 400, mismatched, PRIMER), 3));
         // Equal penalties: the longer alignment.
-        sample.hits().nearMiss("a-R", new NearMiss(minus("a-R", 600, PRIMER.substring(5)), Double.NaN, 3));
+        sample.hits().nearMiss("a-R", NearMiss.failingThreePrimeRule(minus("a-R", 600, PRIMER.substring(5)), 3));
         NoProduct reverse = of(panel("a-F", PRIMER, "a-R", PRIMER), sample).getFirst();
         assertEquals("no site is accepted; the best fails the 3' rule, with a 3' penalty of 3, more than 0"
                 + " (--3p-penalty) (1 mismatch or indel)", reverse.reason());
@@ -110,18 +109,16 @@ class NoProductTest {
         Sample sample = sample("s", Sample.FileType.FASTA);
         sample.hits().add("a-F", plus("a-F", 101, PRIMER), 60);
         String mismatched = PRIMER.substring(0, 19) + "C";
-        sample.hits().nearMiss("a-R", new NearMiss(minus("a-R", 900, PRIMER.substring(11)), 9.8, 0, 55));
-        sample.hits().nearMiss("a-R", new NearMiss(TestHits.minusHit("a-R", "c1", 400, mismatched, PRIMER), Double.NaN,
-                3, 55));
+        sample.hits().nearMiss("a-R", NearMiss.of(minus("a-R", 900, PRIMER.substring(11)), 9.8, 0, 55));
+        sample.hits().nearMiss("a-R", NearMiss.failingThreePrimeRule(TestHits.minusHit("a-R", "c1", 400, mismatched, PRIMER), 3, 55));
         NoProduct reverse = of(panel("a-F", PRIMER, "a-R", PRIMER), sample).getFirst();
         assertTrue(reverse.site().startsWith("c1:400-"), reverse.site());
         assertTrue(reverse.reason().startsWith("no site is accepted; the best fails the 3' rule"), reverse.reason());
         // Of two chance matches, or two real sites, the old order holds.
-        assertTrue(new NearMiss(minus("a-R", 1, PRIMER), 50, 0, 55)
-                .closerThan(new NearMiss(TestHits.minusHit("a-R", "c1", 400, mismatched, PRIMER), Double.NaN, 3, 55)));
-        assertTrue(new NearMiss(minus("a-R", 1, PRIMER.substring(11)), 9.8, 0, 55)
-                .closerThan(new NearMiss(TestHits.minusHit("a-R", "c1", 1, "AAAAAAAAAA" + PRIMER.substring(10), PRIMER),
-                        Double.NaN, 9, 55)));
+        assertTrue(NearMiss.of(minus("a-R", 1, PRIMER), 50, 0, 55)
+                .closerThan(NearMiss.failingThreePrimeRule(TestHits.minusHit("a-R", "c1", 400, mismatched, PRIMER), 3, 55)));
+        assertTrue(NearMiss.of(minus("a-R", 1, PRIMER.substring(11)), 9.8, 0, 55)
+                .closerThan(NearMiss.failingThreePrimeRule(TestHits.minusHit("a-R", "c1", 1, "AAAAAAAAAA" + PRIMER.substring(10), PRIMER), 9, 55)));
     }
 
     @Test
@@ -263,8 +260,8 @@ class NoProductTest {
     void ofADegenerateOligoTheVariantThatCameClosestIsNamed() {
         Sample sample = sample("s", Sample.FileType.FASTA);
         sample.hits().add("a-F", plus("a-F", 101, PRIMER), 60);
-        sample.hits().nearMiss("a-R_0", new NearMiss(minus("a-R_0", 400, PRIMER), 30, 0));
-        sample.hits().nearMiss("a-R_1", new NearMiss(minus("a-R_1", 500, PRIMER), 50, 0));
+        sample.hits().nearMiss("a-R_0", NearMiss.of(minus("a-R_0", 400, PRIMER), 30, 0));
+        sample.hits().nearMiss("a-R_1", NearMiss.of(minus("a-R_1", 500, PRIMER), 50, 0));
         assertEquals("a-R_1", of(panel("a-F", PRIMER, "a-R_0", PRIMER, "a-R_1", PRIMER), sample).getFirst().oligo());
     }
 

@@ -18,7 +18,7 @@ class TmGateTest {
     private static final String PRIMER = "GAAGTCGGACTACCTGGTGA";
     private static final String FLANK = "TTGCAACGTAGCATCGATGG";
     private static final PrimerPanel PRIMERS = PrimerPanel.of(Map.of("g-F", PRIMER, "g-P", PRIMER));
-    private static final AmpliconOptions STRICT = AmpliconOptions.withMismatches(0);
+    private static final AmpliconOptions STRICT = AmpliconOptions.defaults();
 
     // outfmt: qseqid sseqid positive mismatch gaps evalue bitscore slen length qstart qend qseq sstart send sseq
     private static String line(String sseqid, int mismatch, int qstart, int qend, String qseq, int sstart, int send,
@@ -76,11 +76,11 @@ class TmGateTest {
 
     @Test
     void theTmDecidesInsteadOfTheMismatchCount() {
-        // Two central mismatches: rejected at -m 0, accepted by a Tm gate the site reaches, rejected by one it does not.
+        // Two central mismatches (rejected at 1.x's -m 0): accepted by a Tm gate the site reaches, rejected by one it
+        // does not.
         String site = PRIMER.substring(0, 8) + "TC" + PRIMER.substring(10);
         String contig = FLANK + site + FLANK;
         String blastLine = line("g-F", 2, 21, 40, site, 1, 20, PRIMER);
-        assertTrue(parse(blastLine, contig, STRICT).isEmpty());
         double siteTm = tm(blastLine, contig);
         double perfect = tm(line("g-F", 0, 21, 40, PRIMER, 1, 20, PRIMER), FLANK + PRIMER + FLANK);
         assertTrue(siteTm < perfect - 5, siteTm + " vs " + perfect);
@@ -90,16 +90,15 @@ class TmGateTest {
 
     @Test
     void basesPastTheContigEndLowerTheTmInsteadOfCountingAsFree() {
-        // The primer's first 8 bases hang off the contig start: --5p-truncation 8 accepts the 12 left at -m 0.
+        // The primer's first 8 bases hang off the contig start: 1.x's --5p-truncation 8 accepted the 12 left at
+        // -m 0. They melt far below the whole site, and the site is accepted only when that Tm is enough.
         String contig = PRIMER.substring(8) + FLANK + FLANK;
         String blastLine = line("g-F", 0, 1, 12, PRIMER.substring(8), 9, 20, PRIMER.substring(8));
-        AmpliconOptions truncation8 = AmpliconOptions.builder().fivePrimeTruncation(8).build();
-        assertTrue(parse(blastLine, contig, truncation8).isPresent());
         double cut = tm(blastLine, contig);
         double whole = tm(line("g-F", 0, 21, 40, PRIMER, 1, 20, PRIMER), FLANK + PRIMER + FLANK);
         assertTrue(cut < whole - 15, cut + " vs " + whole);
-        assertTrue(parse(blastLine, contig, truncation8.withTmGate(new TmGate(cut + 1, 0, 50, 3, 0.8, 250)))
-                .isEmpty());
+        assertTrue(parse(blastLine, contig, gated(cut - 0.5)).isPresent());
+        assertTrue(parse(blastLine, contig, gated(cut + 0.5)).isEmpty());
     }
 
     @Test
@@ -148,9 +147,9 @@ class TmGateTest {
         BlastHits.read(new java.io.BufferedReader(new java.io.StringReader(blastLine + "\n")), java.util.List.of(searched),
                 into, PRIMERS, gated(40), java.util.function.UnaryOperator.identity(), ignored -> { });
         BlastResult hit = into.byOligo().get("g-F").getFirst();
-        assertEquals(tm(blastLine, contig), into.siteTm(hit), 1e-9);
-        assertEquals(into.siteTm(hit), into.filtered(kept -> true).siteTm(hit), 1e-9);
-        assertTrue(Double.isNaN(new ca.canada.inspection.model.Hits().siteTm(hit)));
+        assertEquals(tm(blastLine, contig), hit.tm(), 1e-9);
+        assertEquals(hit.tm(), into.filtered(kept -> true).byOligo().get("g-F").getFirst().tm(), 1e-9);
+        assertTrue(Double.isNaN(BlastHitParser.hit(blastLine, PRIMERS).orElseThrow().tm()), "not worked out yet");
 
         // On the run's threads (-t), not every core: the same Tm.
         BlastHits.tmThreads(1);
@@ -159,7 +158,7 @@ class TmGateTest {
             BlastHits.read(new java.io.BufferedReader(new java.io.StringReader(blastLine + "\n")),
                     java.util.List.of(searched), one, PRIMERS, gated(40), java.util.function.UnaryOperator.identity(),
                     ignored -> { });
-            assertEquals(into.siteTm(hit), one.siteTm(one.byOligo().get("g-F").getFirst()), 1e-9);
+            assertEquals(hit.tm(), one.byOligo().get("g-F").getFirst().tm(), 1e-9);
         } finally {
             BlastHits.tmThreads(0);
         }
@@ -286,13 +285,6 @@ class TmGateTest {
         ca.canada.inspection.model.NearMiss best = into.nearMisses().get("g-F");
         assertEquals("c1", best.hit().queryID());
         assertTrue(best.tm() < 80 && !best.failsThreePrimeRule(), String.valueOf(best.tm()));
-    }
-
-    @Test
-    void withoutTheGateTheCountsDecideAsBefore() {
-        assertFalse(STRICT.tmGated());
-        assertTrue(STRICT.withTmGate(TmGate.at(60)).tmGated());
-        assertEquals(STRICT, STRICT.withTmGate(TmGate.at(60)).withTmGate(null));
     }
 
     @Test

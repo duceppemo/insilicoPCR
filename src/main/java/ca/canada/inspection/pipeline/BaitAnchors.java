@@ -16,8 +16,8 @@ import java.util.zip.GZIPOutputStream;
 /**
  * The reads of the first baiting that hold a primer site the rules accept (searched with blastn, as
  * contigs are), with their mates: what the second baiting starts from. The first baiting matches
- * k-mers shorter than the primers, within {@code -m} substitutions and indels, and with permissive
- * settings it catches reads of rRNA, mitochondria and repeats that share such a k-mer with a primer
+ * k-mers shorter than the primers, within an edit (in 1.x, within {@code -m} substitutions and indels),
+ * and with permissive settings it catches reads of rRNA, mitochondria and repeats that share such a k-mer with a primer
  * and hold no site; a second baiting from every one of them took their whole families.
  */
 final class BaitAnchors {

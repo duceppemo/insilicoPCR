@@ -69,26 +69,7 @@ public final class BlastHits {
                                    java.util.function.Consumer<String> accepted, boolean keepCutByEnd)
             throws IOException {
         try (QueryTemplates templates = new QueryTemplates(searched, into.circles())) {
-            if (options.tmGated()) {
-                return readGated(lines, templates, into, primers, options, toContig, accepted, keepCutByEnd);
-            }
-            String line;
-            while ((line = lines.readLine()) != null) {
-                if (line.isBlank() || line.equals(BlastField.HEADER) || (line = toContig.apply(line)) == null) {
-                    continue;
-                }
-                String kept = line;
-                java.util.Optional<ca.canada.inspection.model.BlastResult> hit =
-                        BlastHitParser.parse(line, primers, options, templates);
-                if (hit.isPresent()) {
-                    into.add(hit.get().subjectID(), hit.get());
-                    accepted.accept(kept);
-                } else if (keepCutByEnd) {
-                    BlastHitParser.cutByQueryEnd(line, primers, options, templates)
-                            .ifPresent(cut -> into.addCutByEnd(cut.subjectID(), cut));
-                }
-            }
-            return templates.missing();
+            return readSites(lines, templates, into, primers, options, toContig, accepted, keepCutByEnd);
         }
     }
 
@@ -123,10 +104,10 @@ public final class BlastHits {
     }
 
     /**
-     * {@link #read} with the Tm gate on: the hits that pass its other rules are scored in parallel (a thermodynamic
-     * alignment each, and an assembly can have millions of BLAST hits), and added in the order of the report.
+     * {@link #read}: the hits that pass the 3' rule are scored in parallel (a thermodynamic alignment each, and an
+     * assembly can have millions of BLAST hits), and added in the order of the report.
      */
-    private static Set<String> readGated(BufferedReader lines, QueryTemplates templates, Hits into,
+    private static Set<String> readSites(BufferedReader lines, QueryTemplates templates, Hits into,
                                          PrimerPanel primers, AmpliconOptions options,
                                          java.util.function.UnaryOperator<String> toContig,
                                          java.util.function.Consumer<String> accepted, boolean keepCutByEnd)
@@ -144,8 +125,7 @@ public final class BlastHits {
                 BlastHitParser.Pending site = BlastHitParser.site(found.get(), options, templates);
                 if (!site.primes()) {
                     // No Tm: it would not decide, and millions of short hits fail the 3' rule.
-                    into.nearMiss(site.hit().subjectID(), new ca.canada.inspection.model.NearMiss(site.hit(),
-                            Double.NaN, site.threePrimePenalty(), options.tmGate().minimumTm(site.hit().subjectID())));
+                    into.nearMiss(site.hit().subjectID(), ca.canada.inspection.model.NearMiss.failingThreePrimeRule(site.hit(), site.threePrimePenalty(), options.tmGate().minimumTm(site.hit().subjectID())));
                 } else {
                     waiting.add(new Waiting(site, line, pool.submit(() -> site.tm(options.tmGate()))));
                     if (waiting.size() >= TM_QUEUE) {
@@ -178,11 +158,12 @@ public final class BlastHits {
                 throw new IllegalStateException("Could not compute a primer-site Tm: " + e.getCause(), e.getCause());
             }
             BlastHitParser.Pending site = next.site();
-            if (gate.accepts(site.hit().subjectID(), tm)) {
-                into.add(site.hit().subjectID(), site.hit(), tm);
+            java.util.Optional<ca.canada.inspection.model.BlastResult> hit = site.acceptedHit(gate, tm);
+            if (hit.isPresent()) {
+                into.add(site.hit().subjectID(), hit.get());
                 accepted.accept(next.line());
             } else {
-                into.nearMiss(site.hit().subjectID(), new ca.canada.inspection.model.NearMiss(site.hit(), tm,
+                into.nearMiss(site.hit().subjectID(), ca.canada.inspection.model.NearMiss.of(site.hit(), tm,
                         site.threePrimePenalty(), gate.minimumTm(site.hit().subjectID())));
             }
         }

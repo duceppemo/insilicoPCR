@@ -49,7 +49,6 @@ class RunFormTest {
         assertEquals(3, config.threads());
         assertEquals(1e3, config.evalue());
         assertEquals(ca.canada.inspection.pcr.TmGate.DEFAULT, config.ampliconOptions().tmGate());
-        assertEquals(PipelineConfig.TM_BAIT_MISMATCHES, config.mismatches());
         assertEquals(InputCheck.Depth.FULL, config.inputCheck());
         assertEquals(false, config.gel());
         assertEquals(FastqSettings.DEFAULTS.tadpole(), config.tadpole());

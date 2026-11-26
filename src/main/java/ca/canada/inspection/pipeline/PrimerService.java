@@ -1,5 +1,6 @@
 package ca.canada.inspection.pipeline;
 
+import ca.canada.inspection.pcr.HeaderLabels;
 import ca.canada.inspection.util.SequenceFileUtils;
 import ca.canada.inspection.pcr.AnnealTemps;
 import ca.canada.inspection.pcr.ExpectedSizes;
@@ -53,7 +54,6 @@ public final class PrimerService {
     }
 
     /** The {@code key=value} words of a primer header the program reads: the rest is free text. */
-    static final List<String> HEADER_KEYS = List.of("size", "other", "mix", "ta");
 
     private PrimerService() {
     }
@@ -79,7 +79,7 @@ public final class PrimerService {
     static PipelineConfig withAnnealTemps(PipelineConfig config, PrimerPanel primers) {
         AnnealTemps temps = primers.annealTemps();
         var options = config.ampliconOptions();
-        if (temps.isEmpty() || !options.tmGated()) {
+        if (temps.isEmpty()) {
             return config;
         }
         try {
@@ -241,16 +241,16 @@ public final class PrimerService {
 
     /**
      * The warnings for {@code key=value} words of the headers whose key the program does not read ({@link
-     * #HEADER_KEYS}): left as free text, they would start to change what the file does if a later release read
+     * HeaderLabels#KEYS}): left as free text, they would start to change what the file does if a later release read
      * them; and a key mistyped ({@code sise=420}) was ignored without a word.
      */
     static List<String> unknownKeys(Map<String, String> descriptions) {
         List<String> warnings = new ArrayList<>();
         descriptions.forEach((primerId, description) -> {
-            String[] words = description.trim().split("\\s+");
+            String[] words = HeaderLabels.words(description);
             for (int i = 0; i + 1 < words.length; i++) {
                 // ta = 60: read as three words of free text, the temperature silently not set.
-                if (HEADER_KEYS.contains(words[i].toLowerCase(java.util.Locale.ROOT)) && words[i + 1].startsWith("=")) {
+                if (HeaderLabels.KEYS.contains(words[i].toLowerCase(java.util.Locale.ROOT)) && words[i + 1].startsWith("=")) {
                     warnings.add("Warning: the header of primer " + primerId + " holds \"" + words[i] + " "
                             + words[i + 1] + "\", which insilicoPCR does not read: it is ignored. Write it without"
                             + " spaces, such as " + words[i] + "=" + (words[i + 1].length() > 1
@@ -259,9 +259,9 @@ public final class PrimerService {
             }
             for (String word : words) {
                 java.util.regex.Matcher key = UNKNOWN_KEY.matcher(word);
-                if (key.matches() && !HEADER_KEYS.contains(key.group(1).toLowerCase(java.util.Locale.ROOT))) {
+                if (key.matches() && !HeaderLabels.KEYS.contains(key.group(1).toLowerCase(java.util.Locale.ROOT))) {
                     warnings.add("Warning: the header of primer " + primerId + " holds " + word + ", which insilicoPCR"
-                            + " does not read (it reads size=, other=, mix= and ta=): it is ignored. Write it otherwise"
+                            + " does not read (it reads " + HeaderLabels.listed() + "): it is ignored. Write it otherwise"
                             + " (such as \"" + key.group(1) + " " + word.substring(key.group(1).length() + 1) + "\")"
                             + " if it is a note.");
                 }

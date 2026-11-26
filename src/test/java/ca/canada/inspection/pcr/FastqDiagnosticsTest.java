@@ -29,7 +29,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class FastqDiagnosticsTest {
 
-    private static final AmpliconOptions DEFAULTS = AmpliconOptions.withMismatches(0);
+    private static final AmpliconOptions DEFAULTS = AmpliconOptions.defaults();
     private static final PrimerPanel PRIMERS = PrimerPanel.of(Map.of(
             "assay-F", PRIMER_20, "assay-R", PRIMER_20, "assay-P", PRIMER_20));
     private static final Map<String, Long> ALL_IN_READS = Map.of("assay-F", 50L, "assay-R", 54L, "assay-P", 64L);
@@ -466,7 +466,7 @@ class FastqDiagnosticsTest {
     void partialBaitPointsAtASiteTheRulesReject() {
         // The reverse primer is in the reads, but its site melts too low: the mini-assembly holds it, rejected.
         Sample sample = fastqSample();
-        sample.hits().nearMiss("assay-R", new NearMiss(TestHits.plusHit("assay-R", "contig_0,len=900", 400), 54.5, 0));
+        sample.hits().nearMiss("assay-R", NearMiss.of(TestHits.plusHit("assay-R", "contig_0,len=900", 400), 54.5, 0));
 
         Finding finding = assess(sample, noReadCall(Map.of("assay-F", 12L)), Map.of()).getFirst();
 
@@ -481,10 +481,10 @@ class FastqDiagnosticsTest {
         String fiveOff = "TTTTT" + PRIMER_20.substring(5);
         String oneOff = PRIMER_20.substring(0, 18) + (PRIMER_20.charAt(18) == 'A' ? 'C' : 'A') + PRIMER_20.charAt(19);
         Map<String, NearMiss> misses = Map.of(
-                "a-F", new NearMiss(TestHits.plusHit("a-F", "c", 100), 47.0, 0, 55),   // 8 °C below 55: named
-                "b-F", new NearMiss(TestHits.plusHit("b-F", "c", 100), 30.0, 0, 55),   // far below: a chance match
-                "c-F", new NearMiss(TestHits.plusHit("c-F", "c", 100, oneOff, PRIMER_20), Double.NaN, 4, 55), // 3' SNP
-                "d-F", new NearMiss(TestHits.plusHit("d-F", "c", 100, fiveOff, PRIMER_20), Double.NaN, 6, 55));
+                "a-F", NearMiss.of(TestHits.plusHit("a-F", "c", 100), 47.0, 0, 55),   // 8 °C below 55: named
+                "b-F", NearMiss.of(TestHits.plusHit("b-F", "c", 100), 30.0, 0, 55),   // far below: a chance match
+                "c-F", NearMiss.failingThreePrimeRule(TestHits.plusHit("c-F", "c", 100, oneOff, PRIMER_20), 4, 55), // 3' SNP
+                "d-F", NearMiss.failingThreePrimeRule(TestHits.plusHit("d-F", "c", 100, fiveOff, PRIMER_20), 6, 55));
         assertEquals(java.util.Set.of("a-F", "c-F"), FastqDiagnostics.likelySites(misses));
     }
 

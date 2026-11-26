@@ -68,8 +68,8 @@ public final class ReadLevelCaller {
     /**
      * The read-level products to report next to the assembly's own rows: those with enough support that
      * the assembly does not report with primer sites that pair as well. A contig can hold a product with
-     * primer bases past its ends, or a mismatch the reads do not show, which {@code -m} and
-     * {@code --5p-truncation} let through: the reads' product, whose primers pair better, is then reported
+     * primer bases past its ends, or a mismatch the reads do not show, at a site that still
+     * passes the rules: the reads' product, whose primers pair better, is then reported
      * too, rather than hidden behind the contig's.
      *
      * @param products  an assay's products seen in reads
@@ -100,8 +100,8 @@ public final class ReadLevelCaller {
     }
 
     /**
-     * Primer bases of a product that do not pair with its template: the mismatches {@code -m} counts and the
-     * 5' bases within {@code --5p-truncation} that do not pair (those past a contig or read end included).
+     * Primer bases of a product that do not pair with its template: the mismatches the report counts and the
+     * 5' bases within {@link AmpliconOptions#FIVE_PRIME_FREE} that do not pair (those past a contig or read end included).
      */
     static int unpairedPrimerBases(ReportRow row) {
         return row.forwardMismatches() + row.forwardUnpaired() + row.reverseMismatches() + row.reverseUnpaired();

@@ -34,7 +34,7 @@ class ReportTsvTest {
         PrimerPanel primers = PrimerPanel.of(Map.of("qpcr-F", "ACGT", "qpcr-R", "ACGT", "qpcr-P", "ACGT",
                 "plain-F", "ACGT", "plain-R", "ACGT"));
 
-        Path report = ConsolidatedReport.write(dir, Products.ofRun(Map.of("S", sample), PrimerPanel.of(primers.sequences(), ExpectedSizes.fromHeaders(Map.of("qpcr-F", "size=120"))), AmpliconOptions.withMismatches(0), Map.of("S", List.of(withProbe, withoutProbe))), PrimerPanel.of(primers.sequences(), ExpectedSizes.fromHeaders(Map.of("qpcr-F", "size=120"))));
+        Path report = ConsolidatedReport.write(dir, Products.ofRun(Map.of("S", sample), PrimerPanel.of(primers.sequences(), ExpectedSizes.fromHeaders(Map.of("qpcr-F", "size=120"))), AmpliconOptions.defaults(), Map.of("S", List.of(withProbe, withoutProbe))), PrimerPanel.of(primers.sequences(), ExpectedSizes.fromHeaders(Map.of("qpcr-F", "size=120"))));
 
         assertEquals(List.of(withProbe, withoutProbe), ReportTsv.read(report));
     }
@@ -44,7 +44,7 @@ class ReportTsvTest {
         Sample sample = new Sample("S");
         ReportRow row = TestRows.row("S", "plain", 11, 80, "ctg1", "len=5000\tcov=12.3");
 
-        Path report = ConsolidatedReport.write(dir, Products.ofRun(Map.of("S", sample), PrimerPanel.of(Map.of("plain-F", "ACGT", "plain-R", "ACGT")), AmpliconOptions.withMismatches(0), Map.of("S", List.of(row))), PrimerPanel.of(Map.of("plain-F", "ACGT", "plain-R", "ACGT")));
+        Path report = ConsolidatedReport.write(dir, Products.ofRun(Map.of("S", sample), PrimerPanel.of(Map.of("plain-F", "ACGT", "plain-R", "ACGT")), AmpliconOptions.defaults(), Map.of("S", List.of(row))), PrimerPanel.of(Map.of("plain-F", "ACGT", "plain-R", "ACGT")));
 
         assertEquals(List.of(TestRows.row("S", "plain", 11, 80, "ctg1", "len=5000 cov=12.3")), ReportTsv.read(report));
     }

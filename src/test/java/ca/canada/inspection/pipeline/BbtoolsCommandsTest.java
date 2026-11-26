@@ -73,14 +73,9 @@ class BbtoolsCommandsTest {
         assertTrue(commands.substitutionBait(Path.of("primers.fasta"), paired, Path.of("sub.fq.gz"), 8).arguments()
                 .contains("hdist=3"), "BBDuk refuses more than 3");
 
-        assertFalse(BbtoolsCommands.baitsSubstitutionsApart(0, 25), "none asked for");
-        assertTrue(BbtoolsCommands.baitsSubstitutionsApart(3, 19));
-        assertFalse(BbtoolsCommands.baitsSubstitutionsApart(3, 18), "no oligo as long as k: no k-mer to match");
         // The Tm rule's: 2 substitutions in 18-mers.
         assertTrue(commands.substitutionBait(Path.of("primers.fasta"), paired, Path.of("sub.fq.gz"), 2).arguments()
                 .containsAll(List.of("hdist=2", "k=18")));
-        assertTrue(BbtoolsCommands.baitsSubstitutionsApart(2, 18));
-        assertFalse(BbtoolsCommands.baitsSubstitutionsApart(2, 17));
     }
 
     @Test

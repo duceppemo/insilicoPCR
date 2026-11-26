@@ -3,7 +3,6 @@ package ca.canada.inspection.pcr;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.OptionalInt;
 import java.util.Set;
@@ -34,8 +33,8 @@ public final class ExpectedSizes {
      */
     public static final int TOLERANCE = ProductSizes.GAP;
 
-    private static final String TARGET_KEY = "size";
-    private static final String OTHER_KEY = "other";
+    static final String TARGET_KEY = "size";
+    static final String OTHER_KEY = "other";
 
     /** What a row's amplicon size is, for an assay that declares sizes. */
     public enum Label {
@@ -88,23 +87,17 @@ public final class ExpectedSizes {
     public static ExpectedSizes fromHeaders(Map<String, String> descriptions) {
         // assay -> key -> the primer that declared it and its value as written
         Map<String, Map<String, String[]>> declared = new TreeMap<>();
-        descriptions.forEach((primerId, description) -> {
-            PrimerId parsed = PrimerId.parse(primerId);
-            String assay = parsed == null ? primerId : parsed.assay();
-            for (String word : description.trim().split("\\s+")) {
-                int equals = word.indexOf('=');
-                String key = equals < 0 ? "" : word.substring(0, equals).toLowerCase(Locale.ROOT);
-                if (!key.equals(TARGET_KEY) && !key.equals(OTHER_KEY)) {
-                    continue;
-                }
-                String value = word.substring(equals + 1);
-                parse(primerId, word, value); // fail on the primer that holds the bad value
-                String[] previous = declared.computeIfAbsent(assay, ignored -> new HashMap<>())
-                        .putIfAbsent(key, new String[]{primerId, value});
-                if (previous != null && !parse(primerId, word, value).equals(parse(previous[0], word, previous[1]))) {
-                    throw new IllegalArgumentException("Assay " + assay + " declares " + key + "= twice with different"
-                            + " values: " + previous[1] + " on " + previous[0] + ", " + value + " on " + primerId);
-                }
+        HeaderLabels.forEach(descriptions, Set.of(TARGET_KEY, OTHER_KEY), label -> {
+            String primerId = label.primerId();
+            String word = label.word();
+            String value = label.value();
+            String key = label.key();
+            parse(primerId, word, value); // fail on the primer that holds the bad value
+            String[] previous = declared.computeIfAbsent(label.assay(), ignored -> new HashMap<>())
+                    .putIfAbsent(key, new String[]{primerId, value});
+            if (previous != null && !parse(primerId, word, value).equals(parse(previous[0], word, previous[1]))) {
+                throw new IllegalArgumentException("Assay " + label.assay() + " declares " + key + "= twice with"
+                        + " different values: " + previous[1] + " on " + previous[0] + ", " + value + " on " + primerId);
             }
         });
 

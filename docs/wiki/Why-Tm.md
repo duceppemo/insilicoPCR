@@ -66,7 +66,44 @@ BMpal  BMpal-F  no site reaches 55 °C in the mini-assembly (the FASTQ diagnosti
 
 1.x at `-m 0` gave no product either: the mismatch at the 6th base is past its 5 free bases.
 
-The test works at the bench: from the second cycle on, the primer anneals to copies of the product, which carry its whole sequence. insilicoPCR does not try to model that for one assay: with `--tm-margin 10` (sites at 50 °C), the reads give its 266 bp product, from 1,535 of 1,696 informative reads (91%). This is the trade: one rule for every assay, a stated reason when an assay fails it, and the user decides whether to relax it.
+The test works at the bench: from the second cycle on, the primer anneals to copies of the product, which carry its whole sequence. insilicoPCR does not try to model that for one assay: with `--tm-margin 10` (sites at 50 °C), the reads give its 266 bp product, from 1,535 of 1,696 informative reads (91%). The point is not to make the assay pass: its weak site is the finding. One rule for every assay shows which ones rely on a weak site, and how weak.
+
+## What the margin shows
+
+The margin (`--tm-margin`, 5 °C by default) sets how far below the annealing temperature a site may melt. The aim of insilicoPCR is not to make every assay give its product: an assay that gives none at the default relies on a weak site, and that is worth knowing before it is used on new samples. To see where the margin matters, both data sets were run with a margin of 15 (sites at 45 °C), keeping every product down to 45 °C, and each product was sorted by its weakest site: the lowest of its `ForwardTm`, `ReverseTm` and `ProbeTm`.
+
+**46 *Brucella* assemblies** (NCBI, 4-assay qPCR panel at 60 °C). The products split cleanly:
+
+| Products | Weakest site |
+|---|---|
+| The 22 of the 2.0 default (Bru_genus 16, BM_10 3, BS 2, BA 1), each at its target size | 61.3 to 61.9 °C |
+| 3 more, BA products not at its target size | 45.1 °C |
+
+Any minimum from 46 to 61 °C gives the same 22 products: at 60 °C, any margin from 0 to 14. The default's 55 °C sits in the gap. These assays have strong sites on their targets: the margin hardly matters.
+
+***Globodera* reads** (FASTQ mode; 19 cyst samples, CFIA: nine *G. rostochiensis*, two of its Andean mitotype, three each of *G. pallida* and *G. ellingtonae*, one *G. tabacum*, and a nematode outside *Globodera*). The 14 species assays were each judged at their published annealing temperature: Gamel et al. (2017) and Bulman and Marshall (1997) at 60 °C, Reid et al. (2015) at 50 °C, the others at 60 °C. Counting each assay once per sample, with a product at its target size: 64 are an assay on its own species, and 8 on another:
+
+| Margin | On its own species (of 64) | On another species | Own-species products missing |
+|---|---|---|---|
+| 0 | 34 | 8 | BMros, BMpal, GamelRos, ChronisGe, ShahGe, NakhlaPal, NakhlaTab |
+| 1 to 2 | 41 | 8 | BMros, BMpal, GamelRos, ChronisGe, ShahGe |
+| **3 to 8** (default 5) | **47** | 8 | BMros, BMpal, GamelRos |
+| 9 or more | 64 | 8 | none |
+
+The assays are weak in two ways, and the runs show both:
+
+- **Sensitivity: three published assays rely on a weak site.** BMros and BMpal share the ITS5 primer, whose sites on these samples melt at 51.5 °C (see above). GamelRos-R melts at 54.6 °C even on a perfect match, and at 51.2 °C on these samples, with one unpaired 5' base. At their published 60 °C they give no product at the default, and `report_no_product.tsv` names the oligo and its Tm. They work at the bench, but with little room: a further mismatch in a population, or a less forgiving mix, and they may not.
+- **Specificity: no margin removes the 8 products on another species.** ReidRos's on the three *G. ellingtonae* samples and the *G. tabacum* one (its probe's detection of *G. tabacum* is documented), with a weakest site at 58.2 °C, and NakhlaTab's and NakhlaTabPCR's on the two Andean *G. rostochiensis* samples, at 61.7 °C, melt as high as the assays' sites on their own species. The oligos match these species: a result on them needs another test.
+
+The assay's own annealing temperature matters as much as the margin. Judged at 60 °C, the Reid assays would miss a product at the default (a site at 50.4 °C); at their published 50 °C (`ta=50`) they miss none at any margin.
+
+The default stays at 5 °C. A wider one would hide the weak sites: at 9 °C or more every *Globodera* product is there, and the three assays above look as safe as the others.
+
+When an assay gives no product:
+
+1. Read its line in `report_no_product.tsv`, and the oligo Tms at the top of the run's log (each oligo's Tm on a perfect match, flagged when below the minimum).
+2. Check that it is judged at its own annealing temperature: give it with `ta=` in its primer header ([Primer FASTA Format](Primer-FASTA-Format#annealing-temperature-optional)) if the run's is not it.
+3. If it still gives none, the reason is a finding about the assay. A run with a larger `--tm-margin` shows how far it is from passing, and what it would amplify if the site does anneal; it does not make the site any stronger.
 
 ## What the Tm does not do
 

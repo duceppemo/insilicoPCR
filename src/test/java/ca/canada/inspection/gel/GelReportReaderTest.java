@@ -116,8 +116,26 @@ class GelReportReaderTest {
         List<GelBand> bands = GelReportReader.read(file, List.of()).get("s1");
 
         assertEquals(List.of("one primer", "two assays", ""), bands.stream().map(GelBand::pairingTag).toList());
-        assertEquals("Sample: s1\nAssay: one\nAmplicon size: 400 bp\nMade by: one primer",
+        assertEquals("Sample: s1\nAssay: one\nAmplicon size: 400 bp\nMade by: one primer"
+                        + "\nPlus-strand primer one-F: no mismatch\nMinus-strand primer one-F: no mismatch"
+                        + "\nCalled on: assembly",
                 GelText.tooltip(List.of(bands.getFirst())));
-        assertEquals("tip\n\nRows:\ns1\ta+b\t300 bp\ttwo assays", GelText.details("tip", List.of(bands.get(1))));
+        assertEquals("tip\nOn: c1, 1-300\n\nRows:\ns1\ta+b\t300 bp\ttwo assays",
+                GelText.details("tip", List.of(bands.get(1))));
+    }
+
+    @Test
+    void eachBandKeepsItsRowForThePopup() throws IOException {
+        // How each oligo binds was in the report, not on the gel: the band keeps the row it was read from.
+        Path file = Files.writeString(dir.resolve("bound.tsv"), "Sample\tGene\tGenomeLocation\tAmpliconSize\tContig"
+                + "\tForwardPrimer\tReversePrimer\tForwardMismatches\tReverseMismatches\tForward5PrimeUnpaired"
+                + "\tReverse5PrimeUnpaired\tForwardTm\tReverseTm\n"
+                + "s1\tg\t961-1119\t159\tcontig_3\tg-F\tg-R\t0\t0\t0\t1\t58.9\t51.2\n");
+
+        GelBand band = GelReportReader.read(file, List.of()).get("s1").getFirst();
+
+        assertEquals("g-R", band.row().reversePrimer());
+        assertEquals(1, band.row().reverseUnpaired());
+        assertEquals(51.2, band.row().reverseTm());
     }
 }

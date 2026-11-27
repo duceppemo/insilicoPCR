@@ -73,7 +73,7 @@ Each portable release includes:
 - NCBI BLAST+ 2.17.0 (Linux) or 2.15.0 (Windows)
 - platform launcher script
 
-No separate Java, JavaFX, BBMap, or BLAST+ installation is required. Their versions are in `VERSIONS.txt` (Linux ZIP, since 0.15.3), and each run writes them in `QAlog.txt` and in the HTML report's run details (`Tools:`). Their licenses are in `THIRD-PARTY-NOTICES.md` and `third_party/`.
+No separate Java, JavaFX, BBMap, or BLAST+ installation is required. Their versions are in `VERSIONS.txt` (Linux ZIP since 0.15.3, Windows ZIP since 2.1), and each run writes them in `QAlog.txt` and in the HTML report's run details (`Tools:`). Their licenses are in `THIRD-PARTY-NOTICES.md` and `third_party/`.
 
 ## Launcher options
 

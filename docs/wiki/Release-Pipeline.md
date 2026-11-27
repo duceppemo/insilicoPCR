@@ -1,6 +1,6 @@
 # Release Pipeline
 
-The release process creates portable ZIP archives for Linux and Windows. The Linux archive lists its entries in one order, each dated by the commit, and holds `VERSIONS.txt`, the versions of the Java runtime, BLAST+, BBTools and JavaFX it bundles; the entries inside the program's jar are dated by its build.
+The release process creates portable ZIP archives for Linux and Windows. Each holds `VERSIONS.txt`, the versions of the Java runtime, BLAST+, BBTools and JavaFX it bundles (the Windows ZIP since 2.1). The Linux archive lists its entries in one order, each dated by the commit; the entries inside the program's jar are dated by its build.
 
 ![insilicoPCR release pipeline](https://raw.githubusercontent.com/duceppemo/insilicoPCR/master/docs/assets/release-pipeline.svg)
 
@@ -8,16 +8,16 @@ Releases are fully automated: pushing a `v*` tag builds the Linux and Windows po
 
 ## CI release flow
 
-1. Check out the repository.
-2. Install JDK 25 (LTS).
-3. Validate runtime assets.
-4. Build with Maven.
+1. Work out the version the ZIPs are named for, once (job `version`): a tag's, a manual run's (letters, digits, `.`, `_` and `-` only), or `pom.xml`'s. For a tag, `scripts/ci/release-preflight.sh` first checks, in seconds, that it is `vX.Y.Z` (or `vX.Y.Z-suffix`), that `pom.xml` and the `CHANGELOG.md` heading give its version, and that the tagged commit is on `master` (push `master` before the tag; a tag of another branch is refused); it warns when `docs/release-notes/<version>.md` is missing. A pre-release tag, `v2.1.0-rc1`, needs that version, `2.1.0-rc1`, in `pom.xml` and the `CHANGELOG.md` heading. A tag whose release already has files is refused there too (`scripts/ci/release-assets.sh`).
+2. Check out the repository, and install JDK 25 (LTS).
+3. Validate runtime assets: the tools under `runtime/`, not Git LFS pointer files (a checkout without LFS), before the tests.
+4. Run the tests, on Linux and, in a job of their own (`windows-tests`), on Windows; then build with Maven.
 5. Stage the application, libraries, JDK, BBMap, and BLAST+ (and, for Linux, the application and libraries alone: the ZIP without a runtime).
 6. Create portable ZIP files.
 7. Create SHA256 checksum files.
 8. Smoke test: run the ZIP that was just built, on Linux and on Windows, and the Linux ZIP without a runtime on conda's Java, BLAST+ and BBTools.
 9. Windows test harness: run the Windows ZIP through the situations a Windows user meets (see below).
-10. Publish release artifacts for version tags, once the steps above passed. The release's notes are `docs/release-notes/<version>.md`, when there is one (its highlights and what changes on upgrading), above the list of pull requests GitHub writes. Only this job may write the repository's contents; `newest-tools`, which runs only monthly or by hand, may also open issues; the jobs that run a pull request's code only read it.
+10. Publish release artifacts for version tags, once the steps above passed: not over a release that already has files (a run again rebuilds ZIPs that are not the same bytes, and Zenodo and the Bioconda recipe hold the first ones), and a tag with a suffix (`v2.1.0-rc1`) as a pre-release. The release's notes are `docs/release-notes/<version>.md`, when there is one (its highlights and what changes on upgrading), above the list of pull requests GitHub writes. Only this job may write the repository's contents; `newest-tools`, which runs only monthly or by hand, may also open issues; the jobs that run a pull request's code only read it.
 
 ## Version number
 
@@ -56,7 +56,7 @@ release/insilicoPCR-<version>-linux-x64-no-runtime.zip
 release/insilicoPCR-<version>-linux-x64-no-runtime.zip.sha256
 ```
 
-It is what the Bioconda package is made from (see [Installation](Installation#without-the-bundled-programs-package-managers-containers)). CI job `conda-check` installs Java 25, BLAST+ 2.17.0 and BBTools 40.05 from conda-forge and Bioconda, with Miniforge, and runs the smoke test on this ZIP with them on `PATH`; the release waits for it, and publishes the ZIP beside the portable ones.
+It is what the Bioconda package is made from (see [Installation](Installation#without-the-bundled-programs-package-managers-containers)). CI job `conda-check` installs Java 25 and the BLAST+ and BBTools the portable ZIP bundles (read from its `VERSIONS.txt`, `scripts/ci/bundled-version.sh`) from conda-forge and Bioconda, with Miniforge, and runs the smoke test on this ZIP with them on `PATH`; the release waits for it, and publishes the ZIP beside the portable ones.
 
 ## Windows packaging
 
@@ -99,6 +99,8 @@ On the first day of each month, CI runs on `master` as it stands, without publis
 GitHub turns off the schedule of a repository with no activity for 60 days; *Enable workflow* on the Actions page turns it back on.
 
 Dependabot (`.github/dependabot.yml`) opens pull requests each month for newer libraries in `pom.xml` and newer GitHub Actions, which the workflows pin to commits. Minor and patch updates come in one pull request per ecosystem; a major version comes alone. CI tests each pull request as any other.
+
+Each job has a time limit, so that a test hanging (a window under the virtual display, a download) does not hold a runner, and the release, for GitHub's six hours. A push to a pull request cancels its run still going. Other runs are not cancelled while they run: a run queued behind one of its group (the same ref and kind of run) waits, and GitHub keeps only the newest of those waiting. Each tag is a group of its own, and the monthly and manual runs of `master` are not in the group of its pushes.
 
 ## Design principle
 

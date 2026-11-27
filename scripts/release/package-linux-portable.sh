@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 # The version the ZIP is named for: given (CI gives the tag's), or the project's own.
-VERSION="${1:-$(sed -n 's:.*<version>\(.*\)</version>.*:\1:p' "$ROOT/pom.xml" | head -1)}"
+VERSION="${1:-$(python3 -I "$ROOT/scripts/ci/pom-version.py" "$ROOT/pom.xml")}"
 RELEASE_DIR="$ROOT/release"
 STAGE_DIR="$ROOT/build/insilicoPCR-linux-x64"
 

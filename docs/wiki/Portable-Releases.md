@@ -54,7 +54,7 @@ LICENSE
 THIRD-PARTY-NOTICES.md
 third_party/
 runtime-layout.md
-VERSIONS.txt (Linux)
+VERSIONS.txt
 ```
 
 ## Important

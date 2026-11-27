@@ -11,9 +11,21 @@ if [[ ! -d "$ROOT/docs/wiki" ]]; then
 fi
 
 if [[ ! -d "$WORKDIR/.git" ]]; then
+  # Only an empty or missing folder is cloned into: a mistyped WIKI_WORKDIR was deleted, whatever it held.
+  if [[ -e "$WORKDIR" ]] && [[ -n "$(ls -A "$WORKDIR" 2>/dev/null)" ]]; then
+    echo "ERROR: $WORKDIR is not a clone of the wiki and is not empty: give an empty or new folder" >&2
+    exit 1
+  fi
   rm -rf "$WORKDIR"
   git clone "$WIKI_REMOTE" "$WORKDIR"
 else
+  # A clone of the wiki only: any other clone given by mistake (the project's own) was reset, overwritten,
+  # committed and pushed to its own remote.
+  if [[ "$(git -C "$WORKDIR" remote get-url origin 2>/dev/null)" != "$WIKI_REMOTE" ]]; then
+    echo "ERROR: $WORKDIR is a git clone of $(git -C "$WORKDIR" remote get-url origin 2>/dev/null || echo 'no origin'),\
+ not of $WIKI_REMOTE: give the wiki's clone, or an empty or new folder" >&2
+    exit 1
+  fi
   # A clone kept from an earlier publish: brought up to date, or a page changed on the wiki since
   # would make the push fail (or the copy below drop that change from the clone).
   git -C "$WORKDIR" fetch --quiet origin

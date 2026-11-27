@@ -81,23 +81,25 @@ The margin (`--tm-margin`, 5 °C by default) sets how far below the annealing te
 
 Any minimum from 46 to 61 °C gives the same 22 products: at 60 °C, any margin from 0 to 14. The default's 55 °C sits in the gap. These assays have strong sites on their targets: the margin hardly matters.
 
-***Globodera* reads** (FASTQ mode; 19 cyst samples, CFIA: nine *G. rostochiensis*, two of its Andean mitotype, three each of *G. pallida* and *G. ellingtonae*, one *G. tabacum*, and a nematode outside *Globodera*). The 14 species assays were each judged at their published annealing temperature: Gamel et al. (2017) and Bulman and Marshall (1997) at 60 °C, Reid et al. (2015) at 50 °C, the others at 60 °C. Counting each assay once per sample, with a product at its target size: 64 are an assay on its own species, and 8 on another. The runs kept no site below 45 °C, so for the Reid assays, at 50 °C, the rows past a margin of 5 count only the sites down to 45 °C: there may be more of their products on another species there.
+***Globodera* reads** (FASTQ mode; 19 cyst samples, CFIA: nine *G. rostochiensis*, two of its Andean mitotype, three each of *G. pallida* and *G. ellingtonae*, one *G. tabacum*, and a nematode outside *Globodera*). The 14 species assays were each judged at their published annealing temperature: Gamel et al. (2017), Bulman and Marshall (1997) and Reid et al. (2015) at 60 °C (EPPO PM 7/40(5), Appendices 3, 6 and 4; the Reid protocol's 2 min at 50 °C before the 95 °C start is the UNG step, not its annealing), Chronis et al. (2014) at 60 °C (the protocol of Yu et al. (2011) it follows), Nakhla et al. (2010) at 58 °C, and ShahGe, the outer primers F3 and B3 of the Shah and Dandurand (2026) LAMP assay, at the 62 °C of their PCR in that paper. Counting each assay once per sample, with a product at its target size: 64 are an assay on its own species, and 8 on another.
 
 | Margin | On its own species (of 64) | On another species | Own-species products missing |
 |---|---|---|---|
-| 0 | 34 | 8 | BMros, BMpal, GamelRos, ChronisGe, ShahGe, NakhlaPal, NakhlaPalPCR, NakhlaTab |
-| 1 to 2 | 41 | 8 | BMros, BMpal, GamelRos, ChronisGe, ShahGe |
-| **3 to 8** (default 5) | **47** | 8 | BMros, BMpal, GamelRos |
-| 9 or more | 64 | 8 | none |
+| 0 to 1 | 27 | 4 | BMros, BMpal, GamelRos, ReidRos, ReidPal, ChronisGe, ShahGe |
+| 2 | 29 | 8 | BMros, BMpal, GamelRos, ReidRos, ReidPal, ChronisGe, ShahGe |
+| 3 to 4 | 32 | 8 | BMros, BMpal, GamelRos, ReidRos, ReidPal, ShahGe |
+| **5 to 8** (default 5) | **46** | 8 | BMros, BMpal, GamelRos, ReidRos (one sample) |
+| 9 | 63 | 8 | ReidRos (one sample) |
+| 10 or more | 64 | 8 | none |
 
 The assays are weak in two ways, and the runs show both:
 
-- **Sensitivity: three published assays rely on a weak site.** BMros and BMpal share the ITS5 primer, whose sites on these samples melt at 51.5 °C (see above). GamelRos-R melts at 54.6 °C even on a perfect match, and at 51.2 °C on these samples, with one unpaired 5' base. At their published 60 °C they give no product at the default, and `report_no_product.tsv` names the oligo and its Tm. They work at the bench, but with little room: a further mismatch in a population, or a less forgiving mix, and they may not.
-- **Specificity: no margin removes the 8 products on another species.** ReidRos's on the three *G. ellingtonae* samples and the *G. tabacum* one (its probe's detection of *G. tabacum* is documented), with a weakest site at 58.2 °C, and NakhlaTab's and NakhlaTabPCR's on the two Andean *G. rostochiensis* samples, at 61.7 °C, melt as high as the assays' sites on their own species, or higher (NakhlaTab's on *G. tabacum* is at 59.9 °C). The oligos match these species: a result on them needs another test.
+- **Sensitivity: four published assays rely on a weak site.** BMros and BMpal share the ITS5 primer, whose sites on these samples melt at 51.5 °C (see above). GamelRos-R melts at 54.6 °C even on a perfect match, and at 51.2 °C on these samples, with one unpaired 5' base. At their published 60 °C they give no product at the default, and `report_no_product.tsv` names the oligo and its Tm. The Reid assays' 15-base probes melt at 55.8 °C on a perfect match, just above the 55 °C a site needs at the default; on one *G. rostochiensis* sample, whose reads carry a mismatch under the ReidRos probe, its site melts at 50.4 °C and ReidRos gives no product. Their probes carry a minor-groove binder (MGB), which raises a probe's Tm and which the Tm here does not model: on the bench they hold more than these numbers show. BMros, BMpal and GamelRos work at the bench, but with little room: a further mismatch in a population, or a less forgiving mix, and they may not.
+- **Specificity: from a margin of 2, every margin keeps the 8 products on another species.** ReidRos's on the three *G. ellingtonae* samples and the *G. tabacum* one (its probe's detection of *G. tabacum* is documented), with a weakest site at 58.2 °C, higher than its probe's 55.8 °C on its own species, and NakhlaTab's and NakhlaTabPCR's on the two Andean *G. rostochiensis* samples, at 61.7 °C, melt as high as the assays' sites on their own species, or higher (NakhlaTab's on *G. tabacum* is at 59.9 °C). A margin of 0 or 1 removes ReidRos's four only by removing ReidRos on its own species too. The oligos match these species: a result on them needs another test.
 
-The assay's own annealing temperature matters as much as the margin. Judged at 60 °C, the Reid assays would miss a product at the default (a site at 50.4 °C); at their published 50 °C (`ta=50`) they miss none at any margin.
+The assay's own annealing temperature matters as much as the margin: give each assay its published one with `ta=`, and read a protocol's cycling with care (a 50 °C UNG step is not an annealing temperature).
 
-The default stays at 5 °C. A wider one would hide the weak sites: at 9 °C or more every *Globodera* product is there, and the three assays above look as safe as the others.
+The default stays at 5 °C. A wider one would hide the weak sites: at 10 °C or more every *Globodera* product is there, and the four assays above look as safe as the others.
 
 When an assay gives no product:
 

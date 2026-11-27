@@ -26,8 +26,6 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 class SyntheticGelImageTest {
 
-    private static boolean startedToolkit;
-
     @TempDir
     Path dir;
 
@@ -82,7 +80,6 @@ class SyntheticGelImageTest {
         try {
             Platform.startup(() -> {
             });
-            startedToolkit = true;
         } catch (IllegalStateException alreadyRunning) {
             // Started by another test of this JVM.
         } catch (RuntimeException | UnsatisfiedLinkError e) {
@@ -91,10 +88,10 @@ class SyntheticGelImageTest {
     }
 
     @AfterAll
-    static void stopToolkit() {
-        if (startedToolkit) {
-            Platform.exit();
-        }
+    static void leaveToolkit() {
+        // Left running: it cannot start again in this JVM once it exits, and other test classes draw too
+        // (GelLoaderTest). The forked test JVM ends anyway.
+        Platform.setImplicitExit(false);
     }
 
     @Test

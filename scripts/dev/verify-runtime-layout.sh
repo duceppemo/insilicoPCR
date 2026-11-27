@@ -44,4 +44,19 @@ for file in "${required_files[@]}"; do
   fi
 done
 
+if [[ "$REQUIRE_BINARIES" == "true" ]]; then
+  # A checkout without Git LFS (or over its quota) holds 130-byte pointer files where the tools are: the
+  # layout looked complete, and the tests needing the tools skipped, or the smoke test failed minutes later.
+  pointers=()
+  while IFS= read -r -d '' file; do
+    if head -c 40 "$file" 2>/dev/null | grep -qa '^version https://git-lfs\.github\.com/spec/'; then
+      pointers+=("$file")
+    fi
+  done < <(find runtime -type f -size -1024c -print0)
+  if (( ${#pointers[@]} > 0 )); then
+    echo "ERROR: Git LFS pointers, not the files (check out with LFS): ${pointers[*]:0:5}"
+    exit 1
+  fi
+fi
+
 echo "Runtime layout OK"

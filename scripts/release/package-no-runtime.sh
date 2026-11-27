@@ -9,7 +9,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-VERSION="${1:-$(sed -n 's:.*<version>\(.*\)</version>.*:\1:p' "$ROOT/pom.xml" | head -1)}"
+VERSION="${1:-$(python3 -I "$ROOT/scripts/ci/pom-version.py" "$ROOT/pom.xml")}"
 RELEASE_DIR="$ROOT/release"
 NAME="insilicoPCR-${VERSION}-linux-x64-no-runtime"
 STAGE_DIR="$ROOT/build/$NAME"
@@ -61,10 +61,20 @@ exec "$JAVA" --enable-native-access=ca.canada.inspection.insilicopcr,javafx.grap
 EOF
 chmod +x "$STAGE_DIR/run-insilicoPCR.sh"
 
+# CI tests this ZIP with the BLAST+ and BBTools the portable ZIP bundles (job conda-check), read from its
+# VERSIONS.txt: written here by hand, they fell behind the bundle.
+PORTABLE_VERSIONS="$ROOT/build/insilicoPCR-linux-x64/VERSIONS.txt"
+if [[ -f "$PORTABLE_VERSIONS" ]]; then
+  BLAST_VERSION="$("$ROOT/scripts/ci/bundled-version.sh" "$PORTABLE_VERSIONS" 'BLAST+')"
+  BBTOOLS_VERSION="$("$ROOT/scripts/ci/bundled-version.sh" "$PORTABLE_VERSIONS" BBTools)"
+  TESTED="Built and tested with: Java 25, BLAST+ $BLAST_VERSION, BBTools $BBTOOLS_VERSION."
+else
+  TESTED="Built with: Java 25."
+fi
 {
   echo "insilicoPCR $VERSION, without a bundled runtime"
   echo "Needs: Java 25 or later, NCBI BLAST+ (blastn, makeblastdb) and BBTools (bbduk.sh) on PATH."
-  echo "Built and tested with: Java 25, BLAST+ 2.17.0, BBTools 40.04 and 40.05."
+  echo "$TESTED"
   echo "JavaFX: $(ls "$STAGE_DIR/lib" | sed -n 's/^javafx-base-\(.*\)-linux.jar$/\1/p' | head -n 1) (Linux x64)"
 } > "$STAGE_DIR/VERSIONS.txt"
 

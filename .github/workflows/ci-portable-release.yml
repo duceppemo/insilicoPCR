@@ -20,10 +20,76 @@ on:
 permissions:
   contents: read
 
+# One run at a time per ref and kind of run: a push to a pull request cancels its run still going. Other runs are
+# not cancelled while they run (a release is never stopped half way); one queued behind a run of its group waits,
+# and GitHub keeps only the newest of those waiting. Each tag is a group of its own, and the schedule's and manual
+# runs of master are not in the group of its pushes, so a push does not drop the month's newest-tools check.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
+  version:
+    name: Version, and release checks
+    # The version the ZIPs are named for, worked out once for both builds. A tag is checked before anything
+    # is built for it (scripts/ci/release-preflight.sh): its version, the CHANGELOG, master.
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      value: ${{ steps.version.outputs.value }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          # master's history, to check that a tag is on it.
+          fetch-depth: 0
+
+      - name: Resolve the version
+        id: version
+        shell: bash
+        env:
+          # From the environment, not written into the script: a manual run's input is text anyone with write
+          # access types.
+          REQUESTED: ${{ inputs.version }}
+        run: |
+          # A tag names its release; a manual run may name its build; otherwise the ZIPs carry the
+          # version in pom.xml, which the program reports.
+          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
+            value="${GITHUB_REF_NAME#v}"
+          elif [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" && -n "$REQUESTED" ]]; then
+            value="$REQUESTED"
+          else
+            value="$(python3 -I scripts/ci/pom-version.py pom.xml)"
+          fi
+          # It names files and is matched by the later steps' globs: no space, slash or shell character.
+          if [[ ! "$value" =~ ^[0-9A-Za-z][0-9A-Za-z._-]*$ ]]; then
+            echo "::error::Version '$value' is not letters, digits, '.', '_' and '-'"
+            exit 1
+          fi
+          echo "value=$value" >> "$GITHUB_OUTPUT"
+          echo "Version: $value" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Check the release tag
+        if: github.ref_type == 'tag'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          chmod +x scripts/ci/release-preflight.sh scripts/ci/release-assets.sh
+          scripts/ci/release-preflight.sh "$GITHUB_REF_NAME" "$GITHUB_SHA" origin/master
+          # A run again: refused here, in seconds, rather than by the release job after the builds.
+          scripts/ci/release-assets.sh "$GITHUB_REPOSITORY" "$GITHUB_REF_NAME"
+
   linux-zip:
     name: Linux portable ZIP
+    needs: [ version ]
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      # What the ZIP bundles, from its VERSIONS.txt: conda-check tests the ZIP without a runtime with these.
+      blast: ${{ steps.bundled.outputs.blast }}
+      bbtools: ${{ steps.bundled.outputs.bbtools }}
 
     steps:
       - name: Checkout
@@ -40,25 +106,12 @@ jobs:
           check-latest: true
           cache: maven
 
-      - name: Resolve release version
-        id: version
+      - name: Validate the bundled tools
         shell: bash
         run: |
-          # A tag names its release; a manual run may name its build; otherwise the ZIPs carry the
-          # version in pom.xml, which the program reports.
-          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
-            echo "value=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
-          elif [[ "${{ github.event_name }}" == "workflow_dispatch" && -n "${{ inputs.version }}" ]]; then
-            echo "value=${{ inputs.version }}" >> "$GITHUB_OUTPUT"
-          else
-            echo "value=$(sed -n 's:.*<version>\(.*\)</version>.*:\1:p' pom.xml | head -1)" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Validate source runtime layout
-        shell: bash
-        run: |
+          # Before the tests: the tools, not Git LFS pointers, which skipped the tests needing them.
           chmod +x scripts/dev/verify-runtime-layout.sh
-          scripts/dev/verify-runtime-layout.sh
+          REQUIRE_BINARIES=true scripts/dev/verify-runtime-layout.sh
 
       - name: Run unit tests with coverage
         shell: bash
@@ -89,15 +142,24 @@ jobs:
         shell: bash
         env:
           DO_INSTALLER: 'false'
+          VERSION: ${{ needs.version.outputs.value }}
         run: |
           chmod +x mvnw
           chmod +x scripts/release/package-linux-portable.sh
-          scripts/release/package-linux-portable.sh "${{ steps.version.outputs.value }}"
+          scripts/release/package-linux-portable.sh "$VERSION"
 
-      - name: Validate bundled runtime tools
+      - name: What the ZIP bundles
+        id: bundled
         shell: bash
         run: |
-          REQUIRE_BINARIES=true scripts/dev/verify-runtime-layout.sh
+          chmod +x scripts/ci/bundled-version.sh
+          versions=build/insilicoPCR-linux-x64/VERSIONS.txt
+          cat "$versions" | tee -a "$GITHUB_STEP_SUMMARY"
+          # Each read on its own line: a failure inside "echo ...$(...)" would not fail the step.
+          blast="$(scripts/ci/bundled-version.sh "$versions" 'BLAST+')"
+          bbtools="$(scripts/ci/bundled-version.sh "$versions" BBTools)"
+          echo "blast=$blast" >> "$GITHUB_OUTPUT"
+          echo "bbtools=$bbtools" >> "$GITHUB_OUTPUT"
 
       - name: Smoke test the Linux ZIP
         shell: bash
@@ -116,11 +178,13 @@ jobs:
 
       - name: Build the ZIP without a runtime
         shell: bash
+        env:
+          VERSION: ${{ needs.version.outputs.value }}
         run: |
           # For package managers (the Bioconda package) and containers: the program and its
           # libraries, from the build above, without the bundled Java, BLAST+ and BBTools.
           chmod +x scripts/release/package-no-runtime.sh
-          scripts/release/package-no-runtime.sh "${{ steps.version.outputs.value }}"
+          scripts/release/package-no-runtime.sh "$VERSION"
 
       - name: Upload the ZIP without a runtime
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
@@ -159,11 +223,15 @@ jobs:
 
       - name: Install Java 25, BLAST+ and BBTools from conda-forge and Bioconda
         shell: bash
+        env:
+          BLAST: ${{ needs.linux-zip.outputs.blast }}
+          BBTOOLS: ${{ needs.linux-zip.outputs.bbtools }}
         run: |
-          # The versions the portable ZIP bundles, so that a change in conda's packages does not
-          # fail a build; the Bioconda recipe takes later ones too.
+          # The versions the portable ZIP bundles (its VERSIONS.txt), so that a change in conda's packages
+          # does not fail a build, and a bundle replaced under runtime/ is tested here too; the Bioconda
+          # recipe takes later ones too.
           "${CONDA:?setup-miniconda sets CONDA}/bin/conda" create --yes --quiet --prefix "$RUNNER_TEMP/env" --override-channels \
-            -c conda-forge -c bioconda 'openjdk=25' 'blast=2.17.0' 'bbmap=40.05'
+            -c conda-forge -c bioconda 'openjdk=25' "blast=${BLAST:?}" "bbmap=${BBTOOLS:?}"
 
       - name: Smoke test with conda's tools
         shell: bash
@@ -255,9 +323,50 @@ jobs:
           gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --body-file "$RUNNER_TEMP/issue.md"
           echo "Opened: $title" >> "$GITHUB_STEP_SUMMARY"
 
+  windows-tests:
+    name: Windows tests
+    # Paths, line ends and file names behave otherwise on Windows: the tests run there too, beside the
+    # ZIP's build and harness rather than before them (they were half of the release's longest path).
+    # Coverage is uploaded from the Linux job.
+    needs: [ version ]
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          lfs: true
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+
+      - name: Validate the bundled tools
+        shell: bash
+        run: |
+          chmod +x scripts/dev/verify-runtime-layout.sh
+          REQUIRE_BINARIES=true scripts/dev/verify-runtime-layout.sh
+
+      - name: Run unit tests
+        shell: pwsh
+        run: |
+          .\mvnw.cmd -B test "-Djacoco.skip=true"
+
+      - name: Require that the tests ran
+        shell: bash
+        run: |
+          # As on Linux: a build that skipped them (a -DskipTests left in, a filter matching none) fails.
+          scripts/ci/require-tests-ran.sh --windows target/surefire-reports
+
   windows-zip:
     name: Windows portable ZIP
+    needs: [ version ]
     runs-on: windows-latest
+    timeout-minutes: 30
 
     steps:
       - name: Checkout
@@ -274,47 +383,18 @@ jobs:
           check-latest: true
           cache: maven
 
-      - name: Resolve release version
-        id: version
-        shell: pwsh
-        run: |
-          # As in the Linux job: the tag, a manual run's version, or the version in pom.xml.
-          if ($env:GITHUB_REF_TYPE -eq 'tag') {
-            "value=$($env:GITHUB_REF_NAME -replace '^v','')" >> $env:GITHUB_OUTPUT
-          } elseif ('${{ github.event_name }}' -eq 'workflow_dispatch' -and '${{ inputs.version }}') {
-            "value=${{ inputs.version }}" >> $env:GITHUB_OUTPUT
-          } else {
-            "value=$(([xml](Get-Content pom.xml)).project.version)" >> $env:GITHUB_OUTPUT
-          }
-
-      - name: Validate source runtime layout
+      - name: Validate the bundled tools
         shell: bash
         run: |
           chmod +x scripts/dev/verify-runtime-layout.sh
-          scripts/dev/verify-runtime-layout.sh
-
-      - name: Run unit tests
-        shell: pwsh
-        run: |
-          # Paths, line ends and file names behave otherwise on Windows: the tests run there too.
-          # Coverage is uploaded from the Linux job.
-          .\mvnw.cmd -B test "-Djacoco.skip=true"
-
-      - name: Require that the tests ran
-        shell: bash
-        run: |
-          # As on Linux: a build that skipped them (a -DskipTests left in, a filter matching none) fails.
-          scripts/ci/require-tests-ran.sh --windows target/surefire-reports
+          REQUIRE_BINARIES=true scripts/dev/verify-runtime-layout.sh
 
       - name: Build Windows portable ZIP
         shell: pwsh
+        env:
+          VERSION: ${{ needs.version.outputs.value }}
         run: |
-          .\scripts\release-windows.ps1 -Version '${{ steps.version.outputs.value }}'
-
-      - name: Validate bundled runtime tools
-        shell: bash
-        run: |
-          REQUIRE_BINARIES=true scripts/dev/verify-runtime-layout.sh
+          .\scripts\release-windows.ps1 -Version $env:VERSION
 
       - name: Smoke test the Windows ZIP
         shell: bash
@@ -388,12 +468,29 @@ jobs:
   publish-github-release:
     name: Publish GitHub Release
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-    needs: [ linux-zip, conda-check, windows-zip, windows-harness ]
+    needs: [ version, linux-zip, conda-check, windows-tests, windows-zip, windows-harness ]
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: write
 
     steps:
+      - name: Check out the release scripts
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          path: source
+          sparse-checkout: |
+            docs/release-notes
+            scripts/ci
+
+      - name: Refuse to replace a published release's files
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Again, as the version job did: a release published meanwhile.
+          bash source/scripts/ci/release-assets.sh "$GITHUB_REPOSITORY" "$GITHUB_REF_NAME"
+
       - name: Download release artifacts
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
@@ -405,12 +502,6 @@ jobs:
       - name: Show files
         shell: bash
         run: find dist -maxdepth 2 -type f -print -exec ls -lh {} \;
-
-      - name: Check out the release notes
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          path: source
-          sparse-checkout: docs/release-notes
 
       - name: Release notes of this version
         shell: bash
@@ -431,3 +522,5 @@ jobs:
             dist/*windows-x64.zip.sha256
           body_path: release-notes.md
           generate_release_notes: true
+          # A tag such as v2.1.0-rc1 is a pre-release: not the latest release, which newest-tools compares with.
+          prerelease: ${{ contains(github.ref_name, '-') }}

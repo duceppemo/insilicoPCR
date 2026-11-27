@@ -119,6 +119,37 @@ echo Could not find bundled Java runtime at: %JAVA%
 exit /b 1
 "@ | Set-Content -Encoding ASCII (Join-Path $StageDir "run-insilicoPCR.bat")
 
+# The versions bundled, for whoever audits a result, as the Linux ZIP lists them: the Windows BLAST+ is its own
+# build, whose version nothing recorded.
+function First-Line([string]$Program, [string]$Arguments, [string]$Pattern) {
+    $info = New-Object System.Diagnostics.ProcessStartInfo $Program, $Arguments
+    $info.RedirectStandardOutput = $true
+    $info.RedirectStandardError = $true
+    $info.UseShellExecute = $false
+    $process = [System.Diagnostics.Process]::Start($info)
+    # Both streams read at once: one filling while the other is waited for would stop the program.
+    $out = $process.StandardOutput.ReadToEndAsync()
+    $err = $process.StandardError.ReadToEndAsync()
+    $process.WaitForExit()
+    $line = (($out.Result + "`n" + $err.Result) -split "`r?`n") | Where-Object { $_ -match $Pattern } | Select-Object -First 1
+    if (-not $line) { throw "$Program $Arguments printed no line matching $Pattern" }
+    return $line.Trim()
+}
+$BundledJava = Join-Path $StageDir "runtime\windows\jdk\bin\java.exe"
+$BbTools = Join-Path $StageDir "runtime\common\bbmap\bbtools.jar"
+$JavaFxJar = Get-ChildItem (Join-Path $StageDir "lib") -Filter "javafx-base-*-win.jar" | Select-Object -First 1
+if (-not $JavaFxJar) { throw "No javafx-base-*-win.jar in $StageDir\lib" }
+$JavaFx = $JavaFxJar.Name -replace '^javafx-base-(.*)-win\.jar$', '$1'
+$BbDuk = First-Line $BundledJava "-cp `"$BbTools`" jgi.BBDuk --version" 'BBTools version'
+@(
+    "insilicoPCR $Version"
+    "Java: $(First-Line $BundledJava '-version' 'Runtime Environment')"
+    "BLAST+: $(First-Line (Join-Path $StageDir 'runtime\windows\blast\bin\blastn.exe') '-version' '^blastn:')"
+    "BBTools: $([regex]::Match($BbDuk, 'BBTools version [0-9.]+').Value)"
+    "JavaFX: $JavaFx"
+) | Set-Content -Encoding ASCII (Join-Path $StageDir "VERSIONS.txt")
+Get-Content (Join-Path $StageDir "VERSIONS.txt")
+
 $Archive = Join-Path $ReleaseDir "insilicoPCR-$Version-windows-x64.zip"
 $ShaFile = "$Archive.sha256"
 

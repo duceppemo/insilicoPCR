@@ -69,6 +69,19 @@
 - CI: a manual run started on a release tag published the release without
   checking that the program's version is the tag's. Qodana analysed the
   code as Java 21.
+- CI and releases: a release tag is checked first, in seconds (its form,
+  `pom.xml`'s version, the `CHANGELOG.md` heading, that it is on `master`),
+  not by the smoke test minutes in; a run again on a tag no longer replaces
+  the published ZIPs (Zenodo and the Bioconda recipe hold the first ones),
+  and a tag with a suffix is a pre-release. The version is worked out once
+  for both builds, and a manual run's is checked. The ZIP without a runtime
+  is tested with, and its `VERSIONS.txt` names, the BLAST+ and BBTools the
+  portable ZIP bundles (they were written by hand, and fell behind). A
+  checkout without Git LFS fails at once. The Windows tests run beside the
+  Windows ZIP's build and harness, every job has a time limit, and a push
+  to a pull request cancels its run still going. The Windows ZIP has a
+  `VERSIONS.txt` too. `scripts/docs/publish-wiki.sh` no longer deletes, or
+  overwrites and pushes, a folder that is not the wiki's clone.
 
 ### Documentation
 

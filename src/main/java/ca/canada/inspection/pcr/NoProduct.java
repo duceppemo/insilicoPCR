@@ -52,6 +52,16 @@ public record NoProduct(String sample, String assay, String oligo, String reason
      */
     public static List<NoProduct> of(Map<String, Sample> samples, PrimerPanel primers, AmpliconOptions options,
                                      List<ReportRow> rows) {
+        return of(samples, primers, options, rows, Map.of());
+    }
+
+    /**
+     * As {@link #of(Map, PrimerPanel, AmpliconOptions, List)}, with the assays whose products a FASTQ sample's
+     * reads add to the report under another assay of their reaction: by sample, assay to the assay reported
+     * ({@link Products#readRowsOncePerReaction}).
+     */
+    public static List<NoProduct> of(Map<String, Sample> samples, PrimerPanel primers, AmpliconOptions options,
+                                     List<ReportRow> rows, Map<String, Map<String, String>> readsReportedUnder) {
         Set<List<String>> made = new HashSet<>();
         Set<List<String>> onePrimer = new HashSet<>();
         rows.forEach(row -> (row.pairing() == ReportRow.Pairing.DESIGNED ? made : onePrimer)
@@ -63,16 +73,20 @@ public record NoProduct(String sample, String assay, String oligo, String reason
             Map<String, NearMiss> misses = sample.hits().nearMisses();
             String where = sample.isFastq() ? " in the mini-assembly (the FASTQ diagnostics say what the reads show)" : "";
             Map<String, String> reportedUnder = Products.reportedUnder(sample, primers, options);
+            Map<String, String> fromReads = readsReportedUnder.getOrDefault(sample.getName(), Map.of());
             primers.assays().forEach((assay, group) -> {
                 List<String> key = List.of(sample.getName(), assay);
                 if (made.contains(key)) {
                     return;
                 }
                 String under = reportedUnder.get(assay);
-                if (under != null) {
-                    found.add(new NoProduct(sample.getName(), assay, "", REPORTED_UNDER + under
-                            + ": the two assays share a reaction (mix=) and make it at the same place", "", Double.NaN,
-                            gate.minimumTm(group.forward().getFirst())));
+                String underFromReads = fromReads.get(assay);
+                if (under != null || underFromReads != null) {
+                    found.add(new NoProduct(sample.getName(), assay, "", REPORTED_UNDER
+                            + (under != null ? under + ": the two assays share a reaction (mix=) and make it at the"
+                            + " same place" : underFromReads + ": the two assays share a reaction (mix=), and their"
+                            + " primers of the same sequences make it in the reads at the same size"),
+                            "", Double.NaN, gate.minimumTm(group.forward().getFirst())));
                     return;
                 }
                 String alone = onePrimer.contains(key) ? "; the report has a product of one of its primers alone" : "";
@@ -160,8 +174,11 @@ public record NoProduct(String sample, String assay, String oligo, String reason
 
     /** {@code  (2 mismatches, 5 unpaired 5' bases)}: how the site differs from the oligo; empty for none. */
     private static String binding(BlastResult hit) {
-        List<String> parts = new ArrayList<>(ReportRow.differences(hit.alignedMismatches(),
-                PrimerId.isProbe(hit.subjectID()) ? 0 : hit.fivePrimeUnpairedBases()));
+        // Each difference once: a mismatch kept aligned within the 5' end is one of its unpaired 5' bases.
+        boolean probe = PrimerId.isProbe(hit.subjectID());
+        List<String> parts = new ArrayList<>(ReportRow.differences(
+                probe ? hit.alignedMismatches() : hit.alignedMismatchesPastFivePrimeFree(),
+                probe ? 0 : hit.fivePrimeUnpairedBases()));
         int threePrimeOut = hit.threePrimeUncovered();
         if (threePrimeOut > 0) {
             parts.add(threePrimeOut + " 3' base" + (threePrimeOut == 1 ? "" : "s") + " not aligned");

@@ -75,6 +75,7 @@ public final class SamplesReport {
                 writer.write('\n');
             }
         } catch (IOException e) {
+            ca.canada.inspection.util.OutputFiles.deleteQuietly(file); // cut short, it would be read as whole
             throw new UncheckedIOException("Unable to write the samples of the report: " + file, e);
         }
         return file;

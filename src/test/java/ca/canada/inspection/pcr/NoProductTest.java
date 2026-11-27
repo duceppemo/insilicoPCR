@@ -104,6 +104,24 @@ class NoProductTest {
     }
 
     @Test
+    void aMismatchAtThePrimers5PrimeEndIsCountedOnce() {
+        // A 3' mismatch, and one at the 5' end's second base, which the report counts as an unpaired 5' base:
+        // it was counted as a mismatch too ("2 mismatches and indels, 1 unpaired 5' base").
+        Sample sample = sample("s", Sample.FileType.FASTA);
+        sample.hits().add("a-R", minus("a-R", 400, PRIMER), 60);
+        char second = PRIMER.charAt(1) == 'A' ? 'C' : 'A';
+        char last = PRIMER.charAt(19) == 'A' ? 'C' : 'A';
+        String mismatched = PRIMER.charAt(0) + String.valueOf(second) + PRIMER.substring(2, 19) + last;
+        BlastResult hit = TestHits.plusHit("a-F", "c1", 101, mismatched, PRIMER)
+                .withFivePrimeFree(AmpliconOptions.FIVE_PRIME_FREE);
+        sample.hits().nearMiss("a-F", NearMiss.failingThreePrimeRule(hit, 3));
+
+        NoProduct forward = of(panel("a-F", PRIMER, "a-R", PRIMER), sample).getFirst();
+
+        assertTrue(forward.reason().endsWith(" (1 mismatch or indel, 1 unpaired 5' base)"), forward.reason());
+    }
+
+    @Test
     void aRealSiteWithAThreePrimeMismatchOutranksAChanceMatch() {
         // A few bases matching by chance pass the 3' rule and melt at 10 °C: not the site to send the user to.
         Sample sample = sample("s", Sample.FileType.FASTA);
@@ -195,6 +213,22 @@ class NoProductTest {
         }
         return PrimerPanel.of(sequences, ExpectedSizes.NONE,
                 MixGroups.fromHeaders(Map.of("a-F", "mix=m", "b-F", "mix=m")));
+    }
+
+    @Test
+    void anAssayWhoseReadProductIsReportedUnderAnotherSaysSo() {
+        // A FASTQ sample: its mini-assembly holds a's product only, its reads b's as well, which the report
+        // gives once, under a (ReportGenerator#extraRows).
+        Sample sample = sample("s", Sample.FileType.FASTQ);
+        PrimerPanel primers = mixedWithA(sample);
+        Map<String, Sample> bySample = Map.of("s", sample);
+        List<ReportRow> rows = Products.ofRun(bySample, primers, GATED, Map.of());
+
+        List<NoProduct> found = NoProduct.of(bySample, primers, GATED, rows, Map.of("s", Map.of("b", "a")));
+
+        assertEquals(1, found.size(), found.toString());
+        assertTrue(found.getFirst().reportedUnderAnother(), found.getFirst().reason());
+        assertTrue(!NoProduct.of(bySample, primers, GATED, rows).getFirst().reportedUnderAnother());
     }
 
     @Test

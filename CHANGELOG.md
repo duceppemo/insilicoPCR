@@ -21,6 +21,36 @@
   range checks of the settings are read in one place. The reports are the
   same. A rejected `--tm-margin`, `--na`, `--mg` or `--dntp` is now shown as
   written (`-1`, not `-1.0`).
+- FASTQ input: a sample in which no read holds an accepted primer site is
+  not baited a second time nor assembled (the second bait read every read
+  of the sample to keep none). Its reports are the same.
+- `--gel` draws the gel from the run's rows instead of reading `report.tsv`
+  back. The pictures are the same.
+
+### Fixed
+
+- Two assays sharing a reaction (`mix=`) and their primers: the assay whose
+  product the report gives under the other was looked for again in FASTQ
+  input. Its reads were extended, the diagnostics called it missing, and a
+  product from reads alone was not said to be reported under the other in
+  `report_no_product.tsv`. Each assay is now called on its reads, and a
+  product the reads hold for both (same primer sequences, same size) is
+  reported once; products of other primers at one size are both reported.
+- `report_no_product.tsv` counted a mismatch within a primer's first 5'
+  bases twice, as a mismatch and as an unpaired 5' base ("2 mismatches and
+  indels, 1 unpaired 5' base" for one of each). The same count chose the
+  site shown for an oligo without an accepted site.
+- The window: a run stopped just after it finished kept its reports, but
+  **View Gel Image** and **View HTML Report** opened the previous run's.
+- A run whose reports could not all be written (a full disk) left those
+  already written, and a `report.tsv` cut short, without a QAlog, and the
+  next run numbered its report after them. They are now removed, as for a
+  stopped run.
+- FASTQ input: a sample that ran out of memory, run again alone, whose reads
+  BBDuk then refused, failed the run instead of being left out.
+- CI: a manual run started on a release tag published the release without
+  checking that the program's version is the tag's. Qodana analysed the
+  code as Java 21.
 
 ### Documentation
 

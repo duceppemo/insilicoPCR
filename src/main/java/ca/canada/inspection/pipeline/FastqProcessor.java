@@ -114,8 +114,16 @@ public final class FastqProcessor {
                 monitor.info(step.completed);
             }
         }
+        runAgainAlone(context, samples, setAside, refused, alone, bait);
+        // After the samples run again: BBDuk can refuse the reads of one there too.
         leaveOut(context, refused, samples.size());
+    }
 
+    /** Runs the samples set aside for running out of memory again, one at a time, each from the step it ran out in. */
+    private static void runAgainAlone(PipelineContext context, List<Sample> samples, Map<String, ReadStep> setAside,
+                                      Map<String, PipelineException> refused, ChildJavaMemory.Share alone,
+                                      FirstBait bait) {
+        RunMonitor monitor = context.monitor();
         List<Sample> again = samples.stream().filter(sample -> setAside.containsKey(sample.getName())).toList();
         if (again.isEmpty()) {
             return;
@@ -123,6 +131,7 @@ public final class FastqProcessor {
         monitor.info("Running the samples that ran out of memory again, one at a time, with " + describe(alone)
                 + ": " + String.join(", ", again.stream().map(Sample::getName).toList()));
         BbtoolsCommands whole = BbtoolsCommands.of(context.dependencies(), alone.memoryGiB(), alone.threads());
+        samples:
         for (Sample sample : again) {
             ReadStep from = setAside.get(sample.getName());
             for (ReadStep step : ReadStep.values()) {
@@ -130,6 +139,11 @@ public final class FastqProcessor {
                     try {
                         runStep(step, context, whole, sample, bait);
                     } catch (ProgramFailedException e) {
+                        // As in the first pass: reads BBDuk refuses leave the sample out, not the run failed.
+                        if (refusedTheReads(step == ReadStep.FIRST_BAIT, e)) {
+                            refused.put(sample.getName(), e);
+                            continue samples;
+                        }
                         throw outOfMemoryOrAsIs(e, sample, alone);
                     }
                 }
@@ -378,23 +392,55 @@ public final class FastqProcessor {
         int anchors = BaitAnchors.write(context, files, sample.isPaired(), threads);
         context.monitor().info("Sample " + sample.getName() + ": " + anchors + " first-bait read(s) hold an accepted"
                 + " primer site");
+        if (anchors == 0) {
+            // Nothing to bait from: the second bait read every read of the sample (20 s for 15 million pairs) to
+            // keep none, and Tadpole then assembled nothing. Its baited reads are empty, as BBDuk wrote them.
+            writeEmpty(files.doubleTargetMatches());
+            context.monitor().info("Sample " + sample.getName() + ": no second bait or assembly, with no read to"
+                    + " bait from");
+            return;
+        }
         // Their adapter read-through and poly-G tails cut off first: they baited every adapter dimer and poly-G
         // read of a library (72% of SRR35797377's reads), all of it then assembled, for the same report.
-        Path bait = files.baitAnchors();
-        if (anchors > 0) {
-            run(context, commands.trimAdapters(files.baitAnchors(), sample.isPaired(), files.baitAnchorsTrimmed()));
-            bait = files.baitAnchorsTrimmed();
-        }
+        run(context, commands.trimAdapters(files.baitAnchors(), sample.isPaired(), files.baitAnchorsTrimmed()));
         run(context, commands.secondBait(
-                bait,
+                files.baitAnchorsTrimmed(),
                 sample.files(),
                 files.doubleTargetMatches()
         ));
     }
 
+    /** Whether the gzipped {@code reads} hold nothing: a read file BBDuk wrote, or {@link #writeEmpty}. */
+    private static boolean holdsNoRead(Path reads) {
+        try (java.io.InputStream in = new java.util.zip.GZIPInputStream(Files.newInputStream(reads))) {
+            return in.read() < 0;
+        } catch (java.io.IOException e) {
+            return false; // Tadpole says what is wrong with it
+        }
+    }
+
+    /** An empty file: a gzip stream of nothing for a {@code .gz} name, as BBDuk writes when it keeps no read. */
+    private static void writeEmpty(Path file) {
+        try {
+            if (file.getFileName().toString().endsWith(".gz")) {
+                try (java.io.OutputStream out = new java.util.zip.GZIPOutputStream(Files.newOutputStream(file))) {
+                    out.flush();
+                }
+            } else {
+                Files.write(file, new byte[0]);
+            }
+        } catch (java.io.IOException e) {
+            throw new java.io.UncheckedIOException("Could not write " + file, e);
+        }
+    }
+
     private static void assemble(PipelineContext context, BbtoolsCommands commands, Sample sample) {
         SampleFiles files = context.directories().sample(sample.getName());
         Path output = files.assembly();
+        if (holdsNoRead(files.doubleTargetMatches())) {
+            writeEmpty(output); // the second bait had no read to bait from: an empty mini-assembly, as Tadpole's
+            return;
+        }
         int k = context.config().tadpole().k();
         run(context, commands.assemble(files.doubleTargetMatches(), output, context.config().tadpole()));
         String warning = longerThanTheReads(k, output, files.doubleTargetMatches(), sample.getName());

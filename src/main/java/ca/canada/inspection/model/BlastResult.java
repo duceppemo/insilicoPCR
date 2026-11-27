@@ -136,7 +136,16 @@ public record BlastResult(
 	 * place this count is written.
 	 */
 	public int primerMismatches() {
-		return alignedMismatches() - fivePrimeFree + threePrimeUncovered();
+		return alignedMismatchesPastFivePrimeFree() + threePrimeUncovered();
+	}
+
+	/**
+	 * The mismatches and indels BLAST kept aligned, less those within the primer's first 5' bases that
+	 * {@link #fivePrimeUnpairedBases} counts once {@link #withFivePrimeFree} applied: with it, each
+	 * difference counted once.
+	 */
+	public int alignedMismatchesPastFivePrimeFree() {
+		return alignedMismatches() - fivePrimeFree;
 	}
 
 	/**

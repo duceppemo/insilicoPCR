@@ -41,14 +41,16 @@ public final class ReportGenerator {
                                   ReadExtensionStage.Result extension, List<String> oligoTms) {
         RunMonitor monitor = context.monitor();
         // The run's rows, made once: the report file, the HTML report and the gel all show these.
+        Map<String, Map<String, String>> readsReportedUnder = new HashMap<>();
         List<ReportRow> rows = Products.ofRun(context.samples(), context.primers(), context.config().ampliconOptions(),
-                extraRows(context, readEvidence, extension));
-        // What this step writes: removed when the run is stopped meanwhile, so that a stopped run writes no
-        // report, as the window says (a report without its QAlog would be no run's).
+                extraRows(context, readEvidence, extension, readsReportedUnder));
+        // What this step writes: removed when the run is stopped meanwhile, or a file cannot be written (a full
+        // disk), so that the run leaves no report, as the window says (a report without its QAlog would be no
+        // run's, and the next run would number its report after it).
         List<Path> written = new ArrayList<>();
         try {
-            return write(context, readEvidence, extension, oligoTms, rows, written);
-        } catch (CancellationException e) {
+            return write(context, readEvidence, extension, oligoTms, rows, readsReportedUnder, written);
+        } catch (RuntimeException e) {
             for (Path file : written) {
                 try {
                     Files.deleteIfExists(file);
@@ -68,7 +70,7 @@ public final class ReportGenerator {
 
     private static RunResult write(PipelineContext context, Map<String, ReadEvidence> readEvidence,
                                    ReadExtensionStage.Result extension, List<String> oligoTms, List<ReportRow> rows,
-                                   List<Path> written) {
+                                   Map<String, Map<String, String>> readsReportedUnder, List<Path> written) {
         RunMonitor monitor = context.monitor();
         Path report = ConsolidatedReport.write(context.directories().consolidated(), rows, context.primers());
         written.add(report);
@@ -77,11 +79,12 @@ public final class ReportGenerator {
         written.add(ca.canada.inspection.report.SamplesReport.write(report, context.samples().values(),
                 context.inputIssues(), rows));
         List<ca.canada.inspection.pcr.NoProduct> noProducts = ca.canada.inspection.pcr.NoProduct.of(context.samples(),
-                context.primers(), context.config().ampliconOptions(), rows);
+                context.primers(), context.config().ampliconOptions(), rows, readsReportedUnder);
         written.add(ca.canada.inspection.report.NoProductReport.write(report, noProducts));
         if (context.config().gel()) {
-            written.addAll(GelImageWriter.write(report, SyntheticGelImage.defaultPng(report), context.samples().keySet(),
-                    monitor::info, monitor::warning));
+            // From the rows: the run has them, and need not read its report back.
+            written.addAll(GelImageWriter.write(rows, context.primers().expectedSizes(),
+                    SyntheticGelImage.defaultPng(report), context.samples().keySet(), monitor::info, monitor::warning));
         }
         stopIfCancelled(monitor);
         FastqDiagnosticsStage.Result diagnostics = FastqDiagnosticsStage.run(report, context.samples(), context.directories(),
@@ -123,6 +126,17 @@ public final class ReportGenerator {
      */
     static Map<String, List<ReportRow>> extraRows(PipelineContext context, Map<String, ReadEvidence> readEvidence,
                                                   ReadExtensionStage.Result extension) {
+        return extraRows(context, readEvidence, extension, new HashMap<>());
+    }
+
+    /**
+     * As {@link #extraRows(PipelineContext, Map, ReadExtensionStage.Result)}, each product of a multiplex
+     * ({@code mix=}) once ({@link Products#readRowsOncePerReaction}); per sample, the assays whose read products
+     * are reported under another assay are put in {@code reportedUnder}, with that assay.
+     */
+    static Map<String, List<ReportRow>> extraRows(PipelineContext context, Map<String, ReadEvidence> readEvidence,
+                                                  ReadExtensionStage.Result extension,
+                                                  Map<String, Map<String, String>> reportedUnder) {
         Map<String, List<ReportRow>> rows = new HashMap<>();
         readEvidence.forEach((sampleName, reads) -> {
             Sample sample = context.samples().get(sampleName);
@@ -136,6 +150,14 @@ public final class ReportGenerator {
         });
         extension.rows().forEach((sample, list) ->
                 rows.computeIfAbsent(sample, ignored -> new ArrayList<>()).addAll(list));
+        rows.replaceAll((sample, list) -> {
+            Map<String, String> merged = new HashMap<>();
+            List<ReportRow> once = Products.readRowsOncePerReaction(list, context.primers(), merged);
+            if (!merged.isEmpty()) {
+                reportedUnder.put(sample, Map.copyOf(merged));
+            }
+            return new ArrayList<>(once);
+        });
         return rows;
     }
 

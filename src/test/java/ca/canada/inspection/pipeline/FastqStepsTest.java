@@ -37,6 +37,8 @@ class FastqStepsTest {
         final List<String> run = Collections.synchronizedList(new ArrayList<>());
         final List<List<String>> commands = Collections.synchronizedList(new ArrayList<>());
         final List<String> messages = Collections.synchronizedList(new ArrayList<>());
+        /** blastn finds no primer on the first bait's reads. */
+        boolean noPrimerSite;
 
         @Override
         public void runProgram(Path directory, List<String> command, String program) {
@@ -64,7 +66,7 @@ class FastqStepsTest {
                             ">contig_0,len=44,cov=10.0,gc=0.5,class=long/medium/unanchored\n" + READ + "\n");
                     case "blastn" -> {
                         Path out = Path.of(command.get(command.indexOf("-out") + 1));
-                        Files.writeString(out, String.join("\t", "r0", "a-F", "20", "0", "0", "0.001", "40.1", "20",
+                        Files.writeString(out, noPrimerSite ? "" : String.join("\t", "r0", "a-F", "20", "0", "0", "0.001", "40.1", "20",
                                 "20", "1", "20", FORWARD, "1", "20", FORWARD) + "\n");
                     }
                     default -> throw new AssertionError("unexpected program " + program + ": " + command);
@@ -150,6 +152,23 @@ class FastqStepsTest {
         // The anchors: the read with an accepted primer site (blastn's r0), and its mate.
         assertEquals(8, countLines(files.baitAnchors()), "one pair, four lines a read");
         assertTrue(programs.messages.contains("Sample s: 1 first-bait read(s) hold an accepted primer site"),
+                programs.messages.toString());
+    }
+
+    @Test
+    void withNoReadHoldingAPrimerSiteTheSampleIsNotBaitedAgainNorAssembled() throws IOException {
+        // The second bait read the whole sample to keep nothing, and Tadpole assembled nothing.
+        Programs programs = new Programs();
+        programs.noPrimerSite = true;
+        PipelineContext context = context(programs);
+
+        FastqProcessor.process(context);
+
+        assertEquals(List.of("BBDuk", "BBDuk", "blastn", "BBMerge"), programs.run);
+        SampleFiles files = context.directories().sample("s");
+        assertEquals(0, countLines(files.doubleTargetMatches()));
+        assertEquals(0, Files.size(files.assembly()));
+        assertTrue(programs.messages.contains("Sample s: no second bait or assembly, with no read to bait from"),
                 programs.messages.toString());
     }
 

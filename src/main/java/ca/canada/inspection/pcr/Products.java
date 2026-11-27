@@ -45,13 +45,16 @@ public final class Products {
         return hits.derived(new Key(sampleName, primers, options), () -> {
             List<ReportRow> rows = new ArrayList<>();
             Map<String, String> mergedInto = new HashMap<>();
+            Map<String, List<ReportRow>> designed = new TreeMap<>();
             // Probe requirement is decided per assay from the primer FILE, so standard PCR and qPCR
             // assays can be mixed in one run: an assay whose probe is defined but never hits stays
             // negative, while a probe-less assay is reported on its primer pair alone.
-            find(rows::add, sampleName, hits, options, primers, mergedInto);
+            find(rows::add, sampleName, hits, options, primers, mergedInto, designed);
             rows.stream().filter(row -> row.pairing() == ReportRow.Pairing.DESIGNED)
                     .forEach(row -> mergedInto.remove(row.assay()));
-            return new Found(List.copyOf(rows), Map.copyOf(mergedInto));
+            Map<String, List<ReportRow>> designedCopy = new TreeMap<>();
+            designed.forEach((assay, assayRows) -> designedCopy.put(assay, List.copyOf(assayRows)));
+            return new Found(List.copyOf(rows), Map.copyOf(mergedInto), java.util.Collections.unmodifiableMap(designedCopy));
         });
     }
 
@@ -65,8 +68,12 @@ public final class Products {
         return found(sample.getName(), sample.hits(), primers, options).mergedInto();
     }
 
-    /** A sample's products, and the assays whose designed products are reported under another's. */
-    private record Found(List<ReportRow> rows, Map<String, String> mergedInto) {
+    /**
+     * A sample's products, the assays whose designed products are reported under another's, and each assay's
+     * designed products before that merge.
+     */
+    private record Found(List<ReportRow> rows, Map<String, String> mergedInto,
+                         Map<String, List<ReportRow>> designed) {
     }
 
     /** What a sample's products depend on besides its hits; the panel by identity, one per run. */
@@ -88,16 +95,18 @@ public final class Products {
 
     /**
      * The rows of the products {@code sample}'s assays make as designed, per assay, as {@link #sizes} counts
-     * them: for what each primer site shows besides the size.
+     * them: for what each primer site shows besides the size. An assay of a reaction ({@code mix=}) whose
+     * product the report gives under another assay keeps its own row here: it made the product, which the
+     * FASTQ steps and the split check must not look for again.
      */
     public static Map<String, List<ReportRow>> designed(Sample sample, PrimerPanel primers, AmpliconOptions options) {
-        Map<String, List<ReportRow>> designed = new TreeMap<>();
-        for (ReportRow row : of(sample, primers, options)) {
-            if (row.pairing() == ReportRow.Pairing.DESIGNED) {
-                designed.computeIfAbsent(row.assay(), ignored -> new ArrayList<>()).add(row);
-            }
-        }
-        return designed;
+        return designed(sample.getName(), sample.hits(), primers, options);
+    }
+
+    /** As {@link #designed(Sample, PrimerPanel, AmpliconOptions)}, for the reads or extended reads {@code hits}. */
+    public static Map<String, List<ReportRow>> designed(String sampleName, Hits hits, PrimerPanel primers,
+                                                        AmpliconOptions options) {
+        return found(sampleName, hits, primers, options).designed();
     }
 
     /**
@@ -115,8 +124,9 @@ public final class Products {
         return List.copyOf(rows);
     }
 
-    private static void find(Consumer<ReportRow> rows, String sampleName, Hits sample,
-                             AmpliconOptions options, PrimerPanel primers, Map<String, String> mergedInto) {
+    private static void find(Consumer<ReportRow> rows, String sampleName, Hits sample, AmpliconOptions options,
+                             PrimerPanel primers, Map<String, String> mergedInto,
+                             Map<String, List<ReportRow>> designed) {
         Map<String, List<BlastResult>> blastResults = sample.byOligo();
         if (blastResults.isEmpty()) {
             return;
@@ -155,7 +165,12 @@ public final class Products {
                     }
                 }
             }
-            found.addAll(bestPerProduct(assayRows));
+            for (ReportRow row : bestPerProduct(assayRows)) {
+                found.add(row);
+                if (row.pairing() == ReportRow.Pairing.DESIGNED) {
+                    designed.computeIfAbsent(assayName, ignored -> new ArrayList<>()).add(row);
+                }
+            }
         }
         crossAssayProducts(found::add, sampleName, contigs, hits, options, primers);
         oncePerReaction(found, primers.mixGroups(), mergedInto).forEach(rows);
@@ -170,6 +185,36 @@ public final class Products {
      */
     private static List<ReportRow> oncePerReaction(List<ReportRow> rows, MixGroups mix,
                                                    Map<String, String> mergedInto) {
+        return oncePerReaction(rows, mix, mergedInto, row -> place(row, mix));
+    }
+
+    /**
+     * The rows a FASTQ sample's reads add to its report ({@code rows}: called from reads, then by extending
+     * them) with each product of a multiplex reported once, as {@link #oncePerReaction} does for contigs. Each
+     * assay's read product is called on reads of its own, so the same molecule lies on different reads: it is
+     * the one made in one reaction by primers of the same sequences at the same size. Two assays' products of
+     * one size made by other primers are two products, both reported. The assays whose read products are all
+     * reported under another assay are put in {@code mergedInto}, with that assay; one with a row of its own
+     * is not.
+     */
+    public static List<ReportRow> readRowsOncePerReaction(List<ReportRow> rows, PrimerPanel primers,
+                                                         Map<String, String> mergedInto) {
+        MixGroups mix = primers.mixGroups();
+        Map<String, String> merged = new HashMap<>();
+        List<ReportRow> once = oncePerReaction(rows, mix, merged, row -> {
+            PrimerId primer = PrimerId.parse(row.forwardPrimer());
+            String reaction = primer == null ? null : mix.groupOf(primer.assay());
+            return reaction == null ? null : List.of(reaction, row.size(), sequenceOf(primers, row.forwardPrimer()),
+                    sequenceOf(primers, row.reversePrimer()));
+        });
+        once.stream().filter(row -> row.pairing() == ReportRow.Pairing.DESIGNED)
+                .forEach(row -> merged.remove(row.assay()));
+        mergedInto.putAll(merged);
+        return once;
+    }
+
+    private static List<ReportRow> oncePerReaction(List<ReportRow> rows, MixGroups mix, Map<String, String> mergedInto,
+                                                   java.util.function.Function<ReportRow, List<Object>> placeOf) {
         if (mix.isEmpty()) {
             return rows;
         }
@@ -177,14 +222,14 @@ public final class Products {
                 .thenComparing(ReportRow::assay);
         Map<List<Object>, ReportRow> kept = new HashMap<>();
         for (ReportRow row : rows) {
-            List<Object> place = place(row, mix);
+            List<Object> place = placeOf.apply(row);
             if (place != null) {
                 kept.merge(place, row, (one, other) -> preference.compare(other, one) < 0 ? other : one);
             }
         }
         List<ReportRow> once = new ArrayList<>();
         for (ReportRow row : rows) {
-            List<Object> place = place(row, mix);
+            List<Object> place = placeOf.apply(row);
             if (place == null || kept.get(place) == row) {
                 once.add(row);
             } else if (row.pairing() == ReportRow.Pairing.DESIGNED && !kept.get(place).assay().equals(row.assay())) {
@@ -192,6 +237,12 @@ public final class Products {
             }
         }
         return once;
+    }
+
+    /** The sequence of the oligo {@code id}, or the ID for one the panel does not hold. */
+    private static String sequenceOf(PrimerPanel primers, String id) {
+        String sequence = primers.sequence(id);
+        return sequence == null ? id : sequence;
     }
 
     /** Where {@code row}'s product is in its reaction, or {@code null} for an assay run on its own. */

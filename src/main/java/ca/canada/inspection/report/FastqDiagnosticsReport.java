@@ -41,6 +41,7 @@ public final class FastqDiagnosticsReport {
                 writer.write('\n');
             }
         } catch (IOException e) {
+            ca.canada.inspection.util.OutputFiles.deleteQuietly(file); // cut short, it would be read as whole
             throw new UncheckedIOException("Unable to write FASTQ diagnostics: " + file, e);
         }
     }

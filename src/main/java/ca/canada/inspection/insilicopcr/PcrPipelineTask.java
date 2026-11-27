@@ -42,11 +42,21 @@ final class PcrPipelineTask extends Task<RunResult> {
     private final AtomicBoolean logUpdateScheduled = new AtomicBoolean();
     /** Everything this run showed, for its log.txt. */
     private final StringBuffer runLog = new StringBuffer();
+    /**
+     * The run's result once the pipeline returned: a task stopped after that drops the value {@link #call}
+     * returns, though the run's reports and QAlog are complete.
+     */
+    private volatile RunResult finished;
 
     PcrPipelineTask(PipelineConfig config, TextArea log, ProgressBar blastProgress) {
         this.config = Objects.requireNonNull(config, "config");
         this.log = Objects.requireNonNull(log, "log");
         this.blastProgress = blastProgress;
+    }
+
+    /** The run's result if the pipeline finished, stopped or not; {@code null} if it did not. */
+    RunResult finishedResult() {
+        return finished;
     }
 
     @Override
@@ -57,6 +67,7 @@ final class PcrPipelineTask extends Task<RunResult> {
         Throwable failure = null;
         try {
             RunResult result = new InSilicoPcrPipeline(config, new WindowMonitor()).run();
+            finished = result;
             if (isCancelled()) {
                 // Stopped after it wrote its log: the run is finished, and its log says so.
                 append("\nThe run was stopped after it had finished: its reports and its log (QAlog) are complete.\n");

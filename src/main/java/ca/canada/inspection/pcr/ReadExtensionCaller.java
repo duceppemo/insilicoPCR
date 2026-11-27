@@ -450,10 +450,9 @@ public final class ReadExtensionCaller {
         // A product must lie wholly on the extended read, primers included, as on a read.
         Hits contained = ReadLevelCaller.withContainedHits(extended, lengths);
         Map<String, List<ReportRow>> rowsByAssay = new HashMap<>();
-        for (ReportRow row : Products.of(sampleName, contained, primers, options)) {
-            if (row.pairing() != ReportRow.Pairing.DESIGNED) {
-                continue; // as for a read: an assay's forward with its reverse primer only
-            }
+        // As for a read: an assay's forward with its reverse primer only, each assay of a reaction on its own.
+        for (ReportRow row : Products.designed(sampleName, contained, primers, options).values().stream()
+                .flatMap(List::stream).toList()) {
             Seed seed = seedById.get(row.contig());
             String assay = row.assay();
             // Only the assay the read was seeded for: a seed can wander through another assay's locus.

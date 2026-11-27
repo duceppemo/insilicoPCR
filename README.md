@@ -39,7 +39,7 @@
 - **Sequence rules and one Tm.** A product is reported when its primer sites melt at the annealing temperature (`--anneal-temp`, default 60 °C, or an assay's own `ta=` in the primer file) less `--tm-margin` (default 5 °C) or above, face each other and lie within the size limits. Nothing models primer dimers, hairpins, efficiency or multiplex competition. The cases where it can miss a product are on [Limitations](https://github.com/duceppemo/insilicoPCR/wiki/Limitations).
 - **Every product is reported, whatever its size**, as a real PCR would amplify it. Declare the size an assay is designed to give and each product is labelled `target`, `other` or `unexpected`.
 - **Faulty input is named, not skipped.** Every file is checked before the run: an empty library, a download cut short or a malformed read leaves its sample out with a warning, and the other samples are run.
-- **Reports you can read.** A self-contained HTML report, a TSV table with each site's Tm and mismatches, a table of the assays that gave no product and why, and a synthetic gel.
+- **Reports you can read.** A self-contained HTML report, a TSV table with each site's Tm and mismatches, a table of the assays that gave no product and why, and a synthetic gel whose bands, on hover, say how each primer and probe binds and what the product was called on.
 - **Nothing to install.** One portable ZIP for Windows or Linux holds the desktop app, the command line, Java, BBTools and BLAST+. On Linux, conda installs it too, from Bioconda.
 - **Works with [primer-finder](https://github.com/duceppemo/primer-finder)**, which designs selective (q)PCR assays and writes primer files in this format.
 

@@ -108,7 +108,7 @@ details .names { margin-top: 6px; }
 <main>
 <header>
 <h1>insilicoPCR report</h1>
-<p class="sub">2026-11-25 14:56 · version 2.0.0 · report.tsv</p>
+<p class="sub">2026-11-27 00:00 · version 2.1.0 · report.tsv</p>
 </header>
 <section class="tiles" aria-label="Summary">
 <div class="tile"><span class="n">4</span><span class="l">samples</span></div>
@@ -186,8 +186,8 @@ details .names { margin-top: 6px; }
 <section>
 <h2>Run details</h2>
 <dl class="details">
-<dt>Date</dt><dd>2026-11-25 14:56</dd>
-<dt>insilicoPCR version</dt><dd>2.0.0</dd>
+<dt>Date</dt><dd>2026-11-27 00:00</dd>
+<dt>insilicoPCR version</dt><dd>2.1.0</dd>
 <dt>Input</dt><dd>/data/tutorial/tutorial_input</dd>
 <dt>Primer file</dt><dd>/data/tutorial/listeria_assays.fasta</dd>
 <dt>Output folder</dt><dd>/data/tutorial/tutorial_results</dd>
@@ -201,7 +201,7 @@ details .names { margin-top: 6px; }
 <dt>Read-level calls (FASTQ, --read-min-fraction)</dt><dd>at least 2 reads or read pairs and 30% of informative reads</dd>
 <dt>Read extension (FASTQ, --read-extension)</dt><dd>unreported: for assays in no contig and in no read, when reads carry both primers, up to 150 reads per primer are extended through the reads baited in rounds (Tadpole mode=extend k=31 branchmult1=1 branchmult2=1 mincountextend=2); a product needs at least 2 extended reads seeded from one primer, and read pairs holding each of its windows (the largest window of 100, 150, ... bases whose median is held by 10 pairs; none held by fewer than 2 or 10% of the median), and no repeat that long with another copy in the sample</dd>
 <dt>Memory (--memory)</dt><dd>automatic: three quarters of the memory insilicoPCR leaves free on the computer (a job&#39;s limit on a cluster), at least half of its own heap</dd>
-<dt>Tools</dt><dd>BLAST+ 2.17.0, BBTools 40.04, Java 26.0.2.1+1 (Eclipse Adoptium)</dd>
+<dt>Tools</dt><dd>BLAST+ 2.17.0, BBTools 40.05, Java 26.0.2.1+1 (Eclipse Adoptium)</dd>
 </dl>
 <p class="hint">This page shows the rows of <code>report.tsv</code>, in the same folder. insilicoPCR reports every product a PCR would amplify, whatever its size; the size check compares each product with the sizes declared in the primer file and removes nothing.</p>
 </section>

@@ -489,8 +489,16 @@ public final class InteractiveGelViewer {
         javafx.geometry.Rectangle2D screen = javafx.stage.Screen.getScreensForRectangle(event.getScreenX(),
                         event.getScreenY(), 1, 1).stream().findFirst().orElse(javafx.stage.Screen.getPrimary())
                 .getVisualBounds();
-        popup.setX(beside(event.getScreenX(), 14, popup.getWidth(), screen.getMinX(), screen.getMaxX()));
-        popup.setY(beside(event.getScreenY(), 12, popup.getHeight(), screen.getMinY(), screen.getMaxY()));
+        double popupX = beside(event.getScreenX(), 14, popup.getWidth(), screen.getMinX(), screen.getMaxX());
+        double popupY = beside(event.getScreenY(), 12, popup.getHeight(), screen.getMinY(), screen.getMaxY());
+        if (popupX <= event.getScreenX() && event.getScreenX() <= popupX + popup.getWidth()
+                && popupY <= event.getScreenY() && event.getScreenY() <= popupY + popup.getHeight()) {
+            // Too big for the screen on both axes (dozens of co-migrating amplicons): beside the pointer anyway,
+            // cut off, rather than under it.
+            popupX = event.getScreenX() + 14;
+        }
+        popup.setX(popupX);
+        popup.setY(popupY);
     }
 
     /**

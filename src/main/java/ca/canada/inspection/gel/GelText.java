@@ -98,13 +98,19 @@ final class GelText {
     private record Weakest(String oligo, double tm) {
     }
 
-    /** The site of {@code row} that melts lowest; {@code null} when no Tm was worked out (a 1.x report). */
+    /**
+     * The site of {@code row} that melts lowest; {@code null} when no Tm was worked out (a 1.x report) or the
+     * report names no oligo. One primer at both ends of a product is told apart by its strand.
+     */
     private static Weakest weakest(ReportRow row) {
+        boolean onePrimer = row.pairing() == ReportRow.Pairing.ONE_PRIMER;
         Weakest weakest = null;
-        for (Weakest site : new Weakest[]{new Weakest(row.forwardPrimer(), row.forwardTm()),
-                new Weakest(row.reversePrimer(), row.reverseTm()),
+        for (Weakest site : new Weakest[]{
+                new Weakest(row.forwardPrimer() + (onePrimer ? " (plus-strand site)" : ""), row.forwardTm()),
+                new Weakest(row.reversePrimer() + (onePrimer ? " (minus-strand site)" : ""), row.reverseTm()),
                 row.probe() == null ? null : new Weakest(row.probeId(), row.probeTm())}) {
-            if (site != null && Double.isFinite(site.tm()) && (weakest == null || site.tm() < weakest.tm())) {
+            if (site != null && !site.oligo().isBlank() && Double.isFinite(site.tm())
+                    && (weakest == null || site.tm() < weakest.tm())) {
                 weakest = site;
             }
         }
@@ -139,9 +145,9 @@ final class GelText {
                 + (mismatches + threePrime + unpaired == 0 ? "" : ", " + differences(mismatches, threePrime, unpaired));
     }
 
-    /** Where the amplicon lies, and the report's description of it; empty without a row. */
+    /** Where the amplicon lies, and the report's description of it; empty without a row or a contig. */
     private static String site(ReportRow row, String lineStart) {
-        if (row == null) {
+        if (row == null || row.contig() == null || row.contig().isBlank()) {
             return "";
         }
         String strand = row.strand() == ' ' ? "" : ", " + row.strand() + " strand";

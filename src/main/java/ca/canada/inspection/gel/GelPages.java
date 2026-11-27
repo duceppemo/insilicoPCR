@@ -52,7 +52,8 @@ record GelPages(List<String> sampleNames, int samplesPerGel) {
     /**
      * The bands of every page that {@code query} matches, as the viewer matches them on the page
      * it shows: a band, drawn as {@code mode} draws it ({@link LaneBand#groups}), matches when its
-     * sample name, genes, sizes and size checks hold the query ({@link GelText#searchText}). A lane
+     * sample name, genes, sizes, size checks or primer and probe IDs hold the query
+     * ({@link GelText#searchText}). A lane
      * without a band matches nothing, as on the page.
      */
     Search find(Map<String, List<GelBand>> lanes, String query, GelColorMode mode) {

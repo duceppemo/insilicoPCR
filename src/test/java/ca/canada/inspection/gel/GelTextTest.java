@@ -152,6 +152,26 @@ class GelTextTest {
     }
 
     @Test
+    void theWeakSiteOfOnePrimerAtBothEndsIsToldByItsStrand() {
+        ReportRow repeat = new ReportRow("s", "one", new ReportRow.Site(1, 400, 400, "c", "", '+'),
+                new ReportRow.Binding("one-F", 0, 0, 0, 61.0), new ReportRow.Binding("one-F", 1, 0, 0, 55.0), null,
+                ReportRow.Source.ASSEMBLY);
+        assertTrue(GelText.tooltip(List.of(GelBand.of(repeat, null)))
+                .contains("\nWeakest site: one-F (minus-strand site), 55.0 °C"));
+    }
+
+    @Test
+    void aReportWithoutPrimerOrContigColumnsNamesNoBlankOne() {
+        // A trimmed report, with Tms but no primer IDs or contig: no "Weakest site: , 51.2 °C" or "On: , 0-0".
+        ReportRow trimmed = new ReportRow("s", "a", new ReportRow.Site(0, 0, 100, "", "", ' '),
+                new ReportRow.Binding("", 0, 0, 0, 58.9), new ReportRow.Binding("", 0, 0, 0, 51.2), null,
+                ReportRow.Source.ASSEMBLY);
+        GelBand band = GelBand.of(trimmed, null);
+        assertEquals("Sample: s\nAssay: a\nAmplicon size: 100 bp\nCalled on: assembly", GelText.tooltip(List.of(band)));
+        assertEquals("tip\n\nRows:\ns\ta\t100 bp", GelText.details("tip", List.of(band)));
+    }
+
+    @Test
     void aSearchFindsTheBandsOfAPrimerOrProbe() {
         String text = GelText.searchText(List.of(GelBand.of(GAMEL, null)));
         assertTrue(text.contains("gamelros-r"), text);

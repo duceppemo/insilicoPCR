@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+### Added
+
+- Synthetic gel: a band's hover text shows how each primer and probe binds
+  (mismatches and indels, those in the 3' window, unpaired 5' bases, Tm),
+  its weakest site, and what it was called on (the assembly, or how many
+  reads support it). Co-migrating amplicons each give their weakest site;
+  "Band details" adds each one's binding, contig, location, strand and the
+  report's description. A saved SVG keeps the same text as each band's
+  title. The search also finds a band by a primer or probe ID
+  (`GamelRos-R`). A popup near the screen's edge opens on the other side
+  of the pointer instead of being cut off.
+
 ### Changed
 
 - Internal: the 1.x mismatch-count code, which only tests still ran, is
@@ -9,6 +21,13 @@
   range checks of the settings are read in one place. The reports are the
   same. A rejected `--tm-margin`, `--na`, `--mg` or `--dntp` is now shown as
   written (`-1`, not `-1.0`).
+
+### Documentation
+
+- Wiki, Why Tm: a "What the margin shows" section, from 46 *Brucella*
+  assemblies and 19 *Globodera* read sets: the published assays that rely
+  on a weak site or match another species, and how to read an assay that
+  gives no product (`ta=`, then the reason as a finding about the assay).
 
 ## 2.0.0 (2026-11-26)
 

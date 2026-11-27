@@ -1,6 +1,7 @@
 package ca.canada.inspection.gel;
 
 import ca.canada.inspection.pcr.ExpectedSizes;
+import ca.canada.inspection.pcr.ReportRow;
 
 /**
  * Metadata for one predicted PCR amplicon displayed as a synthetic gel band.
@@ -8,13 +9,16 @@ import ca.canada.inspection.pcr.ExpectedSizes;
  * @param sizeCheck what its size is for its assay, as the report's {@value ExpectedSizes#COLUMN}
  *                  column says; {@code null} when the assay declares no size, or the report has
  *                  no such column
+ * @param row       the report's row of the amplicon: how its oligos bind and what it was called on;
+ *                  {@code null} for a band made without one
  */
 public record GelBand(
         String sampleName,
         String geneName,
         int ampliconSize,
         ExpectedSizes.Label sizeCheck,
-        ca.canada.inspection.pcr.ReportRow.Pairing pairing
+        ReportRow.Pairing pairing,
+        ReportRow row
 ) {
     public GelBand {
         sampleName = clean(sampleName, "Unknown sample");
@@ -22,12 +26,17 @@ public record GelBand(
         if (ampliconSize < 0) {
             throw new IllegalArgumentException("ampliconSize must be >= 0");
         }
-        pairing = pairing == null ? ca.canada.inspection.pcr.ReportRow.Pairing.DESIGNED : pairing;
+        pairing = pairing == null ? ReportRow.Pairing.DESIGNED : pairing;
     }
 
-    /** An amplicon of its assay's forward and reverse primer. */
+    /** The band of a report's row, its size checked as {@code sizeCheck} says. */
+    public static GelBand of(ReportRow row, ExpectedSizes.Label sizeCheck) {
+        return new GelBand(row.sample(), row.assay(), row.size(), sizeCheck, row.pairing(), row);
+    }
+
+    /** An amplicon of its assay's forward and reverse primer, without its report row. */
     public GelBand(String sampleName, String geneName, int ampliconSize, ExpectedSizes.Label sizeCheck) {
-        this(sampleName, geneName, ampliconSize, sizeCheck, ca.canada.inspection.pcr.ReportRow.Pairing.DESIGNED);
+        this(sampleName, geneName, ampliconSize, sizeCheck, ReportRow.Pairing.DESIGNED, null);
     }
 
     /**

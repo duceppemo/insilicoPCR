@@ -160,15 +160,8 @@ public record NoProduct(String sample, String assay, String oligo, String reason
 
     /** {@code  (2 mismatches, 5 unpaired 5' bases)}: how the site differs from the oligo; empty for none. */
     private static String binding(BlastResult hit) {
-        List<String> parts = new ArrayList<>();
-        int mismatches = hit.alignedMismatches();
-        if (mismatches > 0) {
-            parts.add(mismatches + (mismatches == 1 ? " mismatch or indel" : " mismatches and indels"));
-        }
-        int unpaired = PrimerId.isProbe(hit.subjectID()) ? 0 : hit.fivePrimeUnpairedBases();
-        if (unpaired > 0) {
-            parts.add(unpaired + " unpaired 5' base" + (unpaired == 1 ? "" : "s"));
-        }
+        List<String> parts = new ArrayList<>(ReportRow.differences(hit.alignedMismatches(),
+                PrimerId.isProbe(hit.subjectID()) ? 0 : hit.fivePrimeUnpairedBases()));
         int threePrimeOut = hit.threePrimeUncovered();
         if (threePrimeOut > 0) {
             parts.add(threePrimeOut + " 3' base" + (threePrimeOut == 1 ? "" : "s") + " not aligned");

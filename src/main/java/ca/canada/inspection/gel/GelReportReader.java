@@ -40,7 +40,7 @@ public final class GelReportReader {
         for (ReportTsv.Checked checked : ReportTsv.readChecked(consolidatedReport)) {
             ReportRow row = checked.row();
             lanes.computeIfAbsent(row.sample(), key -> new ArrayList<>())
-                    .add(new GelBand(row.sample(), row.assay(), row.size(), checked.sizeCheck(), row.pairing()));
+                    .add(GelBand.of(row, checked.sizeCheck()));
         }
 
         if (!keepEmptySampleLanes) {

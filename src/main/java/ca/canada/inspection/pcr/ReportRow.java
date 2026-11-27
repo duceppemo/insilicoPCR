@@ -1,6 +1,8 @@
 package ca.canada.inspection.pcr;
 
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -139,6 +141,22 @@ public record ReportRow(String sample, String assay, Site site, Binding forward,
     public static final Comparator<ReportRow> PROBE_FIRST = Comparator.comparingLong(row -> row.probe() == null ? 0
             : row.probe().start() >= row.start() ? row.probe().start() - (long) row.start()
             : Integer.MAX_VALUE + (long) row.probe().start());
+
+    /**
+     * How an oligo's site differs from it, in words, the differences it has only: {@code 2 mismatches and
+     * indels}, {@code 1 unpaired 5' base}; none for a perfect site. The one wording of the no-product report and
+     * the gel.
+     */
+    public static List<String> differences(int mismatches, int unpaired) {
+        List<String> parts = new ArrayList<>();
+        if (mismatches > 0) {
+            parts.add(mismatches + (mismatches == 1 ? " mismatch or indel" : " mismatches and indels"));
+        }
+        if (unpaired > 0) {
+            parts.add(unpaired + " unpaired 5' base" + (unpaired == 1 ? "" : "s"));
+        }
+        return parts;
+    }
 
     public int start() {
         return site.start();

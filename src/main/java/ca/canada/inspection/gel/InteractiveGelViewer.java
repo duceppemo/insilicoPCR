@@ -114,7 +114,7 @@ public final class InteractiveGelViewer {
         Label selectedLabel = new Label("No band selected");
         Label matchLabel = new Label();
         TextField searchField = new TextField();
-        searchField.setPromptText("Search sample, assay, or size");
+        searchField.setPromptText("Search sample, assay, size or primer");
         Button clearSearchButton = new Button("Clear");
 
         HBox toolbar = new HBox(8, savePngButton, saveSvgButton, savePdfButton, new Label("Color:"), colorMode,
@@ -482,10 +482,37 @@ public final class InteractiveGelViewer {
         double y = event.getScreenY() + 12;
         if (!popup.isShowing()) {
             popup.show(owner.getScene().getWindow(), x, y);
-        } else {
-            popup.setX(x);
-            popup.setY(y);
         }
+        // Beside the pointer, on the side where it fits: a band near the screen's right or bottom edge had its
+        // popup, a dozen lines since it shows how each oligo binds, cut off. Never under the pointer, which would
+        // leave the band and hide it: where it fits on neither side, on the side with more room.
+        javafx.geometry.Rectangle2D screen = javafx.stage.Screen.getScreensForRectangle(event.getScreenX(),
+                        event.getScreenY(), 1, 1).stream().findFirst().orElse(javafx.stage.Screen.getPrimary())
+                .getVisualBounds();
+        double popupX = beside(event.getScreenX(), 14, popup.getWidth(), screen.getMinX(), screen.getMaxX());
+        double popupY = beside(event.getScreenY(), 12, popup.getHeight(), screen.getMinY(), screen.getMaxY());
+        if (popupX <= event.getScreenX() && event.getScreenX() <= popupX + popup.getWidth()
+                && popupY <= event.getScreenY() && event.getScreenY() <= popupY + popup.getHeight()) {
+            // Too big for the screen on both axes (dozens of co-migrating amplicons): beside the pointer anyway,
+            // cut off, rather than under it.
+            popupX = event.getScreenX() + 14;
+        }
+        popup.setX(popupX);
+        popup.setY(popupY);
+    }
+
+    /**
+     * Where a popup of {@code size} starts along one axis, {@code gap} from the pointer at {@code pointer}: after it
+     * when it fits before {@code max}, else before it when it fits after {@code min}, else as far inside the
+     * screen as it goes (on the other axis it is still beside the pointer, so it does not cover it).
+     */
+    static double beside(double pointer, double gap, double size, double min, double max) {
+        double after = pointer + gap;
+        double before = pointer - gap - size;
+        if (after + size <= max) {
+            return after;
+        }
+        return before >= min ? before : Math.max(min, max - size);
     }
 
     private static void showBandDetails(BandNode bandNode) {
@@ -493,7 +520,7 @@ public final class InteractiveGelViewer {
         details.setEditable(false);
         details.setWrapText(false);
         details.setPrefColumnCount(70);
-        details.setPrefRowCount(Math.max(8, Math.min(24, bandNode.bands.size() + 4)));
+        details.setPrefRowCount(Math.max(8, Math.min(30, (int) details.getText().lines().count() + 1)));
         Button copyButton = new Button("Copy details");
         copyButton.setOnAction(event -> copyToClipboard(details.getText()));
         VBox root = new VBox(8, details, copyButton);

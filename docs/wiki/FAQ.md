@@ -53,7 +53,7 @@ either way. See [Declaring product sizes](Primer-FASTA-Format#declaring-product-
 
 ## Can another tool design the primers and write these files?
 
-Yes. [primer-finder](https://github.com/duceppemo/primer-finder) finds the sequences that tell one group of genomes from another, designs selective (q)PCR assays on them with Primer3, and writes insilicoPCR-ready primer FASTA files. Its `design --insilico-pcr` option also runs insilicoPCR itself against both genome groups and reports which assays amplify every target genome and none of the others (primer-finder 1.10.0+ pairs with insilicoPCR 0.8.0+).
+Yes. [primer-finder](https://github.com/duceppemo/primer-finder) finds the sequences that tell one group of genomes from another, designs selective (q)PCR assays on them with Primer3, and writes insilicoPCR-ready primer FASTA files. Its `design --insilico-pcr` option also runs insilicoPCR itself against both genome groups and reports which assays amplify every target genome and none of the others (primer-finder 1.14.0+ pairs with insilicoPCR 2.1.0+; primer-finder 1.13.0 with insilicoPCR 0.12.0 to 0.14.0).
 
 ## Can I mix PCR assays with qPCR/probe assays?
 

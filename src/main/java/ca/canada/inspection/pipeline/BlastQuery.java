@@ -123,13 +123,26 @@ final class BlastQuery implements AutoCloseable {
      */
     static BlastQuery of(Path fasta, Path scratchDirectory, boolean tooLong, Map<String, Integer> circles)
             throws IOException {
+        return of(fasta, scratchDirectory, tooLong, circles, null);
+    }
+
+    /** As {@link #of(Path, Path, Map)}, with the lengths of {@code fasta}'s sequences already read, by ID. */
+    static BlastQuery of(Path fasta, Path scratchDirectory, Map<String, Integer> circles, Map<String, Integer> lengths)
+            throws IOException {
+        return of(fasta, scratchDirectory, WindowsPathLimit.tooLong(fasta), circles, lengths);
+    }
+
+    private static BlastQuery of(Path fasta, Path scratchDirectory, boolean tooLong, Map<String, Integer> circles,
+                                 Map<String, Integer> known) throws IOException {
         boolean gzipped = fasta.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(".gz");
-        Map<String, Integer> lengths;
-        try {
-            lengths = SequenceFileUtils.sequenceLengths(fasta);
-        } catch (UncheckedIOException e) {
-            throw new IOException("Unable to " + (gzipped ? "decompress " : "read ") + fasta + ": "
-                    + e.getCause().getMessage(), e.getCause());
+        Map<String, Integer> lengths = known;
+        if (lengths == null) {
+            try {
+                lengths = SequenceFileUtils.sequenceLengths(fasta);
+            } catch (UncheckedIOException e) {
+                throw new IOException("Unable to " + (gzipped ? "decompress " : "read ") + fasta + ": "
+                        + e.getCause().getMessage(), e.getCause());
+            }
         }
         if (!circles.isEmpty() || lengths.values().stream().anyMatch(length -> length > PIECE_LENGTH)) {
             return inPieces(fasta, scratchDirectory, pieceIdPrefix(lengths.keySet()), circles);

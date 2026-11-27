@@ -43,6 +43,28 @@ class ProductsTest {
     }
 
     @Test
+    void aFastqSamplesContigProductsAreOfItsMiniAssembly() {
+        Sample reads = new Sample("R");
+        reads.setFileType(Sample.FileType.FASTQ);
+        Sample assembly = new Sample("A");
+        for (Sample sample : List.of(reads, assembly)) {
+            sample.hits().add("toxA-F_1", plusHit("toxA-F_1", "c1", 101));
+            sample.hits().add("toxA-R", minusHit("toxA-R", "c1", 581));
+        }
+        AmpliconOptions options = AmpliconOptions.defaults();
+
+        assertEquals(List.of(ReportRow.Source.MINI_ASSEMBLY),
+                Products.of(reads, degenerate(), options).stream().map(ReportRow::source).toList());
+        assertEquals(List.of(ReportRow.Source.MINI_ASSEMBLY), Products.designed(reads, degenerate(), options)
+                .values().stream().flatMap(List::stream).map(ReportRow::source).toList());
+        assertEquals(List.of(ReportRow.Source.ASSEMBLY),
+                Products.of(assembly, degenerate(), options).stream().map(ReportRow::source).toList());
+        // The reads themselves, searched at read level: rows the read-level calls are made from.
+        assertEquals(List.of(ReportRow.Source.ASSEMBLY), Products.of("R", reads.hits(), degenerate(), options).stream()
+                .map(ReportRow::source).toList());
+    }
+
+    @Test
     void theRowOfAProductNamesTheVariantsThatBindBest() {
         // toxA-F_1 binds with a mismatch, toxA-F_2 perfectly: the row names toxA-F_2. A product
         // elsewhere on the contig keeps its own row.

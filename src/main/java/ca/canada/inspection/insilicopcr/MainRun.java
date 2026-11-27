@@ -70,6 +70,8 @@ public class MainRun extends Application {
     private FastqSettings fastqSettings = FastqSettings.DEFAULTS;
     /** What the last finished run wrote; {@code null} before one finishes. */
     private RunResult lastResult;
+    /** Reports being read for the gel viewer ({@link #openGel}), on the FX thread. */
+    private int gelsLoading;
     private AmpliconSettings ampliconSettings = AmpliconSettings.DEFAULTS;
 
     @Override
@@ -492,11 +494,50 @@ public class MainRun extends Application {
     }
 
     private void displayGelImage() {
+        RunResult run;
         try {
-            InteractiveGelViewer.show(finishedRun().report(), finishedRun().samples());
+            run = finishedRun();
         } catch (Exception e) {
             showError("Unable to create gel image:\n" + e.getMessage());
+            return;
         }
+        openGel(() -> InteractiveGelViewer.load(run.report(), run.samples()), "Unable to create gel image:\n");
+    }
+
+    /**
+     * Reads a report for the gel viewer on a thread of its own, then opens the viewer: a large run's report took
+     * the window's thread for as long as it was read, and the window did not answer meanwhile.
+     */
+    private void openGel(java.util.concurrent.Callable<InteractiveGelViewer.Loaded> load, String failure) {
+        javafx.concurrent.Task<InteractiveGelViewer.Loaded> reading = new javafx.concurrent.Task<>() {
+            @Override
+            protected InteractiveGelViewer.Loaded call() throws Exception {
+                return load.call();
+            }
+        };
+        // Two at once (View Gel Image clicked twice): the window waits until the last is read.
+        if (gelsLoading++ == 0) {
+            primaryStage.getScene().setCursor(javafx.scene.Cursor.WAIT);
+        }
+        Runnable loaded = () -> {
+            if (--gelsLoading == 0) {
+                primaryStage.getScene().setCursor(javafx.scene.Cursor.DEFAULT);
+            }
+        };
+        reading.setOnSucceeded(event -> {
+            loaded.run();
+            try {
+                InteractiveGelViewer.show(reading.getValue());
+            } catch (Exception e) {
+                showError(failure + e.getMessage());
+            }
+        });
+        reading.setOnFailed(event -> {
+            loaded.run();
+            Throwable e = reading.getException();
+            showError(failure + (e == null ? "" : e.getMessage()));
+        });
+        Thread.ofPlatform().daemon().name("gel-report").start(reading);
     }
 
     /** Opens the last run's HTML report in the system browser. */
@@ -531,12 +572,11 @@ public class MainRun extends Application {
             return;
         }
 
-        try {
-            PreviousRun run = PreviousRun.open(selected.toPath());
-            InteractiveGelViewer.show(run.report(), run.samples());
-        } catch (Exception e) {
-            showError("Unable to open previous run:\n" + e.getMessage());
-        }
+        Path folder = selected.toPath();
+        openGel(() -> {
+            PreviousRun run = PreviousRun.open(folder);
+            return InteractiveGelViewer.load(run.report(), run.samples());
+        }, "Unable to open previous run:\n");
     }
 
     private void openReportOnly() {
@@ -551,11 +591,8 @@ public class MainRun extends Application {
             return;
         }
 
-        try {
-            InteractiveGelViewer.show(selected.toPath(), List.of());
-        } catch (Exception e) {
-            showError("Unable to open report TSV:\n" + e.getMessage());
-        }
+        Path report = selected.toPath();
+        openGel(() -> InteractiveGelViewer.load(report, List.of()), "Unable to open report TSV:\n");
     }
 
     public static void main(String[] args) {

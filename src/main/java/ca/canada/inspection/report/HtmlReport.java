@@ -504,7 +504,9 @@ public final class HtmlReport {
             if (product.label() != null) {
                 tip.append(" (").append(product.label().text()).append(")");
             }
-            tip.append(product.fromExtension() ? ", from extended reads" : product.fromReads() ? ", from reads" : "");
+            tip.append(product.fromExtension() ? ", from extended reads" : product.fromReads() ? ", from reads"
+                    : product.row().source() instanceof ReportRow.Source.Assembly assembly && assembly.mini()
+                    ? ", from the mini-assembly" : "");
             if (product.row().pairing() != ReportRow.Pairing.DESIGNED) {
                 tip.append("; ").append(pairingText(product.row()));
             }
@@ -667,6 +669,10 @@ public final class HtmlReport {
                 case ReportRow.Source.Assembly assembly -> {
                 }
             }
+            // A contig of the reads' mini-assembly, not of an assembly given as input.
+            String tag = product.fromReads() ? "reads"
+                    : product.row().source() instanceof ReportRow.Source.Assembly assembly && assembly.mini()
+                    ? ReportColumn.MINI_ASSEMBLY : null;
             html.append("<tr data-s=\"").append(escape(product.sample())).append("\" data-a=\"")
                     .append(escape(product.assay())).append("\"><td>").append(escape(product.sample())).append("</td><td>")
                     .append(escape(product.assay())).append(pairingTag(product.row()))
@@ -681,7 +687,7 @@ public final class HtmlReport {
                 html.append("</td>");
             }
             html.append("<td title=\"").append(escape(sourceTitle)).append("\">")
-                    .append(product.fromReads() ? "<span class=\"tag\">reads</span> " + escape(source) : escape(source))
+                    .append(tag == null ? "" : "<span class=\"tag\">" + tag + "</span> ").append(escape(source))
                     .append("</td><td>").append(escape(product.row().location())).append("</td><td class=\"num\">")
                     .append(escape(product.row().forwardMismatches() + " / " + product.row().reverseMismatches()))
                     .append("</td><td class=\"num\">").append(escape(product.row().forwardThreePrime() + " / "
@@ -734,7 +740,7 @@ public final class HtmlReport {
             return;
         }
         html.append("<section>\n<h2>Read-level evidence (FASTQ input)</h2>\n<p class=\"hint\">Reads are baited and")
-                .append(" micro-assembled; a product the assembly misses is called from the reads when enough of them")
+                .append(" mini-assembled; a product the mini-assembly misses is called from the reads when enough of them")
                 .append(" hold it, or, when no read is long enough to hold it, when reads extended from both of its")
                 .append(" primers hold it and the read pairs span it throughout. A negative from reads is weaker")
                 .append(" evidence than a negative on a genome assembly.</p>\n");

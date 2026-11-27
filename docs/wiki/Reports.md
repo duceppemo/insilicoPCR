@@ -150,7 +150,7 @@ Since 1.0, after the primer binding columns (before, only the primer IDs and the
 | Column | Meaning |
 |---|---|
 | `Pairing` | How the primers came together: `designed` (an assay's forward primer with its reverse primer), `one-primer` (one role twice: a product of one primer alone) or `two-assays` (primers of two assays that share a reaction, `mix=`). See [Amplicon Calling](Amplicon-Calling#stage-2-amplicon-calling) |
-| `Source` | What the product was called on: `assembly` (a contig of an assembly, or of the mini-assembly of reads), `reads` (a read or merged pair: a [read-level call](#read-level-calls)) or `extension` (an extended read: a [read-extension call](#read-extension-products-longer-than-a-read)) |
+| `Source` | What the product was called on: `assembly` (a contig of an assembly given as input), `mini-assembly` (a contig of the mini-assembly of a FASTQ sample's baited reads; `assembly` before 2.1), `reads` (a read or merged pair: a [read-level call](#read-level-calls)) or `extension` (an extended read: a [read-extension call](#read-extension-products-longer-than-a-read)) |
 
 ### Size label column
 
@@ -258,7 +258,7 @@ k-mer, then reads overlapping those of them that hold a primer site the rules ac
 whole families of rRNA, mitochondrial and repeat reads that share a short k-mer with a primer and hold no site; and
 since 0.15.3 those reads are trimmed of adapter read-through and poly-G tails first, an adapter in one baiting every
 adapter dimer of the library),
-the baited reads are micro-assembled with Tadpole, and the primers are BLASTed against the resulting contigs. The mini-assembly can **omit the target region** or **break inside the
+the baited reads are mini-assembled with Tadpole, and the primers are BLASTed against the resulting contigs. The mini-assembly can **omit the target region** or **break inside the
 amplicon**, so the forward and reverse primers land on different contigs. Recruitment reaches only so far from
 each primer: the reads holding a primer site come with their mates (about one fragment length), and the second
 baiting adds the pairs that share a k-mer with one of them, mates included (about one more). A product longer than

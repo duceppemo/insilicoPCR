@@ -145,7 +145,7 @@ usage: java -jar insilicoPCR.jar -i <input> -o <output> -p <primers> [-t
 | `-v`, `--version` | | Print version |
 | `-h`, `--help` | | Print help |
 
-The `--read-min-fraction`, `--read-extension` and `--tadpole-*` options only affect FASTQ input, where reads are baited and micro-assembled before BLAST; see [FASTQ mode and false negatives](Reports#fastq-mode-and-false-negatives). `--memory` sets the memory of the BBTools programs of FASTQ input, and since 0.15.3 that of the BLAST searches too, assemblies' included: on a computer shared with others, set it for a run of assemblies as well. In the GUI they are all under **FASTQ settings…**.
+The `--read-min-fraction`, `--read-extension` and `--tadpole-*` options only affect FASTQ input, where reads are baited and mini-assembled before BLAST; see [FASTQ mode and false negatives](Reports#fastq-mode-and-false-negatives). `--memory` sets the memory of the BBTools programs of FASTQ input, and since 0.15.3 that of the BLAST searches too, assemblies' included: on a computer shared with others, set it for a run of assemblies as well. In the GUI they are all under **FASTQ settings…**.
 
 The values of `--read-extension` and `--input-check` are read in any letter case (`--read-extension Target` is `target`).
 

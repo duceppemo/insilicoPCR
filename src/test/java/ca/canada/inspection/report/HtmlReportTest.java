@@ -474,6 +474,24 @@ class HtmlReportTest {
     }
 
     @Test
+    void aProductOfTheReadsMiniAssemblyIsTaggedSo() throws IOException {
+        // Written and read back: the report's Source says mini-assembly, and the amplicons table tags it.
+        ca.canada.inspection.pcr.ReportRow mini = new ca.canada.inspection.pcr.ReportRow("r", "its",
+                new ca.canada.inspection.pcr.ReportRow.Site(11, 444, 434, "contig_0,len=900,cov=9.0", "", '+'),
+                new ca.canada.inspection.pcr.ReportRow.Binding("its-F", 0, 0, 0, 59.6),
+                new ca.canada.inspection.pcr.ReportRow.Binding("its-R", 0, 0, 0, 58.0), null,
+                ca.canada.inspection.pcr.ReportRow.Source.MINI_ASSEMBLY);
+        Path tsv = ConsolidatedReport.write(dir, List.of(mini), panel(List.of("its-F", "its-R"), SIZES));
+        assertEquals(ca.canada.inspection.pcr.ReportRow.Source.MINI_ASSEMBLY, ReportTsv.read(tsv).getFirst().source());
+        String page = Files.readString(HtmlReport.write(new HtmlReport.Input(tsv, ReportTsv.read(tsv), List.of("r"),
+                Set.of("r"), panel(List.of("its-F", "its-R"), SIZES), List.of(), DETAILS, List.of(), List.of(),
+                List.of())));
+
+        assertTrue(page.contains("<span class=\"tag\">mini-assembly</span> contig_0</td>"), "tagged");
+        assertTrue(page.contains("434 bp (target), from the mini-assembly"), "said in the grid cell's tooltip");
+    }
+
+    @Test
     void theTmsOfARunAndWhyAssaysGaveNoProductAreShown() throws IOException {
         // A row of the Tm rule, and one sample without a product of an assay.
         ca.canada.inspection.pcr.ReportRow gated = new ca.canada.inspection.pcr.ReportRow("a", "its",

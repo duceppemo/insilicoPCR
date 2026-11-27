@@ -159,8 +159,10 @@ public final class FastqDiagnosticsStage {
                 continue;
             }
             Path assembly = directories.sample(sample.getName()).assembly();
-            Map<String, Integer> lengths = Files.isRegularFile(assembly) ? SequenceFileUtils.sequenceLengths(assembly)
-                    : Map.of();
+            // Read with the BLAST query (FastaSummary); the file again only for a sample searched otherwise.
+            Map<String, Integer> known = sample.hits().lengths();
+            Map<String, Integer> lengths = !known.isEmpty() ? known
+                    : Files.isRegularFile(assembly) ? SequenceFileUtils.sequenceLengths(assembly) : Map.of();
             findings.addAll(FastqDiagnostics.assess(sample, primers, options, reads, lengths,
                     extension.of(sample.getName())));
         }

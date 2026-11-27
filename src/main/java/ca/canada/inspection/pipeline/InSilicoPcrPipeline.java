@@ -119,7 +119,6 @@ public final class InSilicoPcrPipeline {
         done(Step.READS);
 
         BlastRunner.run(context);
-        ContigService.load(context);
         monitor.info("Completed BLAST");
         done(Step.BLAST);
 

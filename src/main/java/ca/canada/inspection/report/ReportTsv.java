@@ -195,7 +195,7 @@ public final class ReportTsv {
                         fields.numberOrZero(ReportColumn.REVERSE_MISMATCHES),
                         fields.numberOrZero(ReportColumn.REVERSE_THREE_PRIME),
                         fields.numberOrZero(ReportColumn.REVERSE_UNPAIRED), fields.tm(ReportColumn.REVERSE_TM)),
-                probe, source(description));
+                probe, source(description, fields.text(ReportColumn.SOURCE)));
     }
 
     private static final Pattern READ_SUPPORT = Pattern.compile(Pattern.quote(ReadLevelCaller.ROW_PREFIX)
@@ -207,6 +207,13 @@ public final class ReportTsv {
      * Where a row read back from a report was called, from its {@code Contig Description}: a run
      * keeps this as data ({@link ReportRow#source}); a report on disk keeps only the text.
      */
+    static ReportRow.Source source(String description, String written) {
+        ReportRow.Source source = source(description);
+        // A contig's product: of an assembly, or (since 2.1, which says so) of the mini-assembly of reads.
+        return source == ReportRow.Source.ASSEMBLY && ReportColumn.MINI_ASSEMBLY.equals(written.strip())
+                ? ReportRow.Source.MINI_ASSEMBLY : source;
+    }
+
     static ReportRow.Source source(String description) {
         Matcher reads = READ_SUPPORT.matcher(description);
         if (reads.lookingAt()) {

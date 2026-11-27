@@ -80,12 +80,17 @@ public final class ReadLevelStage {
         Path fasta = files.baitedReadsFasta();
         Path hitsFile = files.baitedReadsHits();
         boolean paired = sample.isPaired();
+        // Unpaired, the reads were searched as the anchors of the second bait were found (BaitAnchors), and are
+        // written the same again; their hits are this run's, which deleted any earlier.
+        boolean searched = !paired && Files.isRegularFile(hitsFile);
         BaitedReads.ReadSet reads = BaitedReads.write(readInputs(files, paired), paired, fasta);
         if (reads.lengths().isEmpty()) {
             ca.canada.inspection.util.OutputFiles.deleteQuietly(hitsFile); // no stale hits from an earlier run in this folder
             return new ReadEvidence(Map.of(), Map.of(), Map.of());
         }
-        runBlast(settings, blastThreads, fasta, hitsFile);
+        if (!searched) {
+            runBlast(settings, blastThreads, fasta, hitsFile);
+        }
         return callFromHits(name, hitsFile, fasta, reads, primers, options, settings.minSupportFraction(),
                 settings.monitor()::warning);
     }

@@ -73,10 +73,31 @@ public final class InteractiveGelViewer {
      * and fading of selection and search, with its colours and their legend.
      */
     public static void show(Path consolidatedReport, Collection<String> sampleNames) {
+        show(load(consolidatedReport, sampleNames));
+    }
+
+    /** A report read for the viewer ({@link #load}): its file, and its lanes. */
+    public record Loaded(Path consolidatedReport, LinkedHashMap<String, List<GelBand>> lanes) {
+    }
+
+    /**
+     * Reads {@code consolidatedReport} for {@link #show(Loaded)}: on any thread, so that the window waits for
+     * none (a large run's report took the window's thread for as long as it was read).
+     *
+     * @throws IllegalStateException when the report has no sample to draw
+     */
+    public static Loaded load(Path consolidatedReport, Collection<String> sampleNames) {
         LinkedHashMap<String, List<GelBand>> lanes = GelReportReader.read(consolidatedReport, sampleNames);
         if (lanes.isEmpty()) {
             throw new IllegalStateException("No sample to draw in consolidated report: " + consolidatedReport);
         }
+        return new Loaded(consolidatedReport, lanes);
+    }
+
+    /** Opens the gel of a report read by {@link #load}, as {@link #show(Path, Collection)}; on the FX thread. */
+    public static void show(Loaded loaded) {
+        Path consolidatedReport = loaded.consolidatedReport();
+        LinkedHashMap<String, List<GelBand>> lanes = loaded.lanes();
         GelPages pages = new GelPages(List.copyOf(lanes.keySet()), SAMPLES_PER_GEL);
         // One colour per gene for the whole run, so a gene keeps its colour from page to page.
         Map<String, Color> geneColors = GelColors.assignGeneColors(lanes);

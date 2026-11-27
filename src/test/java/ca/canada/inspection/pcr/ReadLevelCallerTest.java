@@ -365,6 +365,32 @@ class ReadLevelCallerTest {
     }
 
     @Test
+    void eachAssayOfAReactionIsCalledOnTheReadsOfItsOwnPrimers() {
+        // a and b share their primers and a reaction: the reads hold the product of each. b's was merged under
+        // a's before it was called, so b had no read call, and its reads were extended for nothing.
+        Sample reads = reads();
+        Map<String, Integer> lengths = new HashMap<>();
+        for (int i = 1; i <= 5; i++) {
+            lengths.put("read_" + i, 101);
+            for (String assay : List.of("a", "b")) {
+                reads.hits().add(assay + "-F", TestHits.plusHit(assay + "-F", "read_" + i, 11));
+                reads.hits().add(assay + "-R", TestHits.minusHit(assay + "-R", "read_" + i, 61));
+            }
+        }
+        Map<String, String> sequences = new java.util.LinkedHashMap<>();
+        for (String id : List.of("a-F", "a-R", "b-F", "b-R")) {
+            sequences.put(id, PRIMER_20);
+        }
+        PrimerPanel mixed = PrimerPanel.of(sequences, ExpectedSizes.NONE,
+                MixGroups.fromHeaders(Map.of("a-F", "mix=one", "b-F", "mix=one")));
+
+        ReadLevelCaller.ReadEvidence evidence = TestEvidence.evaluate(reads, lengths, mixed, DEFAULTS);
+
+        assertEquals(1, evidence.products("a").size());
+        assertEquals(1, evidence.products("b").size());
+    }
+
+    @Test
     void withoutReadSequencesEveryReadCarryingThePrimerIsInformative() {
         Sample reads = reads();
         Map<String, Integer> lengths = new HashMap<>();

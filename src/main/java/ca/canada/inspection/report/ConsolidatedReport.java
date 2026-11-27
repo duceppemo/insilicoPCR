@@ -39,21 +39,32 @@ public final class ConsolidatedReport {
 
         // A new file: never over another run's report. Its lines end in LF on every system, as the other files a
         // run writes do: on Windows, newLine() wrote CRLF in some files and not others.
-        try (BufferedWriter writer = Files.newBufferedWriter(report, StandardCharsets.UTF_8,
-                java.nio.file.StandardOpenOption.CREATE_NEW, java.nio.file.StandardOpenOption.WRITE)) {
-            writer.write(HEADER);
-            writer.write('\n');
-            for (ReportRow row : rows) {
-                writer.write(String.join("\t", ReportColumn.BEFORE_SIZE_CHECK.stream().map(column -> column.value(row))
-                        .toList()));
-                writer.write("\t" + expectedSizes.labelText(row.assay(), row.size()));
-                for (ReportColumn column : ReportColumn.AFTER_SIZE_CHECK) {
-                    writer.write("\t" + column.value(row));
-                }
+        boolean created = false;
+        boolean written = false;
+        try {
+            try (BufferedWriter writer = Files.newBufferedWriter(report, StandardCharsets.UTF_8,
+                    java.nio.file.StandardOpenOption.CREATE_NEW, java.nio.file.StandardOpenOption.WRITE)) {
+                created = true;
+                writer.write(HEADER);
                 writer.write('\n');
+                for (ReportRow row : rows) {
+                    writer.write(String.join("\t", ReportColumn.BEFORE_SIZE_CHECK.stream()
+                            .map(column -> column.value(row)).toList()));
+                    writer.write("\t" + expectedSizes.labelText(row.assay(), row.size()));
+                    for (ReportColumn column : ReportColumn.AFTER_SIZE_CHECK) {
+                        writer.write("\t" + column.value(row));
+                    }
+                    writer.write('\n');
+                }
             }
+            written = true; // closed, so flushed: whole
         } catch (IOException e) {
             throw new UncheckedIOException("Unable to write consolidated report: " + report, e);
+        } finally {
+            // A report cut short (a full disk) would take its number from the next run: removed, if this made it.
+            if (created && !written) {
+                ca.canada.inspection.util.OutputFiles.deleteQuietly(report);
+            }
         }
         return report;
     }

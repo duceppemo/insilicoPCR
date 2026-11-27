@@ -1,5 +1,7 @@
 package ca.canada.inspection.gel;
 
+import ca.canada.inspection.pcr.ExpectedSizes;
+import ca.canada.inspection.pcr.ReportRow;
 import javafx.application.Platform;
 
 import java.nio.file.Path;
@@ -26,12 +28,21 @@ public final class GelImageWriter {
     }
 
     /**
+     * Writes the gel of a run's rows (what {@code --gel} draws: the run has them, and its report is not read back).
+     *
+     * @param sizes   the product sizes the primer file declares, for the size check of each band
      * @param info    told where the picture was written
      * @param warning told why it could not be
      * @return the pictures written (one per gel), none when they could not be
      */
-    public static List<Path> write(Path consolidatedReport, Path outputFile, Collection<String> sampleNames,
-                                   Consumer<String> info, Consumer<String> warning) {
+    public static List<Path> write(List<ReportRow> rows, ExpectedSizes sizes, Path outputFile,
+                                   Collection<String> sampleNames, Consumer<String> info, Consumer<String> warning) {
+        return write(() -> SyntheticGelImage.exportPng(GelReportReader.lanes(rows, sizes, sampleNames), outputFile,
+                "No sample to draw"), info, warning);
+    }
+
+    private static List<Path> write(java.util.function.Supplier<List<Path>> export, Consumer<String> info,
+                                    Consumer<String> warning) {
         if (TOOLKIT_SHUT_DOWN.get()) {
             warning.accept("Warning: the JavaFX toolkit was already shut down in this process;"
                     + " the synthetic gel can only be rendered once per run.");
@@ -49,7 +60,7 @@ public final class GelImageWriter {
                 warning.accept(NO_GRAPHICS + rootMessage(e));
                 return List.of();
             }
-            List<Path> written = SyntheticGelImage.exportPng(consolidatedReport, outputFile, sampleNames);
+            List<Path> written = export.get();
             info.accept(written.size() == 1 ? "Synthetic gel image written to " + written.getFirst()
                     : "Synthetic gel images written, " + InteractiveGelViewer.SAMPLES_PER_GEL + " samples a gel: "
                     + written.getFirst() + " to " + written.getLast().getFileName());

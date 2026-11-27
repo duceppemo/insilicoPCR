@@ -39,6 +39,7 @@ public final class NoProductReport {
                 writer.write('\n');
             }
         } catch (IOException e) {
+            ca.canada.inspection.util.OutputFiles.deleteQuietly(file); // cut short, it would be read as whole
             throw new UncheckedIOException("Unable to write the assays without a product: " + file, e);
         }
         return file;

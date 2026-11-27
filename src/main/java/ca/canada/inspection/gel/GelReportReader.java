@@ -1,5 +1,6 @@
 package ca.canada.inspection.gel;
 
+import ca.canada.inspection.pcr.ExpectedSizes;
 import ca.canada.inspection.pcr.ReportRow;
 import ca.canada.inspection.report.ReportColumn;
 import ca.canada.inspection.report.ReportTsv;
@@ -28,19 +29,32 @@ public final class GelReportReader {
             throw new IllegalArgumentException("Consolidated report not found: " + consolidatedReport);
         }
 
+        // Named as report.tsv names them: a tab or line break in a name is a space there.
+        List<String> named = sampleNames == null ? null : sampleNames.stream().map(ReportColumn::readBack).toList();
+        return lanes(ReportTsv.readChecked(consolidatedReport).stream()
+                .map(checked -> GelBand.of(checked.row(), checked.sizeCheck())).toList(), named);
+    }
+
+    /**
+     * The lanes of a run's rows as {@link #read} gives those of its report, for the gel {@code --gel} draws: the
+     * run has them, and its report need not be read back.
+     *
+     * @param sizes the product sizes the primer file declares, for each band's size check
+     */
+    public static LinkedHashMap<String, List<GelBand>> lanes(List<ReportRow> rows, ExpectedSizes sizes,
+                                                              Collection<String> sampleNames) {
+        return lanes(rows.stream().map(row -> GelBand.of(row, sizes.label(row.assay(), row.size()))).toList(),
+                sampleNames);
+    }
+
+    private static LinkedHashMap<String, List<GelBand>> lanes(List<GelBand> all, Collection<String> sampleNames) {
         LinkedHashMap<String, List<GelBand>> lanes = new LinkedHashMap<>();
         boolean keepEmptySampleLanes = sampleNames != null && !sampleNames.isEmpty();
         if (sampleNames != null) {
-            // Named as report.tsv names them: a tab or line break in a name is a space there.
-            sampleNames.stream()
-                    .map(ReportColumn::readBack)
-                    .sorted()
-                    .forEach(sampleName -> lanes.put(sampleName, new ArrayList<>()));
+            sampleNames.stream().sorted().forEach(sampleName -> lanes.put(sampleName, new ArrayList<>()));
         }
-        for (ReportTsv.Checked checked : ReportTsv.readChecked(consolidatedReport)) {
-            ReportRow row = checked.row();
-            lanes.computeIfAbsent(row.sample(), key -> new ArrayList<>())
-                    .add(GelBand.of(row, checked.sizeCheck()));
+        for (GelBand band : all) {
+            lanes.computeIfAbsent(band.sampleName(), key -> new ArrayList<>()).add(band);
         }
 
         if (!keepEmptySampleLanes) {

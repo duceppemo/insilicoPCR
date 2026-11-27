@@ -192,6 +192,77 @@ class ProductsTest {
                 + row.forwardPrimer() + " " + row.reversePrimer() + " " + row.size() + " " + row.pairing()).toList());
     }
 
+    /** Assays a and b, one reaction, the same primers: what an allele-discrimination duplex with two probes is. */
+    private static PrimerPanel sharedPrimers() {
+        Map<String, String> sequences = new LinkedHashMap<>();
+        for (String id : List.of("a-F", "a-R", "b-F", "b-R")) {
+            sequences.put(id, PRIMER_20);
+        }
+        return PrimerPanel.of(sequences, ExpectedSizes.NONE,
+                MixGroups.fromHeaders(Map.of("a-F", "mix=one", "b-F", "mix=one")));
+    }
+
+    @Test
+    void anAssayWhoseProductIsReportedUnderAnotherStillMadeItsDesignedProduct() {
+        // The report gives the one molecule under a; b made it too: the FASTQ steps and the split check, which
+        // ask for an assay's designed product, must not look for b's again (they extended reads for it).
+        Sample sample = new Sample("S");
+        for (String id : List.of("a-F", "b-F")) {
+            sample.hits().add(id, plusHit(id, "c1", 101));
+        }
+        for (String id : List.of("a-R", "b-R")) {
+            sample.hits().add(id, minusHit(id, "c1", 581));
+        }
+        AmpliconOptions options = AmpliconOptions.defaults();
+
+        assertEquals(List.of("a"), Products.of(sample, sharedPrimers(), options).stream().map(ReportRow::assay).toList());
+        assertEquals(Map.of("b", "a"), Products.reportedUnder(sample, sharedPrimers(), options));
+        assertEquals(java.util.Set.of("a", "b"), Products.designed(sample, sharedPrimers(), options).keySet());
+        assertEquals(Map.of("a", java.util.Set.of(500), "b", java.util.Set.of(500)),
+                Products.sizes(sample, sharedPrimers(), options));
+    }
+
+    @Test
+    void readRowsOfOneProductOfAReactionAreReportedOnce() {
+        // Called on reads of their own, a's and b's read products lie on different reads: the same product at
+        // one size in one reaction, reported once, under a. Another size of b is b's own.
+        ReportRow a = readRow("a", "read_1", 500);
+        ReportRow b = readRow("b", "read_7", 500);
+        ReportRow bLonger = readRow("b", "read_9", 620);
+        Map<String, String> mergedInto = new java.util.HashMap<>();
+
+        assertEquals(List.of(a, bLonger),
+                Products.readRowsOncePerReaction(List.of(a, b, bLonger), sharedPrimers(), mergedInto));
+        assertEquals(Map.of(), mergedInto, "b has a row of its own");
+
+        assertEquals(List.of(a), Products.readRowsOncePerReaction(List.of(b, a), sharedPrimers(), mergedInto));
+        assertEquals(Map.of("b", "a"), mergedInto);
+    }
+
+    @Test
+    void readRowsOfOneSizeMadeByOtherPrimersAreTwoProducts() {
+        // A qPCR duplex: a and b share the reaction, not their primers, and both make 100 bp.
+        Map<String, String> sequences = new LinkedHashMap<>();
+        sequences.put("a-F", PRIMER_20);
+        sequences.put("a-R", PRIMER_20);
+        sequences.put("b-F", "TTTTGGGGCCCCAAAATTTT");
+        sequences.put("b-R", "GGGGCCCCAAAATTTTGGGG");
+        PrimerPanel duplex = PrimerPanel.of(sequences, ExpectedSizes.NONE,
+                MixGroups.fromHeaders(Map.of("a-F", "mix=one", "b-F", "mix=one")));
+        ReportRow a = readRow("a", "read_1", 100);
+        ReportRow b = readRow("b", "read_900", 100);
+        Map<String, String> mergedInto = new java.util.HashMap<>();
+
+        assertEquals(List.of(a, b), Products.readRowsOncePerReaction(List.of(a, b), duplex, mergedInto));
+        assertEquals(Map.of(), mergedInto);
+    }
+
+    private static ReportRow readRow(String assay, String read, int size) {
+        return new ReportRow("S", assay, new ReportRow.Site(1, size, size, read, "", '+'),
+                new ReportRow.Binding(assay + "-F", 0, 0, 0, 60.0), new ReportRow.Binding(assay + "-R", 0, 0, 0, 60.0),
+                null, new ReportRow.Source.Reads(5, 5, "100%"));
+    }
+
     @Test
     void aPrimerSharedByTwoAssaysOfOneReactionMakesEachMoleculeOnce() {
         // AMOS-like: abortus-F and meli-F are one primer, repeated under each assay's ID, at an inverted

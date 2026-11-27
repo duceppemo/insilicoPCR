@@ -35,10 +35,15 @@ public final class SyntheticGelImage {
      * @return the files written, in order
      */
     public static List<Path> exportPng(Path consolidatedReport, Path outputFile, Collection<String> sampleNames) {
-        LinkedHashMap<String, List<GelBand>> lanes = GelReportReader.read(consolidatedReport, sampleNames);
+        return exportPng(GelReportReader.read(consolidatedReport, sampleNames), outputFile,
+                "No sample to draw in consolidated report: " + consolidatedReport);
+    }
+
+    /** As {@link #exportPng(Path, Path, Collection)}, for the lanes of a run ({@link GelReportReader#lanes}). */
+    static List<Path> exportPng(LinkedHashMap<String, List<GelBand>> lanes, Path outputFile, String noSample) {
         // A run without a product is drawn with empty lanes, as the gel window draws it.
         if (lanes.isEmpty()) {
-            throw new IllegalStateException("No sample to draw in consolidated report: " + consolidatedReport);
+            throw new IllegalStateException(noSample);
         }
         // One colour per gene for the whole run, as in the gel window.
         Map<String, Color> geneColors = GelColors.assignGeneColors(lanes);

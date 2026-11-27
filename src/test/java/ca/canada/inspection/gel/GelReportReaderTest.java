@@ -28,6 +28,41 @@ class GelReportReaderTest {
     }
 
     @Test
+    void theLanesOfARunsRowsAreThoseOfItsReportReadBack() throws IOException {
+        // What --gel draws, from the rows in memory: the same lanes, bands and size checks as from report.tsv.
+        Map<String, String> sequences = new java.util.LinkedHashMap<>();
+        for (String id : List.of("toxA-F", "toxA-R")) {
+            sequences.put(id, "ACGTACGTACGTACGTACGT");
+        }
+        ca.canada.inspection.pcr.ExpectedSizes sizes =
+                ca.canada.inspection.pcr.ExpectedSizes.fromHeaders(Map.of("toxA-F", "size=312"));
+        ca.canada.inspection.pcr.PrimerPanel primers = ca.canada.inspection.pcr.PrimerPanel.of(sequences, sizes,
+                ca.canada.inspection.pcr.MixGroups.fromHeaders(Map.of()));
+        List<ca.canada.inspection.pcr.ReportRow> rows = List.of(row("s2", 312), row("s1", 312), row("s1", 900));
+        Path report = ca.canada.inspection.report.ConsolidatedReport.write(dir, rows, primers);
+        List<String> samples = List.of("s1", "s2", "negative");
+
+        assertEquals(shown(GelReportReader.read(report, samples)), shown(GelReportReader.lanes(rows, sizes, samples)));
+        assertEquals(List.of("negative", "s1", "s2"), List.copyOf(GelReportReader.lanes(rows, sizes, samples).keySet()));
+    }
+
+    private static ca.canada.inspection.pcr.ReportRow row(String sample, int size) {
+        return new ca.canada.inspection.pcr.ReportRow(sample, "toxA",
+                new ca.canada.inspection.pcr.ReportRow.Site(1, size, size, "c1", "", '+'),
+                new ca.canada.inspection.pcr.ReportRow.Binding("toxA-F", 0, 0, 0, 60.0),
+                new ca.canada.inspection.pcr.ReportRow.Binding("toxA-R", 1, 0, 0, 57.5), null,
+                ca.canada.inspection.pcr.ReportRow.Source.ASSEMBLY);
+    }
+
+    /** Each lane's bands as the gel window's hover text gives them. */
+    private static Map<String, List<String>> shown(LinkedHashMap<String, List<GelBand>> lanes) {
+        Map<String, List<String>> shown = new LinkedHashMap<>();
+        lanes.forEach((sample, bands) -> shown.put(sample,
+                bands.stream().map(band -> GelText.tooltip(List.of(band))).toList()));
+        return shown;
+    }
+
+    @Test
     void readsBandsAndSortsLanesAndSizes() throws IOException {
         Path file = report(
                 "sampleB\tgeneX\t1-100\t100\tc1",

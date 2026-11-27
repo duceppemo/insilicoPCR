@@ -52,7 +52,7 @@ public record NearMiss(BlastResult hit, int threePrimePenalty, double neededTm, 
      */
     public boolean plausible() {
         if (failsThreePrimeRule()) {
-            return hit.alignedMismatches() + hit.fivePrimeUnpairedBases() + hit.threePrimeUncovered()
+            return hit.alignedMismatchesPastFivePrimeFree() + hit.fivePrimeUnpairedBases() + hit.threePrimeUncovered()
                     <= PLAUSIBLE_DIFFERENCES;
         }
         return Double.isNaN(neededTm) || tm() >= neededTm - PLAUSIBLE_TM_RANGE;

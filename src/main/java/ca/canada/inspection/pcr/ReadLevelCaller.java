@@ -283,14 +283,11 @@ public final class ReadLevelCaller {
             readsWithOligo.put(oligo, ids);
         });
 
-        Map<String, List<ReportRow>> rowsByAssay = new TreeMap<>();
-        for (ReportRow row : Products.of(sampleName, reads, primers, options)) {
-            // An assay's forward with its reverse primer only: a read folding back on one primer, or two
-            // reads' worth of two assays, is no call (an A+B product had no primers to count support from).
-            if (row.pairing() == ReportRow.Pairing.DESIGNED) {
-                rowsByAssay.computeIfAbsent(row.assay(), ignored -> new ArrayList<>()).add(row);
-            }
-        }
+        // An assay's forward with its reverse primer only: a read folding back on one primer, or two
+        // reads' worth of two assays, is no call (an A+B product had no primers to count support from). Each
+        // assay of a reaction (mix=) is called on its own: the report gives a product the two make once
+        // (Products#readRowsOncePerReaction), but each one made it.
+        Map<String, List<ReportRow>> rowsByAssay = Products.designed(sampleName, reads, primers, options);
         Map<String, PrimerId.Assay> groups = primers.assays();
 
         // Only reads carrying a primer of an assay with a product are compared by sequence.

@@ -11,6 +11,7 @@ import org.junit.jupiter.api.io.TempDir;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -34,6 +35,36 @@ class IoFailureTest {
         assertTrue(RunFailure.isForTheUser(error), error.toString());
         assertTrue(RunFailure.lines(error).getFirst().startsWith("Error: Unable to write consolidated report: "),
                 RunFailure.lines(error).toString());
+    }
+
+    @Test
+    void aReportCutShortIsNotLeftToTakeTheNextRunsNumber() {
+        // A failure once the report has lines in it (a full disk): the file stayed, named by no QAlog, and the next
+        // run wrote report(1).tsv.
+        PrimerPanel primers = PrimerPanel.of(Map.of("a-F", "ACGT", "a-R", "ACGT"));
+        ca.canada.inspection.pcr.ReportRow row = new ca.canada.inspection.pcr.ReportRow("s", "a",
+                new ca.canada.inspection.pcr.ReportRow.Site(1, 100, 100, "c1", "", '+'),
+                new ca.canada.inspection.pcr.ReportRow.Binding("a-F", 0, 0, 0, 60.0),
+                new ca.canada.inspection.pcr.ReportRow.Binding("a-R", 0, 0, 0, 60.0), null,
+                ca.canada.inspection.pcr.ReportRow.Source.ASSEMBLY);
+        List<ca.canada.inspection.pcr.ReportRow> failing = new java.util.AbstractList<>() {
+            @Override
+            public ca.canada.inspection.pcr.ReportRow get(int index) {
+                if (index > 0) {
+                    throw new java.io.UncheckedIOException(new IOException("No space left on device (stand-in)"));
+                }
+                return row;
+            }
+
+            @Override
+            public int size() {
+                return 3;
+            }
+        };
+
+        assertThrows(java.io.UncheckedIOException.class, () -> ConsolidatedReport.write(dir, failing, primers));
+        assertTrue(Files.notExists(dir.resolve("report.tsv")));
+        assertEquals(dir.resolve("report.tsv"), ConsolidatedReport.write(dir, List.of(row), primers));
     }
 
     @Test

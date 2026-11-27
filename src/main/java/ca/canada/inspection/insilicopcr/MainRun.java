@@ -379,6 +379,7 @@ public class MainRun extends Application {
             runButton.setText("Stopping…");
             runButton.setDisable(true);
             Thread run = runningThread;
+            PcrPipelineTask stopped = runningTask;
             Thread.ofPlatform().daemon().name("after-stop").start(() -> {
                 try {
                     run.join();
@@ -386,6 +387,10 @@ public class MainRun extends Application {
                     Thread.currentThread().interrupt();
                 }
                 Platform.runLater(() -> {
+                    // Stopped after it had finished: its reports are complete, and the buttons show them.
+                    if (stopped.finishedResult() != null) {
+                        lastResult = stopped.finishedResult();
+                    }
                     currentlyRunning.set(false);
                     runButton.setText("Run");
                     runButton.setDisable(false);

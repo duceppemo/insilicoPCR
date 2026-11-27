@@ -291,6 +291,28 @@ class EndToEndTest {
         }
     }
 
+    @Test
+    void aSampleRunAgainAloneWhoseReadsBbdukRefusesIsLeftOut() throws IOException {
+        // Out of memory in the first bait, then its reads refused when run again alone: the run failed, where
+        // reads refused in the first pass leave the sample out.
+        Recorder monitor = new Recorder();
+        PipelineContext context = readContext(twoSamples("big", "small"), directory.resolve("refused-again"), 8,
+                monitor, """
+                  *-Xmx4g*jgi.BBDuk*big_R1*)
+                    %s ;;
+                  *-Xmx8g*jgi.BBDuk*big_R1*)
+                    echo 'Exception: the file is not FASTQ (stand-in)' >&2; exit 1 ;;
+                """.formatted(OutOfMemory.JAVA_RUNTIME.script));
+
+        FastqProcessor.process(context);
+
+        assertFalse(context.samples().containsKey("big"), context.samples().keySet().toString());
+        assertTrue(context.samples().containsKey("small"));
+        assertTrue(context.inputIssues().stream().anyMatch(issue -> issue.sample().equals("big")),
+                context.inputIssues().toString());
+        assertTrue(Files.size(context.directories().sample("small").assembly()) > 0);
+    }
+
     @ParameterizedTest
     @EnumSource(OutOfMemory.class)
     void aSampleThatRunsOutOfMemoryAloneFailsTheRunWithAHint(OutOfMemory how) throws IOException {
@@ -873,6 +895,28 @@ class EndToEndTest {
         assertFalse(Files.exists(output.resolve("QAlog.txt")));
     }
 
+    @Test
+    void aRunWhoseReportsCannotBeWrittenLeavesNone() {
+        // A file that cannot be written once report.tsv is (a full disk): report.tsv stayed, unnamed by any
+        // QAlog, and the next run numbered its report after it.
+        Path output = directory.resolve("failed-in-reports");
+        Path report = output.resolve("consolidated_report").resolve("report.tsv");
+        Recorder monitor = new Recorder() {
+            @Override
+            public void info(String message) {
+                super.info(message);
+                if (message.startsWith("Report written to")) {
+                    throw new java.io.UncheckedIOException(new IOException("No space left on device (stand-in)"));
+                }
+            }
+        };
+
+        assertThrows(java.io.UncheckedIOException.class,
+                () -> pipeline(config(EXAMPLE.resolve("genomes"), output), monitor).run());
+        assertFalse(Files.exists(report));
+        assertFalse(Files.exists(output.resolve("QAlog.txt")));
+    }
+
     /** Copies of the example reads under the given sample names. */
     private Path twoSamples(String first, String second) throws IOException {
         Path reads = Files.createDirectory(directory.resolve(first + "-" + second));
@@ -907,17 +951,24 @@ class EndToEndTest {
      */
     private PipelineContext readContext(Path reads, Path output, int budgetGiB, RunMonitor monitor, OutOfMemory how)
             throws IOException {
+        return readContext(reads, output, budgetGiB, monitor, """
+                  *-Xmx4g*assemble.Tadpole*big_doubleTargetMatches*)
+                    %s ;;
+                """.formatted(how.script));
+    }
+
+    /** As above, the stand-in java running {@code cases} (of a shell {@code case} on its arguments) first. */
+    private PipelineContext readContext(Path reads, Path output, int budgetGiB, RunMonitor monitor, String cases)
+            throws IOException {
         assumeTrue(!AppPaths.isWindows(), "the stand-in java is a shell script");
         AppPaths.RuntimeLayout real = AppPaths.discover();
         Path java = directory.resolve("java");
         Files.writeString(java, """
                 #!/bin/sh
                 case "$*" in
-                  *-Xmx4g*assemble.Tadpole*big_doubleTargetMatches*)
-                    %s ;;
-                esac
+                %sesac
                 exec '%s' "$@"
-                """.formatted(how.script, real.javaExecutable()));
+                """.formatted(cases, real.javaExecutable()));
         assertTrue(java.toFile().setExecutable(true));
         AppPaths.RuntimeLayout layout = new AppPaths.RuntimeLayout(real.appRoot(), real.bbmapDirectory(),
                 real.blastBinDirectory(), java);
@@ -925,7 +976,7 @@ class EndToEndTest {
         PipelineDirectories directories = PipelineDirectories.create(output);
         PrimerPanel primers = PrimerService.loadAndPrepare(config, directories, warning -> { });
         PipelineContext context = new PipelineContext(config, new RuntimeDependencies(layout), directories,
-                InputCheck.scan(reads, InputCheck.Depth.QUICK, 2).samples(), primers, budgetGiB, List.of(), monitor);
+                InputCheck.scan(reads, InputCheck.Depth.QUICK, 2).samples(), primers, budgetGiB, new java.util.ArrayList<>(), monitor);
         // The baiting searches its first catch for the primers: their database comes first, as in a run.
         BlastDatabaseBuilder.build(context);
         return context;

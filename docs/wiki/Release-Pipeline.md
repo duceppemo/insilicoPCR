@@ -37,7 +37,7 @@ scripts/ci/smoke-test.sh insilicoPCR-<version>-linux-x64.zip
 
 ```bash
 export JAVA_HOME=/path/to/jdk-25
-scripts/release/package-linux-portable.sh 2.0.0
+scripts/release/package-linux-portable.sh 2.1.0
 ```
 
 Expected artifacts:
@@ -63,7 +63,7 @@ It is what the Bioconda package is made from (see [Installation](Installation#wi
 With PowerShell 7 (`pwsh`; `scripts\release-windows.bat` starts it when it is installed):
 
 ```powershell
-scripts/release-windows.ps1 -Version 2.0.0
+scripts/release-windows.ps1 -Version 2.1.0
 ```
 
 Windows PowerShell 5.1 is refused: it ran `./mvnw`, the Unix script, instead of `mvnw.cmd`, and its `Compress-Archive` writes ZIP entry names with backslashes. A failed Maven build stops the script, rather than packaging what an earlier build left in `target`.

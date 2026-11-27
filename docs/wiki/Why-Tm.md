@@ -81,13 +81,13 @@ The margin (`--tm-margin`, 5 °C by default) sets how far below the annealing te
 
 Any minimum from 46 to 61 °C gives the same 22 products: at 60 °C, any margin from 0 to 14. The default's 55 °C sits in the gap. These assays have strong sites on their targets: the margin hardly matters.
 
-***Globodera* reads** (FASTQ mode; 19 cyst samples, CFIA: nine *G. rostochiensis*, two of its Andean mitotype, three each of *G. pallida* and *G. ellingtonae*, one *G. tabacum*, and a nematode outside *Globodera*). The 14 species assays were each judged at their published annealing temperature: Gamel et al. (2017), Bulman and Marshall (1997) and Reid et al. (2015) at 60 °C (EPPO PM 7/40(5), Appendices 3, 6 and 4; the Reid protocol's 2 min at 50 °C before the 95 °C start is the UNG step, not its annealing), Nakhla et al. (2010) at 58 °C, the others at 60 °C. Counting each assay once per sample, with a product at its target size: 64 are an assay on its own species, and 8 on another.
+***Globodera* reads** (FASTQ mode; 19 cyst samples, CFIA: nine *G. rostochiensis*, two of its Andean mitotype, three each of *G. pallida* and *G. ellingtonae*, one *G. tabacum*, and a nematode outside *Globodera*). The 14 species assays were each judged at their published annealing temperature: Gamel et al. (2017), Bulman and Marshall (1997) and Reid et al. (2015) at 60 °C (EPPO PM 7/40(5), Appendices 3, 6 and 4; the Reid protocol's 2 min at 50 °C before the 95 °C start is the UNG step, not its annealing), Nakhla et al. (2010) at 58 °C, and ShahGe, the outer primers F3 and B3 of the Shah and Dandurand (2026) LAMP assay, at the 62 °C of their PCR in that paper. Chronis et al. (2014), whose cycling could not be checked, is at 60 °C. Counting each assay once per sample, with a product at its target size: 64 are an assay on its own species, and 8 on another.
 
 | Margin | On its own species (of 64) | On another species | Own-species products missing |
 |---|---|---|---|
 | 0 to 1 | 27 | 4 | BMros, BMpal, GamelRos, ReidRos, ReidPal, ChronisGe, ShahGe |
 | 2 | 29 | 8 | BMros, BMpal, GamelRos, ReidRos, ReidPal, ChronisGe, ShahGe |
-| 3 to 4 | 35 | 8 | BMros, BMpal, GamelRos, ReidRos, ReidPal |
+| 3 to 4 | 32 | 8 | BMros, BMpal, GamelRos, ReidRos, ReidPal, ShahGe |
 | **5 to 8** (default 5) | **46** | 8 | BMros, BMpal, GamelRos, ReidRos (one sample) |
 | 9 | 63 | 8 | ReidRos (one sample) |
 | 10 or more | 64 | 8 | none |

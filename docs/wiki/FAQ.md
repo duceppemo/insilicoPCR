@@ -10,9 +10,10 @@ No. Portable releases include BBMap and NCBI BLAST+.
 
 ## Can I run insilicoPCR from the terminal?
 
-Yes. Use the bundled Java runtime:
+Yes. Use the launcher with arguments, or the bundled Java runtime:
 
 ```bash
+./run-insilicoPCR.sh -h
 ./runtime/linux/jdk/bin/java -jar insilicoPCR.jar -h
 ```
 
@@ -31,7 +32,7 @@ Yes. The input can be a single sequence file or a directory containing sequence 
 
 ## What primer format is required?
 
-The primer file must be FASTA. Primer IDs must end with `-F`, `-R`, or `-P`. Text after the ID on the header
+The primer file must be FASTA. Primer IDs must end with `-F`, `-R`, or `-P`, or have one of them before an underscore (`toxA-F_2`). Text after the ID on the header
 line is a description (since 0.11.0; earlier releases silently reported nothing for such an assay). See
 [Primer FASTA Format](Primer-FASTA-Format).
 

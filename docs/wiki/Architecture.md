@@ -4,7 +4,7 @@ insilicoPCR uses a shared pipeline behind both the graphical interface and comma
 
 ![insilicoPCR architecture](https://raw.githubusercontent.com/duceppemo/insilicoPCR/master/docs/assets/architecture.svg)
 
-One dispatcher starts the desktop GUI when it is given no arguments and the command line otherwise. Both run the same pipeline stages, which call the bundled external tools (BBTools and BLAST+), pass the BLAST hits to the shared analysis core, and write the reports from the amplicons it calls. Everything runs from the portable runtime shipped in the release ZIP.
+One dispatcher starts the desktop GUI when it is given no arguments and the command line otherwise. Both run the same pipeline stages, which call the bundled external tools (BBTools and BLAST+), pass the BLAST hits to the shared analysis core, and write the reports from the amplicons it calls. The tools come from the portable runtime of the release ZIP or, without one (the ZIP without a runtime, Bioconda), from `PATH`.
 
 ## Entry points
 
@@ -25,7 +25,7 @@ Each package depends only on those below it in this table, so there are no cycle
 | Package | Holds | Uses |
 |---|---|---|
 | `dispatchpcr` | The entry point and the command-line options | everything below |
-| `insilicopcr` (and `insilicopcr.ui`) | The application window and its dialogs | `pipeline`, `gel`, `report`, `pcr`, `util` |
+| `insilicopcr` (and `insilicopcr.ui`) | The application window and its dialogs | `pipeline`, `gel`, `pcr`, `util` |
 | `pipeline` | The run: its steps, the external programs, the runtime layout (`AppPaths`); no JavaFX (`PackageRulesTest`) | `gel`, `report`, `pcr`, `model`, `util` |
 | `gel` | The synthetic gel: its geometry, the viewers, the image files | `report` (to read `report.tsv`), `pcr` |
 | `report` | The files a run writes and reads back: `report.tsv` (its columns in `ReportColumn`, written by `ConsolidatedReport`, read by `ReportTsv`), `report_samples.tsv`, `report_no_product.tsv`, the HTML report, the FASTQ diagnostics | `pcr`, `model`, `util` |
@@ -34,7 +34,7 @@ Each package depends only on those below it in this table, so there are no cycle
 | `model` | `Sample` (its name, files and type, and its `Hits`), `Hits` (accepted primer hits on a set of sequences, with their descriptions, each site's Tm, and the best rejected site of each oligo, a `NearMiss`) and `BlastResult` | nothing |
 | `thermo` | Melting temperatures (since 2.0): Primer3's `thal` (`Thal`, the thermodynamic alignment behind `ntthal`) ported to Java, with Primer3's nearest-neighbour parameters (`ThalParameters`, read from the resources under `thermo/primer3_config`). Under GPL-3.0-or-later, like the Primer3 code it is ported from (GPL-2.0-or-later) | nothing |
 
-The GUI runs the same pipeline: `insilicopcr.PcrPipelineTask` runs `InSilicoPcrPipeline` on a background thread and gives it a `RunMonitor` that sends messages, program output and progress to the window; cancelling the task (the window closing) kills the external programs, and the task appends what the run showed to `log.txt` however it ends. The command line gives it the console (`Dispatcher.consoleMonitor()`: `RunMonitor.CONSOLE` with its external programs tracked, and stopped when the program is). A finished run returns a `RunResult` (its report, HTML report and samples), which the window's buttons use; `QAlog.txt` names the same report and samples, which `PreviousRun` reads back to reopen the run. Every external program (BLAST+, BBTools) is started by one class, `pipeline.ExternalProgram`.
+The GUI runs the same pipeline: `insilicopcr.PcrPipelineTask` runs `InSilicoPcrPipeline` on a background thread and gives it a `RunMonitor` that sends messages, program output and progress to the window; cancelling the task (**Stop**, or the window closing) kills the external programs, and the task appends what the run showed to `log.txt` however it ends. The command line gives it the console (`Dispatcher.consoleMonitor()`: `RunMonitor.CONSOLE` with its external programs tracked, and stopped when the program is). A finished run returns a `RunResult` (its report, HTML report and samples), which the window's buttons use; `QAlog.txt` names the same report and samples, which `PreviousRun` reads back to reopen the run. Every external program (BLAST+, BBTools) is started by one class, `pipeline.ExternalProgram`.
 
 ## Pipeline stages (`ca.canada.inspection.pipeline`)
 
@@ -42,11 +42,12 @@ The GUI runs the same pipeline: `insilicopcr.PcrPipelineTask` runs `InSilicoPcrP
 
 | Step | Classes | What happens |
 |---|---|---|
-| Dependencies | `RuntimeDependencies` | Find the bundled tools |
+| Dependencies | `RuntimeDependencies` | Find the bundled tools, or those on `PATH` |
 | Primers | `PrimerService` | Read the primer FASTA (every assay needs `-F` and `-R`), expand degenerate bases, write `primer_tmp.fasta`; first, so that a mistake there is found before the input is read |
 | Input check | `util.InputCheck` | Find the samples and check their files |
+| BLAST database | `BlastDatabaseBuilder` | `makeblastdb` on the primers; before the reads, whose baiting searches its first catch against it |
 | Reads | `FastqProcessor`, `BbtoolsCommands`, `ChildJavaMemory` | FASTQ samples: two rounds of BBDuk baiting, Tadpole mini-assembly, BBMerge of baited pairs. Each BBTools command runs in the folder of the file it writes and names its files relative to it (`BbtoolsCommands.Command`): BBTools reads a comma in a file argument as a list of files |
-| BLAST database, BLAST | `BlastDatabaseBuilder`, `BlastRunner`, `BlastQuery`, `BlastTsv`, `ContigService` | `makeblastdb` on the primers; `blastn` of every sample, several samples at a time within the memory budget (a sequence over 1 Mb in overlapping pieces); each table filtered to the accepted hits as they are attached to their sample, in one pass |
+| BLAST | `BlastRunner`, `BlastQuery`, `BlastTsv`, `ContigService` | `blastn` of every sample, several samples at a time within the memory budget (a sequence over 1 Mb in overlapping pieces); each table filtered to the accepted hits as they are attached to their sample, in one pass |
 | Read search, read extension | `ReadLevelStage`, `ReadExtensionStage`, `BaitedReads` | FASTQ samples: amplicons called on the baited reads; reads extended for products longer than a read. `BaitedReads` owns the baited reads written as FASTA (written by the read search, read back by both); FASTQ files are read by `util.FastqRecords`, multi-line FASTA by `util.FastaScanner` |
 | Reports | `ReportGenerator`, `FastqDiagnosticsStage`, `QaLogWriter` | Writes `report.tsv`, the FASTQ diagnostics, the HTML report, the `--gel` image and, last, `QAlog.txt`; returns the `RunResult`; runs no program |
 
@@ -62,7 +63,7 @@ The pipeline delegates the scientific decisions to one JavaFX-free package:
 |---|---|
 | `PrimerId` | The primer naming rule (`<assay>-F`, `-R`, `-P`): reads an ID into its assay and role, and groups a run's primers by assay |
 | `PrimerPanel` | The primers of a run, read once by `PrimerService`: each oligo's sequence (degenerate ones expanded), the assays they form, which have a probe, and the product sizes the file declares; passed to every step that needs the primers |
-| `AmpliconOptions` | Immutable knobs: the Tm rule (`TmGate`), 3' window/penalty, product size limits. The mismatch counts of 1.x are still in it, for tests only: the command line and the window always set the Tm rule |
+| `AmpliconOptions` | Immutable knobs: the Tm rule (`TmGate`), 3' window/penalty, product size limits |
 | `TmGate` | The Tm rule (`--anneal-temp`, `--tm-margin`, the reaction): a site's Tm on the template under it, by `thermo.Thal`, against the annealing temperature (the run's, or the assay's `ta=`, `AnnealTemps`) less the margin; each oligo's Tm on a perfect match for the log |
 | `NoProduct` | Why an assay made no product in a sample: the oligo without an accepted site, its best site and the rule it fails, or sites that pair into no product; written as `report_no_product.tsv` |
 | `BlastField` | The columns of the BLAST TSV, in order: the `-outfmt` blastn is given, the header and the parser's fields |
@@ -114,7 +115,7 @@ The gel viewer (`InteractiveGelViewer`, one gel of up to 100 samples at a time, 
 | `GelText` | Text about the amplicons of a band: tooltips, details, selection and search |
 | `GelPages` | Splitting the lanes of a large run into pages of samples (the window's gels and the `--gel` files) |
 | `GelSelection` | The window's selected bands: what a click, a dragged box and Ctrl+A select |
-| `GelColorMode` | How the bands are coloured (black, by gene, by size check, read from the report's `SizeCheck` column) and so which bands of one size are drawn apart; `GelColors` gives the colours and legends |
+| `GelColorMode` | How the bands are coloured (black, by assay, by size check, read from the report's `SizeCheck` column) and so which bands of one size are drawn apart; `GelColors` gives the colours and legends |
 | `GelScene` | What a gel picture is made of (gel, lanes, ladder, bands, labels, the legend of its colours), whatever draws it; the window draws its bands in their colours too, and restyles them when hovered, selected or searched |
 | `GelNodes` | A `GelScene` as JavaFX nodes, for the viewer |
 | `GelSvg` | A `GelScene` as an SVG document |
@@ -135,7 +136,7 @@ GUI (PcrPipelineTask + window RunMonitor)  /  CLI (Dispatcher.consoleMonitor)
    ↓
 Shared pipeline (InSilicoPcrPipeline)
    ↓
-Primers, input check, FASTQ processing, BLAST database, BLAST, read search and extension
+Primers, input check, BLAST database, FASTQ processing, BLAST, read search and extension
    ↓
 External programs: BBTools, BLAST+ (ExternalProgram, ParallelStageRunner)
    ↓

@@ -64,7 +64,7 @@ chmod +x "$STAGE_DIR/run-insilicoPCR.sh"
 {
   echo "insilicoPCR $VERSION, without a bundled runtime"
   echo "Needs: Java 25 or later, NCBI BLAST+ (blastn, makeblastdb) and BBTools (bbduk.sh) on PATH."
-  echo "Built and tested with: Java 25, BLAST+ 2.17.0, BBTools 40.04."
+  echo "Built and tested with: Java 25, BLAST+ 2.17.0, BBTools 40.04 and 40.05."
   echo "JavaFX: $(ls "$STAGE_DIR/lib" | sed -n 's/^javafx-base-\(.*\)-linux.jar$/\1/p' | head -n 1) (Linux x64)"
 } > "$STAGE_DIR/VERSIONS.txt"
 

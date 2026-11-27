@@ -28,6 +28,14 @@
   assemblies and 19 *Globodera* read sets: the published assays that rely
   on a weak site or match another species, and how to read an assay that
   gives no product (`ta=`, then the reason as a finding about the assay).
+- Wiki checked against the code, 25 statements corrected: among them, a
+  site can melt a little above the oligo's perfect-match Tm;
+  `Forward5PrimeUnpaired` counts every primer base past a contig end; the
+  `Products` column counts products; the launchers run the command line
+  too; the pipeline makes the BLAST database before baiting the reads; the
+  1.x mismatch counts are gone from `AmpliconOptions`; and the messages of
+  a FASTA file that does not start with `>`. The no-runtime ZIP's
+  `VERSIONS.txt` names BBTools 40.05 too.
 
 ## 2.0.0 (2026-11-26)
 

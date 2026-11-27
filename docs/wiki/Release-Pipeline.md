@@ -1,6 +1,6 @@
 # Release Pipeline
 
-The release process creates portable ZIP archives for Linux and Windows. The Linux archive lists its entries in one order, each dated by the commit, and holds `VERSIONS.txt`, the versions of the Java runtime, BLAST+, BBTools and JavaFX it bundles; the program's jar inside it is dated by its build.
+The release process creates portable ZIP archives for Linux and Windows. The Linux archive lists its entries in one order, each dated by the commit, and holds `VERSIONS.txt`, the versions of the Java runtime, BLAST+, BBTools and JavaFX it bundles; the entries inside the program's jar are dated by its build.
 
 ![insilicoPCR release pipeline](https://raw.githubusercontent.com/duceppemo/insilicoPCR/master/docs/assets/release-pipeline.svg)
 
@@ -17,7 +17,7 @@ Releases are fully automated: pushing a `v*` tag builds the Linux and Windows po
 7. Create SHA256 checksum files.
 8. Smoke test: run the ZIP that was just built, on Linux and on Windows, and the Linux ZIP without a runtime on conda's Java, BLAST+ and BBTools.
 9. Windows test harness: run the Windows ZIP through the situations a Windows user meets (see below).
-10. Publish release artifacts for version tags, once the steps above passed. The release's notes are `docs/release-notes/<version>.md`, when there is one (its highlights and what changes on upgrading), above the list of pull requests GitHub writes. Only this job may write to the repository; the workflow's other jobs, which run a pull request's code, only read it.
+10. Publish release artifacts for version tags, once the steps above passed. The release's notes are `docs/release-notes/<version>.md`, when there is one (its highlights and what changes on upgrading), above the list of pull requests GitHub writes. Only this job may write the repository's contents; `newest-tools`, which runs only monthly or by hand, may also open issues; the jobs that run a pull request's code only read it.
 
 ## Version number
 

@@ -202,6 +202,11 @@ public final class ReportGenerator {
     }
 
     private static Map<String, Integer> sequenceLengths(PipelineContext context, Sample sample) {
+        // Read with the BLAST query (FastaSummary); the file again only for a sample searched otherwise.
+        Map<String, Integer> known = sample.hits().lengths();
+        if (!known.isEmpty()) {
+            return known;
+        }
         Map<String, Integer> lengths = new HashMap<>();
         context.searchedFasta(sample).stream().filter(Files::isRegularFile)
                 .forEach(file -> lengths.putAll(SequenceFileUtils.sequenceLengths(file)));

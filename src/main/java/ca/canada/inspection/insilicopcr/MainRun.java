@@ -70,6 +70,8 @@ public class MainRun extends Application {
     private FastqSettings fastqSettings = FastqSettings.DEFAULTS;
     /** What the last finished run wrote; {@code null} before one finishes. */
     private RunResult lastResult;
+    /** Reads reports for the gel viewer ({@link #openGel}); made with the window. */
+    private GelLoader<InteractiveGelViewer.Loaded> gelLoader;
     private AmpliconSettings ampliconSettings = AmpliconSettings.DEFAULTS;
 
     @Override
@@ -492,11 +494,22 @@ public class MainRun extends Application {
     }
 
     private void displayGelImage() {
+        RunResult run;
         try {
-            InteractiveGelViewer.show(finishedRun().report(), finishedRun().samples());
+            run = finishedRun();
         } catch (Exception e) {
             showError("Unable to create gel image:\n" + e.getMessage());
+            return;
         }
+        openGel(() -> InteractiveGelViewer.load(run.report(), run.samples()), "Unable to create gel image:\n");
+    }
+
+    /** Reads a report for the gel viewer off the window's thread, then opens the viewer ({@link GelLoader}). */
+    private void openGel(java.util.concurrent.Callable<InteractiveGelViewer.Loaded> load, String failure) {
+        if (gelLoader == null) {
+            gelLoader = new GelLoader<>(primaryStage.getScene(), InteractiveGelViewer::show, this::showError);
+        }
+        gelLoader.open(load, failure);
     }
 
     /** Opens the last run's HTML report in the system browser. */
@@ -531,12 +544,11 @@ public class MainRun extends Application {
             return;
         }
 
-        try {
-            PreviousRun run = PreviousRun.open(selected.toPath());
-            InteractiveGelViewer.show(run.report(), run.samples());
-        } catch (Exception e) {
-            showError("Unable to open previous run:\n" + e.getMessage());
-        }
+        Path folder = selected.toPath();
+        openGel(() -> {
+            PreviousRun run = PreviousRun.open(folder);
+            return InteractiveGelViewer.load(run.report(), run.samples());
+        }, "Unable to open previous run:\n");
     }
 
     private void openReportOnly() {
@@ -551,11 +563,8 @@ public class MainRun extends Application {
             return;
         }
 
-        try {
-            InteractiveGelViewer.show(selected.toPath(), List.of());
-        } catch (Exception e) {
-            showError("Unable to open report TSV:\n" + e.getMessage());
-        }
+        Path report = selected.toPath();
+        openGel(() -> InteractiveGelViewer.load(report, List.of()), "Unable to open report TSV:\n");
     }
 
     public static void main(String[] args) {

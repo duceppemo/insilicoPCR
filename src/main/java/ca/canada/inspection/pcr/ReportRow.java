@@ -81,11 +81,18 @@ public record ReportRow(String sample, String assay, Site site, Binding forward,
 
     /** What a call was made on. */
     public sealed interface Source {
-        /** A contig of the sample's assembly (or mini-assembly). */
-        Source ASSEMBLY = new Assembly();
+        /** A contig of the sample's assembly: a FASTA input. */
+        Source ASSEMBLY = new Assembly(false);
 
-        /** A contig of the sample's assembly (or mini-assembly). */
-        record Assembly() implements Source {
+        /** A contig of the mini-assembly of a FASTQ sample's baited reads (since 2.1; before, {@link #ASSEMBLY}). */
+        Source MINI_ASSEMBLY = new Assembly(true);
+
+        /**
+         * A contig of the sample's assembly, or of the mini-assembly of its baited reads.
+         *
+         * @param mini whether the contig is of the mini-assembly Tadpole made of a FASTQ sample's baited reads
+         */
+        record Assembly(boolean mini) implements Source {
         }
 
         /**
@@ -268,6 +275,11 @@ public record ReportRow(String sample, String assay, Site site, Binding forward,
     /** The probe mismatches; 0 when the row has no probe. */
     public int probeMismatches() {
         return probe == null ? 0 : probe.mismatches();
+    }
+
+    /** The same amplicon, called on {@code called}. */
+    public ReportRow withSource(Source called) {
+        return new ReportRow(sample, assay, site, forward, reverse, probe, called);
     }
 
     /** The same amplicon, confirmed by this probe. */

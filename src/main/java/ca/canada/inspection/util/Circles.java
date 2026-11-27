@@ -2,8 +2,6 @@ package ca.canada.inspection.util;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -67,31 +65,45 @@ public final class Circles {
      *                 written again at its end
      */
     public static Map<String, Integer> of(Path fasta, int tadpoleK) throws IOException {
-        Map<String, Integer> circles = new LinkedHashMap<>();
-        int overlapAtMost = Math.max(2, tadpoleK);
-        try (FastaScanner scanner = new FastaScanner(List.of(fasta))) {
-            String header = scanner.nextHeader(null);
-            while (header != null) {
-                String text = header.substring(1).strip();
-                boolean selfLoop = SELF_LOOP.matcher(text).find();
-                boolean tadpole = !selfLoop && TADPOLE.matcher(text).find();
-                boolean marked = MARKED.matcher(SequenceFileUtils.fastaDescription(header)).find();
-                if (!selfLoop && !tadpole && !marked) {
-                    header = scanner.nextHeader(null);
-                    continue;
-                }
-                Ends ends = new Ends(overlapAtMost);
-                String next = scanner.nextHeader(ends::accept);
-                int overlap = marked ? 0 : selfLoop ? ends.repeated(tadpoleK - 1, 2)
-                        : ends.sharedOverlap(UNFLAGGED_OVERLAP);
-                int circle = ends.length - overlap;
-                if (marked ? circle >= 2 : circle >= SHORTEST && (selfLoop || overlap > 0)) {
-                    circles.putIfAbsent(SequenceFileUtils.fastaId(header), circle);
-                }
-                header = next;
-            }
+        return FastaSummary.of(fasta, tadpoleK).circles();
+    }
+
+    /**
+     * What one record says of itself as a circle, its bases given one by one ({@link #accept}); {@code null}
+     * for a record that is no candidate (neither marked circular nor a contig of Tadpole's).
+     */
+    static Record record(String header, int tadpoleK) {
+        String text = header.substring(1).strip();
+        boolean selfLoop = SELF_LOOP.matcher(text).find();
+        boolean tadpole = !selfLoop && TADPOLE.matcher(text).find();
+        boolean marked = MARKED.matcher(SequenceFileUtils.fastaDescription(header)).find();
+        return selfLoop || tadpole || marked ? new Record(marked, selfLoop, tadpoleK) : null;
+    }
+
+    /** A candidate record's ends, and whether it is a circle once they are read. */
+    static final class Record {
+        private final boolean marked;
+        private final boolean selfLoop;
+        private final int tadpoleK;
+        private final Ends ends;
+
+        private Record(boolean marked, boolean selfLoop, int tadpoleK) {
+            this.marked = marked;
+            this.selfLoop = selfLoop;
+            this.tadpoleK = tadpoleK;
+            this.ends = new Ends(Math.max(2, tadpoleK));
         }
-        return circles;
+
+        void accept(int base) {
+            ends.accept(base);
+        }
+
+        /** The record's length as a circle, or 0 for one that is not. */
+        int circle() {
+            int overlap = marked ? 0 : selfLoop ? ends.repeated(tadpoleK - 1, 2) : ends.sharedOverlap(UNFLAGGED_OVERLAP);
+            int circle = ends.length - overlap;
+            return (marked ? circle >= 2 : circle >= SHORTEST && (selfLoop || overlap > 0)) ? circle : 0;
+        }
     }
 
     /** A sequence's length, its first and its last bases (up to {@code keep} of each). */

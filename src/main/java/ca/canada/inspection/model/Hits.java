@@ -21,6 +21,8 @@ public final class Hits {
     private final HashMap<String, ArrayList<BlastResult>> cutByEnd = new HashMap<>();
     /** The circular sequences, each with its length as a circle ({@link ca.canada.inspection.util.Circles}). */
     private final HashMap<String, Integer> circles = new HashMap<>();
+    /** The length of each sequence searched, by ID: what the split check asks of contig ends. */
+    private final HashMap<String, Integer> lengths = new HashMap<>();
     /** The best site each oligo has that the Tm rule rejected, by oligo: why an assay made no product. */
     private final HashMap<String, NearMiss> nearMisses = new HashMap<>();
     /** Results worked out from the hits and descriptions (the products), until either changes. */
@@ -51,6 +53,18 @@ public final class Hits {
     public synchronized void describe(String id, String description) {
         descriptions.put(id, description);
         derived.clear();
+    }
+
+    /** Records the descriptions and lengths of the sequences searched (a {@code FastaSummary} of them). */
+    public synchronized void describeAll(Map<String, String> descriptions, Map<String, Integer> lengths) {
+        this.descriptions.putAll(descriptions);
+        this.lengths.putAll(lengths);
+        derived.clear();
+    }
+
+    /** The length of each sequence searched, by ID ({@link #describeAll}); a copy, empty when none was recorded. */
+    public synchronized Map<String, Integer> lengths() {
+        return Map.copyOf(lengths);
     }
 
     /**
@@ -105,10 +119,11 @@ public final class Hits {
         return hits;
     }
 
-    /** The hits {@code keep} keeps, with every description. */
+    /** The hits {@code keep} keeps, with every description and length. */
     public synchronized Hits filtered(Predicate<BlastResult> keep) {
         Hits kept = new Hits();
         kept.descriptions.putAll(descriptions);
+        kept.lengths.putAll(lengths);
         kept.circles.putAll(circles);
         kept.nearMisses.putAll(nearMisses);
         byOligo.forEach((oligo, hits) -> hits.stream().filter(keep).forEach(hit -> kept.add(oligo, hit)));

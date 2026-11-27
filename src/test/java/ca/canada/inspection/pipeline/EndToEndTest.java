@@ -228,6 +228,10 @@ class EndToEndTest {
         pipeline(config(EXAMPLE.resolve("reads"), output), monitor).run();
 
         assertEquals(List.of("isolate_01 stxQ 118 target", "isolate_01 toxA 312 target"), products(report(output)));
+        // Called on the reads' mini-assembly, which the report tells from an assembly given as input.
+        List<String> header = List.of(lines(report(output)).getFirst().split("\t", -1));
+        assertEquals(List.of("mini-assembly", "mini-assembly"), lines(report(output)).stream().skip(1)
+                .map(line -> line.split("\t", -1)[header.indexOf("Source")]).toList());
         // As the application shows them: no program wrote to the console, every step was reported.
         assertEquals(Arrays.asList(Step.values()), monitor.steps);
         assertTrue(monitor.programLines.stream().anyMatch(line -> line.contains("BBDuk")), "no BBDuk output");
@@ -784,6 +788,33 @@ class EndToEndTest {
                 .filter(line -> line.startsWith("Sample not analysed: ")).count());
         assertTrue(Files.readString(output.resolve("consolidated_report").resolve("report.html"))
                 .contains("gapped.fasta"), "named in the HTML report's Input not analysed");
+    }
+
+    @Test
+    void theReadsOfAnUnpairedSampleAreSearchedOnce() throws IOException {
+        // Unpaired, the first bait's reads are both what the anchors are found in and what the read-level search
+        // searches: blastn searched them twice, the same reads against the same primers.
+        Path input = Files.createDirectory(directory.resolve("unpaired"));
+        Files.copy(EXAMPLE.resolve("reads").resolve("isolate_01_R1.fastq.gz"), input.resolve("isolate_01.fastq.gz"));
+        List<String> programs = Collections.synchronizedList(new ArrayList<>());
+        Recorder monitor = new Recorder() {
+            @Override
+            public void runProgram(Path directory, List<String> command, String program) {
+                programs.add(program);
+                super.runProgram(directory, command, program);
+            }
+        };
+        Path output = directory.resolve("unpaired-results");
+
+        pipeline(config(input, output), monitor).run();
+
+        // The anchors' search, then the mini-assembly's: none of the baited reads again.
+        assertEquals(2, programs.stream().filter("blastn"::equals).count(), programs.toString());
+        assertTrue(monitor.messages.contains("Completed read-level amplicon search"), monitor.messages.toString());
+        Path sampleDir = output.resolve("detailed_report").resolve("isolate_01");
+        assertTrue(Files.size(new SampleFiles(sampleDir, "isolate_01").baitedReadsFasta()) > 0);
+        assertTrue(products(report(output)).stream().anyMatch(row -> row.startsWith("isolate_01 toxA 312 ")),
+                products(report(output)).toString());
     }
 
     @Test

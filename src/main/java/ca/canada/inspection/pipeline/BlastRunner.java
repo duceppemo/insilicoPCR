@@ -82,14 +82,16 @@ public final class BlastRunner {
         java.util.function.UnaryOperator<String> toContig;
         // Its circles (a plasmid marked circular=true, a contig of the mini-assembly closing on itself) are
         // searched as circles: a product across the origin is one a PCR makes.
-        Map<String, Integer> circles;
+        // Its descriptions, lengths and circles, read in one pass: the file was read once for each.
+        ca.canada.inspection.util.FastaSummary summary;
         try {
-            circles = ca.canada.inspection.util.Circles.of(query, context.config().tadpole().k());
+            summary = ca.canada.inspection.util.FastaSummary.of(query, context.config().tadpole().k());
         } catch (IOException | java.io.UncheckedIOException e) {
             throw new PipelineException("Unable to prepare the BLAST query for " + query, e);
         }
+        Map<String, Integer> circles = summary.circles();
         circles.forEach(sample.hits()::circular);
-        try (BlastQuery blastQuery = BlastQuery.of(query, blastOutput, circles)) {
+        try (BlastQuery blastQuery = BlastQuery.of(query, blastOutput, circles, summary.lengths())) {
             toContig = blastQuery::toContig;
             BlastTsv.runBlastn(context.monitor(), context.dependencies().blastn(), blastQuery.path(),
                     context.directories().primerDatabase(), context.config().evalue(), threads, blastTsv);
@@ -112,6 +114,7 @@ public final class BlastRunner {
         } catch (IOException e) {
             throw new PipelineException("Unable to prepare the BLAST query for " + query, e);
         }
+        sample.hits().describeAll(summary.descriptions(), summary.lengths());
         // The hits the rules accept, kept in the sample's table and taken for its products, in one pass.
         java.util.Set<String> missing = BlastTsv.keepAccepted(blastTsv, List.of(query), context.primers(),
                 context.config().ampliconOptions(), toContig, sample.hits());

@@ -82,8 +82,9 @@ public record SampleFiles(Path directory, String name) {
     }
 
     /**
-     * BLAST hits of the primers on the baited reads. Not {@code .tsv}, so that it is not taken for
-     * {@link #blastReport}, the contig hits, when someone looks through the folder.
+     * BLAST hits of the primers on the baited reads (unpaired, those of {@link BaitAnchors}' search of the same
+     * reads, kept). Not {@code .tsv}, so that it is not taken for {@link #blastReport}, the contig hits, when
+     * someone looks through the folder.
      */
     Path baitedReadsHits() {
         return directory.resolve(name + "_baitedReads.blast.txt");

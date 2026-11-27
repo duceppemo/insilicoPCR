@@ -27,7 +27,7 @@ public final class Products {
 
     /** The products of {@code sample}, in report order (by assay, then primer pair, then hit). */
     public static List<ReportRow> of(Sample sample, PrimerPanel primers, AmpliconOptions options) {
-        return of(sample.getName(), sample.hits(), primers, options);
+        return found(sample, primers, options).rows();
     }
 
     /**
@@ -40,16 +40,35 @@ public final class Products {
         return found(sampleName, hits, primers, options).rows();
     }
 
-    /** The products {@code hits} hold and the assays merged into another's, worked out once (see {@link #of}). */
+    /**
+     * The products of {@code sample}'s contigs: of its assembly, or for a FASTQ sample of the mini-assembly of its
+     * reads, which the rows say ({@link ReportRow.Source#MINI_ASSEMBLY}).
+     */
+    private static Found found(Sample sample, PrimerPanel primers, AmpliconOptions options) {
+        return found(sample.getName(), sample.hits(), primers, options,
+                sample.isFastq() ? ReportRow.Source.MINI_ASSEMBLY : ReportRow.Source.ASSEMBLY);
+    }
+
     private static Found found(String sampleName, Hits hits, PrimerPanel primers, AmpliconOptions options) {
-        return hits.derived(new Key(sampleName, primers, options), () -> {
+        return found(sampleName, hits, primers, options, ReportRow.Source.ASSEMBLY);
+    }
+
+    /** The products {@code hits} hold and the assays merged into another's, worked out once (see {@link #of}). */
+    private static Found found(String sampleName, Hits hits, PrimerPanel primers, AmpliconOptions options,
+                               ReportRow.Source contigs) {
+        return hits.derived(new Key(sampleName, primers, options, contigs), () -> {
             List<ReportRow> rows = new ArrayList<>();
             Map<String, String> mergedInto = new HashMap<>();
             Map<String, List<ReportRow>> designed = new TreeMap<>();
             // Probe requirement is decided per assay from the primer FILE, so standard PCR and qPCR
             // assays can be mixed in one run: an assay whose probe is defined but never hits stays
             // negative, while a probe-less assay is reported on its primer pair alone.
-            find(rows::add, sampleName, hits, options, primers, mergedInto, designed);
+            find(contigs == ReportRow.Source.ASSEMBLY ? rows::add : row -> rows.add(row.withSource(contigs)),
+                    sampleName, hits, options, primers, mergedInto, designed);
+            if (contigs != ReportRow.Source.ASSEMBLY) {
+                designed.replaceAll((assay, assayRows) ->
+                        assayRows.stream().map(row -> row.withSource(contigs)).toList());
+            }
             rows.stream().filter(row -> row.pairing() == ReportRow.Pairing.DESIGNED)
                     .forEach(row -> mergedInto.remove(row.assay()));
             Map<String, List<ReportRow>> designedCopy = new TreeMap<>();
@@ -65,7 +84,7 @@ public final class Products {
      * of them; nor is one whose only merged row is of one primer alone.
      */
     public static Map<String, String> reportedUnder(Sample sample, PrimerPanel primers, AmpliconOptions options) {
-        return found(sample.getName(), sample.hits(), primers, options).mergedInto();
+        return found(sample, primers, options).mergedInto();
     }
 
     /**
@@ -77,7 +96,7 @@ public final class Products {
     }
 
     /** What a sample's products depend on besides its hits; the panel by identity, one per run. */
-    private record Key(String sampleName, PrimerPanel primers, AmpliconOptions options)
+    private record Key(String sampleName, PrimerPanel primers, AmpliconOptions options, ReportRow.Source contigs)
             implements Hits.Key<Found> {
     }
 
@@ -100,7 +119,7 @@ public final class Products {
      * FASTQ steps and the split check must not look for again.
      */
     public static Map<String, List<ReportRow>> designed(Sample sample, PrimerPanel primers, AmpliconOptions options) {
-        return designed(sample.getName(), sample.hits(), primers, options);
+        return found(sample, primers, options).designed();
     }
 
     /** As {@link #designed(Sample, PrimerPanel, AmpliconOptions)}, for the reads or extended reads {@code hits}. */

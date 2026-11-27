@@ -135,6 +135,13 @@ class GelTextTest {
     }
 
     @Test
+    void aProductOfTheReadsMiniAssemblyIsNotSaidToBeOfAnAssembly() {
+        // Before 2.1, products of a FASTQ sample's contigs read "Called on: assembly", as of an assembly given as input.
+        assertEquals("mini-assembly of the baited reads (Tadpole)", GelText.calledOn(ReportRow.Source.MINI_ASSEMBLY));
+        assertEquals("assembly", GelText.calledOn(ReportRow.Source.ASSEMBLY));
+    }
+
+    @Test
     void aReportWithoutTmsShowsNone() {
         // A 1.x report: no Tm columns, so no Tm and no weakest site.
         ReportRow old = new ReportRow("s", "a", new ReportRow.Site(1, 100, 100, "c", "", ' '),

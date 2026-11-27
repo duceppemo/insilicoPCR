@@ -67,6 +67,7 @@ class ReportColumnTest {
         assertEquals("one-primer", ReportColumn.pairing(ReportRow.Pairing.ONE_PRIMER));
         assertEquals("two-assays", ReportColumn.pairing(ReportRow.Pairing.TWO_ASSAYS));
         assertEquals("assembly", ReportColumn.SOURCE.value(WITH_PROBE));
+        assertEquals("mini-assembly", ReportColumn.source(ReportRow.Source.MINI_ASSEMBLY));
         assertEquals("reads", ReportColumn.source(new ReportRow.Source.Reads(3, 4, "75%")));
         assertEquals("extension", ReportColumn.source(new ReportRow.Source.Extension(2, 3, 2, 3)));
     }

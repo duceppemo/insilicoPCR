@@ -16,6 +16,15 @@
 
 ### Changed
 
+- `report.tsv`: a product of a FASTQ sample's mini-assembly (Tadpole's
+  contigs of its baited reads) has `Source` `mini-assembly`, not
+  `assembly`, which now means an assembly given as input only. The HTML
+  report tags these contigs `mini-assembly` in the amplicons table (and says
+  so in the grid's tooltips), and the
+  synthetic gel's hover text says "Called on: mini-assembly of the baited
+  reads (Tadpole)". A report written before still reads as it was. Scripts
+  that take `assembly` for every contig product of reads should read
+  `mini-assembly` too.
 - Internal: the 1.x mismatch-count code, which only tests still ran, is
   removed; each site's Tm is kept with its hit; primer header labels and the
   range checks of the settings are read in one place. The reports are the
@@ -26,6 +35,15 @@
   of the sample to keep none). Its reports are the same.
 - `--gel` draws the gel from the run's rows instead of reading `report.tsv`
   back. The pictures are the same.
+- Each assembly (and mini-assembly) is read once for its sequence
+  descriptions, lengths and circles, instead of up to four times (a
+  gzipped one decompressed each time; it is still decompressed again for
+  blastn).
+- FASTQ input, unpaired reads: the baited reads are searched with blastn
+  once, not twice (the second search was of the same reads).
+- The window reads a report for the gel viewer (**View Gel Image**, a
+  previous run, a report TSV) on a thread of its own: it no longer stops
+  answering while a large report is read.
 
 ### Fixed
 

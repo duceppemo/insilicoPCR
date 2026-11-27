@@ -21,6 +21,7 @@ REPORTS="${1:-target/surefire-reports}"
 CLASSES=(
   ca.canada.inspection.pipeline.EndToEndTest         # BLAST+, BBTools, the example (LFS)
   ca.canada.inspection.gel.SyntheticGelImageTest     # a display
+  ca.canada.inspection.insilicopcr.GelLoaderTest     # a display
   ca.canada.inspection.dispatchpcr.DispatcherTest    # BLAST+
 )
 if ! $WINDOWS; then

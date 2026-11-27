@@ -99,6 +99,10 @@ class ReportTsvTest {
         assertEquals(new ReportRow.Source.Extension(3, 5, 2, 4), extended.source());
         assertEquals(extended.source(), ReportTsv.source(extended.contigDescription()));
         assertEquals(ReportRow.Source.ASSEMBLY, ReportTsv.source("len=9000 cov=12"));
+        // A contig of the reads' mini-assembly, as the Source column says (a report before it said "assembly").
+        assertEquals(ReportRow.Source.MINI_ASSEMBLY, ReportTsv.source("len=2819,cov=19.9", "mini-assembly"));
+        assertEquals(ReportRow.Source.ASSEMBLY, ReportTsv.source("len=2819,cov=19.9", "assembly"));
+        assertEquals(fromReads.source(), ReportTsv.source(fromReads.contigDescription(), "reads"));
     }
 
     @Test

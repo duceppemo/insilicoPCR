@@ -49,7 +49,10 @@ public enum ReportColumn {
     REVERSE_UNPAIRED("Reverse5PrimeUnpaired", row -> String.valueOf(row.reverseUnpaired()), "Reverse5PrimeUnaligned"),
     /** How the primers came together: {@code designed}, {@code one-primer} or {@code two-assays}. */
     PAIRING("Pairing", row -> pairing(row.pairing())),
-    /** What the call was made on: {@code assembly}, {@code reads} (read-level) or {@code extension}. */
+    /**
+     * What the call was made on: {@code assembly} (an assembly given as input), {@code mini-assembly} (the contigs
+     * Tadpole made of a FASTQ sample's baited reads, since 2.1), {@code reads} (read-level) or {@code extension}.
+     */
     SOURCE("Source", row -> source(row.source())),
     /**
      * The Tm columns (since 2.0), after the size check: each oligo's Tm on its site, °C, as the Tm gate
@@ -103,10 +106,13 @@ public enum ReportColumn {
         };
     }
 
+    /** The {@link #SOURCE} of a product called on the mini-assembly of a FASTQ sample's reads (since 2.1). */
+    public static final String MINI_ASSEMBLY = "mini-assembly";
+
     /** A source as the report writes it. */
     public static String source(ReportRow.Source source) {
         return switch (source) {
-            case ReportRow.Source.Assembly assembly -> "assembly";
+            case ReportRow.Source.Assembly assembly -> assembly.mini() ? MINI_ASSEMBLY : "assembly";
             case ReportRow.Source.Reads reads -> "reads";
             case ReportRow.Source.Extension extension -> "extension";
         };

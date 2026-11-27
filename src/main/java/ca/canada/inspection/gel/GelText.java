@@ -120,7 +120,8 @@ final class GelText {
     /** What a call was made on, with what supports a call from reads. */
     static String calledOn(ReportRow.Source source) {
         return switch (source) {
-            case ReportRow.Source.Assembly assembly -> "assembly";
+            case ReportRow.Source.Assembly assembly -> assembly.mini()
+                    ? "mini-assembly of the baited reads (Tadpole)" : "assembly";
             case ReportRow.Source.Reads reads -> "reads, the whole amplicon in " + reads.supporting() + " of "
                     + reads.informative() + " informative reads (" + reads.percent() + ")";
             case ReportRow.Source.Extension extension -> "extended reads, " + extension.forwardClosing() + " of "

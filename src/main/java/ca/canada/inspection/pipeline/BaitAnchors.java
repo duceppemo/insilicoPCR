@@ -32,11 +32,15 @@ final class BaitAnchors {
      */
     static int write(PipelineContext context, SampleFiles files, boolean paired, int threads) {
         Path firstBait = files.targetMatches();
-        Path query = files.baitAnchorsQuery();
-        Path hits = files.baitAnchorsHits();
+        // Unpaired, the first bait's reads are what the read-level search searches (ReadLevelStage#readInputs): they
+        // are written and searched once, as it reads them, and their hits kept for it. Paired, it searches the
+        // pairs BBMerge makes of them.
+        Path query = paired ? files.baitAnchorsQuery() : files.baitedReadsFasta();
+        Path hits = paired ? files.baitAnchorsHits() : files.baitedReadsHits();
+        boolean kept = false;
         try {
             // The sample's own word: mates named apart (fastq-dump's SRR1.1.1 and SRR1.1.2) are not alike by name.
-            int records = writeQuery(firstBait, query);
+            int records = paired ? writeQuery(firstBait, query) : writeReads(firstBait, query);
             Hits accepted = new Hits();
             if (records > 0) {
                 BlastTsv.runBlastn(context.monitor(), context.dependencies().blastn(), query,
@@ -50,7 +54,9 @@ final class BaitAnchors {
             int[] withSite = {0};
             accepted.byOligo().values().forEach(list -> {
                 for (BlastResult hit : list) {
-                    int record = Integer.parseInt(hit.queryID().substring(1));
+                    // r<index>, or read_<index> as the read-level search names the reads
+                    String id = hit.queryID();
+                    int record = Integer.parseInt(id.substring(id.startsWith("read_") ? 5 : 1));
                     if (!keep.get(record)) {
                         withSite[0]++;
                     }
@@ -63,12 +69,31 @@ final class BaitAnchors {
                 keep.or(mates);
             }
             writeKept(firstBait, keep, files.baitAnchors());
+            kept = !paired && records > 0;
             return withSite[0];
         } catch (IOException e) {
             throw new PipelineException("Could not find the primer sites of the baited reads: " + firstBait, e);
         } finally {
-            ca.canada.inspection.util.OutputFiles.deleteQuietly(query);
-            ca.canada.inspection.util.OutputFiles.deleteQuietly(hits);
+            if (!kept) {
+                ca.canada.inspection.util.OutputFiles.deleteQuietly(query);
+                ca.canada.inspection.util.OutputFiles.deleteQuietly(hits); // none from an earlier run in this folder
+            }
+        }
+    }
+
+    /**
+     * Writes the reads of {@code fastq} as the read-level search writes them ({@link BaitedReads#write}, each
+     * read {@code read_<index>}); @return how many.
+     */
+    private static int writeReads(Path fastq, Path query) throws IOException {
+        if (!Files.isRegularFile(fastq) || Files.size(fastq) == 0) {
+            Files.write(query, new byte[0]);
+            return 0;
+        }
+        try {
+            return BaitedReads.write(List.of(fastq), false, query).lengths().size();
+        } catch (PipelineException e) {
+            throw new IOException(e.getMessage(), e); // said as for a paired sample's reads
         }
     }
 

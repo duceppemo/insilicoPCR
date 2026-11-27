@@ -17,9 +17,10 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * The baited reads of a FASTQ sample as FASTA ({@link SampleFiles#baitedReadsFasta}): written
- * once by the read-level search, from the reads it searches, and read back by it and by the
- * read extension. The one place its format is written: each read named {@code read_<n>}, on
+ * The baited reads of a FASTQ sample as FASTA ({@link SampleFiles#baitedReadsFasta}): written by the
+ * read-level search, from the reads it searches, and read back by it and by the read extension; for
+ * unpaired reads, written first, the same, by {@link BaitAnchors}, whose search of them the read-level
+ * search keeps. The one place its format is written: each read named {@code read_<n>}, on
  * one sequence line.
  */
 final class BaitedReads {

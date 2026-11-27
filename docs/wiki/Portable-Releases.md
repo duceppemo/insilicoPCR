@@ -11,7 +11,9 @@ They are designed to run without installing Java, JavaFX, BBMap, or BLAST+ separ
 | Linux x64 | `insilicoPCR-<version>-linux-x64.zip` |
 | Windows x64 | `insilicoPCR-<version>-windows-x64.zip` |
 
-Each release also includes a matching `.sha256` checksum file.
+Each release also includes a matching `.sha256` checksum file, and `insilicoPCR-<version>-linux-x64-no-runtime.zip`, which uses the Java, BLAST+ and BBTools on `PATH` (see [Installation](Installation)).
+
+The Linux ZIP holds one folder, `insilicoPCR-linux-x64/`; the Windows ZIP has its files at the top.
 
 ## Launcher files
 
@@ -20,13 +22,15 @@ Each release also includes a matching `.sha256` checksum file.
 | Linux | `run-insilicoPCR.sh` |
 | Windows | `run-insilicoPCR.bat` |
 
-Use these launchers for the graphical application. They configure the bundled runtime paths automatically.
+Use these launchers for both the window and the command line: without arguments they open the window, with them they run on the command line. They use the bundled Java, and the Linux one switches to UTF-8 under a locale that is not (`LANG=C`), so that file names with accents can be opened.
 
 ## CLI use
 
-For command-line runs, use the bundled Java executable directly.
+```bash
+./run-insilicoPCR.sh -h
+```
 
-Linux example:
+The bundled Java executable also works directly:
 
 ```bash
 ./runtime/linux/jdk/bin/java -jar insilicoPCR.jar -h
@@ -47,7 +51,10 @@ run-insilicoPCR.sh or run-insilicoPCR.bat
 README.md
 CHANGELOG.md
 LICENSE
+THIRD-PARTY-NOTICES.md
+third_party/
 runtime-layout.md
+VERSIONS.txt (Linux)
 ```
 
 ## Important

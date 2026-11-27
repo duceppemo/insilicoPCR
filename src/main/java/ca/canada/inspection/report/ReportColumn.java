@@ -37,9 +37,10 @@ public enum ReportColumn {
     PROBE_SIZE("ProbeSize", row -> row.probe() == null ? "" : String.valueOf(row.probe().size())),
     PROBE_MISMATCHES("ProbeMismatches", row -> row.probe() == null ? "" : String.valueOf(row.probe().mismatches())),
     /**
-     * Per primer, the bases at its 5' end that do not pair with the template, within its first
-     * {@link ca.canada.inspection.pcr.AmpliconOptions#FIVE_PRIME_FREE} bases: those BLAST left out of the alignment
-     * that differ from the template (or lie beyond its end), and the mismatches it kept there. The mismatch columns
+     * Per primer, the bases at its 5' end that do not pair with the template: within its first
+     * {@link ca.canada.inspection.pcr.AmpliconOptions#FIVE_PRIME_FREE} bases, those BLAST left out of the alignment
+     * that differ from the template and the mismatches it kept there; and every base beyond the template's end,
+     * however many. The mismatch columns
      * do not count them, so without these a primer
      * held by its last few bases reads as a perfect match. Named "Unaligned" before 1.0, when it
      * counted only bases BLAST left out.

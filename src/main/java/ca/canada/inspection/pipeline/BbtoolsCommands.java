@@ -210,7 +210,7 @@ record BbtoolsCommands(String javaCommand, Path bbtoolsClassPath, int childMemor
     /**
      * Keeps reads sharing a k-mer of {@link #substitutionBaitK} bases with any oligo within {@code substitutions}
      * substitutions, at most {@link #MAX_BAIT_SUBSTITUTIONS}, and no indel ({@code hdist} without {@code edist}): sites
-     * the first bait misses, whose mismatches leave none of its k-mers within its edits (2 in the first 5 bases of an
+     * the first bait misses, whose mismatches leave none of its k-mers within its edits (2 among bases 2 to 5 of an
      * 18-base primer, whose k is 17). Its reads are added to the first bait's.
      */
     Command substitutionBait(Path primerDatabase, List<Path> reads, Path output, int substitutions) {

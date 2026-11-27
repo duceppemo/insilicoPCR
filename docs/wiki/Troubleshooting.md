@@ -99,8 +99,8 @@ These cases remain negative by design (see also the figure on [Limitations](Limi
 
 - **The amplicon is longer than a read or merged pair** (about 580 bp for 2 x 300 bp reads) **and the reads could not be joined.** No read can hold such a product, so the reads carrying its primers are extended through the reads baited in rounds; see [Read extension](Reports#read-extension-products-longer-than-a-read). When too few reads carry the primers, the extension stops before joining them and the diagnostics say `NOT_CLOSED_BY_EXTENSION`, with the number of reads extended. Run the assay on an assembly of the reads.
 - **Extended reads hold the product, but the read pairs do not confirm it.** The diagnostics say `EXTENSION_NOT_SUPPORTED_BY_PAIRS` (some stretch of the product lies inside no read pair, or the pairs are too few: about 20x and less) or `EXTENSION_THROUGH_UNRESOLVED_REPEAT` (the product passes through a repeat longer than the read pairs, where a real product and a wrong turn of the extension look the same). The product is withheld on purpose; the HTML report marks the sample "not confirmed by read pairs". Confirm on an assembly, of long reads for the repeat case.
-- **The extended reads end in a tandem repeat** ((AT)n, (CAG)n, a VNTR) **and loop in it** (`EXTENSION_IN_TANDEM_REPEAT`, since 0.15.3). The extension cannot cross a repeat longer than its k-mers, so a product through it is neither shown nor ruled out: the HTML report marks the sample inconclusive, and `ReadDetail` names the repeat's unit. Confirm on an assembly of long reads, or by PCR.
-- **The run used `--read-extension off`.** The diagnostics then say `NOT_IN_READS` with the longest amplicon the reads could have held, and when the primer file declares the assay's size, the HTML report marks the sample "not checkable from reads" instead of negative.
+- **The extended reads end in a tandem repeat** ((AT)n, (CAG)n, a VNTR) **and loop in it** (`EXTENSION_IN_TANDEM_REPEAT`, since 0.15.3). The extension cannot cross a repeat longer than its k-mers, so a product through it is neither shown nor ruled out: the HTML report marks the sample "not checkable from reads", and `ReadDetail` names the repeat's unit. Confirm on an assembly of long reads, or by PCR.
+- **The run used `--read-extension off`.** The diagnostics then say `NOT_IN_READS` with the longest amplicon the reads could have held, and when the primer file declares a size longer than the reads could hold, the HTML report marks the sample "not checkable from reads" instead of negative.
 - **`WEAK_READ_SUPPORT`**: complete amplicons are in the reads, but in under `--read-min-fraction` (default 30%) of the reads covering the locus. This is the signature of contamination, and also of a locus of which only some copies match the primers and probe. Read the counts in `ReadDetail`, and lower `--read-min-fraction` if the sample is known to be mixed.
 
 A `--tadpole-k` longer than a sample's reads leaves its mini-assembly empty: Tadpole builds no contig from reads shorter than its k-mers. Since 1.0 the run says so, `Warning: --tadpole-k 200 is longer than the reads of sample <name> (150 bases at most): its mini-assembly is empty, and its products are looked for in the reads only` (before, only blastn's `Query is Empty` showed it). Use a k shorter than the reads; the default is 31.
@@ -140,6 +140,8 @@ Primer FASTA IDs must end with:
 - `-F`
 - `-R`
 - `-P` for probes
+
+or have one of them before an underscore (`toxA-F_2`).
 
 See [Primer FASTA Format](Primer-FASTA-Format).
 
@@ -194,8 +196,10 @@ Since version 0.8.0, standard PCR and qPCR/probe assays can be mixed in one prim
 Use:
 
 ```bash
-./runtime/linux/jdk/bin/java -jar insilicoPCR.jar -h
+./run-insilicoPCR.sh -h
 ```
+
+or `./runtime/linux/jdk/bin/java -jar insilicoPCR.jar -h`.
 
 A mistake on the command line prints `Error: <what is wrong>` and `Run insilicoPCR --help for the options.` on standard error, and exits with code 2 (since 1.0; before, the whole help followed on standard output). See [Exit codes](Command-line-Interface#exit-codes-and-stopping-a-run).
 

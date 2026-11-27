@@ -13,6 +13,8 @@ cd insilicoPCR-linux-x64
 ./runtime/linux/jdk/bin/java -jar insilicoPCR.jar -h
 ```
 
+`./run-insilicoPCR.sh -h` does the same, and switches to UTF-8 under a locale that is not (see [Portable Releases](Portable-Releases#cli-use)).
+
 Expected help output:
 
 ```text

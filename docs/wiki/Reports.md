@@ -105,7 +105,7 @@ What a script can rely on:
 | `Sample` | Sample name (from the input file name) |
 | `Assay` | Assay name (primer ID without the `-F`/`-R`/`-P` suffix); for a product of two assays that share a reaction (`mix=`), their names joined by `+` (`stxQ+toxA`), since 0.15.3 |
 | `GenomeLocation` | 1-based start-end of the product on the contig; on a circular sequence, a product across its origin starts after it ends (`1780-279`, since 0.15.3) |
-| `AmpliconSize` | Product length in bp: both primers in full and the template between their 3' ends. It can differ from the span of `GenomeLocation`: by the length of an insertion or deletion BLAST places inside a primer site, and round a circle's origin, where the location starts after it ends (see [Amplicon Calling](Amplicon-Calling)) |
+| `AmpliconSize` | Product length in bp: both primers in full and the template between their 3' ends. It can differ from the span of `GenomeLocation`: by the length of an insertion or deletion BLAST places inside a primer site, where a primer runs off a contig's start (the location then starts at 1), and round a circle's origin, where the location starts after it ends (see [Amplicon Calling](Amplicon-Calling)) |
 | `Contig` | Contig/sequence ID the product sits on |
 | `ContigDescription` | Free text from the contig FASTA header; for a product called from reads, how the reads support it (below) |
 | `ForwardPrimer` / `ReversePrimer` | Primer IDs that formed the pair (degenerate variants keep their `_n` suffix). Since 0.15.3 they can name one role twice (`toxA-F` and `toxA-F`: a product of one primer alone, at an inverted repeat) or two assays (a product of two assays in one reaction); the first is then the primer on the plus strand, and `Pairing` says which it is. The HTML report tags such a product **one primer** or **two assays**, and says why in the cell's hover text. See [Amplicon Calling](Amplicon-Calling#stage-2-amplicon-calling) |
@@ -132,7 +132,7 @@ After the probe columns:
 
 | Column | Meaning |
 |---|---|
-| `Forward5PrimeUnpaired` / `Reverse5PrimeUnpaired` | Bases among the first 5 of the primer's 5' end that do not pair with the template: the bases BLAST left out of its alignment that differ from the template (bases beyond the end of a contig or read count too), and, since 0.15.3, the mismatches and indels it kept aligned there. Named `Forward5PrimeUnaligned` / `Reverse5PrimeUnaligned` before 1.0 |
+| `Forward5PrimeUnpaired` / `Reverse5PrimeUnpaired` | Bases at the primer's 5' end that do not pair with the template: among its first 5, the bases BLAST left out of its alignment that differ from the template and, since 0.15.3, the mismatches and indels it kept aligned there; and every primer base beyond the end of a contig or read, however many. Named `Forward5PrimeUnaligned` / `Reverse5PrimeUnaligned` before 1.0 |
 
 These bases are **not** counted in the mismatch columns; differences past them are. A row can therefore show
 `0` mismatches for a primer whose first bases do not pair. Whether such a site is accepted is for its Tm to say
@@ -171,7 +171,7 @@ Since 2.0, after `SizeCheck`. Each oligo's Tm on its site, in °C with one decim
 | `ForwardTm` / `ReverseTm` | Tm of the forward and reverse primer on their sites |
 | `ProbeTm` | Tm of the probe on its site; empty for a row without a probe |
 
-A site's Tm is at most the oligo's Tm on a perfect match, which the run's log and `QAlog.txt` list. In the five-isolate example, every site is a perfect match:
+A site's Tm is usually at most the oligo's Tm on a perfect match, which the run's log and `QAlog.txt` list (a mismatched or unpaired end base can stack on the duplex and melt a little higher). In the five-isolate example, every site is a perfect match:
 
 ```text
 Sample      Assay  AmpliconSize  SizeCheck   ForwardTm  ReverseTm  ProbeTm
@@ -203,7 +203,7 @@ Since 1.0, every report has beside it `report_samples.tsv` (`report(1)_samples.t
 | `Status` | `analysed`, or `not-analysed`: a sample left out for a faulty input file (see [Input check](Running-Analyses#input-check)) |
 | `Input` | `assembly` or `reads` |
 | `Files` | The sample's file names (not their folders), joined with `; ` |
-| `Products` | The number of rows the sample has in `report.tsv`: `0` for an analysed sample with no product. Empty for a sample not analysed, which is neither positive nor negative |
+| `Products` | The number of products the sample has in `report.tsv` (rows of one assay at one place count once): `0` for an analysed sample with no product. Empty for a sample not analysed, which is neither positive nor negative |
 | `Reason` | For a sample not analysed, what is wrong with its files, as in the warning (several joined with `; `); empty otherwise |
 
 The lines are sorted by sample name, in the order of `report.tsv`. The file is written as `report.tsv` is: UTF-8 without a byte-order mark, LF line ends, tabs between cells, and its cells written the same way ([File format](#file-format)).
@@ -264,13 +264,13 @@ each primer: the reads holding a primer site come with their mates (about one fr
 baiting adds the pairs that share a k-mer with one of them, mates included (about one more). A product longer than
 the baited reads cover from its two primers cannot be assembled whole, and the longer the product, the more often
 the assembly breaks inside it; [read extension](#read-extension-products-longer-than-a-read) baits further, in rounds.
-Since 2.0, baiting allows 1 edit (a substitution, an insertion or a deletion) on k-mers shorter than the primers by
-5 bases (at least 17 bases, and shorter than the shortest primer; oligos too short for that floor bait in a pass of
+Since 2.0, baiting allows 1 edit (a substitution, an insertion or a deletion) on k-mers 5 bases shorter than the
+shortest oligo of the pass, probes included (at least 17 bases, and shorter than that oligo; oligos too short for that floor bait in a pass of
 their own), then 2 substitutions on 18-base k-mers of the oligos of 18 to 21 bases in a second pass: the bait takes
 reads in, and the Tm rule decides.
 Up to 1.x the edits were `-m` (at most 2), with 3 substitutions on 19-base k-mers at `-m 3`. A primer site with more
 differences in every k-mer may still bait no read, a [known gap](Limitations#known-gaps). The diagnostics then list the assay as `PARTIAL_BAIT` when the other primer
-baits reads, and not at all when neither does. `PARTIAL_BAIT` also lists an assay whose primer is in the reads at a site
+(or only the probe) baits reads, and not at all when no oligo of the assay does. `PARTIAL_BAIT` also lists an assay whose primer is in the reads at a site
 whose Tm is too low, and says so.
 
 ### Read-level calls
@@ -434,7 +434,8 @@ work, confirm negatives on an assembly of the reads.
 ### Diagnostics file
 
 Every assay the mini-assembly did not report but whose oligos are in the baited reads, and every assay it
-reports only at another size than a product called from reads, is listed in
+reports only at another size than a product called from reads or with primer sites that pair less well than the
+reads' (`LESS_PAIRED_SITES`), is listed in
 `report_fastq_diagnostics.tsv` (named after the consolidated report, e.g. `report(1)_fastq_diagnostics.tsv`),
 summarized in `QAlog.txt`, and noted on the console or in the GUI log. Files kept per sample under
 `detailed_report/<sample>/`: `_targetMatches.fastq.gz` (the first baiting: reads sharing a k-mer with a primer),

@@ -82,7 +82,7 @@ What happens, per sample:
 
 - every input file is checked first; a sample with an empty, damaged or malformed file would be left out with a warning (see [Input check](Running-Analyses#input-check));
 - the two **assemblies** are BLASTed directly against the primer database;
-- the two **read sets** are first baited twice with BBDuk and micro-assembled with Tadpole, and the resulting contigs are BLASTed; the baited reads themselves (pairs merged with BBMerge) are also searched, so a target the mini-assembly misses can still be called from reads, and `report_fastq_diagnostics.tsv` explains any assay whose oligos were in the reads but that the assembly missed (see [FASTQ mode and false negatives](Reports#fastq-mode-and-false-negatives));
+- the two **read sets** are first baited with BBDuk (a first bait, in two passes since 2.0, then a second bait) and micro-assembled with Tadpole, and the resulting contigs are BLASTed; the baited reads themselves (pairs merged with BBMerge) are also searched, so a target the mini-assembly misses can still be called from reads, and `report_fastq_diagnostics.tsv` explains any assay whose oligos were in the reads but that the assembly missed (see [FASTQ mode and false negatives](Reports#fastq-mode-and-false-negatives));
 - a primer or probe site is accepted when its Tm on the template reaches its assay's annealing temperature less the `--tm-margin` of 5 °C: 50 °C for `hly702` (`ta=55`), 55 °C for `hlyQ` (`ta=60`) and, for a primer, its 3' end pairs; accepted primer sites are paired into amplicons (convergent orientation, ≤ 5000 bp by default — see [Amplicon Calling](Amplicon-Calling) and [Why Tm](Why-Tm));
 - `--gel` additionally renders the synthetic gel image (requires a graphical environment).
 
@@ -183,5 +183,5 @@ See [GUI Overview](GUI-Overview) for the other buttons and the settings dialogs.
 - Re-run with `-l 100`: the 112 bp qPCR products now exceed the maximum length and disappear, leaving no product at all; `--min-length 200` would drop them too.
 - Remove the two `size=` words from the primer file and re-run: `report.tsv` leaves its `SizeCheck` column empty and the HTML report shows the same four products in blue, as amplified with no size to compare with.
 - Declare a wrong size instead (`>hly702-F size=500`) and re-run: the 702 bp products are still reported, now labelled `unexpected`, and the HTML report no longer counts them as positive. Nothing is hidden; the label only tells the reader what the size means.
-- Add your own assay for a different gene to the primer FASTA — mixed files are fine as long as every ID ends in `-F`, `-R`, or `-P`.
+- Add your own assay for a different gene to the primer FASTA — mixed files are fine as long as every ID ends in `-F`, `-R`, or `-P` (or has one of them before an underscore, `toxA-F_2`).
 - Open `tutorial_results/detailed_report/<sample>/<sample>.tsv` to audit the BLAST hits behind every call.

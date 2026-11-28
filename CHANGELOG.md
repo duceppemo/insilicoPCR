@@ -1,5 +1,32 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- FASTQ read extension is faster, with the same products and diagnostics:
+  - Each round baits the sample's reads only from the end of each extended
+    read that its primer points to, the side the product lies on. The end
+    behind the primer bait reads that no product holds.
+  - An assay leaves the rounds once its extended reads stop growing towards
+    the product, or reach `-l` that way. It keeps that round's outcome, as
+    an assay still open after the last round does. Before, the rounds went
+    on while any end of any open assay grew, so one negative assay whose
+    reads grew away from its product kept a whole sample's rounds going.
+  - After round 1, Tadpole extends through the baited reads that round 1's
+    extended reads reach (`_extensionLocalReads.fastq.gz`), not through all
+    of the baited reads every round. The rounds still bait reads past that
+    from the sample's reads.
+  - Checked against 2.1.0 on a 65x *Brucella* read set with 50 designed
+    products of 300 bp to 4.9 kb, 48 *Brucella* read sets and four
+    *Globodera* samples: the same products and the same diagnostics. Time
+    went from 278 to 222 s on the 50-product set, and from 1,490 to 1,195 s
+    on a *Globodera* sample whose seven negative assays kept 11 rounds going
+    (now 9).
+  - A read-extension row's `GenomeLocation`, the product's place on its
+    extended read, can change, because the reads now grow less behind the
+    primers. Its size does not.
+
 ## 2.1.0 (2026-11-27)
 
 ### Added

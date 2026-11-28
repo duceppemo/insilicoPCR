@@ -150,6 +150,19 @@ public record SampleFiles(Path directory, String name) {
         return directory.resolve(name + "_extensionReads.fastq.gz");
     }
 
+    /** Round 1's extended reads of the assays not called, from which {@link #extensionLocalReads} is baited. */
+    Path extensionLocalRef() {
+        return directory.resolve(name + "_extensionLocalRef.fasta");
+    }
+
+    /**
+     * The baited reads (pairs kept together) sharing a k-mer with round 1's extended reads: the rounds after the
+     * first extend through them, not through every baited read again.
+     */
+    Path extensionLocalReads() {
+        return directory.resolve(name + "_extensionLocalReads.fastq.gz");
+    }
+
     /** BLAST hits of the primers on the extended reads; not {@code .tsv}, as for {@link #baitedReadsHits}. */
     Path extendedReadsHits() {
         return directory.resolve(name + "_extendedReads.blast.txt");
@@ -168,6 +181,7 @@ public record SampleFiles(Path directory, String name) {
                 doubleTargetMatches(), assembly(), mergedReads(),
                 unmergedReads(), baitedReadsFasta(), baitedReadsHits(), extensionSeeds(), extendedReads(),
                 extensionCandidates(), candidateReads(), extendedReadsHits(), extensionEnds(), extensionRoundReads(),
-                extensionReads(), extensionRoundSeeds(), extensionUnionRef(), extensionUnionReads());
+                extensionReads(), extensionRoundSeeds(), extensionUnionRef(), extensionUnionReads(), extensionLocalRef(),
+                extensionLocalReads());
     }
 }

@@ -134,6 +134,8 @@ public final class ReadExtensionStage {
         ca.canada.inspection.util.OutputFiles.deleteQuietly(files.extensionEnds());
         ca.canada.inspection.util.OutputFiles.deleteQuietly(files.extensionRoundReads());
         ca.canada.inspection.util.OutputFiles.deleteQuietly(files.extensionReads());
+        ca.canada.inspection.util.OutputFiles.deleteQuietly(files.extensionLocalRef());
+        ca.canada.inspection.util.OutputFiles.deleteQuietly(files.extensionLocalReads());
 
         // What the sample shows already, on contigs and in reads: worked out once for the sample.
         Map<String, Set<Integer>> known = ReadExtensionCaller.knownSizes(sample, primers, options, reads);
@@ -233,24 +235,27 @@ public final class ReadExtensionStage {
 
     /**
      * Writes the first and last {@link #END_LENGTH} bases of the extended reads whose ends grew since
-     * {@code before} (both of a read whose seed was not found in it).
+     * {@code before}, towards the product: the end each seed's primer points to ({@code towardsEnd}: true for the
+     * read's end, false for its start); both ends of a read whose seed or primer was not found in it. An end behind
+     * the primer baits reads no product holds: baited every round it grew, it kept a sample's rounds going.
      *
-     * @return whether any end grew
+     * @return whether any end was written
      */
-    static boolean writeGrownEnds(Map<String, int[]> now, Map<String, int[]> before, Map<String, String> extended,
-                                  Path ends) {
+    static boolean writeGrownEnds(Map<String, int[]> now, Map<String, int[]> before, Map<String, Boolean> towardsEnd,
+                                  Map<String, String> extended, Path ends) {
         boolean any = false;
         try (BufferedWriter writer = Files.newBufferedWriter(ends, StandardCharsets.UTF_8)) {
             for (Map.Entry<String, int[]> entry : now.entrySet()) {
                 int[] side = entry.getValue();
                 int[] was = before.getOrDefault(entry.getKey(), new int[]{-1, -1});
                 boolean unknown = side[0] < 0;
+                Boolean end = unknown ? null : towardsEnd.get(entry.getKey());
                 String bases = extended.get(entry.getKey());
-                if (unknown || side[0] > was[0]) {
+                if (!Boolean.TRUE.equals(end) && (unknown || side[0] > was[0])) {
                     writer.write(">" + entry.getKey() + "_start\n" + bases.substring(0, Math.min(END_LENGTH, bases.length())) + "\n");
                     any = true;
                 }
-                if (unknown || side[1] > was[1]) {
+                if (!Boolean.FALSE.equals(end) && (unknown || side[1] > was[1])) {
                     writer.write(">" + entry.getKey() + "_end\n" + bases.substring(Math.max(0, bases.length() - END_LENGTH)) + "\n");
                     any = true;
                 }
@@ -259,6 +264,22 @@ public final class ReadExtensionStage {
             throw new PipelineException("Could not write the ends of the extended reads: " + ends, e);
         }
         return any;
+    }
+
+    /**
+     * Whether a seed's extended read grew since {@code was} towards the product, short of the reach (-l) there:
+     * the side its primer points to ({@code towardsEnd}, as in {@link #writeGrownEnds}); either side when the
+     * primer was not found on the read, and always when the seed was not (its ends are baited every round).
+     */
+    static boolean grewTowardsProduct(int[] now, int[] was, Boolean towardsEnd, int reach) {
+        if (now[0] < 0) {
+            return true;
+        }
+        if (towardsEnd == null) {
+            return now[0] > was[0] || now[1] > was[1];
+        }
+        int reached = towardsEnd ? now[1] : now[0];
+        return reached > (towardsEnd ? was[1] : was[0]) && reached < reach;
     }
 
     /** Writes the seeds {@code seeds} as FASTA, for a round of the extension. */

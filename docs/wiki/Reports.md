@@ -340,12 +340,18 @@ of its primers**, the reads themselves are therefore extended (which assays exac
    spread evenly over the input (all variants of a degenerate primer count as one primer).
 2. Tadpole extends each seed both ways through the k-mers (k = 31) of all the baited reads, by up to the maximum
    amplicon length (`-l`; 5000 bases with `-l 0`), and at a branch always follows the better-supported path.
-   The baited reads run out about a fragment from each primer, so this is done in rounds (since 0.15.3): while
-   an assay has no product closed and its extended reads still grow, the sample's reads sharing a k-mer with the
-   last 500 bases at each end of its extended reads are baited, with their mates, and every seed is extended
-   again through all the reads baited so far; at most 20 rounds. Before, a product longer than 1.5 to 2 kb never
-   closed, however deep the sample. Kept: `_extensionEnds.fasta` (the ends of the last round) and
-   `_extensionReads.fastq.gz` (the reads the rounds baited).
+   The baited reads run out about a fragment from each primer, so this is done in rounds (since 0.15.3).
+   While an assay has no product closed and its extended reads still grow towards the product:
+   - the sample's reads sharing a k-mer with the last 500 bases of each extended read are baited, with their
+     mates. Only the end that the seed's primer points to is used: the product lies that way.
+   - every seed still open is extended again, through the reads that round 1's extended reads reach in the
+     baited reads, plus all the reads the rounds baited.
+
+   An assay whose extended reads stop growing towards the product, or reach `-l` that way, takes no more rounds
+   and keeps that round's outcome. There are at most 20 rounds. Before 0.15.3, a product longer than 1.5 to 2 kb
+   never closed, however deep the sample. Kept: `_extensionEnds.fasta` (the ends of the last round),
+   `_extensionLocalReads.fastq.gz` (the baited reads round 1 reached) and `_extensionReads.fastq.gz` (the reads
+   the rounds baited).
 3. The extended reads are searched like contigs: same hit filters, amplicon rules and probe requirement.
 4. A product must be held by at least **2 extended reads seeded from one primer**, either one. Before 0.15.3 it
    needed 2 from each: at a locus of two products (two alleles, a mixture of strains, paralogs) the reads of one

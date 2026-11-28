@@ -243,9 +243,165 @@ class ReadExtensionStageTest {
         Map<String, int[]> first = ReadExtensionStage.sides(open, seeds, before);
         Map<String, int[]> second = ReadExtensionStage.sides(open, seeds, after);
 
-        assertTrue(ReadExtensionStage.writeGrownEnds(second, first, after, ends));
+        assertTrue(ReadExtensionStage.writeGrownEnds(second, first, Map.of(), after, ends));
         assertEquals(List.of(">s1_start", "AAAAGATTACATT"), Files.readAllLines(ends));
-        assertTrue(!ReadExtensionStage.writeGrownEnds(second, second, after, ends), "nothing grew");
+        assertTrue(!ReadExtensionStage.writeGrownEnds(second, second, Map.of(), after, ends), "nothing grew");
+    }
+
+    @Test
+    void onlyTheEndTheProductLiesTowardsIsBaitedFrom() throws IOException {
+        // s1's primer reads towards the end of its read, s2's towards its start; s3's primer was not found on it.
+        // Both ends of each grew: the end behind a primer baits reads no product holds.
+        List<Seed> open = List.of(new Seed("s1", "read_0", "long", PrimerId.Role.FORWARD),
+                new Seed("s2", "read_1", "long", PrimerId.Role.REVERSE),
+                new Seed("s3", "read_2", "long", PrimerId.Role.REVERSE));
+        Map<String, String> seeds = Map.of("s1", "GATTACA", "s2", "CCCCGGG", "s3", "TTTAAAT");
+        Map<String, String> after = Map.of("s1", "AA" + "GATTACA" + "TT", "s2", "AA" + "CCCCGGG" + "TT",
+                "s3", "AA" + "TTTAAAT" + "TT");
+        Path ends = dir.resolve("ends.fasta");
+
+        assertTrue(ReadExtensionStage.writeGrownEnds(ReadExtensionStage.sides(open, seeds, after), Map.of(),
+                Map.of("s1", true, "s2", false), after, ends));
+        assertEquals(List.of(">s1_end", "AAGATTACATT", ">s2_start", "AACCCCGGGTT", ">s3_start", "AATTTAAATTT",
+                ">s3_end", "AATTTAAATTT"), Files.readAllLines(ends));
+    }
+
+    @Test
+    void aSeedGrowsWhenItsReadGrewTowardsTheProductShortOfTheReach() {
+        int[] was = {10, 10};
+        assertTrue(ReadExtensionStage.grewTowardsProduct(new int[]{10, 30}, was, true, 5000));
+        assertTrue(!ReadExtensionStage.grewTowardsProduct(new int[]{30, 10}, was, true, 5000), "grew behind the primer");
+        assertTrue(ReadExtensionStage.grewTowardsProduct(new int[]{30, 10}, was, false, 5000));
+        assertTrue(!ReadExtensionStage.grewTowardsProduct(new int[]{10, 5000}, was, true, 5000), "reached the reach");
+        assertTrue(ReadExtensionStage.grewTowardsProduct(new int[]{30, 10}, was, null, 5000), "primer not found: any side");
+        assertTrue(!ReadExtensionStage.grewTowardsProduct(new int[]{10, 10}, was, null, 5000));
+        assertTrue(ReadExtensionStage.grewTowardsProduct(new int[]{-1, -1}, was, true, 5000), "seed not found");
+    }
+
+    @Test
+    void anAssayWhoseReadsGrowOnlyBehindTheirPrimersTakesNoMoreRounds() throws IOException {
+        // Two assays; each seed's primer reads towards its read's end (plus strand). Each round Tadpole grows the
+        // reads of "long" 40 bases more at their start only (behind the primers), those of "grow" at their end
+        // (towards the product). BBDuk brings a new pair every time. "long" retires after round 2 and takes no
+        // more rounds; "grow" takes them all, to the last.
+        PrimerPanel primers = PrimerPanel.of(Map.of("long-F", PRIMER, "long-R", PRIMER, "grow-F", PRIMER,
+                "grow-R", PRIMER));
+        int[] tadpoleRuns = {0};
+        int[] pairs = {0};
+        Map<String, String> oligoOf = new java.util.HashMap<>();
+        Path[] seedFile = new Path[1];
+        // What Tadpole adds, read by read: random bases (a run of one base is a tandem repeat, which settles).
+        java.util.Random random = new java.util.Random(7);
+        StringBuilder flank = new StringBuilder();
+        for (int i = 0; i < 2 * 40 * ReadExtensionStage.MAX_ROUNDS; i++) {
+            flank.append("ACGT".charAt(random.nextInt(4)));
+        }
+        String before = flank.substring(0, 40 * ReadExtensionStage.MAX_ROUNDS);
+        String after = flank.substring(40 * ReadExtensionStage.MAX_ROUNDS);
+        List<List<String>> roundSeeds = new java.util.ArrayList<>();
+        List<String> endsBaited = new java.util.ArrayList<>();
+        RunMonitor monitor = new RunMonitor() {
+            @Override
+            public void runProgram(Path directory, List<String> command, String program) {
+                try {
+                    switch (program) {
+                        case "Tadpole" -> {
+                            int round = ++tadpoleRuns[0];
+                            StringBuilder out = new StringBuilder();
+                            List<String> seeds = Files.readAllLines(directory.resolve(argument(command, "in")));
+                            List<String> oligos = new java.util.ArrayList<>();
+                            List<String> named = Files.readAllLines(seedFile[0]);
+                            for (int i = 0; i + 1 < seeds.size(); i += 2) {
+                                String id = seeds.get(i).substring(1).split("\\s")[0];
+                                String oligo = oligoOf.computeIfAbsent(id, key -> seedOligo(named, key));
+                                oligos.add(oligo);
+                                int left = oligo.startsWith("long") ? 40 * round : 40;
+                                int right = oligo.startsWith("grow") ? 40 * round : 40;
+                                out.append('>').append(id).append('\n')
+                                        .append(before.substring(before.length() - left)).append(seeds.get(i + 1))
+                                        .append(after, 0, right).append('\n');
+                            }
+                            roundSeeds.add(oligos);
+                            Files.writeString(directory.resolve(argument(command, "out")), out);
+                        }
+                        case "BBDuk" -> {
+                            Path ref = directory.resolve(argument(command, "ref"));
+                            if (ref.getFileName().toString().endsWith("_extensionEnds.fasta")) {
+                                Files.readAllLines(ref).stream().filter(line -> line.startsWith(">"))
+                                        .forEach(line -> endsBaited.add(tadpoleRuns[0] + ":" + oligoOf.get(
+                                                line.substring(1).replaceFirst("_(start|end)$", ""))
+                                                + line.substring(line.lastIndexOf('_'))));
+                            }
+                            try (var gz = new java.util.zip.GZIPOutputStream(Files.newOutputStream(
+                                    directory.resolve(argument(command, "outm"))))) {
+                                if (!local(command)) {
+                                    int n = ++pairs[0];
+                                    gz.write(("@new" + n + "/1\nACGT\n+\nIIII\n@new" + n + "/2\nACGT\n+\nIIII\n")
+                                            .getBytes());
+                                }
+                            }
+                        }
+                        default -> { // blastn: each read's own primer, on its plus strand
+                            StringBuilder table = new StringBuilder();
+                            for (String line : Files.readAllLines(argument(command, "-query"))) {
+                                if (line.startsWith(">")) {
+                                    String id = line.substring(1).split("\\s")[0];
+                                    table.append(hit(id, oligoOf.get(id), 1, 20, 1, 20));
+                                }
+                            }
+                            Files.writeString(argument(command, "-out"), table);
+                        }
+                    }
+                } catch (IOException e) {
+                    throw new java.io.UncheckedIOException(e);
+                }
+            }
+
+            @Override
+            public void info(String message) {
+            }
+        };
+        Sample sample = new Sample("S");
+        sample.setFileType(Sample.FileType.FASTQ);
+        PipelineDirectories directories = new PipelineDirectories(dir, dir.resolve("detailed_report"),
+                dir.resolve(PipelineDirectories.CONSOLIDATED));
+        SampleFiles files = directories.sample("S");
+        Files.createDirectories(files.directory());
+        seedFile[0] = files.extensionSeeds();
+        sample.addFile(Files.writeString(dir.resolve("S.fastq"), "@r\nACGT\n+\nIIII\n"));
+        Files.writeString(files.doubleTargetMatches(), "");
+        Files.writeString(files.baitedReadsFasta(), ">read_0 a/1\nACGTACGT\n>read_1 a/2\nTTTTGGGG\n"
+                + ">read_2 b/1\nAAAACCCC\n>read_3 b/2\nGGGGAAAA\n");
+        ReadEvidence evidence = new ReadEvidence(Map.of("long-F", Set.of("read_0"), "long-R", Set.of("read_1"),
+                "grow-F", Set.of("read_2"), "grow-R", Set.of("read_3")), Map.of(), Map.of());
+        ReadExtensionStage.Settings settings = new ReadExtensionStage.Settings(
+                new ReadLevelStage.Settings(Path.of("blastn"), Path.of("primer_tmp.fasta"), 1e5, 1, 0.3, monitor, 4),
+                new BbtoolsCommands("java", Path.of("bbtools.jar"), 4, 1), ReadExtensionCaller.Mode.UNREPORTED);
+
+        ReadExtensionStage.Result result = ReadExtensionStage.run(settings, directories, Map.of("S", sample), primers,
+                AmpliconOptions.defaults(), Map.of("S", evidence));
+
+        assertEquals(ReadExtensionStage.MAX_ROUNDS, tadpoleRuns[0], "grow takes every round");
+        assertEquals(List.of("grow-F", "grow-R", "long-F", "long-R"), roundSeeds.get(1).stream().sorted().toList());
+        assertEquals(List.of("grow-F", "grow-R"), roundSeeds.get(2).stream().sorted().toList(), "long retired");
+        // Only the ends past the primers are baited from: long's in round 1 only, grow's every round.
+        assertEquals(List.of("1:grow-F_end", "1:grow-R_end", "1:long-F_end", "1:long-R_end"),
+                endsBaited.stream().filter(end -> end.startsWith("1:")).sorted().toList());
+        assertTrue(endsBaited.stream().noneMatch(end -> end.endsWith("_start")), endsBaited.toString());
+        assertTrue(endsBaited.stream().filter(end -> !end.startsWith("1:")).allMatch(end -> end.contains("grow")),
+                endsBaited.toString());
+        Outcome outcome = result.outcomes().get("S").get("long");
+        assertTrue(outcome != null && outcome.closed().isEmpty(), result.outcomes().toString());
+        // long keeps its extended reads as of round 2, when it retired.
+        String round2 = before.substring(before.length() - 80) + "ACGTACGT" + after.substring(0, 40);
+        assertTrue(String.join("", Files.readAllLines(files.extendedReads())).contains(round2));
+        assertTrue(Files.notExists(files.extensionLocalRef()), "the local pool's reference is removed");
+    }
+
+    /** The oligo of seed {@code id}, from the header {@code >id <oligo> <read>} of the extension's seed file. */
+    private static String seedOligo(List<String> seeds, String id) {
+        return seeds.stream().filter(line -> line.startsWith(">" + id + " ")).findFirst()
+                .map(line -> line.split("\\s")[1]).orElseThrow();
     }
 
     /** The value of {@code name=} among a BBTools command's arguments, or of the argument after {@code name}. */
@@ -259,6 +415,24 @@ class ReadExtensionStageTest {
             }
         }
         throw new AssertionError(name + " not in " + command);
+    }
+
+    /** Whether a BBDuk command baits the local pool (round 1's extended reads, from the baited reads). */
+    private static boolean local(List<String> command) {
+        return argument(command, "ref").getFileName().toString().endsWith("_extensionLocalRef.fasta");
+    }
+
+    /**
+     * BBDuk stood in for: one new pair from the sample's reads; from the baited reads (empty in these tests), for
+     * the local pool, none.
+     */
+    private static void bait(Path directory, List<String> command) throws IOException {
+        try (var gz = new java.util.zip.GZIPOutputStream(Files.newOutputStream(
+                directory.resolve(argument(command, "outm"))))) {
+            if (!local(command)) {
+                gz.write("@new/1\nACGT\n+\nIIII\n@new/2\nACGT\n+\nIIII\n".getBytes());
+            }
+        }
     }
 
     @Test
@@ -286,12 +460,7 @@ class ReadExtensionStageTest {
                             }
                             Files.writeString(directory.resolve(argument(command, "out")), out);
                         }
-                        case "BBDuk" -> {
-                            try (var gz = new java.util.zip.GZIPOutputStream(Files.newOutputStream(
-                                    directory.resolve(argument(command, "outm"))))) {
-                                gz.write("@new/1\nACGT\n+\nIIII\n@new/2\nACGT\n+\nIIII\n".getBytes());
-                            }
-                        }
+                        case "BBDuk" -> bait(directory, command);
                         default -> Files.writeString(argument(command, "-out"), ""); // blastn: no hit
                     }
                 } catch (IOException e) {
@@ -321,7 +490,8 @@ class ReadExtensionStageTest {
         ReadExtensionStage.Result result = ReadExtensionStage.run(settings, directories, Map.of("S", sample), PRIMERS,
                 AmpliconOptions.defaults(), Map.of("S", evidence));
 
-        assertEquals(List.of("Tadpole", "blastn", "BBDuk", "Tadpole"), started);
+        // BBDuk: the round's bait, then the local pool (round 1's extended reads, from the baited reads).
+        assertEquals(List.of("Tadpole", "blastn", "BBDuk", "BBDuk", "Tadpole"), started);
         assertEquals(List.of("read extension of sample S stopped at round 2 (Tadpole failed with exit code 1); the"
                 + " products of the rounds before are kept"), result.notes());
         assertTrue(result.outcomes().get("S").containsKey("long"), result.outcomes().toString());
@@ -410,13 +580,10 @@ class ReadExtensionStageTest {
                             Files.writeString(directory.resolve(argument(command, "out")), out);
                         }
                         case "BBDuk" -> {
-                            if (++bbdukRuns[0] == 2) {
+                            if (!local(command) && ++bbdukRuns[0] == 2) {
                                 throw new ProgramFailedException(program, 1, false, "BBDuk failed with exit code 1");
                             }
-                            try (var gz = new java.util.zip.GZIPOutputStream(Files.newOutputStream(
-                                    directory.resolve(argument(command, "outm"))))) {
-                                gz.write("@new/1\nACGT\n+\nIIII\n@new/2\nACGT\n+\nIIII\n".getBytes());
-                            }
+                            bait(directory, command);
                         }
                         default -> { // blastn: in round 2, both primers on each extended read
                             StringBuilder table = new StringBuilder();
@@ -460,7 +627,7 @@ class ReadExtensionStageTest {
         ReadExtensionStage.Result result = ReadExtensionStage.run(settings, directories, Map.of("S", sample), PRIMERS,
                 AmpliconOptions.defaults(), Map.of("S", evidence));
 
-        assertEquals(List.of("Tadpole", "blastn", "BBDuk", "Tadpole", "blastn", "BBDuk"), started);
+        assertEquals(List.of("Tadpole", "blastn", "BBDuk", "BBDuk", "Tadpole", "blastn", "BBDuk"), started);
         assertEquals(List.of("read extension of sample S stopped at round 2 (BBDuk failed with exit code 1); the"
                 + " products of the rounds before are kept"), result.notes());
         // Round 1's outcome (open, no product), not round 2's unchecked product.
@@ -471,8 +638,9 @@ class ReadExtensionStageTest {
     void eachRoundReadsTheSamplesFilesOnceAndTheLastCheckTakesTheReadsOfItsRound() throws IOException {
         // Two seeds a primer, each extended to 600 bases either side, both primers on each: a 1,074-bp product the
         // read pairs reject (BBDuk brings back one unrelated pair). Round 1: one pass over the sample's files baits
-        // for the candidate and the grown ends together, each one's reads then taken from it. Round 2: no end grew,
-        // so the check makes its own pass, and the rounds end. The check after them takes its reads from round 2's.
+        // for the candidate and the grown ends together, each one's reads then taken from it; then the local pool.
+        // Round 2: no end grew, so the check makes its own pass, and the assay retires with that check's verdict:
+        // no check after the rounds (it read the same reads again).
         List<String> started = new java.util.ArrayList<>();
         List<String> sources = new java.util.ArrayList<>();
         boolean[] unionHoldsBoth = {false};
@@ -501,10 +669,7 @@ class ReadExtensionStageTest {
                                 String union = Files.readString(ref);
                                 unionHoldsBoth[0] = union.contains(">long_1074bp_on_") && union.contains("_start\n");
                             }
-                            try (var gz = new java.util.zip.GZIPOutputStream(Files.newOutputStream(
-                                    directory.resolve(argument(command, "outm"))))) {
-                                gz.write("@new/1\nACGT\n+\nIIII\n@new/2\nACGT\n+\nIIII\n".getBytes());
-                            }
+                            bait(directory, command);
                         }
                         default -> { // blastn: both primers on each extended read, every round
                             StringBuilder table = new StringBuilder();
@@ -550,10 +715,10 @@ class ReadExtensionStageTest {
                 "extensionUnionRef.fasta from S.fastq", // round 1: one pass, candidate and ends
                 "extensionCandidates.fasta from extensionUnionReads.fastq.gz",
                 "extensionEnds.fasta from extensionUnionReads.fastq.gz",
-                "extensionCandidates.fasta from S.fastq", // round 2: no end grew, the check's own pass
-                "extensionCandidates.fasta from extensionUnionReads.fastq.gz"), sources); // after: round 2's reads
+                "extensionLocalRef.fasta from doubleTargetMatches.fastq.gz", // the local pool, once
+                "extensionCandidates.fasta from S.fastq"), sources); // round 2: no end grew, the check's own pass
         assertTrue(unionHoldsBoth[0], "the pass baits for the candidate and the ends");
-        assertEquals(List.of("Tadpole", "blastn", "BBDuk", "BBDuk", "BBDuk", "Tadpole", "blastn", "BBDuk", "BBDuk"),
+        assertEquals(List.of("Tadpole", "blastn", "BBDuk", "BBDuk", "BBDuk", "BBDuk", "Tadpole", "blastn", "BBDuk"),
                 started);
         assertTrue(result.outcomes().get("S").get("long").called().isEmpty(), "rejected by the read pairs");
         assertTrue(Files.notExists(files.extensionUnionReads()) && Files.notExists(files.extensionUnionRef()),

@@ -1,8 +1,10 @@
 package ca.canada.inspection.pipeline;
 
+import ca.canada.inspection.model.BlastResult;
 import ca.canada.inspection.model.Hits;
 import ca.canada.inspection.model.Sample;
 import ca.canada.inspection.pcr.AmpliconOptions;
+import ca.canada.inspection.pcr.PrimerId;
 import ca.canada.inspection.pcr.PrimerPanel;
 import ca.canada.inspection.pcr.ReadExtensionCaller;
 import ca.canada.inspection.pcr.ReadExtensionCaller.Outcome;
@@ -15,6 +17,7 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -27,9 +30,11 @@ import java.util.TreeMap;
  * a fragment from each primer, and a product longer than what they cover never closed, however deep the
  * sample (before 0.15.3: 1.5 to 2 kb). Each round extends the seeds of the assays not closed yet through
  * every read baited so far, each read once ({@link ReadPool}), checks the products they close against the
- * sample's read pairs, then baits the sample's reads again from the ends that grew; until each assay
- * closes, no end grows, no read is new, or {@link ReadExtensionStage#MAX_ROUNDS}. An assay done in a round
- * keeps that round's extended reads and outcome; a round that fails keeps what the rounds before it found.
+ * sample's read pairs, then baits the sample's reads again from the ends that grew towards the product; until
+ * each assay closes or stops growing towards its product, no read is new, or {@link ReadExtensionStage#MAX_ROUNDS}.
+ * After round 1 the rounds extend through the baited reads that round 1's extended reads reach, not through all of
+ * them again. An assay done in a round keeps that round's extended reads and outcome; a round that fails keeps what
+ * the rounds before it found.
  */
 final class ExtensionRounds {
     private final ReadExtensionStage.Settings settings;
@@ -67,6 +72,8 @@ final class ExtensionRounds {
     private boolean latestChecked;
     /** How far each seed's extended read reached either side of it, as of the last round's bait. */
     private Map<String, int[]> sides = Map.of();
+    /** The assays settled on a product the pairs support, or in a tandem repeat (not those that stopped growing). */
+    private final Set<String> called = new HashSet<>();
     /** The seeds of the assays not done yet. */
     private List<Seed> open;
 
@@ -128,6 +135,7 @@ final class ExtensionRounds {
                 latestChecked = true;
             }
             settle(extended.outcomes(), checkedNow);
+            retire(checkedNow);
             if (open.isEmpty() || round == ReadExtensionStage.MAX_ROUNDS) {
                 break;
             }
@@ -188,7 +196,8 @@ final class ExtensionRounds {
         }
         Path ends = null;
         if (round < ReadExtensionStage.MAX_ROUNDS && ReadExtensionStage.writeGrownEnds(
-                ReadExtensionStage.sides(open, seedBases, roundReads), sides, roundReads, files.extensionEnds())) {
+                ReadExtensionStage.sides(open, seedBases, roundReads), sides, directions(), roundReads,
+                files.extensionEnds())) {
             ends = files.extensionEnds();
         }
         latestChecked = false; // the check rewrites the file; it holds the round's reads once it is done
@@ -220,8 +229,47 @@ final class ExtensionRounds {
                 doneNow.add(assay);
             }
         }
+        called.addAll(doneNow);
+        keep(doneNow);
+    }
+
+    /**
+     * Retires the open assays none of whose seeds' extended reads grew towards the product this round, or all of
+     * whose seeds reached the reach (-l) that way: more rounds bait nothing new for them (the same reads, or reads
+     * behind the primer). An assay retired keeps this round's outcome (checked against the read pairs when it closed
+     * a product) and extended reads, as one still open after the last round. Before, the rounds went on while any end
+     * of any open seed grew: a negative assay whose extended reads grew away from the product kept a whole sample's
+     * rounds going.
+     */
+    private void retire(Map<String, Outcome> checkedNow) {
+        Map<String, Boolean> directions = directions();
+        Map<String, int[]> now = ReadExtensionStage.sides(open, seedBases, latestReads);
+        Map<String, Boolean> grows = new HashMap<>();
+        for (Seed seed : open) {
+            int[] side = now.get(seed.id());
+            boolean grew = side != null && ReadExtensionStage.grewTowardsProduct(side,
+                    sides.getOrDefault(seed.id(), new int[]{-1, -1}), directions.get(seed.id()), reach);
+            grows.merge(seed.assay(), grew, Boolean::logicalOr);
+        }
+        Set<String> retiring = new HashSet<>();
+        grows.forEach((assay, grew) -> {
+            if (!grew) {
+                retiring.add(assay);
+            }
+        });
+        for (String assay : retiring) {
+            Outcome outcome = checkedNow.containsKey(assay) ? checkedNow.get(assay) : latest.get(assay);
+            if (outcome != null) {
+                settled.put(assay, outcome);
+            }
+        }
+        keep(retiring);
+    }
+
+    /** The assays {@code done} leave the open ones, with this round's extended reads and hits. */
+    private void keep(Set<String> done) {
         Set<String> doneSeeds = new HashSet<>();
-        open.stream().filter(seed -> doneNow.contains(seed.assay())).forEach(seed -> doneSeeds.add(seed.id()));
+        open.stream().filter(seed -> done.contains(seed.assay())).forEach(seed -> doneSeeds.add(seed.id()));
         for (String id : doneSeeds) {
             String read = latestReads.get(id);
             if (read != null) {
@@ -230,19 +278,42 @@ final class ExtensionRounds {
         }
         latestHits.stream().filter(line -> doneSeeds.contains(line.substring(0, Math.max(0, line.indexOf('\t')))))
                 .forEach(settledHits::add);
-        open = open.stream().filter(seed -> !doneNow.contains(seed.assay())).toList();
+        open = open.stream().filter(seed -> !done.contains(seed.assay())).toList();
     }
 
     /**
-     * Baits the sample's reads again from the ends of the open seeds' extended reads that grew this round (an
-     * end that did not, baited again, brings back the reads it brought before), and adds the new ones to the
-     * pool.
+     * Whether the product lies towards the end of each open seed's extended read (its own primer on the read's plus
+     * strand: a primer's 3' end points into the product); no entry when the primer was not found on the read.
+     */
+    private Map<String, Boolean> directions() {
+        Map<String, Boolean> directions = new HashMap<>();
+        for (Seed seed : open) {
+            PrimerId.Assay group = primers.assays().get(seed.assay());
+            if (group == null) {
+                continue;
+            }
+            for (String oligo : seed.role() == PrimerId.Role.FORWARD ? group.forward() : group.reverse()) {
+                for (BlastResult hit : roundHits.byOligo().getOrDefault(oligo, List.of())) {
+                    if (hit.queryID().equals(seed.id())) {
+                        directions.put(seed.id(), hit.isPlusStrand());
+                    }
+                }
+            }
+        }
+        return directions;
+    }
+
+    /**
+     * Baits the sample's reads again from the ends of the open seeds' extended reads that grew this round towards
+     * the product (an end that did not, baited again, brings back the reads it brought before; one behind the primer
+     * baits reads no product holds), and adds the new ones to the pool. The first time, the baited reads are cut down
+     * to those that round 1's extended reads reach ({@link #localPool}).
      *
      * @return whether the next round has anything new to extend through
      */
     private boolean baitNextRound() {
         Map<String, int[]> now = ReadExtensionStage.sides(open, seedBases, latestReads);
-        if (!ReadExtensionStage.writeGrownEnds(now, sides, latestReads, files.extensionEnds())) {
+        if (!ReadExtensionStage.writeGrownEnds(now, sides, directions(), latestReads, files.extensionEnds())) {
             return false;
         }
         sides = now;
@@ -255,7 +326,7 @@ final class ExtensionRounds {
                     ReadExtensionCaller.K).run(settings.search().monitor());
         }
         if (pooled == null) {
-            pooled = ReadPool.of(baitedReads);
+            pooled = ReadPool.of(localPool());
         }
         int added = pooled.addNew(files.extensionRoundReads(), files.extensionReads());
         OutputFiles.deleteQuietly(files.extensionRoundReads());
@@ -266,6 +337,35 @@ final class ExtensionRounds {
             pool.add(files.extensionReads());
         }
         return true;
+    }
+
+    /**
+     * The baited reads that share a k-mer with round 1's extended reads of the assays not called (pairs kept
+     * together), in the pool's place. Tadpole read all the baited reads every round (372 of the 815 s of a
+     * Globodera sample's rounds, through 1.9 GB of them), though the rounds after the first extend only from where
+     * round 1 reached. The reads past that are baited by the rounds from the sample's reads, which hold the baited
+     * reads.
+     */
+    private Path localPool() {
+        Path ref = files.extensionLocalRef();
+        Path local = files.extensionLocalReads();
+        StringBuilder fasta = new StringBuilder();
+        for (Seed seed : seeds) {
+            String read = latestReads.get(seed.id());
+            if (read != null && !called.contains(seed.assay())) {
+                fasta.append('>').append(seed.id()).append('\n').append(read).append('\n');
+            }
+        }
+        try {
+            Files.writeString(ref, fasta.toString());
+        } catch (IOException e) {
+            throw new PipelineException("Could not write round 1's extended reads: " + ref, e);
+        }
+        settings.bbtools().recruitFrom(ref, baitedReads, sample.isPaired(), local, ReadExtensionCaller.K)
+                .run(settings.search().monitor());
+        OutputFiles.deleteQuietly(ref);
+        pool.set(0, local);
+        return local;
     }
 
     /**

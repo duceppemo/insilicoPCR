@@ -23,6 +23,7 @@ CLASSES=(
   ca.canada.inspection.gel.SyntheticGelImageTest     # a display
   ca.canada.inspection.insilicopcr.GelLoaderTest     # a display
   ca.canada.inspection.dispatchpcr.DispatcherTest    # BLAST+
+  ca.canada.inspection.benchmark.BenchmarkTest       # BLAST+, BBTools
 )
 if ! $WINDOWS; then
   CLASSES+=(ca.canada.inspection.report.HtmlReportScriptTest) # Chrome

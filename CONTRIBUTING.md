@@ -14,7 +14,7 @@ java -jar target/insilicoPCR.jar -h
 
 Development requires **Java 25** or later (releases are built and tested with Java 25 LTS; the portable releases bundle their own runtime).
 
-The tests include whole runs of the five-isolate example (`EndToEndTest`), which use the BLAST+ and BBTools under `runtime/` (Git LFS) and are skipped without them. `./mvnw test` fails when line coverage drops below the floors set in `pom.xml` (the whole project, and the `pcr`, `util` and `pipeline` packages); without the tools, run `./mvnw test -Djacoco.haltOnFailure=false`. For a quicker build, `-DexcludedGroups=end-to-end -Djacoco.haltOnFailure=false` leaves out the whole runs (about 40 s instead of 2 minutes; the coverage floors need them).
+The tests include whole runs of the five-isolate example (`EndToEndTest`) and the quick tier of the [benchmark](https://github.com/duceppemo/insilicoPCR/wiki/Benchmark) (`BenchmarkTest`: synthetic samples with known products, compared with the baseline in `benchmark/baselines/ci.tsv`), which use the BLAST+ and BBTools under `runtime/` (Git LFS) and are skipped without them. `./mvnw test` fails when line coverage drops below the floors set in `pom.xml` (the whole project, and the `pcr`, `util` and `pipeline` packages); without the tools, run `./mvnw test -Djacoco.haltOnFailure=false`. For a quicker build, `-DexcludedGroups=end-to-end,benchmark -Djacoco.haltOnFailure=false` leaves out the whole runs and the benchmark (about 40 s instead of 4 minutes; the coverage floors need the whole runs).
 
 ## Ground rules
 

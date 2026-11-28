@@ -1,5 +1,30 @@
 # Changelog
 
+## Unreleased
+
+### Tests
+
+- A benchmark is part of the repository (`docs/wiki/Benchmark.md`): samples
+  whose products are known, run through the command line and scored from the
+  report files, with each case's result kept as a baseline in
+  `benchmark/baselines`. It uses none of the program's classes but the Tm
+  calculation, so the same cases compare two versions.
+  - Synthetic suites, written from fixed seeds: `sites` (primer sites with
+    substitutions, insertions and deletions, judged by the documented rule
+    on the planted bases), `geometry` (perfect sites arranged every
+    documented way) and `reads` (the same products in simulated read pairs,
+    and in the same chromosome as an assembly).
+  - `BenchmarkTest` runs the quick tier on every build (about a minute and a
+    half) and fails on a case that differs from the baseline, for the worse
+    or for the better. `scripts/benchmark/run.sh` runs any tier, against
+    this build or a release (`--app`).
+  - `--concordance` runs real samples as an assembly and as its reads, with
+    a primer file's assays and assays cut from each sample's own contigs.
+  - On 2.1.1, every scored case is right on assemblies in the quick and
+    standard tiers. On reads the standard tier finds 118 of 144: products
+    through a repeat or a tandem repeat, the bait gap of the Limitations
+    page, and one 800-bp product at 15x are missed.
+
 ## 2.1.1 (2026-11-27)
 
 ### Changed

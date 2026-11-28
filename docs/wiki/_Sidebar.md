@@ -30,5 +30,6 @@
 - [Architecture](Architecture)
 - [Runtime Layout](Runtime-Layout)
 - [Build System](Build-System)
+- [Benchmark](Benchmark)
 - [Release Pipeline](Release-Pipeline)
 - [Contributing](Contributing)

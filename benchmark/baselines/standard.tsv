@@ -1,0 +1,439 @@
+Case	Result	Scored	Said
+geometry/cold	ABSENT	yes	oligo Tm too low
+geometry/cool	FOUND	yes	
+geometry/degenerate-a	FOUND	yes	
+geometry/degenerate-b	FOUND	yes	
+geometry/far	FOUND	yes	
+geometry/gzip	FOUND	yes	
+geometry/lonely	ABSENT	yes	site Tm too low
+geometry/lower-case	FOUND	yes	
+geometry/minus	FOUND	yes	
+geometry/mix	FOUND	yes	
+geometry/origin-circular	FOUND	yes	
+geometry/origin-linear	ABSENT	yes	PRIMERS_AT_CONTIG_ENDS
+geometry/probe-in	FOUND	yes	
+geometry/probe-out	ABSENT	yes	site Tm too low
+geometry/seam	FOUND	yes	
+geometry/single	FOUND	yes	3' rule
+geometry/size150	FOUND	yes	
+geometry/size1500	FOUND	yes	
+geometry/size4000	FOUND	yes	
+geometry/size500	FOUND	yes	
+geometry/size5000	FOUND	yes	
+geometry/size5001	ABSENT	yes	sites do not pair
+geometry/size60	FOUND	yes	
+geometry/size8000	ABSENT	yes	sites do not pair
+geometry/split	ABSENT	yes	PRIMERS_AT_CONTIG_ENDS
+geometry/twice	FOUND	yes	
+reads/absent_01@assembly	ABSENT	yes	site Tm too low
+reads/absent_01@reads_2x100_short_60x	ABSENT	yes	site Tm too low
+reads/absent_01@reads_2x150_15x	ABSENT	yes	site Tm too low
+reads/absent_01@reads_2x150_40x	ABSENT	yes	site Tm too low
+reads/absent_02@assembly	ABSENT	yes	site Tm too low
+reads/absent_02@reads_2x100_short_60x	ABSENT	yes	site Tm too low
+reads/absent_02@reads_2x150_15x	ABSENT	yes	site Tm too low
+reads/absent_02@reads_2x150_40x	ABSENT	yes	site Tm too low
+reads/absent_03@assembly	ABSENT	yes	site Tm too low
+reads/absent_03@reads_2x100_short_60x	ABSENT	yes	site Tm too low
+reads/absent_03@reads_2x150_15x	ABSENT	yes	site Tm too low
+reads/absent_03@reads_2x150_40x	ABSENT	yes	site Tm too low
+reads/absent_04@assembly	ABSENT	yes	site Tm too low
+reads/absent_04@reads_2x100_short_60x	ABSENT	yes	site Tm too low
+reads/absent_04@reads_2x150_15x	ABSENT	yes	site Tm too low
+reads/absent_04@reads_2x150_40x	ABSENT	yes	site Tm too low
+reads/div2_01@assembly	FOUND	yes	
+reads/div2_01@reads_2x100_short_60x	FOUND	yes	
+reads/div2_01@reads_2x150_15x	FOUND	yes	
+reads/div2_01@reads_2x150_40x	FOUND	yes	
+reads/div2_02@assembly	FOUND	yes	
+reads/div2_02@reads_2x100_short_60x	FOUND	yes	
+reads/div2_02@reads_2x150_15x	FOUND	yes	
+reads/div2_02@reads_2x150_40x	FOUND	yes	
+reads/div2_03@assembly	FOUND	yes	
+reads/div2_03@reads_2x100_short_60x	FOUND	yes	
+reads/div2_03@reads_2x150_15x	FOUND	yes	
+reads/div2_03@reads_2x150_40x	FOUND	yes	
+reads/div3_01@assembly	FOUND	yes	
+reads/div3_01@reads_2x100_short_60x	FOUND	yes	
+reads/div3_01@reads_2x150_15x	FOUND	yes	
+reads/div3_01@reads_2x150_40x	FOUND	yes	
+reads/div3_02@assembly	FOUND	yes	
+reads/div3_02@reads_2x100_short_60x	FOUND	yes	
+reads/div3_02@reads_2x150_15x	FOUND	yes	
+reads/div3_02@reads_2x150_40x	FOUND	yes	
+reads/div3_03@assembly	FOUND	yes	
+reads/div3_03@reads_2x100_short_60x	FOUND	yes	
+reads/div3_03@reads_2x150_15x	FOUND	yes	
+reads/div3_03@reads_2x150_40x	FOUND	yes	
+reads/div4_01@assembly	FOUND	yes	
+reads/div4_01@reads_2x100_short_60x	FOUND	yes	
+reads/div4_01@reads_2x150_15x	FOUND	yes	
+reads/div4_01@reads_2x150_40x	FOUND	yes	
+reads/div4_02@assembly	FOUND	yes	
+reads/div4_02@reads_2x100_short_60x	FOUND	yes	
+reads/div4_02@reads_2x150_15x	FOUND	yes	
+reads/div4_02@reads_2x150_40x	FOUND	yes	
+reads/div4_03@assembly	FOUND	yes	
+reads/div4_03@reads_2x100_short_60x	FOUND	yes	
+reads/div4_03@reads_2x150_15x	FOUND	yes	
+reads/div4_03@reads_2x150_40x	FOUND	yes	
+reads/eighth_01@assembly	FOUND	yes	
+reads/eighth_01@reads_2x100_short_60x	MISSED	yes	site Tm too low
+reads/eighth_01@reads_2x150_15x	MISSED	yes	site Tm too low
+reads/eighth_01@reads_2x150_40x	MISSED	yes	site Tm too low
+reads/eighth_02@assembly	FOUND	yes	
+reads/eighth_02@reads_2x100_short_60x	FOUND	yes	
+reads/eighth_02@reads_2x150_15x	FOUND	yes	
+reads/eighth_02@reads_2x150_40x	FOUND	yes	
+reads/eighth_03@assembly	FOUND	yes	
+reads/eighth_03@reads_2x100_short_60x	MISSED	yes	site Tm too low
+reads/eighth_03@reads_2x150_15x	MISSED	yes	site Tm too low
+reads/eighth_03@reads_2x150_40x	MISSED	yes	site Tm too low
+reads/five3_01@assembly	FOUND	yes	
+reads/five3_01@reads_2x100_short_60x	FOUND	yes	
+reads/five3_01@reads_2x150_15x	FOUND	yes	
+reads/five3_01@reads_2x150_40x	FOUND	yes	
+reads/five3_02@assembly	FOUND	yes	
+reads/five3_02@reads_2x100_short_60x	FOUND	yes	
+reads/five3_02@reads_2x150_15x	FOUND	yes	
+reads/five3_02@reads_2x150_40x	FOUND	yes	
+reads/five3_03@assembly	FOUND	yes	
+reads/five3_03@reads_2x100_short_60x	FOUND	yes	
+reads/five3_03@reads_2x150_15x	FOUND	yes	
+reads/five3_03@reads_2x150_40x	FOUND	yes	
+reads/len100_01@assembly	FOUND	yes	
+reads/len100_01@reads_2x100_short_60x	FOUND	yes	
+reads/len100_01@reads_2x150_15x	FOUND	yes	
+reads/len100_01@reads_2x150_40x	FOUND	yes	
+reads/len100_02@assembly	FOUND	yes	
+reads/len100_02@reads_2x100_short_60x	FOUND	yes	
+reads/len100_02@reads_2x150_15x	FOUND	yes	
+reads/len100_02@reads_2x150_40x	FOUND	yes	
+reads/len100_03@assembly	FOUND	yes	
+reads/len100_03@reads_2x100_short_60x	FOUND	yes	
+reads/len100_03@reads_2x150_15x	FOUND	yes	
+reads/len100_03@reads_2x150_40x	FOUND	yes	
+reads/len1500_01@assembly	FOUND	yes	
+reads/len1500_01@reads_2x100_short_60x	FOUND	yes	CALLED_BY_EXTENSION
+reads/len1500_01@reads_2x150_15x	FOUND	yes	CALLED_BY_EXTENSION
+reads/len1500_01@reads_2x150_40x	FOUND	yes	CALLED_BY_EXTENSION
+reads/len1500_02@assembly	FOUND	yes	
+reads/len1500_02@reads_2x100_short_60x	FOUND	yes	CALLED_BY_EXTENSION
+reads/len1500_02@reads_2x150_15x	FOUND	yes	CALLED_BY_EXTENSION
+reads/len1500_02@reads_2x150_40x	FOUND	yes	CALLED_BY_EXTENSION
+reads/len1500_03@assembly	FOUND	yes	
+reads/len1500_03@reads_2x100_short_60x	FOUND	yes	CALLED_BY_EXTENSION
+reads/len1500_03@reads_2x150_15x	FOUND	yes	CALLED_BY_EXTENSION
+reads/len1500_03@reads_2x150_40x	FOUND	yes	CALLED_BY_EXTENSION
+reads/len250_01@assembly	FOUND	yes	
+reads/len250_01@reads_2x100_short_60x	FOUND	yes	
+reads/len250_01@reads_2x150_15x	FOUND	yes	
+reads/len250_01@reads_2x150_40x	FOUND	yes	
+reads/len250_02@assembly	FOUND	yes	
+reads/len250_02@reads_2x100_short_60x	FOUND	yes	
+reads/len250_02@reads_2x150_15x	FOUND	yes	
+reads/len250_02@reads_2x150_40x	FOUND	yes	
+reads/len250_03@assembly	FOUND	yes	
+reads/len250_03@reads_2x100_short_60x	FOUND	yes	
+reads/len250_03@reads_2x150_15x	FOUND	yes	
+reads/len250_03@reads_2x150_40x	FOUND	yes	
+reads/len3000_01@assembly	FOUND	yes	
+reads/len3000_01@reads_2x100_short_60x	FOUND	yes	CALLED_BY_EXTENSION
+reads/len3000_01@reads_2x150_15x	FOUND	yes	CALLED_BY_EXTENSION
+reads/len3000_01@reads_2x150_40x	FOUND	yes	CALLED_BY_EXTENSION
+reads/len3000_02@assembly	FOUND	yes	
+reads/len3000_02@reads_2x100_short_60x	FOUND	yes	CALLED_BY_EXTENSION
+reads/len3000_02@reads_2x150_15x	FOUND	yes	CALLED_BY_EXTENSION
+reads/len3000_02@reads_2x150_40x	FOUND	yes	CALLED_BY_EXTENSION
+reads/len3000_03@assembly	FOUND	yes	
+reads/len3000_03@reads_2x100_short_60x	FOUND	yes	CALLED_BY_EXTENSION
+reads/len3000_03@reads_2x150_15x	FOUND	yes	CALLED_BY_EXTENSION
+reads/len3000_03@reads_2x150_40x	FOUND	yes	CALLED_BY_EXTENSION
+reads/len4500_01@assembly	FOUND	yes	
+reads/len4500_01@reads_2x100_short_60x	FOUND	yes	CALLED_BY_EXTENSION
+reads/len4500_01@reads_2x150_15x	FOUND	yes	CALLED_BY_EXTENSION
+reads/len4500_01@reads_2x150_40x	FOUND	yes	CALLED_BY_EXTENSION
+reads/len4500_02@assembly	FOUND	yes	
+reads/len4500_02@reads_2x100_short_60x	FOUND	yes	CALLED_BY_EXTENSION
+reads/len4500_02@reads_2x150_15x	FOUND	yes	CALLED_BY_EXTENSION
+reads/len4500_02@reads_2x150_40x	FOUND	yes	CALLED_BY_EXTENSION
+reads/len4500_03@assembly	FOUND	yes	
+reads/len4500_03@reads_2x100_short_60x	FOUND	yes	CALLED_BY_EXTENSION
+reads/len4500_03@reads_2x150_15x	FOUND	yes	CALLED_BY_EXTENSION
+reads/len4500_03@reads_2x150_40x	FOUND	yes	CALLED_BY_EXTENSION
+reads/len450_01@assembly	FOUND	yes	
+reads/len450_01@reads_2x100_short_60x	FOUND	yes	
+reads/len450_01@reads_2x150_15x	FOUND	yes	
+reads/len450_01@reads_2x150_40x	FOUND	yes	
+reads/len450_02@assembly	FOUND	yes	
+reads/len450_02@reads_2x100_short_60x	FOUND	yes	
+reads/len450_02@reads_2x150_15x	FOUND	yes	
+reads/len450_02@reads_2x150_40x	FOUND	yes	
+reads/len450_03@assembly	FOUND	yes	
+reads/len450_03@reads_2x100_short_60x	FOUND	yes	
+reads/len450_03@reads_2x150_15x	FOUND	yes	
+reads/len450_03@reads_2x150_40x	FOUND	yes	
+reads/len800_01@assembly	FOUND	yes	
+reads/len800_01@reads_2x100_short_60x	FOUND	yes	CALLED_BY_EXTENSION
+reads/len800_01@reads_2x150_15x	MISSED	yes	NOT_CLOSED_BY_EXTENSION
+reads/len800_01@reads_2x150_40x	FOUND	yes	
+reads/len800_02@assembly	FOUND	yes	
+reads/len800_02@reads_2x100_short_60x	FOUND	yes	CALLED_BY_EXTENSION
+reads/len800_02@reads_2x150_15x	FOUND	yes	
+reads/len800_02@reads_2x150_40x	FOUND	yes	
+reads/len800_03@assembly	FOUND	yes	
+reads/len800_03@reads_2x100_short_60x	FOUND	yes	CALLED_BY_EXTENSION
+reads/len800_03@reads_2x150_15x	FOUND	yes	
+reads/len800_03@reads_2x150_40x	FOUND	yes	
+reads/rep150_01@assembly	FOUND	yes	
+reads/rep150_01@reads_2x100_short_60x	MISSED	yes	NOT_CLOSED_BY_EXTENSION
+reads/rep150_01@reads_2x150_15x	MISSED	yes	EXTENSION_THROUGH_UNRESOLVED_REPEAT
+reads/rep150_01@reads_2x150_40x	FOUND	yes	CALLED_BY_EXTENSION
+reads/rep150_02@assembly	FOUND	yes	
+reads/rep150_02@reads_2x100_short_60x	MISSED	yes	NOT_CLOSED_BY_EXTENSION
+reads/rep150_02@reads_2x150_15x	FOUND	yes	CALLED_BY_EXTENSION
+reads/rep150_02@reads_2x150_40x	FOUND	yes	CALLED_BY_EXTENSION
+reads/rep300_01@assembly	FOUND	yes	
+reads/rep300_01@reads_2x100_short_60x	MISSED	yes	EXTENSION_NOT_SUPPORTED_BY_PAIRS
+reads/rep300_01@reads_2x150_15x	MISSED	yes	EXTENSION_THROUGH_UNRESOLVED_REPEAT
+reads/rep300_01@reads_2x150_40x	MISSED	yes	EXTENSION_NOT_SUPPORTED_BY_PAIRS
+reads/rep300_02@assembly	FOUND	yes	
+reads/rep300_02@reads_2x100_short_60x	MISSED	yes	EXTENSION_THROUGH_UNRESOLVED_REPEAT
+reads/rep300_02@reads_2x150_15x	MISSED	yes	NOT_CLOSED_BY_EXTENSION
+reads/rep300_02@reads_2x150_40x	MISSED	yes	EXTENSION_THROUGH_UNRESOLVED_REPEAT
+reads/rep600_01@assembly	FOUND	yes	
+reads/rep600_01@reads_2x100_short_60x	MISSED	yes	EXTENSION_THROUGH_UNRESOLVED_REPEAT
+reads/rep600_01@reads_2x150_15x	MISSED	yes	NOT_CLOSED_BY_EXTENSION
+reads/rep600_01@reads_2x150_40x	MISSED	yes	NOT_CLOSED_BY_EXTENSION
+reads/rep600_02@assembly	FOUND	yes	
+reads/rep600_02@reads_2x100_short_60x	FOUND	yes	CALLED_BY_EXTENSION
+reads/rep600_02@reads_2x150_15x	FOUND	yes	CALLED_BY_EXTENSION
+reads/rep600_02@reads_2x150_40x	MISSED	yes	NOT_CLOSED_BY_EXTENSION
+reads/tandem_01@assembly	FOUND	yes	
+reads/tandem_01@reads_2x100_short_60x	MISSED	yes	EXTENSION_IN_TANDEM_REPEAT
+reads/tandem_01@reads_2x150_15x	MISSED	yes	EXTENSION_IN_TANDEM_REPEAT
+reads/tandem_01@reads_2x150_40x	MISSED	yes	EXTENSION_IN_TANDEM_REPEAT
+reads/tandem_02@assembly	FOUND	yes	
+reads/tandem_02@reads_2x100_short_60x	MISSED	yes	EXTENSION_IN_TANDEM_REPEAT
+reads/tandem_02@reads_2x150_15x	MISSED	yes	EXTENSION_IN_TANDEM_REPEAT
+reads/tandem_02@reads_2x150_40x	MISSED	yes	EXTENSION_IN_TANDEM_REPEAT
+sites/both1_01	FOUND	yes	
+sites/both1_02	FOUND	no	
+sites/both1_03	MISSED	no	site Tm too low
+sites/both1_04	FOUND	yes	
+sites/both1_05	FOUND	yes	
+sites/both1_06	FOUND	yes	
+sites/both1_07	ABSENT	yes	site Tm too low
+sites/both1_08	FOUND	yes	
+sites/both1_09	FOUND	yes	
+sites/both1_10	FOUND	yes	
+sites/del_01	MISSED	no	site Tm too low
+sites/del_02	MISSED	no	site Tm too low
+sites/del_03	FOUND	yes	
+sites/del_04	FOUND	yes	
+sites/del_05	FOUND	no	
+sites/del_06	FOUND	yes	
+sites/del_07	ABSENT	yes	site Tm too low
+sites/del_08	MISSED	no	site Tm too low
+sites/del_09	FOUND	yes	
+sites/del_10	ABSENT	yes	site Tm too low
+sites/eighth_01	FOUND	yes	
+sites/eighth_02	FOUND	yes	
+sites/eighth_03	FOUND	yes	
+sites/eighth_04	ABSENT	yes	site Tm too low
+sites/eighth_05	FOUND	yes	
+sites/eighth_06	MISSED	no	site Tm too low
+sites/eighth_07	FOUND	yes	
+sites/eighth_08	FOUND	yes	
+sites/eighth_09	FOUND	yes	
+sites/eighth_10	FOUND	yes	
+sites/end_01	ABSENT	yes	3' rule
+sites/end_02	ABSENT	yes	3' rule
+sites/end_03	ABSENT	yes	3' rule
+sites/end_04	ABSENT	yes	3' rule
+sites/end_05	ABSENT	yes	3' rule
+sites/end_06	ABSENT	yes	3' rule
+sites/end_07	ABSENT	yes	3' rule
+sites/end_08	ABSENT	yes	3' rule
+sites/end_09	ABSENT	yes	3' rule
+sites/end_10	ABSENT	yes	3' rule
+sites/five2_01	FOUND	yes	
+sites/five2_02	FOUND	yes	
+sites/five2_03	FOUND	yes	
+sites/five2_04	ABSENT	yes	site Tm too low
+sites/five2_05	MISSED	no	site Tm too low
+sites/five2_06	FOUND	no	
+sites/five2_07	FOUND	yes	
+sites/five2_08	FOUND	yes	
+sites/five2_09	MISSED	no	site Tm too low
+sites/five2_10	FOUND	no	
+sites/five3_01	FOUND	yes	
+sites/five3_02	ABSENT	yes	site Tm too low
+sites/five3_03	FOUND	yes	
+sites/five3_04	ABSENT	yes	site Tm too low
+sites/five3_05	ABSENT	yes	site Tm too low
+sites/five3_06	FOUND	no	
+sites/five3_07	ABSENT	yes	site Tm too low
+sites/five3_08	FOUND	yes	
+sites/five3_09	ABSENT	yes	site Tm too low
+sites/five3_10	FOUND	yes	
+sites/five4_01	FOUND	yes	
+sites/five4_02	ABSENT	yes	site Tm too low
+sites/five4_03	ABSENT	yes	site Tm too low
+sites/five4_04	FOUND	yes	
+sites/five4_05	MISSED	no	site Tm too low
+sites/five4_06	FOUND	yes	
+sites/five4_07	FOUND	yes	
+sites/five4_08	ABSENT	yes	site Tm too low
+sites/five4_09	ABSENT	yes	site Tm too low
+sites/five4_10	FOUND	yes	
+sites/hot2_01	FOUND	yes	
+sites/hot2_02	FOUND	yes	
+sites/hot2_03	FOUND	yes	
+sites/hot2_04	FOUND	yes	
+sites/hot2_05	FOUND	yes	
+sites/hot2_06	FOUND	yes	
+sites/hot2_07	FOUND	yes	
+sites/hot2_08	FOUND	yes	
+sites/hot2_09	FOUND	yes	
+sites/hot2_10	FOUND	yes	
+sites/hot3_01	ABSENT	yes	site Tm too low
+sites/hot3_02	FOUND	yes	
+sites/hot3_03	MISSED	no	site Tm too low
+sites/hot3_04	FOUND	yes	
+sites/hot3_05	MISSED	no	site Tm too low
+sites/hot3_06	FOUND	yes	
+sites/hot3_07	ABSENT	yes	site Tm too low
+sites/hot3_08	ABSENT	yes	site Tm too low
+sites/hot3_09	FOUND	yes	
+sites/hot3_10	ABSENT	yes	site Tm too low
+sites/hot4_01	FOUND	no	
+sites/hot4_02	FOUND	yes	
+sites/hot4_03	ABSENT	yes	site Tm too low
+sites/hot4_04	ABSENT	yes	site Tm too low
+sites/hot4_05	FOUND	yes	
+sites/hot4_06	FOUND	yes	
+sites/hot4_07	ABSENT	yes	site Tm too low
+sites/hot4_08	ABSENT	yes	site Tm too low
+sites/hot4_09	ABSENT	yes	site Tm too low
+sites/hot4_10	ABSENT	yes	site Tm too low
+sites/hot5_01	ABSENT	yes	site Tm too low
+sites/hot5_02	ABSENT	yes	site Tm too low
+sites/hot5_03	FOUND	yes	
+sites/hot5_04	FOUND	yes	
+sites/hot5_05	ABSENT	yes	site Tm too low
+sites/hot5_06	ABSENT	yes	site Tm too low
+sites/hot5_07	ABSENT	yes	site Tm too low
+sites/hot5_08	ABSENT	yes	site Tm too low
+sites/hot5_09	ABSENT	yes	site Tm too low
+sites/hot5_10	ABSENT	yes	site Tm too low
+sites/hotboth2_01	FOUND	yes	
+sites/hotboth2_02	FOUND	yes	
+sites/hotboth2_03	FOUND	yes	
+sites/hotboth2_04	FOUND	yes	
+sites/hotboth2_05	FOUND	yes	
+sites/hotboth2_06	FOUND	yes	
+sites/hotboth2_07	FOUND	yes	
+sites/hotboth2_08	FOUND	yes	
+sites/hotboth2_09	FOUND	yes	
+sites/hotboth2_10	FOUND	yes	
+sites/hotdel_01	FOUND	yes	
+sites/hotdel_02	FOUND	yes	
+sites/hotdel_03	FOUND	yes	
+sites/hotdel_04	FOUND	yes	
+sites/hotdel_05	FOUND	yes	
+sites/hotdel_06	FOUND	yes	
+sites/hotdel_07	FOUND	yes	
+sites/hotdel_08	FOUND	yes	
+sites/hotdel_09	FOUND	yes	
+sites/hotdel_10	FOUND	yes	
+sites/hotins_01	FOUND	yes	
+sites/hotins_02	FOUND	yes	
+sites/hotins_03	FOUND	yes	
+sites/hotins_04	FOUND	yes	
+sites/hotins_05	FOUND	yes	
+sites/hotins_06	FOUND	yes	
+sites/hotins_07	FOUND	yes	
+sites/hotins_08	FOUND	yes	
+sites/hotins_09	FOUND	yes	
+sites/hotins_10	FOUND	yes	
+sites/ins_01	MISSED	no	site Tm too low
+sites/ins_02	MISSED	no	site Tm too low
+sites/ins_03	MISSED	no	site Tm too low
+sites/ins_04	FOUND	yes	
+sites/ins_05	ABSENT	yes	site Tm too low
+sites/ins_06	ABSENT	yes	site Tm too low
+sites/ins_07	FOUND	yes	
+sites/ins_08	FOUND	no	
+sites/ins_09	FOUND	yes	
+sites/ins_10	ABSENT	yes	site Tm too low
+sites/perfect_01	FOUND	yes	
+sites/perfect_02	FOUND	yes	
+sites/perfect_03	FOUND	yes	
+sites/perfect_04	FOUND	yes	
+sites/perfect_05	FOUND	yes	
+sites/perfect_06	FOUND	yes	
+sites/perfect_07	FOUND	yes	
+sites/perfect_08	FOUND	yes	
+sites/perfect_09	FOUND	yes	
+sites/perfect_10	FOUND	yes	
+sites/sub1_01	FOUND	yes	
+sites/sub1_02	FOUND	yes	
+sites/sub1_03	FOUND	yes	
+sites/sub1_04	FOUND	yes	
+sites/sub1_05	FOUND	yes	
+sites/sub1_06	FOUND	yes	
+sites/sub1_07	FOUND	yes	
+sites/sub1_08	FOUND	yes	
+sites/sub1_09	MISSED	no	site Tm too low
+sites/sub1_10	FOUND	yes	
+sites/sub2_01	ABSENT	yes	site Tm too low
+sites/sub2_02	ABSENT	yes	site Tm too low
+sites/sub2_03	ABSENT	yes	site Tm too low
+sites/sub2_04	MISSED	no	site Tm too low
+sites/sub2_05	ABSENT	yes	site Tm too low
+sites/sub2_06	ABSENT	yes	site Tm too low
+sites/sub2_07	MISSED	no	site Tm too low
+sites/sub2_08	ABSENT	yes	site Tm too low
+sites/sub2_09	ABSENT	yes	site Tm too low
+sites/sub2_10	FOUND	yes	
+sites/sub3_01	ABSENT	yes	site Tm too low
+sites/sub3_02	ABSENT	yes	site Tm too low
+sites/sub3_03	ABSENT	yes	site Tm too low
+sites/sub3_04	FOUND	yes	
+sites/sub3_05	ABSENT	yes	site Tm too low
+sites/sub3_06	MISSED	no	site Tm too low
+sites/sub3_07	FOUND	yes	
+sites/sub3_08	ABSENT	yes	site Tm too low
+sites/sub3_09	FOUND	yes	
+sites/sub3_10	ABSENT	yes	site Tm too low
+sites/sub4_01	ABSENT	yes	site Tm too low
+sites/sub4_02	ABSENT	yes	site Tm too low
+sites/sub4_03	ABSENT	yes	site Tm too low
+sites/sub4_04	ABSENT	yes	site Tm too low
+sites/sub4_05	ABSENT	yes	site Tm too low
+sites/sub4_06	ABSENT	yes	site Tm too low
+sites/sub4_07	ABSENT	yes	site Tm too low
+sites/sub4_08	ABSENT	yes	site Tm too low
+sites/sub4_09	ABSENT	yes	site Tm too low
+sites/sub4_10	ABSENT	yes	site Tm too low
+sites/sub5_01	ABSENT	yes	site Tm too low
+sites/sub5_02	ABSENT	yes	site Tm too low
+sites/sub5_03	ABSENT	yes	site Tm too low
+sites/sub5_04	ABSENT	yes	site Tm too low
+sites/sub5_05	ABSENT	yes	site Tm too low
+sites/sub5_06	ABSENT	yes	site Tm too low
+sites/sub5_07	ABSENT	yes	site Tm too low
+sites/sub5_08	ABSENT	yes	site Tm too low
+sites/sub5_09	ABSENT	yes	site Tm too low
+sites/sub5_10	ABSENT	yes	site Tm too low
+sites/window_01	ABSENT	yes	3' rule
+sites/window_02	ABSENT	yes	3' rule
+sites/window_03	ABSENT	yes	3' rule
+sites/window_04	ABSENT	yes	site Tm too low
+sites/window_05	ABSENT	yes	3' rule
+sites/window_06	ABSENT	yes	3' rule
+sites/window_07	ABSENT	yes	3' rule
+sites/window_08	ABSENT	yes	3' rule
+sites/window_09	ABSENT	yes	3' rule
+sites/window_10	ABSENT	yes	site Tm too low
